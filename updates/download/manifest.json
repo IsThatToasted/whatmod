@@ -1,1 +1,29 @@
-
+{
+  "product": "whatmod",
+  "generated_at": 1778363586,
+  "channels": {
+    "stable": {
+      "version": "1.1",
+      "channel": "stable",
+      "filename": "WhatMod.exe",
+      "download_url": "WhatMod.exe",
+      "sha256": "1530dedf624e23fc646d5b9828a63d6efe08b6d96e933f1165b4d73d7a63c40c",
+      "size_bytes": 101308033,
+      "required": false,
+      "release_notes": "",
+      "created_at": 1778363576
+    }
+  },
+  "releases": [
+    {
+      "version": "1.1",
+      "channel": "stable",
+      "filename": "WhatMod.exe",
+      "sha256": "1530dedf624e23fc646d5b9828a63d6efe08b6d96e933f1165b4d73d7a63c40c",
+      "size_bytes": 101308033,
+      "required": false,
+      "release_notes": "",
+      "created_at": 1778363576
+    }
+  ]
+}
