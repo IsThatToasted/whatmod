@@ -1,23 +1,42 @@
-# WhatMod Website
+// WHATMOD STRIPE SETUP
+// 1) In Stripe Dashboard, create/copy a Payment Link for your WhatMod 30-day subscription.
+// 2) Paste the customer-facing URL below. It should look like: https://buy.stripe.com/...
+// 3) Commit and push this file to GitHub Pages.
+const STRIPE_PAYMENT_LINK = "";
 
-A static HTML/CSS/JavaScript landing page for WhatMod.
+const menuBtn = document.getElementById("menuBtn");
+const nav = document.getElementById("nav");
+const modal = document.getElementById("stripeModal");
+const closeModal = document.getElementById("closeModal");
 
-## GitHub Pages Setup
+document.getElementById("year").textContent = new Date().getFullYear();
 
-1. Create a new GitHub repository.
-2. Upload all files from this folder.
-3. Go to **Settings → Pages**.
-4. Under **Build and deployment**, choose **Deploy from a branch**.
-5. Select your main branch and `/root`.
-6. Save, then open the GitHub Pages URL.
+menuBtn?.addEventListener("click", () => nav.classList.toggle("open"));
 
-## Files
+document.querySelectorAll(".checkout-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    if (STRIPE_PAYMENT_LINK && STRIPE_PAYMENT_LINK.startsWith("https://")) {
+      window.location.href = STRIPE_PAYMENT_LINK;
+    } else {
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+    }
+  });
+});
 
-- `index.html` — website structure
-- `styles.css` — full responsive styling
-- `script.js` — mobile menu and scroll animations
-- `assets/cover.png` — WhatMod cover image
+closeModal?.addEventListener("click", () => {
+  modal.classList.remove("show");
+  modal.setAttribute("aria-hidden", "true");
+});
 
-## Customize
+modal?.addEventListener("click", (event) => {
+  if (event.target === modal) closeModal.click();
+});
 
-Update the links in the `#download` section inside `index.html` with your GitHub release, checkout page, or contact link.
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) entry.target.classList.add("visible");
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
