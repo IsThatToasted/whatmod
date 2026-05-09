@@ -1,20 +1,30 @@
 {
   "product": "whatmod",
-  "generated_at": 1778366927,
+  "generated_at": 1778367456,
   "channels": {
     "stable": {
-      "version": "1.6",
+      "version": "1.6.1",
       "channel": "stable",
       "filename": "WhatMod.exe",
       "download_url": "https://github.com/IsThatToasted/whatmod/releases/download/update/WhatMod.exe",
-      "sha256": "21e20dbe9b3c319544ec424e4021a5000e351cfae1bf53eb916346acd3807fbe",
-      "size_bytes": 101312109,
-      "required": true,
+      "sha256": "d408dff7fa233903bbadba010ba217a00b4edd02d9a15cf9a544f2c715a9c064",
+      "size_bytes": 101312876,
+      "required": false,
       "release_notes": "",
-      "created_at": 1778366925
+      "created_at": 1778367455
     }
   },
   "releases": [
+    {
+      "version": "1.6.1",
+      "channel": "stable",
+      "filename": "WhatMod.exe",
+      "sha256": "d408dff7fa233903bbadba010ba217a00b4edd02d9a15cf9a544f2c715a9c064",
+      "size_bytes": 101312876,
+      "required": false,
+      "release_notes": "",
+      "created_at": 1778367455
+    },
     {
       "version": "1.6",
       "channel": "stable",
