@@ -1,1 +1,26 @@
-
+{
+  "product": "whatmod",
+  "generated_at": 1778332825,
+  "schema": 3,
+  "privacy": "public-safe: no names, no emails, no full license keys, no active customer list",
+  "licenses": [
+    {
+      "license_id": "49A2F375A4D932D9",
+      "status": "revoked",
+      "expires_at": 1794632400,
+      "updated_at": 1778332486
+    },
+    {
+      "license_id": "2602CE4EF79A34F2",
+      "status": "revoked",
+      "expires_at": 1794632400,
+      "updated_at": 1778332478
+    }
+  ],
+  "revoked_ids": [
+    "49A2F375A4D932D9",
+    "2602CE4EF79A34F2"
+  ],
+  "suspended_ids": [],
+  "disabled_ids": []
+}
