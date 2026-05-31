@@ -1276,8 +1276,10 @@
     "priceGroupCount": 2,
     "status": "Inventory",
     "seller": "dimebags",
-    "photo": "",
-    "photos": [],
+    "photo": "assets/item_219_20260531_100731_130742.jpg",
+    "photos": [
+      "assets/item_219_20260531_100731_130742.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },

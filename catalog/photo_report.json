@@ -1,11 +1,10 @@
 {
-  "generated_at": "2026-05-31T09:49:12",
-  "asset_count": 7,
+  "generated_at": "2026-05-31T10:39:59",
+  "asset_count": 6,
   "assets": [
-    "item_108_1780192617.jpg",
     "item_108_1780192836.jpg",
     "item_108_1780192839.jpg",
-    "item_108_20260531_090041_143492.jpg",
+    "item_219_20260531_100731_130742.jpg",
     "item_332_20260530_221844_356561.png",
     "item_333_20260530_221826_588241.png",
     "item_62_20260531_094517_969930.jpg"
@@ -414,11 +413,6 @@
     {
       "id": 60,
       "title": "Collector 9\" - Smell Proof - Secure - CAMO #8",
-      "category": "Bags"
-    },
-    {
-      "id": 219,
-      "title": "Fanny Pack - CONCRETE #1",
       "category": "Bags"
     },
     {
