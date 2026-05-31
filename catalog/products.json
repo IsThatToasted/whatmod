@@ -623,7 +623,7 @@
   },
   {
     "id": 12,
-    "title": "MTech USA - Spring Assisted Knife - MT-A2017GD #1",
+    "title": "MTech USA - Spring Assisted Knife - MT-A2017GD",
     "category": "Knives",
     "price": 21.67,
     "ownDesiredPrice": 21.67,
@@ -631,8 +631,11 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "globaltacticalsupply",
-    "photo": "",
-    "photos": [],
+    "photo": "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=1000&width=700&canvas=700:1000",
+    "photos": [
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=1000&width=700&canvas=700:1000",
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd-1.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -788,7 +791,7 @@
   },
   {
     "id": 80,
-    "title": "\u200e #52 Vosteed Raccoon TLL Green Micarta",
+    "title": "\u200eVosteed Raccoon TLL Green Micarta",
     "category": "Knives",
     "price": 65.12,
     "ownDesiredPrice": 65.12,
@@ -796,8 +799,17 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "bladerunneroutpost",
-    "photo": "",
-    "photos": [],
+    "photo": "https://www.vosteed.com/cdn/shop/files/Raccoon-A2911_1.jpg?v=1735547795&width=1000",
+    "photos": [
+      "https://www.vosteed.com/cdn/shop/files/Raccoon-A2911_1.jpg?v=1735547795&width=1000",
+      "https://www.vosteed.com/cdn/shop/files/Raccoon-A2911_2.jpg?v=1735547795&width=500",
+      "https://www.vosteed.com/cdn/shop/files/Raccoon-A2911_3.jpg?v=1735547795&width=500",
+      "https://www.vosteed.com/cdn/shop/files/Raccoon-A2911_5.jpg?v=1735547795&width=500",
+      "https://www.vosteed.com/cdn/shop/files/Raccoon-A2911_7.jpg?v=1735547795&width=500",
+      "https://www.vosteed.com/cdn/shop/files/Raccoon-A2911_6.jpg?v=1735547795&width=500",
+      "https://www.vosteed.com/cdn/shop/files/Raccoon-A2911_9.jpg?v=1735547795&width=500",
+      "https://www.vosteed.com/cdn/shop/files/raccoon-petented_handle_design.jpg?v=1769655289&width=500"
+    ],
     "listingUrl": "",
     "notes": ""
   },
