@@ -661,8 +661,13 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "battlbox",
-    "photo": "",
-    "photos": [],
+    "photo": "https://m.media-amazon.com/images/I/619pCAq+TeL._AC_SL1500_.jpg",
+    "photos": [
+      "https://m.media-amazon.com/images/I/619pCAq+TeL._AC_SL1500_.jpg",
+      "https://m.media-amazon.com/images/I/71uQfxC7LaL._AC_SL1500_.jpg",
+      "https://m.media-amazon.com/images/I/71R55ElHpkL._AC_SL1500_.jpg",
+      "https://m.media-amazon.com/images/I/81pvnynU3RL._AC_SL1500_.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -676,8 +681,15 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "carry_sharp_edc",
-    "photo": "",
-    "photos": [],
+    "photo": "https://ruikeknives.com/wp-content/uploads/2025/04/1-3-800x533.png",
+    "photos": [
+      "https://ruikeknives.com/wp-content/uploads/2025/04/1-3-800x533.png",
+      "https://ruikeknives.com/wp-content/uploads/2025/04/2-3-800x533.png",
+      "https://ruikeknives.com/wp-content/uploads/2025/04/3-3-800x533.png",
+      "https://ruikeknives.com/wp-content/uploads/2025/04/4-3-800x533.png",
+      "https://ruikeknives.com/wp-content/uploads/2025/04/5-3-800x533.png",
+      "https://ruikeknives.com/wp-content/uploads/2025/04/7-800x533.png"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -728,7 +740,7 @@
   },
   {
     "id": 261,
-    "title": "The Executive D2 Knife #2",
+    "title": "The Executive D2 Knife",
     "category": "Knives",
     "price": 57.37,
     "ownDesiredPrice": 57.37,
@@ -736,8 +748,11 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "lonesurvivalist",
-    "photo": "",
-    "photos": [],
+    "photo": "assets/item_261_20260531_131215_812106.jpg",
+    "photos": [
+      "assets/item_261_20260531_131215_812106.jpg",
+      "assets/item_261_20260531_131238_594050.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },

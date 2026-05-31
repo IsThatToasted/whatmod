@@ -1,10 +1,12 @@
 {
-  "generated_at": "2026-05-31T13:10:40",
-  "asset_count": 6,
+  "generated_at": "2026-05-31T13:23:02",
+  "asset_count": 8,
   "assets": [
     "item_108_1780192836.jpg",
     "item_108_1780192839.jpg",
     "item_219_20260531_100731_130742.jpg",
+    "item_261_20260531_131215_812106.jpg",
+    "item_261_20260531_131238_594050.jpg",
     "item_332_20260530_221844_356561.png",
     "item_333_20260530_221826_588241.png",
     "item_62_20260531_094517_969930.jpg"
@@ -211,16 +213,6 @@
       "category": "Knives"
     },
     {
-      "id": 66,
-      "title": "QSP Penguin Glyde Lock Pocket Knife, 14C28N Stainless Steel Blade - QS130GL-D1 - QS130GL-D1 #3",
-      "category": "Knives"
-    },
-    {
-      "id": 33,
-      "title": "RUIKE D712 Linerlock Black #2",
-      "category": "Knives"
-    },
-    {
       "id": 70,
       "title": "Se7en Plus A10 K.D. - Purple Aluminum Handle / Black Stonewash #7",
       "category": "Knives"
@@ -233,11 +225,6 @@
     {
       "id": 65,
       "title": "shipping 4-7oz #6",
-      "category": "Knives"
-    },
-    {
-      "id": 261,
-      "title": "The Executive D2 Knife #2",
       "category": "Knives"
     },
     {
