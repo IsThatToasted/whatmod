@@ -814,14 +814,21 @@
     "photo": "assets/item_261_20260531_131215_812106.jpg",
     "photos": [
       "assets/item_261_20260531_131215_812106.jpg",
-      "assets/item_261_20260531_131238_594050.jpg"
+      "assets/item_261_20260531_131238_594050.jpg",
+      "https://lonesurvivalist.com/cdn/shop/files/executiveprod.png?v=1734115663&width=768",
+      "https://lonesurvivalist.com/cdn/shop/products/ek_2_white.jpg?v=1724083570&width=768",
+      "https://lonesurvivalist.com/cdn/shop/products/ek_3_white.jpg?v=1724083570&width=768",
+      "https://lonesurvivalist.com/cdn/shop/products/ek_4_white.jpg?v=1724083570&width=768",
+      "https://lonesurvivalist.com/cdn/shop/products/ek_5_white.jpg?v=1724083570&width=768",
+      "https://lonesurvivalist.com/cdn/shop/products/eK_6.jpg?v=1724083570&width=768",
+      "https://lonesurvivalist.com/cdn/shop/files/ek_1_white.png?v=1724083570&width=768"
     ],
     "listingUrl": "",
     "notes": ""
   },
   {
     "id": 331,
-    "title": "The Voyager #1",
+    "title": "The Voyager",
     "category": "Knives",
     "price": 69.08,
     "ownDesiredPrice": 69.08,
@@ -830,8 +837,12 @@
     "status": "Inventory",
     "seller": "lonesurvivalist",
     "barcode": "",
-    "photo": "",
-    "photos": [],
+    "photo": "https://lonesurvivalist.com/cdn/shop/files/voyagerprod.png?v=1738252566&width=1500",
+    "photos": [
+      "https://lonesurvivalist.com/cdn/shop/files/voyagerprod.png?v=1738252566&width=1500",
+      "https://lonesurvivalist.com/cdn/shop/files/thevoyager.png?v=1738252566&width=1500",
+      "https://lonesurvivalist.com/cdn/shop/files/thevoyager2.png?v=1738252566&width=768"
+    ],
     "listingUrl": "",
     "notes": ""
   },
