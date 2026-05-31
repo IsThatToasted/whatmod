@@ -29,7 +29,38 @@ function getPhotos(p){return (p.photos&&p.photos.length?p.photos:(p.photo?[p.pho
 function photoHtml(p){const photos=getPhotos(p);if(!photos.length)return '<span class="noPhoto">No Photo</span>';const dots=photos.length>1?`<div class="dots">${photos.slice(0,6).map((_,i)=>`<span class="dot ${i===0?'on':''}"></span>`).join('')}</div><span class="photoCount">${photos.length} photos</span>`:'';return `<img src="${esc(photos[0])}" alt="${esc(p.title)}" onerror="this.onerror=null;this.parentElement.innerHTML='<span class=&quot;noPhoto&quot;>No Photo</span>';">${dots}`}
 function render(){const raw=q.value.trim();const match=products.find(p=>String(p.barcode||'').toLowerCase()===raw.toLowerCase()&&raw);if(match&&!modal.classList.contains('open')){openModal(match.id);}const s=raw.toLowerCase(), c=currentCat;let list=products.filter(p=>(c==='All'||(p.category||'Other')===c)&&(`${p.title||''} ${p.category||''} ${p.notes||''} ${p.barcode||''}`.toLowerCase().includes(s)));if(sort.value==='priceHigh')list.sort((a,b)=>(b.price||0)-(a.price||0));else if(sort.value==='priceLow')list.sort((a,b)=>(a.price||0)-(b.price||0));else list.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));count.textContent=list.length+' item'+(list.length===1?'':'s');empty.style.display=list.length?'none':'block';grid.innerHTML=list.map(p=>`<button class="card" onclick="openModal(${p.id})"><div class="img">${photoHtml(p)}</div><div class="body"><div class="cat">${esc(p.category||'Other')}</div><h2 class="title">${esc(p.title)}</h2><div class="price">${money(p.price)}</div><div class="meta"><span class="pill">${esc(p.status||'Available')}</span><span class="link">View details</span></div></div></button>`).join('')}
 function openModal(id){activeProduct=products.find(p=>p.id===id);activePhoto=0;if(!activeProduct)return;modal.classList.add('open');document.body.style.overflow='hidden';paintModal()}
-function closeModal(){modal.classList.remove('open');document.body.style.overflow=''}
+function closeModal(){modal.classList.remove('open');document.body.style.overflow='';activeProduct=null;activePhoto=0;if(q){q.value='';render();}}
+function openBarcode(code){
+  const clean=String(code||'').trim();
+  if(!clean)return false;
+  const found=products.find(p=>String(p.barcode||'').trim().toLowerCase()===clean.toLowerCase());
+  if(!found)return false;
+  if(q)q.value='';
+  currentCat='All';
+  buildCategoryButtons();
+  openModal(found.id);
+  return true;
+}
+let scanBuffer='',scanTimer=null,scanLast=0;
+function resetScanBuffer(){scanBuffer='';scanLast=0;if(scanTimer){clearTimeout(scanTimer);scanTimer=null;}}
+function flushScanBuffer(){const code=scanBuffer;resetScanBuffer();if(code.length>=4)openBarcode(code);}
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const now=Date.now();
+  if(e.key==='Enter'){
+    if(scanBuffer.length>=4){e.preventDefault();flushScanBuffer();}
+    return;
+  }
+  if(e.key.length!==1)return;
+  // Barcode scanners type much faster than humans. Capture quick bursts globally so scanning works
+  // while a product modal is open, the page is focused elsewhere, or the search box is not active.
+  if(scanBuffer && now-scanLast>95)scanBuffer='';
+  scanBuffer+=e.key;
+  scanLast=now;
+  if(scanTimer)clearTimeout(scanTimer);
+  scanTimer=setTimeout(()=>{if(scanBuffer.length>=8)flushScanBuffer();else resetScanBuffer();},180);
+},true);
+
 function paintModal(){const p=activeProduct, photos=getPhotos(p);mCat.textContent=p.category||'Other';mTitle.textContent=p.title||'';mPrice.textContent=money(p.price);mNotes.textContent=p.notes||'Message seller to claim or ask questions about this item.';mLink.style.display=p.listingUrl?'inline-block':'none';mLink.href=p.listingUrl||'#';if(!photos.length){mainPhoto.innerHTML='<span class="noPhoto">No Photo</span>';thumbs.innerHTML='';return}mainPhoto.innerHTML=`<img src="${esc(photos[activePhoto])}" alt="${esc(p.title)}">`;thumbs.innerHTML=photos.map((src,i)=>`<img class="thumb ${i===activePhoto?'active':''}" src="${esc(src)}" onclick="activePhoto=${i};paintModal()" alt="photo ${i+1}">`).join('')}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();if(!modal.classList.contains('open')||!activeProduct)return;const photos=getPhotos(activeProduct);if(e.key==='ArrowRight'&&photos.length){activePhoto=(activePhoto+1)%photos.length;paintModal()}if(e.key==='ArrowLeft'&&photos.length){activePhoto=(activePhoto-1+photos.length)%photos.length;paintModal()}})
 let touchStartX=0,touchStartY=0;
