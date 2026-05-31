@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-31T19:30:59",
+  "generated_at": "2026-05-31T19:43:26",
   "asset_count": 18,
   "assets": [
     "item_108_1780192836.jpg",
@@ -53,6 +53,16 @@
       "category": "Knives"
     },
     {
+      "id": 16,
+      "title": "Carhart Wallet Blue/Black",
+      "category": "Knives"
+    },
+    {
+      "id": 65,
+      "title": "CNS Knives",
+      "category": "Knives"
+    },
+    {
       "id": 98,
       "title": "Item in Hand! #10",
       "category": "Knives"
@@ -93,23 +103,8 @@
       "category": "Knives"
     },
     {
-      "id": 8,
-      "title": "Knives #36",
-      "category": "Knives"
-    },
-    {
-      "id": 7,
-      "title": "Knives #37",
-      "category": "Knives"
-    },
-    {
       "id": 79,
       "title": "Knives #69",
-      "category": "Knives"
-    },
-    {
-      "id": 106,
-      "title": "Knives #70",
       "category": "Knives"
     },
     {
@@ -120,11 +115,6 @@
     {
       "id": 104,
       "title": "Knives #94",
-      "category": "Knives"
-    },
-    {
-      "id": 16,
-      "title": "Knives #95",
       "category": "Knives"
     },
     {
@@ -163,23 +153,13 @@
       "category": "Knives"
     },
     {
-      "id": 31,
-      "title": "Oknife Otacle U1 Rail Lock CF #2",
-      "category": "Knives"
-    },
-    {
-      "id": 70,
-      "title": "Se7en Plus A10 K.D. - Purple Aluminum Handle / Black Stonewash #7",
+      "id": 7,
+      "title": "Olight keychain",
       "category": "Knives"
     },
     {
       "id": 84,
       "title": "Se7en Plus A10 K.D. - Purple Aluminum Handle / Black Stonewash #8",
-      "category": "Knives"
-    },
-    {
-      "id": 65,
-      "title": "shipping 4-7oz #6",
       "category": "Knives"
     },
     {
