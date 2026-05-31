@@ -1,13 +1,14 @@
 {
-  "generated_at": "2026-05-31T09:39:43",
-  "asset_count": 6,
+  "generated_at": "2026-05-31T09:49:12",
+  "asset_count": 7,
   "assets": [
     "item_108_1780192617.jpg",
     "item_108_1780192836.jpg",
     "item_108_1780192839.jpg",
     "item_108_20260531_090041_143492.jpg",
     "item_332_20260530_221844_356561.png",
-    "item_333_20260530_221826_588241.png"
+    "item_333_20260530_221826_588241.png",
+    "item_62_20260531_094517_969930.jpg"
   ],
   "missing_photo_items": [
     {
@@ -5158,11 +5159,6 @@
     {
       "id": 1212,
       "title": "Nommi Weather Forecast #22",
-      "category": "Other"
-    },
-    {
-      "id": 62,
-      "title": "Olight Close Oclip Pro Clip Light Purple OLTOCLIPPROPU - #1",
       "category": "Other"
     },
     {
