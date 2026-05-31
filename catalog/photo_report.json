@@ -1,10 +1,20 @@
 {
-  "generated_at": "2026-05-31T13:37:24",
-  "asset_count": 8,
+  "generated_at": "2026-05-31T14:02:36",
+  "asset_count": 18,
   "assets": [
     "item_108_1780192836.jpg",
     "item_108_1780192839.jpg",
     "item_219_20260531_100731_130742.jpg",
+    "item_23_20260531_140233_004250.jpg",
+    "item_23_20260531_140235_779626.jpg",
+    "item_24_20260531_140009_390316.jpg",
+    "item_24_20260531_140013_413360.jpg",
+    "item_24_20260531_140015_846018.jpg",
+    "item_25_20260531_135715_190915.jpg",
+    "item_25_20260531_135718_137516.jpg",
+    "item_25_20260531_135720_217337.jpg",
+    "item_25_20260531_135722_491155.jpg",
+    "item_25_20260531_135724_529036.jpg",
     "item_261_20260531_131215_812106.jpg",
     "item_261_20260531_131238_594050.jpg",
     "item_332_20260530_221844_356561.png",
@@ -12,21 +22,6 @@
     "item_62_20260531_094517_969930.jpg"
   ],
   "missing_photo_items": [
-    {
-      "id": 25,
-      "title": "BUUUUYING CHOICE! #106",
-      "category": "Knives"
-    },
-    {
-      "id": 24,
-      "title": "BUUUUYING CHOICE! #112",
-      "category": "Knives"
-    },
-    {
-      "id": 23,
-      "title": "BUUUUYING CHOICE! #119",
-      "category": "Knives"
-    },
     {
       "id": 22,
       "title": "BUUUUYING CHOICE! #125",
@@ -53,18 +48,8 @@
       "category": "Knives"
     },
     {
-      "id": 28,
-      "title": "BUUUUYING CHOICE! #83",
-      "category": "Knives"
-    },
-    {
       "id": 27,
       "title": "BUUUUYING CHOICE! #84",
-      "category": "Knives"
-    },
-    {
-      "id": 26,
-      "title": "BUUUUYING CHOICE! #88",
       "category": "Knives"
     },
     {
