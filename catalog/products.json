@@ -179,8 +179,12 @@
     "status": "Inventory",
     "seller": "cleveland_liquidation",
     "barcode": "013658155657",
-    "photo": "",
-    "photos": [],
+    "photo": "https://www.bladehq.com/imgs/knives/pocket-knives/gerber-manual/gerber-kettlebell/Gerber-Kettlebell-FLK-Gray-Al-2in-SW-BHQ-81312-td-large.jpg",
+    "photos": [
+      "https://www.bladehq.com/imgs/knives/pocket-knives/gerber-manual/gerber-kettlebell/Gerber-Kettlebell-FLK-Gray-Al-2in-SW-BHQ-81312-td-large.jpg",
+      "https://www.bladehq.com/imgs/knives/pocket-knives/gerber-manual/gerber-kettlebell/Gerber-Kettlebell-FLK-Gray-Al-2in-SW-BHQ-81312-td-spine-large.jpg",
+      "https://www.bladehq.com/imgs/knives/pocket-knives/gerber-manual/gerber-kettlebell/Gerber-Kettlebell-FLK-Gray-Al-2in-SW-BHQ-81312-td-side-large.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -16609,7 +16613,7 @@
   },
   {
     "id": 63,
-    "title": "Olight I3T 2 EOS Black #3",
+    "title": "Olight I3T 2 EOS Black",
     "category": "Other",
     "price": 20.99,
     "ownDesiredPrice": 20.99,
@@ -16618,14 +16622,18 @@
     "status": "Inventory",
     "seller": "cnsknifes",
     "barcode": "6975498002901",
-    "photo": "",
-    "photos": [],
+    "photo": "https://www.bhphotovideo.com/cdn-cgi/image/fit=scale-down,width=500,quality=95/https://www.bhphotovideo.com/images/images500x500/olight_i3t_2_eos_flashlight_1700563844_1796180.jpg",
+    "photos": [
+      "https://www.bhphotovideo.com/cdn-cgi/image/fit=scale-down,width=500,quality=95/https://www.bhphotovideo.com/images/images500x500/olight_i3t_2_eos_flashlight_1700563844_1796180.jpg",
+      "https://static.bhphoto.com/images/multiple_images/images500x500/1700564843_IMG_2129295.jpg",
+      "https://static.bhphoto.com/images/multiple_images/images500x500/1700564843_IMG_2129299.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
   {
     "id": 64,
-    "title": "Olight i3T 2 EOS Flashlight OD BC+ #2",
+    "title": "Olight i3T 2 EOS Flashlight OD BC+",
     "category": "Other",
     "price": 19.91,
     "ownDesiredPrice": 19.91,
@@ -16634,8 +16642,13 @@
     "status": "Inventory",
     "seller": "cnsknifes",
     "barcode": "6977261690889",
-    "photo": "",
-    "photos": [],
+    "photo": "https://www.bhphotovideo.com/cdn-cgi/image/fit=scale-down,width=500,quality=95/https://www.bhphotovideo.com/images/images500x500/olight_i3t_2_od_green_i3t_2_led_flashlight_1732546068_1863205.jpg",
+    "photos": [
+      "https://www.bhphotovideo.com/cdn-cgi/image/fit=scale-down,width=500,quality=95/https://www.bhphotovideo.com/images/images500x500/olight_i3t_2_od_green_i3t_2_led_flashlight_1732546068_1863205.jpg",
+      "https://static.bhphoto.com/images/multiple_images/images500x500/1732546069_IMG_2380452.jpg",
+      "https://static.bhphoto.com/images/multiple_images/images500x500/1732546069_IMG_2380456.jpg",
+      "https://static.bhphoto.com/images/multiple_images/images500x500/1732546069_IMG_2380459.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
