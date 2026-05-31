@@ -592,23 +592,8 @@
     "notes": ""
   },
   {
-    "id": 32,
-    "title": "MTech Button Lock Utility Silver",
-    "category": "Knives",
-    "price": 16.0,
-    "ownDesiredPrice": 16.0,
-    "priceGroup": "knife:mtech-button-lock-utility-silver",
-    "priceGroupCount": 1,
-    "status": "Inventory",
-    "seller": "carry_sharp_edc",
-    "photo": "",
-    "photos": [],
-    "listingUrl": "",
-    "notes": ""
-  },
-  {
     "id": 11,
-    "title": "MTECH USA - SPRING ASSISTED KNIFE - MT-A2010GN #3",
+    "title": "MTECH USA - SPRING ASSISTED KNIFE - MT-A2010GN",
     "category": "Knives",
     "price": 17.71,
     "ownDesiredPrice": 17.71,
@@ -616,8 +601,14 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "globaltacticalsupply",
-    "photo": "",
-    "photos": [],
+    "photo": "https://mastercutlery.com/media/catalog/product/m/t/mt-a2010gn-1.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+    "photos": [
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2010gn-1.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2010gn-4.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2010gn-4-.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2010gn-.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2010gn-2.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -634,7 +625,29 @@
     "photo": "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=1000&width=700&canvas=700:1000",
     "photos": [
       "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=1000&width=700&canvas=700:1000",
-      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd-1.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:"
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd-1.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd-3.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+      "https://mastercutlery.com/media/catalog/product/m/t/mt-a2017gd-4.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:"
+    ],
+    "listingUrl": "",
+    "notes": ""
+  },
+  {
+    "id": 32,
+    "title": "MTech USA -Utility Knife - MT-UT001SL",
+    "category": "Knives",
+    "price": 16.0,
+    "ownDesiredPrice": 16.0,
+    "priceGroup": "knife:mtech-button-lock-utility-silver",
+    "priceGroupCount": 1,
+    "status": "Inventory",
+    "seller": "carry_sharp_edc",
+    "photo": "https://mastercutlery.com/media/catalog/product/b/3/b3lsex6abhdsn2ofe2pr_x4lu7ds5omy4c353.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+    "photos": [
+      "https://mastercutlery.com/media/catalog/product/b/3/b3lsex6abhdsn2ofe2pr_x4lu7ds5omy4c353.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+      "https://mastercutlery.com/media/catalog/product/e/n/enk3zyc3ovymnvcye7aa_jsxqhnict1dtjm8z.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:",
+      "https://mastercutlery.com/media/catalog/product/r/9/r9gwmdykcfnydnxygnow_whd8n9sfe6cc12el.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=1000&width=700&canvas=700:1000",
+      "https://mastercutlery.com/media/catalog/product/l/g/lga9rfsaxwyh3ngim3te_ctx2zdzai5fewdu0.jpg?quality=100&bg-color=255,255,255&fit=bounds&height=&width=&canvas=:"
     ],
     "listingUrl": "",
     "notes": ""
@@ -656,7 +669,7 @@
   },
   {
     "id": 66,
-    "title": "QSP Penguin Glyde Lock Pocket Knife, 14C28N Stainless Steel Blade - QS130GL-D1 - QS130GL-D1 #3",
+    "title": "QSP Penguin Glyde Lock Pocket Knife, 14C28N Stainless Steel Blade - QS130GL-D1",
     "category": "Knives",
     "price": 62.8,
     "ownDesiredPrice": 62.8,
@@ -669,7 +682,8 @@
       "https://m.media-amazon.com/images/I/619pCAq+TeL._AC_SL1500_.jpg",
       "https://m.media-amazon.com/images/I/71uQfxC7LaL._AC_SL1500_.jpg",
       "https://m.media-amazon.com/images/I/71R55ElHpkL._AC_SL1500_.jpg",
-      "https://m.media-amazon.com/images/I/81pvnynU3RL._AC_SL1500_.jpg"
+      "https://m.media-amazon.com/images/I/81pvnynU3RL._AC_SL1500_.jpg",
+      "https://www.qspknife.com/cdn/shop/files/QS130GL-D1_3.jpg?v=1753786442&width=1125"
     ],
     "listingUrl": "",
     "notes": ""
