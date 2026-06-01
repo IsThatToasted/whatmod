@@ -1,7 +1,11 @@
 {
-  "generated_at": "2026-06-01T19:03:09",
-  "asset_count": 28,
+  "generated_at": "2026-06-01T19:57:45",
+  "asset_count": 32,
   "assets": [
+    "item_104_item_23_20260531_140233_004250.jpg",
+    "item_104_item_23_20260531_140235_779626.jpg",
+    "item_105_item_23_20260531_140233_004250.jpg",
+    "item_105_item_23_20260531_140235_779626.jpg",
     "item_108_1780192836.jpg",
     "item_108_1780192839.jpg",
     "item_13_20260601_185753_837340.jpg",
@@ -108,23 +112,8 @@
       "category": "Knives"
     },
     {
-      "id": 84,
-      "title": "Se7en Plus A10 K.D. - Purple Aluminum Handle / Black Stonewash",
-      "category": "Knives"
-    },
-    {
       "id": 100,
       "title": "Skulls windowbreaker",
-      "category": "Knives"
-    },
-    {
-      "id": 104,
-      "title": "Smith & Wesson\u00ae SW609 Liner Lock Folding Knife",
-      "category": "Knives"
-    },
-    {
-      "id": 105,
-      "title": "Smith & Wesson\u00ae SW609 Liner Lock Folding Knife",
       "category": "Knives"
     },
     {
