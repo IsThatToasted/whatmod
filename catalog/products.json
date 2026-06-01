@@ -54,38 +54,6 @@
     "notes": ""
   },
   {
-    "id": 22,
-    "title": "BUUUUYING CHOICE! #125",
-    "category": "Knives",
-    "price": 34.54,
-    "ownDesiredPrice": 34.54,
-    "priceGroup": "unique:22",
-    "priceGroupCount": 1,
-    "status": "Inventory",
-    "seller": "sambosblades",
-    "barcode": "",
-    "photo": "",
-    "photos": [],
-    "listingUrl": "",
-    "notes": ""
-  },
-  {
-    "id": 21,
-    "title": "BUUUUYING CHOICE! #132",
-    "category": "Knives",
-    "price": 26.31,
-    "ownDesiredPrice": 26.31,
-    "priceGroup": "unique:21",
-    "priceGroupCount": 1,
-    "status": "Inventory",
-    "seller": "sambosblades",
-    "barcode": "",
-    "photo": "",
-    "photos": [],
-    "listingUrl": "",
-    "notes": ""
-  },
-  {
     "id": 20,
     "title": "BUUUUYING CHOICE! #145",
     "category": "Knives",
@@ -134,22 +102,6 @@
     "notes": ""
   },
   {
-    "id": 27,
-    "title": "BUUUUYING CHOICE! #84",
-    "category": "Knives",
-    "price": 30.82,
-    "ownDesiredPrice": 30.82,
-    "priceGroup": "unique:27",
-    "priceGroupCount": 1,
-    "status": "Inventory",
-    "seller": "sambosblades",
-    "barcode": "",
-    "photo": "",
-    "photos": [],
-    "listingUrl": "",
-    "notes": ""
-  },
-  {
     "id": 16,
     "title": "Carhart Wallet Blue/Black",
     "category": "Knives",
@@ -160,6 +112,22 @@
     "status": "Inventory",
     "seller": "cleveland_liquidation",
     "barcode": "",
+    "photo": "",
+    "photos": [],
+    "listingUrl": "",
+    "notes": ""
+  },
+  {
+    "id": 21,
+    "title": "Cheap BluePlastic Folder",
+    "category": "Knives",
+    "price": 26.31,
+    "ownDesiredPrice": 26.31,
+    "priceGroup": "unique:21",
+    "priceGroupCount": 1,
+    "status": "Inventory",
+    "seller": "sambosblades",
+    "barcode": "196277005449",
     "photo": "",
     "photos": [],
     "listingUrl": "",
@@ -191,7 +159,7 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "sambosblades",
-    "barcode": "",
+    "barcode": "794023752410",
     "photo": "https://cdn11.bigcommerce.com/s-efe0x2hvzk/images/stencil/1280x1280/products/25323/49901/voSDkMOPXqJ6Aa5DohcPhrBkHw0gVvKmnSwik6WXMLM8X1NojUm3EsmhnDTW3b6j__24847.1774363265.png?c=2",
     "photos": [
       "https://cdn11.bigcommerce.com/s-efe0x2hvzk/images/stencil/1280x1280/products/25323/49901/voSDkMOPXqJ6Aa5DohcPhrBkHw0gVvKmnSwik6WXMLM8X1NojUm3EsmhnDTW3b6j__24847.1774363265.png?c=2"
@@ -421,6 +389,22 @@
     "notes": ""
   },
   {
+    "id": 27,
+    "title": "Kershaw Fraxion",
+    "category": "Knives",
+    "price": 30.82,
+    "ownDesiredPrice": 30.82,
+    "priceGroup": "unique:27",
+    "priceGroupCount": 1,
+    "status": "Inventory",
+    "seller": "sambosblades",
+    "barcode": "087171054735",
+    "photo": "",
+    "photos": [],
+    "listingUrl": "",
+    "notes": ""
+  },
+  {
     "id": 8,
     "title": "Kershaw Sinkevich Concierge Liner Lock Knife Wood (3.25\" Gray) 4020WOOD",
     "category": "Knives",
@@ -451,7 +435,7 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "sambosblades",
-    "barcode": "NC0000285399",
+    "barcode": "087171053431",
     "photo": "https://cdn11.bigcommerce.com/s-efe0x2hvzk/images/stencil/1280x1280/products/4481/4830/fNbDiF6zFT8IXT5DEQHtcGo3Zh2zmltVvPCBwBhIlNignbIohYerS3aRypV6wXVV__46060.1774896404.jpg?c=2",
     "photos": [
       "https://cdn11.bigcommerce.com/s-efe0x2hvzk/images/stencil/1280x1280/products/4481/4830/fNbDiF6zFT8IXT5DEQHtcGo3Zh2zmltVvPCBwBhIlNignbIohYerS3aRypV6wXVV__46060.1774896404.jpg?c=2"
@@ -540,6 +524,22 @@
     "notes": ""
   },
   {
+    "id": 22,
+    "title": "Miguron Knives Folder",
+    "category": "Knives",
+    "price": 34.54,
+    "ownDesiredPrice": 34.54,
+    "priceGroup": "unique:22",
+    "priceGroupCount": 1,
+    "status": "Inventory",
+    "seller": "sambosblades",
+    "barcode": "X004OEM313",
+    "photo": "",
+    "photos": [],
+    "listingUrl": "",
+    "notes": ""
+  },
+  {
     "id": 11,
     "title": "MTECH USA - SPRING ASSISTED KNIFE - MT-A2010GN",
     "category": "Knives",
@@ -613,7 +613,7 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "sambosblades",
-    "barcode": "",
+    "barcode": "805319443025",
     "photo": "assets/item_25_20260531_135715_190915.jpg",
     "photos": [
       "assets/item_25_20260531_135715_190915.jpg",
@@ -918,7 +918,7 @@
     "priceGroupCount": 1,
     "status": "Inventory",
     "seller": "sambosblades",
-    "barcode": "",
+    "barcode": "191693062298",
     "photo": "assets/item_24_20260531_140009_390316.jpg",
     "photos": [
       "assets/item_24_20260531_140009_390316.jpg",
