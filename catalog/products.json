@@ -673,8 +673,10 @@
     "status": "Inventory",
     "seller": "jamesgarville",
     "barcode": "196277001861",
-    "photo": "",
-    "photos": [],
+    "photo": "https://m.media-amazon.com/images/I/61t1frRnaCL._AC_SL1200_.jpg",
+    "photos": [
+      "https://m.media-amazon.com/images/I/61t1frRnaCL._AC_SL1200_.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
