@@ -1,10 +1,17 @@
 {
-  "generated_at": "2026-06-01T18:41:03",
-  "asset_count": 18,
+  "generated_at": "2026-06-01T19:03:09",
+  "asset_count": 28,
   "assets": [
     "item_108_1780192836.jpg",
     "item_108_1780192839.jpg",
+    "item_13_20260601_185753_837340.jpg",
+    "item_14_20260601_185636_900224.jpg",
+    "item_15_20260601_185557_265207.jpg",
+    "item_15_20260601_185617_033286.jpg",
     "item_219_20260531_100731_130742.jpg",
+    "item_22_20260601_190225_949706.jpg",
+    "item_22_20260601_190250_320872.jpg",
+    "item_22_20260601_190308_268193.jpg",
     "item_23_20260531_140233_004250.jpg",
     "item_23_20260531_140235_779626.jpg",
     "item_24_20260531_140009_390316.jpg",
@@ -19,7 +26,10 @@
     "item_261_20260531_131238_594050.jpg",
     "item_332_20260530_221844_356561.png",
     "item_333_20260530_221826_588241.png",
-    "item_62_20260531_094517_969930.jpg"
+    "item_62_20260531_094517_969930.jpg",
+    "item_65_20260601_185820_900208.jpg",
+    "item_65_20260601_185830_326814.jpg",
+    "item_65_20260601_185840_342854.jpg"
   ],
   "missing_photo_items": [
     {
@@ -33,23 +43,8 @@
       "category": "Knives"
     },
     {
-      "id": 15,
-      "title": "Carhart Blue/Black Wallet",
-      "category": "Knives"
-    },
-    {
-      "id": 14,
-      "title": "Carhart Wallet Black",
-      "category": "Knives"
-    },
-    {
       "id": 16,
       "title": "Carhart Wallet Blue/Black",
-      "category": "Knives"
-    },
-    {
-      "id": 13,
-      "title": "Carhart Wallet Brown",
       "category": "Knives"
     },
     {
@@ -60,11 +55,6 @@
     {
       "id": 1330,
       "title": "Cheap BluePlastic Folder",
-      "category": "Knives"
-    },
-    {
-      "id": 65,
-      "title": "CNS Knives",
       "category": "Knives"
     },
     {
@@ -95,11 +85,6 @@
     {
       "id": 1334,
       "title": "Microtech Red/Blue Folder",
-      "category": "Knives"
-    },
-    {
-      "id": 22,
-      "title": "Miguron Knives Folder",
       "category": "Knives"
     },
     {

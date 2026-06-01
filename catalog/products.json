@@ -80,8 +80,11 @@
     "status": "Inventory",
     "seller": "cleveland_liquidation",
     "barcode": "NC0000152460",
-    "photo": "",
-    "photos": [],
+    "photo": "assets/item_15_20260601_185557_265207.jpg",
+    "photos": [
+      "assets/item_15_20260601_185557_265207.jpg",
+      "assets/item_15_20260601_185617_033286.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -96,8 +99,10 @@
     "status": "Inventory",
     "seller": "cleveland_liquidation",
     "barcode": "NC0000149310",
-    "photo": "",
-    "photos": [],
+    "photo": "assets/item_14_20260601_185636_900224.jpg",
+    "photos": [
+      "assets/item_14_20260601_185636_900224.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -128,8 +133,10 @@
     "status": "Inventory",
     "seller": "cleveland_liquidation",
     "barcode": "NC0000131022",
-    "photo": "",
-    "photos": [],
+    "photo": "assets/item_13_20260601_185753_837340.jpg",
+    "photos": [
+      "assets/item_13_20260601_185753_837340.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -176,8 +183,12 @@
     "status": "Inventory",
     "seller": "cnsknifes",
     "barcode": "NC0000653985",
-    "photo": "",
-    "photos": [],
+    "photo": "assets/item_65_20260601_185820_900208.jpg",
+    "photos": [
+      "assets/item_65_20260601_185820_900208.jpg",
+      "assets/item_65_20260601_185830_326814.jpg",
+      "assets/item_65_20260601_185840_342854.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
@@ -502,8 +513,12 @@
     "status": "Inventory",
     "seller": "sambosblades",
     "barcode": "X004OEM313",
-    "photo": "",
-    "photos": [],
+    "photo": "assets/item_22_20260601_190225_949706.jpg",
+    "photos": [
+      "assets/item_22_20260601_190225_949706.jpg",
+      "assets/item_22_20260601_190250_320872.jpg",
+      "assets/item_22_20260601_190308_268193.jpg"
+    ],
     "listingUrl": "",
     "notes": ""
   },
