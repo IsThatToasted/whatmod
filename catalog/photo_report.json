@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-06T19:19:20",
+  "generated_at": "2026-06-06T19:56:22",
   "asset_count": 32,
   "assets": [
     "item_104_item_23_20260531_140233_004250.jpg",
@@ -42,16 +42,6 @@
       "category": "Knives"
     },
     {
-      "id": 1342,
-      "title": "A Defcon Black",
-      "category": "Knives"
-    },
-    {
-      "id": 1355,
-      "title": "A Defcon Blue G10 - 14c28n",
-      "category": "Knives"
-    },
-    {
       "id": 1357,
       "title": "A Kizer Task Red",
       "category": "Knives"
@@ -64,11 +54,6 @@
     {
       "id": 1353,
       "title": "A Olight Oclip S Flag",
-      "category": "Knives"
-    },
-    {
-      "id": 1351,
-      "title": "A Olight Shadow Dune",
       "category": "Knives"
     },
     {
@@ -94,11 +79,6 @@
     {
       "id": 1330,
       "title": "Cheap BluePlastic Folder",
-      "category": "Knives"
-    },
-    {
-      "id": 1369,
-      "title": "Defcon Alum 14c28n",
       "category": "Knives"
     },
     {
@@ -132,13 +112,13 @@
       "category": "Knives"
     },
     {
-      "id": 1356,
-      "title": "Kizer Task Red",
+      "id": 1347,
+      "title": "Kershaw Wharf",
       "category": "Knives"
     },
     {
-      "id": 1347,
-      "title": "Knives",
+      "id": 1356,
+      "title": "Kizer Task Red",
       "category": "Knives"
     },
     {
@@ -194,11 +174,6 @@
     {
       "id": 1370,
       "title": "Oclip Series Headlamp Strap",
-      "category": "Knives"
-    },
-    {
-      "id": 7,
-      "title": "Olight keychain",
       "category": "Knives"
     },
     {
