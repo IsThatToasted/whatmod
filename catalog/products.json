@@ -1231,6 +1231,29 @@
     "notes": ""
   },
   {
+    "id": 1340,
+    "title": "Remette Rhino Black",
+    "category": "Knives",
+    "price": 42.39,
+    "ownDesiredPrice": 42.39,
+    "priceGroup": "knife-exact:remette-rhino-black",
+    "priceGroupCount": 1,
+    "status": "Inventory",
+    "seller": "van_mvt_edc",
+    "barcode": "850068416493",
+    "photo": "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Black-Micarta-3in-Black-BHQ-224498-td-large.jpg",
+    "photos": [
+      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Black-Micarta-3in-Black-BHQ-224498-td-large.jpg",
+      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Black-Micarta-3in-Black-BHQ-224498-td-spine-large.jpg",
+      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Black-Micarta-3in-Black-BHQ-224498-td-side-large.jpg"
+    ],
+    "listingUrl": "",
+    "description": "",
+    "specs": "",
+    "streamNotes": "",
+    "notes": ""
+  },
+  {
     "id": 1344,
     "title": "Remette Rhino BLUE D2 - 262",
     "category": "Knives",
@@ -1292,6 +1315,29 @@
       "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Orange-G-10-3in-Sandblast-BHQ-234012-td-large.jpg",
       "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Orange-G-10-3in-Sandblast-BHQ-234012-td-spine-large.jpg",
       "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Orange-G-10-3in-Sandblast-BHQ-234012-td-side-large.jpg"
+    ],
+    "listingUrl": "",
+    "description": "",
+    "specs": "",
+    "streamNotes": "",
+    "notes": ""
+  },
+  {
+    "id": 29,
+    "title": "REMETTE RT-Rhino Blue Button + Liner Lock Knife Blue G-10",
+    "category": "Knives",
+    "price": 40.32,
+    "ownDesiredPrice": 40.32,
+    "priceGroup": "knife-exact:remette-rt-rhino-blue-button-liner-lock-knife-blue-g-10",
+    "priceGroupCount": 1,
+    "status": "Inventory",
+    "seller": "van_mvt_edc",
+    "barcode": "850083448790",
+    "photo": "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Blue-G-10--3in-Sandblast-BHQ-234013-td-large.jpg",
+    "photos": [
+      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Blue-G-10--3in-Sandblast-BHQ-234013-td-large.jpg",
+      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Blue-G-10--3in-Sandblast-BHQ-234013-td-spine-large.jpg",
+      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Blue-G-10--3in-Sandblast-BHQ-234013-td-side-large.jpg"
     ],
     "listingUrl": "",
     "description": "",
@@ -21850,52 +21896,6 @@
     "barcode": "",
     "photo": "",
     "photos": [],
-    "listingUrl": "",
-    "description": "",
-    "specs": "",
-    "streamNotes": "",
-    "notes": ""
-  },
-  {
-    "id": 1340,
-    "title": "Remette Rhino Black",
-    "category": "Other",
-    "price": 42.39,
-    "ownDesiredPrice": 42.39,
-    "priceGroup": "other-exact:remette-rhino-black",
-    "priceGroupCount": 1,
-    "status": "Inventory",
-    "seller": "van_mvt_edc",
-    "barcode": "850068416493",
-    "photo": "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Black-Micarta-3in-Black-BHQ-224498-td-large.jpg",
-    "photos": [
-      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Black-Micarta-3in-Black-BHQ-224498-td-large.jpg",
-      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Black-Micarta-3in-Black-BHQ-224498-td-spine-large.jpg",
-      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Black-Micarta-3in-Black-BHQ-224498-td-side-large.jpg"
-    ],
-    "listingUrl": "",
-    "description": "",
-    "specs": "",
-    "streamNotes": "",
-    "notes": ""
-  },
-  {
-    "id": 29,
-    "title": "REMETTE RT-Rhino Blue Button + Liner Lock Knife Blue G-10",
-    "category": "Other",
-    "price": 40.32,
-    "ownDesiredPrice": 40.32,
-    "priceGroup": "other-exact:remette-rt-rhino-blue-button-liner-lock-knife-blue-g-10",
-    "priceGroupCount": 1,
-    "status": "Inventory",
-    "seller": "van_mvt_edc",
-    "barcode": "850083448790",
-    "photo": "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Blue-G-10--3in-Sandblast-BHQ-234013-td-large.jpg",
-    "photos": [
-      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Blue-G-10--3in-Sandblast-BHQ-234013-td-large.jpg",
-      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Blue-G-10--3in-Sandblast-BHQ-234013-td-spine-large.jpg",
-      "https://www.bladehq.com/imgs/knives/pocket-knives/flipper-knives/REMETTE-RT-Rhino-Button-+-Liner-Lock-Knife-Blue-G-10--3in-Sandblast-BHQ-234013-td-side-large.jpg"
-    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
