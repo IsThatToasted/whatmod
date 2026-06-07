@@ -1246,8 +1246,13 @@
     "status": "Inventory",
     "seller": "battlbox",
     "barcode": "6976105884651",
-    "photo": "",
-    "photos": [],
+    "photo": "https://www.qspknife.com/cdn/shop/files/QS130GL-F2_1.jpg?v=1753786355&width=1125",
+    "photos": [
+      "https://www.qspknife.com/cdn/shop/files/QS130GL-F2_1.jpg?v=1753786355&width=1125",
+      "https://www.qspknife.com/cdn/shop/files/QS130GL-F2_4.jpg?v=1753786355&width=1125",
+      "https://www.qspknife.com/cdn/shop/files/QS130GL-F2_2.jpg?v=1753786355&width=1125",
+      "https://www.qspknife.com/cdn/shop/files/QS130GL-F2_3.jpg?v=1753786355&width=1125"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
