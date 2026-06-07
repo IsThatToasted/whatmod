@@ -1829,8 +1829,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001456572",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-DuffleTube-10_-Grey1_dd009ab4-b785-42a3-85f9-b13d8b52bc72.jpg?v=1755885146",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-DuffleTube-10_-Grey1_dd009ab4-b785-42a3-85f9-b13d8b52bc72.jpg?v=1755885146"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -1848,8 +1850,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0002183081",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-DuffleTube-10_-Magenta1_e639aa56-6750-46c4-930b-0b58116cb9f4.jpg?v=1755885146",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-DuffleTube-10_-Magenta1_e639aa56-6750-46c4-930b-0b58116cb9f4.jpg?v=1755885146"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -1867,8 +1871,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001466434",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-DuffleTube-10_-Sky1_af451f9b-9ac3-4c62-a6e2-d576c9fb6e02.jpg?v=1755885146",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-DuffleTube-10_-Sky1_af451f9b-9ac3-4c62-a6e2-d576c9fb6e02.jpg?v=1755885146"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2662,8 +2668,11 @@
     "status": "Inventory",
     "seller": "lonesurvivalist",
     "barcode": "NC0002894445",
-    "photo": "",
-    "photos": [],
+    "photo": "https://lonesurvivalist.com/cdn/shop/files/medkitorangeprodnew.png?v=1744120645&width=768",
+    "photos": [
+      "https://lonesurvivalist.com/cdn/shop/files/medkitorangeprodnew.png?v=1744120645&width=768",
+      "https://lonesurvivalist.com/cdn/shop/files/medkit.png?v=1738799537&width=768"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2742,8 +2751,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001547076",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/SirronNorrisDog_7eac8b89-57b2-4e72-8a70-374960d194b9_1080x.png?v=1747217519",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/SirronNorrisDog_7eac8b89-57b2-4e72-8a70-374960d194b9_1080x.png?v=1747217519"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2761,8 +2772,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001539707",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/SirronNorrisGutBear_6b3edf57-e586-41d1-a95b-da5d946453b0_1080x.png?v=1747169492",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/SirronNorrisGutBear_6b3edf57-e586-41d1-a95b-da5d946453b0_1080x.png?v=1747169492"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2780,8 +2793,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001525401",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/SirronNorrisKitty_9677902b-7312-4e8b-a961-209b5b8a8128_1080x.png?v=1747217679",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/SirronNorrisKitty_9677902b-7312-4e8b-a961-209b5b8a8128_1080x.png?v=1747217679"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2925,8 +2940,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0002174780",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/DimeBagsStudyBuddyGraphitefront_1080x.png?v=1747179440",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/DimeBagsStudyBuddyGraphitefront_1080x.png?v=1747179440"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3049,8 +3066,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001509283",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/375_1080x.png?v=1747193843",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/375_1080x.png?v=1747193843"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3068,8 +3087,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001511214",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/376_15e1560f-afd1-4216-ba2a-6fa9dc02d007_1080x.png?v=1747193891",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/376_15e1560f-afd1-4216-ba2a-6fa9dc02d007_1080x.png?v=1747193891"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3087,8 +3108,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000938977",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/WBLK_1080x.png?v=1747186831",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/WBLK_1080x.png?v=1747186831"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3106,8 +3129,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000917411",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/404_1080x.jpg?v=1710275061",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/404_1080x.jpg?v=1710275061"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3125,8 +3150,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001484358",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/404_1080x.jpg?v=1710275061",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/404_1080x.jpg?v=1710275061"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3144,8 +3171,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000947788",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/413_1080x.jpg?v=1710275061",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/413_1080x.jpg?v=1710275061"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
