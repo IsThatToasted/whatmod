@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-07T16:11:56",
+  "generated_at": "2026-06-07T16:16:34",
   "asset_count": 27,
   "assets": [
     "item_108_1780192836.jpg",
@@ -107,28 +107,8 @@
       "category": "Knives"
     },
     {
-      "id": 348,
-      "title": "100% Hawaiian Coffee Dark (tan bag) Roast 12 oz Whole Bean",
-      "category": "Bags"
-    },
-    {
-      "id": 345,
-      "title": "100% Hawaiian coffee whole bean light-medium roast (white bag) 12 oz Whole Bean",
-      "category": "Bags"
-    },
-    {
       "id": 71,
       "title": "Cheba Hut Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 573,
-      "title": "Sour Patch Kids Box",
-      "category": "Patches"
-    },
-    {
-      "id": 574,
-      "title": "Sour Patch Kids Box",
       "category": "Patches"
     },
     {
@@ -3609,26 +3589,6 @@
     {
       "id": 215,
       "title": "2 oz extra fancy medium roast",
-      "category": "Other"
-    },
-    {
-      "id": 252,
-      "title": "2 oz extra fancy sample dark roast",
-      "category": "Other"
-    },
-    {
-      "id": 347,
-      "title": "2 oz Kona estate or prime dark sampler",
-      "category": "Other"
-    },
-    {
-      "id": 212,
-      "title": "2 oz Kona prime extra dark sampler",
-      "category": "Other"
-    },
-    {
-      "id": 213,
-      "title": "2 oz Kona prime extra dark sampler",
       "category": "Other"
     },
     {
