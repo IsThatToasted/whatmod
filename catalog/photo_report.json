@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-07T16:16:34",
+  "generated_at": "2026-06-07T16:23:23",
   "asset_count": 27,
   "assets": [
     "item_108_1780192836.jpg",
@@ -99,6 +99,21 @@
     {
       "id": 18,
       "title": "Nii Glo",
+      "category": "Knives"
+    },
+    {
+      "id": 68,
+      "title": "Shoulder Holster",
+      "category": "Knives"
+    },
+    {
+      "id": 1349,
+      "title": "Shoulder Holster",
+      "category": "Knives"
+    },
+    {
+      "id": 1350,
+      "title": "Shoulder Holster",
       "category": "Knives"
     },
     {
@@ -444,21 +459,6 @@
     {
       "id": 240,
       "title": "Revenge x Storm V2 Low Dark Violet White SZ: 12",
-      "category": "Accessories"
-    },
-    {
-      "id": 68,
-      "title": "Shoulder Holster",
-      "category": "Accessories"
-    },
-    {
-      "id": 1349,
-      "title": "Shoulder Holster",
-      "category": "Accessories"
-    },
-    {
-      "id": 1350,
-      "title": "Shoulder Holster",
       "category": "Accessories"
     },
     {
