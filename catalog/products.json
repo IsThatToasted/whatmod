@@ -142,7 +142,9 @@
     "barcode": "6977261696263",
     "photo": "https://cdn.olightstore.com/image/1-compressed-vr0zfy.png",
     "photos": [
-      "https://cdn.olightstore.com/image/1-compressed-vr0zfy.png"
+      "https://cdn.olightstore.com/image/1-compressed-vr0zfy.png",
+      "https://cdn.olightstore.com/image/cct-mq-1600x1600-11-drwndp.jpg",
+      "https://cdn.olightstore.com/image/cct-mq-1600x1600-4-quq724.jpg"
     ],
     "listingUrl": "",
     "description": "",
@@ -456,8 +458,11 @@
     "status": "Inventory",
     "seller": "van_mvt_edc",
     "barcode": "6978158650351",
-    "photo": "",
-    "photos": [],
+    "photo": "https://www.knifecountryusa.com/store/image/products/magnified/350688_350691.jpg",
+    "photos": [
+      "https://www.knifecountryusa.com/store/image/products/magnified/350688_350691.jpg",
+      "https://www.knifecountryusa.com/store/image/products/additional/product/226594.jpg"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -629,8 +634,12 @@
     "status": "Inventory",
     "seller": "cleveland_liquidation",
     "barcode": "NC0000015032",
-    "photo": "",
-    "photos": [],
+    "photo": "https://m.media-amazon.com/images/I/71WXV2PbwXL._AC_SL1500_.jpg",
+    "photos": [
+      "https://m.media-amazon.com/images/I/71WXV2PbwXL._AC_SL1500_.jpg",
+      "https://m.media-amazon.com/images/I/61gtxks-N8L._AC_SL1500_.jpg",
+      "https://m.media-amazon.com/images/I/71z9WMpGjIL._AC_SL1500_.jpg"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -648,8 +657,10 @@
     "status": "Inventory",
     "seller": "sambosblades",
     "barcode": "087171054735",
-    "photo": "",
-    "photos": [],
+    "photo": "https://m.media-amazon.com/images/I/71WXV2PbwXL._AC_SL1500_.jpg",
+    "photos": [
+      "https://m.media-amazon.com/images/I/71WXV2PbwXL._AC_SL1500_.jpg"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -19642,9 +19653,12 @@
     "status": "Inventory",
     "seller": "cnsknifes",
     "barcode": "6977261691572",
-    "photo": "assets/item_62_20260531_094517_969930.jpg",
+    "photo": "https://cdn.olightstore.com/image/oclip-pro-zs-8vpuf3.jpg",
     "photos": [
-      "assets/item_62_20260531_094517_969930.jpg"
+      "https://cdn.olightstore.com/image/oclip-pro-zs-8vpuf3.jpg",
+      "https://cdn.olightstore.com/image/oclip-pro-zs04-jhwgnz-qljcop.jpg",
+      "https://cdn.olightstore.com/image/group-44-q3gvdj-4yb3cf.png",
+      "https://cdn.olightstore.com/image/oclip-pro-zs05-rq0j6n-h3dhks.jpg"
     ],
     "listingUrl": "",
     "description": "",

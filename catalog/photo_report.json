@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-06-06T20:20:01",
-  "asset_count": 32,
+  "generated_at": "2026-06-06T20:23:53",
+  "asset_count": 31,
   "assets": [
     "item_104_item_23_20260531_140233_004250.jpg",
     "item_104_item_23_20260531_140235_779626.jpg",
@@ -30,7 +30,6 @@
     "item_261_20260531_131238_594050.jpg",
     "item_332_20260530_221844_356561.png",
     "item_333_20260530_221826_588241.png",
-    "item_62_20260531_094517_969930.jpg",
     "item_65_20260601_185820_900208.jpg",
     "item_65_20260601_185830_326814.jpg",
     "item_65_20260601_185840_342854.jpg"
@@ -69,21 +68,6 @@
     {
       "id": 1337,
       "title": "Dragon Spring Assisted",
-      "category": "Knives"
-    },
-    {
-      "id": 1341,
-      "title": "DreamTech D4130GBL",
-      "category": "Knives"
-    },
-    {
-      "id": 1,
-      "title": "Kershaw Fraxion",
-      "category": "Knives"
-    },
-    {
-      "id": 27,
-      "title": "Kershaw Fraxion",
       "category": "Knives"
     },
     {
