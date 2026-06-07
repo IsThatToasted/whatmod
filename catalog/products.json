@@ -1930,8 +1930,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001131847",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-DuffleTube-15_-Grey1.jpg?v=1755885146",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-DuffleTube-15_-Grey1.jpg?v=1755885146"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -1949,8 +1951,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001116800",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-DuffleTube-15_-Red1.jpg?v=1755885146",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-DuffleTube-15_-Red1.jpg?v=1755885146"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -1968,8 +1972,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001123090",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-DuffleTube-15_-Tan1.jpg?v=1755885146",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-DuffleTube-15_-Tan1.jpg?v=1755885146"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2423,8 +2429,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000066297",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-ClassicBackpack-Concrete1.jpg?v=1756155942",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-ClassicBackpack-Concrete1.jpg?v=1756155942"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3192,8 +3200,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000392008",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/Avocado_1080x.png?v=1747168245",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/Avocado_1080x.png?v=1747168245"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3211,8 +3221,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000734827",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/Buddha2_1080x.png?v=1747210119",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/Buddha2_1080x.png?v=1747210119"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3249,8 +3261,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000443782",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/CupcakePatch_1080x.png?v=1747172407",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/CupcakePatch_1080x.png?v=1747172407"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3268,8 +3282,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000531521",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/ShopifyHorizontalUSE_5_1080x.png?v=1747182877",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/ShopifyHorizontalUSE_5_1080x.png?v=1747182877"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3287,8 +3303,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001686621",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/ShopifyHorizontalUSE_5_1080x.png?v=1747182877",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/ShopifyHorizontalUSE_5_1080x.png?v=1747182877"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3306,8 +3324,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001244463",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/DontJudgeMepatch_1080x.png?v=1747172684",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/DontJudgeMepatch_1080x.png?v=1747172684"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3325,8 +3345,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000405377",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/BeePatchDimeBagsElliePaisley_1080x.png?v=1747175568",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/BeePatchDimeBagsElliePaisley_1080x.png?v=1747175568"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3344,8 +3366,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001256997",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/PineapplePatchDimeBagsElliePaisley_1080x.png?v=1747175601",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/PineapplePatchDimeBagsElliePaisley_1080x.png?v=1747175601"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3363,8 +3387,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001237136",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/FangedFlowerDimeBagsPatch_1080x.png?v=1747175611",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/FangedFlowerDimeBagsPatch_1080x.png?v=1747175611"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3382,8 +3408,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001978439",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Eyebiscus_1080x.png?v=1747191528",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Eyebiscus_1080x.png?v=1747191528"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3401,8 +3429,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001983755",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Eyebiscus_1080x.png?v=1747191528",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Eyebiscus_1080x.png?v=1747191528"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3420,8 +3450,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000789080",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/391_1080x.jpg?v=1747183154",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/391_1080x.jpg?v=1747183154"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3439,8 +3471,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0002003145",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/FlowerChild_1080x.png?v=1747172754",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/FlowerChild_1080x.png?v=1747172754"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -3458,8 +3492,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000503641",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Shopify_Horizontal_USE_1080x.jpg?v=1747192056",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Shopify_Horizontal_USE_1080x.jpg?v=1747192056"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",

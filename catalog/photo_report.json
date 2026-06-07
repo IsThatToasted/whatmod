@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-07T11:06:05",
+  "generated_at": "2026-06-07T11:12:03",
   "asset_count": 27,
   "assets": [
     "item_108_1780192836.jpg",
@@ -162,21 +162,6 @@
       "category": "Bags"
     },
     {
-      "id": 113,
-      "title": "15\" Duffle Tube Bag - GREY",
-      "category": "Bags"
-    },
-    {
-      "id": 111,
-      "title": "15\" Duffle Tube Bag - RED",
-      "category": "Bags"
-    },
-    {
-      "id": 112,
-      "title": "15\" Duffle Tube Bag - TAN",
-      "category": "Bags"
-    },
-    {
       "id": 1234,
       "title": "3.Itabag Backpack 600%",
       "category": "Bags"
@@ -194,11 +179,6 @@
     {
       "id": 432,
       "title": "Champion Black Duffel Bag Brand New",
-      "category": "Bags"
-    },
-    {
-      "id": 6,
-      "title": "Classic Backpack - CONCRETE",
       "category": "Bags"
     },
     {
@@ -227,78 +207,8 @@
       "category": "Bags"
     },
     {
-      "id": 39,
-      "title": "Avocado Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 73,
-      "title": "Buddha Removable Patch",
-      "category": "Patches"
-    },
-    {
       "id": 71,
       "title": "Cheba Hut Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 44,
-      "title": "Cupcake Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 53,
-      "title": "DARE Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 168,
-      "title": "DARE Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 124,
-      "title": "Don't Judge Me Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 40,
-      "title": "Ellie Paisley BEEutiful Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 125,
-      "title": "Ellie Paisley EYEnapple Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 123,
-      "title": "Ellie Paisley Fanged Flower Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 197,
-      "title": "Eyebiscus Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 198,
-      "title": "Eyebiscus Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 78,
-      "title": "Fat Cat Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 200,
-      "title": "Flower Child Removable Patch",
-      "category": "Patches"
-    },
-    {
-      "id": 50,
-      "title": "Frankenstein Removable Patch",
       "category": "Patches"
     },
     {
