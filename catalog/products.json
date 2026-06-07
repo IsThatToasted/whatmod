@@ -2126,8 +2126,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0002247228",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Brown_Front_1080x.jpg?v=1747196196",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Brown_Front_1080x.jpg?v=1747196196"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2145,8 +2147,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0002227125",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Green_Front_1080x.jpg?v=1747196219",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Green_Front_1080x.jpg?v=1747196219"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2164,8 +2168,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0002206264",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Gray_Front_1080x.jpg?v=1747196223",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Gray_Front_1080x.jpg?v=1747196223"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2183,8 +2189,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001202101",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Pink_Front_1080x.jpg?v=1747196238",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Pink_Front_1080x.jpg?v=1747196238"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2202,8 +2210,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001194549",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Purple_Front_1080x.jpg?v=1747196242",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Purple_Front_1080x.jpg?v=1747196242"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2221,8 +2231,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001184020",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Yellow_Front_1080x.jpg?v=1747196310",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Yellow_Front_1080x.jpg?v=1747196310"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2259,8 +2271,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001727566",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/8PPEAR_460x.jpg?v=1747196449",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/8PPEAR_460x.jpg?v=1747196449"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2278,8 +2292,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001719937",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/8_Padded_Pouch_Purple_Front.jpg?v=1747196437",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/8_Padded_Pouch_Purple_Front.jpg?v=1747196437"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2445,7 +2461,8 @@
     "barcode": "NC0002194416",
     "photo": "assets/item_219_20260531_100731_130742.jpg",
     "photos": [
-      "assets/item_219_20260531_100731_130742.jpg"
+      "assets/item_219_20260531_100731_130742.jpg",
+      "https://dimebags.com/cdn/shop/files/Main-FannyPack-Concrete1.jpg?v=1759949763"
     ],
     "listingUrl": "",
     "description": "",
@@ -2464,8 +2481,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001904157",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-FannyPack-Grey1.jpg?v=1759949763",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-FannyPack-Grey1.jpg?v=1759949763"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2502,8 +2521,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000051501",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-HotBox-Midnight1_a00e3208-66a5-4a3a-ae1a-13f85f5dd2da.jpg?v=1756154119",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-HotBox-Midnight1_a00e3208-66a5-4a3a-ae1a-13f85f5dd2da.jpg?v=1756154119"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2521,8 +2542,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0002066596",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-HotBox-Sky1_5cfe3dde-bccf-459e-a8bf-e7a2c5bad4dc.jpg?v=1756154174",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-HotBox-Sky1_5cfe3dde-bccf-459e-a8bf-e7a2c5bad4dc.jpg?v=1756154174"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2698,8 +2721,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001472170",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-PuffPack-Red1.jpg?v=1761763719",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-PuffPack-Red1.jpg?v=1761763719"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2774,8 +2799,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000596873",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-StashPack-Acqua1.jpg?v=1759872894",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-StashPack-Acqua1.jpg?v=1759872894"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2793,8 +2820,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000569119",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-StashPack-Concrete1.jpg?v=1759872894",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-StashPack-Concrete1.jpg?v=1759872894"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2812,8 +2841,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000362221",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-StashPack-Glass1.jpg?v=1759872894",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-StashPack-Glass1.jpg?v=1759872894"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2831,8 +2862,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000552497",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-StashPack-Glass1.jpg?v=1759872894",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-StashPack-Glass1.jpg?v=1759872894"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2850,8 +2883,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000574199",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-StashPack-Pink1.jpg?v=1759872894",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-StashPack-Pink1.jpg?v=1759872894"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2869,8 +2904,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000588243",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-StashPack-Pink1.jpg?v=1759872894",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-StashPack-Pink1.jpg?v=1759872894"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
