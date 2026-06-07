@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-07T05:57:24",
+  "generated_at": "2026-06-07T06:57:25",
   "asset_count": 27,
   "assets": [
     "item_108_1780192836.jpg",
@@ -119,6 +119,11 @@
     {
       "id": 1336,
       "title": "Orange Karambit",
+      "category": "Knives"
+    },
+    {
+      "id": 1346,
+      "title": "QSP Penguin Glyde Lock Pocket Knife, 14C28N Stainless Steel Blade - QS130GL-D1",
       "category": "Knives"
     },
     {
