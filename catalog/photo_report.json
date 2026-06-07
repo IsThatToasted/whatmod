@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-07T07:05:38",
+  "generated_at": "2026-06-07T10:51:39",
   "asset_count": 27,
   "assets": [
     "item_108_1780192836.jpg",
@@ -112,11 +112,6 @@
       "category": "Knives"
     },
     {
-      "id": 1370,
-      "title": "Oclip Series Headlamp Strap",
-      "category": "Knives"
-    },
-    {
       "id": 1336,
       "title": "Orange Karambit",
       "category": "Knives"
@@ -197,38 +192,8 @@
       "category": "Bags"
     },
     {
-      "id": 4,
-      "title": "15\" Side Hustler Laptop Bag - BLACK",
-      "category": "Bags"
-    },
-    {
-      "id": 3,
-      "title": "15\" Side Hustler Laptop Bag - EARTH",
-      "category": "Bags"
-    },
-    {
-      "id": 2,
-      "title": "17\" Side Hustler Laptop Bag - SAND",
-      "category": "Bags"
-    },
-    {
-      "id": 110,
-      "title": "17\" Side Hustler Laptop Bag - SAND",
-      "category": "Bags"
-    },
-    {
-      "id": 114,
-      "title": "18\" Drawstring Tube - TIMBER",
-      "category": "Bags"
-    },
-    {
       "id": 1234,
       "title": "3.Itabag Backpack 600%",
-      "category": "Bags"
-    },
-    {
-      "id": 223,
-      "title": "5\" Padded Pouch - BLUE",
       "category": "Bags"
     },
     {
@@ -282,21 +247,6 @@
       "category": "Bags"
     },
     {
-      "id": 441,
-      "title": "Boss 5\" - Smell Proof - Padded - CAMO",
-      "category": "Bags"
-    },
-    {
-      "id": 443,
-      "title": "Boss 7\" - Smell Proof - Padded - BLACK",
-      "category": "Bags"
-    },
-    {
-      "id": 444,
-      "title": "Boss 7\" - Smell Proof - Padded - BLACK",
-      "category": "Bags"
-    },
-    {
       "id": 432,
       "title": "Champion Black Duffel Bag Brand New",
       "category": "Bags"
@@ -304,11 +254,6 @@
     {
       "id": 6,
       "title": "Classic Backpack - CONCRETE",
-      "category": "Bags"
-    },
-    {
-      "id": 60,
-      "title": "Collector 9\" - Smell Proof - Secure - CAMO",
       "category": "Bags"
     },
     {
@@ -329,16 +274,6 @@
     {
       "id": 206,
       "title": "HotBox - SKY",
-      "category": "Bags"
-    },
-    {
-      "id": 1338,
-      "title": "HotBox - YELLOW",
-      "category": "Bags"
-    },
-    {
-      "id": 92,
-      "title": "HotBox - YELLOW",
       "category": "Bags"
     },
     {
@@ -364,11 +299,6 @@
     {
       "id": 521,
       "title": "MSRP $20.00-Quilted Tote Bag by Billie Eilish, for Women-608940584149",
-      "category": "Bags"
-    },
-    {
-      "id": 1339,
-      "title": "Naturals Seeker - BOHO BLUE",
       "category": "Bags"
     },
     {
@@ -424,31 +354,6 @@
     {
       "id": 217,
       "title": "Study Buddy BackPack - GRAPHITE",
-      "category": "Bags"
-    },
-    {
-      "id": 10,
-      "title": "The Maverick - Naturals - BOHO BLUE",
-      "category": "Bags"
-    },
-    {
-      "id": 89,
-      "title": "The Maverick - Naturals - BOHO BLUE",
-      "category": "Bags"
-    },
-    {
-      "id": 90,
-      "title": "The Maverick - Naturals - CHARCOAL",
-      "category": "Bags"
-    },
-    {
-      "id": 109,
-      "title": "The Maverick - Naturals - CHARCOAL",
-      "category": "Bags"
-    },
-    {
-      "id": 122,
-      "title": "The Maverick - Naturals - CHARCOAL",
       "category": "Bags"
     },
     {

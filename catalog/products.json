@@ -1141,8 +1141,10 @@
     "status": "Inventory",
     "seller": "bladecity",
     "barcode": "6977261692180",
-    "photo": "",
-    "photos": [],
+    "photo": "https://m.media-amazon.com/images/I/61B2wwu55uL._AC_SL1500_.jpg",
+    "photos": [
+      "https://m.media-amazon.com/images/I/61B2wwu55uL._AC_SL1500_.jpg"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -1227,7 +1229,8 @@
     "photo": "https://www.bladehq.com/imgs/knives/pocket-knives/qsp-folding/parrot/QSP-Parrot-V2-Liner-Lock-Knife-Jade-G-10-3in-Satin-BHQ-188237-td-2-large.jpg",
     "photos": [
       "https://www.bladehq.com/imgs/knives/pocket-knives/qsp-folding/parrot/QSP-Parrot-V2-Liner-Lock-Knife-Jade-G-10-3in-Satin-BHQ-188237-td-2-large.jpg",
-      "https://www.bladehq.com/imgs/knives/pocket-knives/qsp-folding/parrot/QSP-Parrot-V2-Liner-Lock-Knife-Jade-G-10-3in-Satin-BHQ-188237-td-spine-2-large.jpg"
+      "https://www.bladehq.com/imgs/knives/pocket-knives/qsp-folding/parrot/QSP-Parrot-V2-Liner-Lock-Knife-Jade-G-10-3in-Satin-BHQ-188237-td-spine-2-large.jpg",
+      "https://www.bladehq.com/imgs/knives/pocket-knives/qsp-folding/parrot/QSP-Parrot-V2-Liner-Lock-Knife-Jade-G-10-3in-Satin-BHQ-188237-td-side-2-large.jpg"
     ],
     "listingUrl": "",
     "description": "",
@@ -1978,8 +1981,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000047528",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-SideHustler-15_-Black1.jpg?v=1761063943",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-SideHustler-15_-Black1.jpg?v=1761063943"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -1997,8 +2002,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000035581",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-SideHustler-15_-Earth1.jpg?v=1761063943",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-SideHustler-15_-Earth1.jpg?v=1761063943"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2016,8 +2023,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000027993",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-SideHustler-17_-Sand1.jpg?v=1761063943",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-SideHustler-17_-Sand1.jpg?v=1761063943"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2035,8 +2044,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001107393",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-SideHustler-17_-Sand1.jpg?v=1761063943",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-SideHustler-17_-Sand1.jpg?v=1761063943"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2054,8 +2065,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001141672",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-DrawstringTube-18_-Timber1.jpg?v=1760142798",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-DrawstringTube-18_-Timber1.jpg?v=1760142798"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2092,8 +2105,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0002234818",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Blue_Front_1080x.jpg?v=1747196192",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/5_Padded_Pouch_Blue_Front_1080x.jpg?v=1747196192"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2301,8 +2316,11 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0004417300",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/7_bOSS_5_a319283f-f428-484b-840d-b16f928ebb63.jpg?v=1758145659",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/7_bOSS_5_a319283f-f428-484b-840d-b16f928ebb63.jpg?v=1758145659",
+      "https://dimebags.com/cdn/shop/files/264_c6388668-3a93-4fe8-bba8-897d527d54a3.jpg?v=1758145659"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2320,8 +2338,11 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0004434116",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/7_bOSS.jpg?v=1758145659",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/7_bOSS.jpg?v=1758145659",
+      "https://dimebags.com/cdn/shop/files/264_c6388668-3a93-4fe8-bba8-897d527d54a3.jpg?v=1758145659"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2339,8 +2360,11 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0004444617",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/7_bOSS.jpg?v=1758145659",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/7_bOSS.jpg?v=1758145659",
+      "https://dimebags.com/cdn/shop/files/264_c6388668-3a93-4fe8-bba8-897d527d54a3.jpg?v=1758145659"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2396,8 +2420,12 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000601459",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/products/CamoOmertaCollector9Inch_1080x.png?v=1747205136",
+    "photos": [
+      "https://dimebags.com/cdn/shop/products/CamoOmertaCollector9Inch_1080x.png?v=1747205136",
+      "https://dimebags.com/cdn/shop/products/9OCCAM1_1080x.png?v=1747205108",
+      "https://dimebags.com/cdn/shop/products/9OCCAM3_1080x.png?v=1747205201"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2512,8 +2540,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0013386747",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-HotBox-Yellow1_8865595c-0318-43a5-b914-5b57e0217446.jpg?v=1756154182",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-HotBox-Yellow1_8865595c-0318-43a5-b914-5b57e0217446.jpg?v=1756154182"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2531,8 +2561,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000923603",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/Main-HotBox-Yellow1_8865595c-0318-43a5-b914-5b57e0217446.jpg?v=1756154182",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/Main-HotBox-Yellow1_8865595c-0318-43a5-b914-5b57e0217446.jpg?v=1756154182"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2645,8 +2677,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0013392396",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/159.jpg?v=1758574855",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/159.jpg?v=1758574855"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2873,8 +2907,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000108963",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/442.jpg?v=1757962444",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/442.jpg?v=1757962444"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2892,8 +2928,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000895323",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/442.jpg?v=1757962444",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/442.jpg?v=1757962444"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2911,8 +2949,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0000902665",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/441.jpg?v=1757962444",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/441.jpg?v=1757962444"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2930,8 +2970,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001098093",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/441.jpg?v=1757962444",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/441.jpg?v=1757962444"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2949,8 +2991,10 @@
     "status": "Inventory",
     "seller": "dimebags",
     "barcode": "NC0001226339",
-    "photo": "",
-    "photos": [],
+    "photo": "https://dimebags.com/cdn/shop/files/441.jpg?v=1757962444",
+    "photos": [
+      "https://dimebags.com/cdn/shop/files/441.jpg?v=1757962444"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
