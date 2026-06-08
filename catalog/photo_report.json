@@ -1,9 +1,11 @@
 {
-  "generated_at": "2026-06-07T16:23:23",
-  "asset_count": 27,
+  "generated_at": "2026-06-08T17:16:00",
+  "asset_count": 29,
   "assets": [
     "item_108_1780192836.jpg",
     "item_108_1780192839.jpg",
+    "item_1359_20260607_165730_400967.png",
+    "item_1372_20260607_165853_342472.jpg",
     "item_13_20260601_185753_837340.jpg",
     "item_14_20260601_185636_900224.jpg",
     "item_15_20260601_185557_265207.jpg",
@@ -31,11 +33,6 @@
     "item_65_20260601_185840_342854.jpg"
   ],
   "missing_photo_items": [
-    {
-      "id": 1359,
-      "title": "#26 IPAK D2 TOOL STEEL CAMO G10 GRIPS BUTTON LOCK FOLDING EDC KNIFE",
-      "category": "Knives"
-    },
     {
       "id": 101,
       "title": "airforce lingerie",
@@ -99,21 +96,6 @@
     {
       "id": 18,
       "title": "Nii Glo",
-      "category": "Knives"
-    },
-    {
-      "id": 68,
-      "title": "Shoulder Holster",
-      "category": "Knives"
-    },
-    {
-      "id": 1349,
-      "title": "Shoulder Holster",
-      "category": "Knives"
-    },
-    {
-      "id": 1350,
-      "title": "Shoulder Holster",
       "category": "Knives"
     },
     {
@@ -462,6 +444,21 @@
       "category": "Accessories"
     },
     {
+      "id": 68,
+      "title": "Shoulder Holster",
+      "category": "Accessories"
+    },
+    {
+      "id": 1349,
+      "title": "Shoulder Holster",
+      "category": "Accessories"
+    },
+    {
+      "id": 1350,
+      "title": "Shoulder Holster",
+      "category": "Accessories"
+    },
+    {
       "id": 909,
       "title": "Sleeping pokemon",
       "category": "Accessories"
@@ -647,16 +644,6 @@
       "category": "Fragrances"
     },
     {
-      "id": 287,
-      "title": "$1 PERFUMES ON BIG DAWGS FAV SHOW WITH SAM",
-      "category": "Fragrances"
-    },
-    {
-      "id": 288,
-      "title": "$1 PERFUMES ON BIG DAWGS FAV SHOW WITH SAM",
-      "category": "Fragrances"
-    },
-    {
       "id": 357,
       "title": "$1 PERFUMES ON BIG DAWGS FAV SHOW WITH SAM",
       "category": "Fragrances"
@@ -753,11 +740,6 @@
     },
     {
       "id": 389,
-      "title": "$1 PERFUMES WITH GIFTEXPRESS!",
-      "category": "Fragrances"
-    },
-    {
-      "id": 390,
       "title": "$1 PERFUMES WITH GIFTEXPRESS!",
       "category": "Fragrances"
     },
@@ -942,21 +924,6 @@
       "category": "Fragrances"
     },
     {
-      "id": 301,
-      "title": "$3 PERFUMES MAJOR BRANDS NO CANCELLATION EVER!",
-      "category": "Fragrances"
-    },
-    {
-      "id": 302,
-      "title": "$3 PERFUMES MAJOR BRANDS NO CANCELLATION EVER!",
-      "category": "Fragrances"
-    },
-    {
-      "id": 380,
-      "title": "$3 PERFUMES MAJOR BRANDS NO CANCELLATION EVER!",
-      "category": "Fragrances"
-    },
-    {
       "id": 418,
       "title": "$3 PERFUMES MAJOR BRANDS NO CANCELLATION EVER!",
       "category": "Fragrances"
@@ -1119,6 +1086,11 @@
     {
       "id": 402,
       "title": "AHUJA Pour Femme Eau De Parfum 3.4oz \u2013 Luxurious Women\u2019s Fragrance",
+      "category": "Fragrances"
+    },
+    {
+      "id": 291,
+      "title": "Amour In house fragrance",
       "category": "Fragrances"
     },
     {
@@ -1317,6 +1289,11 @@
       "category": "Fragrances"
     },
     {
+      "id": 380,
+      "title": "Calvin Klein Contradiction",
+      "category": "Fragrances"
+    },
+    {
       "id": 578,
       "title": "CK One Unisex Body Wash 100ML",
       "category": "Fragrances"
@@ -1329,6 +1306,11 @@
     {
       "id": 580,
       "title": "CK One Unisex Body Wash 100ML",
+      "category": "Fragrances"
+    },
+    {
+      "id": 666,
+      "title": "Coach Open Road 100ml Tester",
       "category": "Fragrances"
     },
     {
@@ -1358,12 +1340,22 @@
     },
     {
       "id": 697,
+      "title": "Dolce & Gabbana Light Blue Summer Vibes Pour Homme Edt 125ml Retail Box",
+      "category": "Fragrances"
+    },
+    {
+      "id": 287,
+      "title": "Dolce & Gabbana Light Blue Summer Vibes Pour Homme Edt 125ml Tester",
+      "category": "Fragrances"
+    },
+    {
+      "id": 495,
       "title": "Dolce & Gabbana Light Blue Summer Vibes Pour Homme Edt 125ml Tester",
       "category": "Fragrances"
     },
     {
       "id": 554,
-      "title": "Eternal Oud by Lattafa Pride EDP Spray, 3.4oz",
+      "title": "Eternal Oud by Lattafa Pride EDP Spray, 3.4oz OPEN BOX",
       "category": "Fragrances"
     },
     {
@@ -1394,6 +1386,11 @@
     {
       "id": 598,
       "title": "Fire on Ice Edp 3.7oz 110ml by Lattafa",
+      "category": "Fragrances"
+    },
+    {
+      "id": 292,
+      "title": "Flux in house fragrance",
       "category": "Fragrances"
     },
     {
@@ -1432,11 +1429,6 @@
       "category": "Fragrances"
     },
     {
-      "id": 405,
-      "title": "Fragrances!4/4",
-      "category": "Fragrances"
-    },
-    {
       "id": 406,
       "title": "Fragrances!4/4",
       "category": "Fragrances"
@@ -1449,6 +1441,11 @@
     {
       "id": 365,
       "title": "French Vanilla Latte 3.4 oz by Arabyat",
+      "category": "Fragrances"
+    },
+    {
+      "id": 302,
+      "title": "Game of Spades Royale 15ml",
       "category": "Fragrances"
     },
     {
@@ -1547,6 +1544,11 @@
       "category": "Fragrances"
     },
     {
+      "id": 359,
+      "title": "Lattafa Asad Zanzibar 50ML",
+      "category": "Fragrances"
+    },
+    {
       "id": 614,
       "title": "LATTAFA DYNASTY 3.4OZ EDP UNISEX",
       "category": "Fragrances"
@@ -1564,6 +1566,11 @@
     {
       "id": 355,
       "title": "Lattafa Perfumes Hayaati [M] EDP 100ml",
+      "category": "Fragrances"
+    },
+    {
+      "id": 303,
+      "title": "Lattafa Rouge EDP 100ml",
       "category": "Fragrances"
     },
     {
@@ -1642,6 +1649,16 @@
       "category": "Fragrances"
     },
     {
+      "id": 1377,
+      "title": "LUXE Chic",
+      "category": "Fragrances"
+    },
+    {
+      "id": 1376,
+      "title": "LUXE Nightlife",
+      "category": "Fragrances"
+    },
+    {
       "id": 313,
       "title": "Luxe Nightlife by Maison Alhambra 3.4 oz Edp",
       "category": "Fragrances"
@@ -1649,6 +1666,11 @@
     {
       "id": 373,
       "title": "Luxe Nightlife by Maison Alhambra 3.4 oz Edp",
+      "category": "Fragrances"
+    },
+    {
+      "id": 390,
+      "title": "Maghri Al Absar - OPEN BOX",
       "category": "Fragrances"
     },
     {
@@ -1662,6 +1684,16 @@
       "category": "Fragrances"
     },
     {
+      "id": 294,
+      "title": "MANKIND Travel Kit",
+      "category": "Fragrances"
+    },
+    {
+      "id": 293,
+      "title": "MANKIND Travel kit",
+      "category": "Fragrances"
+    },
+    {
       "id": 364,
       "title": "MARC JACOBS DAISY DREAM 3.4 EAU DE TOILETTE SPRAY",
       "category": "Fragrances"
@@ -1669,6 +1701,11 @@
     {
       "id": 498,
       "title": "Marc Jacobs Honey 100ml EDP",
+      "category": "Fragrances"
+    },
+    {
+      "id": 405,
+      "title": "Mark Jacobs Dot",
       "category": "Fragrances"
     },
     {
@@ -1828,7 +1865,7 @@
     },
     {
       "id": 280,
-      "title": "MSRP $100.00 - Game of Spades Emerald by Jo Milano, 0.3 oz Parfum Spray for Unisex - 850051043460",
+      "title": "MSRP $100.00 - Game of Spades Emerald by Jo Milano, 0.3 oz Parfum Spray for Unisex -",
       "category": "Fragrances"
     },
     {
@@ -1854,11 +1891,6 @@
     {
       "id": 461,
       "title": "MSRP $112 Viktor & Rolf Spicebomb [M] EDT 50ml",
-      "category": "Fragrances"
-    },
-    {
-      "id": 495,
-      "title": "MSRP $115.00-Light Blue Summer Vibes by Dolce & Gabbana, 4.2 oz Eau De Toilette Spray for Men-8057971183579",
       "category": "Fragrances"
     },
     {
@@ -1979,6 +2011,11 @@
     {
       "id": 708,
       "title": "Oscar's Designers! 2/10",
+      "category": "Fragrances"
+    },
+    {
+      "id": 288,
+      "title": "Paco Rabbane 1 Million EDT Tester",
       "category": "Fragrances"
     },
     {
@@ -2147,6 +2184,11 @@
       "category": "Fragrances"
     },
     {
+      "id": 301,
+      "title": "Perry Ellis 18 Fuego for Men",
+      "category": "Fragrances"
+    },
+    {
       "id": 375,
       "title": "Pink Marshmallow 3.4 oz EDP for Women by Bharara",
       "category": "Fragrances"
@@ -2174,26 +2216,6 @@
     {
       "id": 642,
       "title": "Random Bundle - No Cancel - Bid Responsibly",
-      "category": "Fragrances"
-    },
-    {
-      "id": 291,
-      "title": "Random Fragrance Pulls",
-      "category": "Fragrances"
-    },
-    {
-      "id": 292,
-      "title": "Random Fragrance Pulls",
-      "category": "Fragrances"
-    },
-    {
-      "id": 293,
-      "title": "Random Fragrance Pulls",
-      "category": "Fragrances"
-    },
-    {
-      "id": 294,
-      "title": "Random Fragrance Pulls",
       "category": "Fragrances"
     },
     {
@@ -2328,11 +2350,6 @@
     },
     {
       "id": 358,
-      "title": "Regular Assorted",
-      "category": "Fragrances"
-    },
-    {
-      "id": 359,
       "title": "Regular Assorted",
       "category": "Fragrances"
     },
@@ -2487,11 +2504,6 @@
       "category": "Fragrances"
     },
     {
-      "id": 303,
-      "title": "Warehouse Random Pulls - No cancellations",
-      "category": "Fragrances"
-    },
-    {
       "id": 304,
       "title": "Warehouse Random Pulls - No cancellations",
       "category": "Fragrances"
@@ -2557,11 +2569,6 @@
       "category": "Fragrances"
     },
     {
-      "id": 666,
-      "title": "WAREHOUSR SALE NO CANCELLATIONS",
-      "category": "Fragrances"
-    },
-    {
       "id": 667,
       "title": "WAREHOUSR SALE NO CANCELLATIONS",
       "category": "Fragrances"
@@ -2589,6 +2596,21 @@
     {
       "id": 552,
       "title": "Yum Yum by Armaf EDP Spray, 3.4oz",
+      "category": "Fragrances"
+    },
+    {
+      "id": 1374,
+      "title": "Zakat Z17",
+      "category": "Fragrances"
+    },
+    {
+      "id": 1373,
+      "title": "Zakat Z22",
+      "category": "Fragrances"
+    },
+    {
+      "id": 1375,
+      "title": "Zakat Z29",
       "category": "Fragrances"
     },
     {
