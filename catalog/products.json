@@ -663,16 +663,16 @@
     "id": 1,
     "title": "Kershaw Fraxion",
     "category": "Knives",
-    "price": 33.17,
-    "ownDesiredPrice": 33.17,
-    "unitCost": 23.69,
+    "price": 33.11,
+    "ownDesiredPrice": 33.11,
+    "unitCost": 23.65,
     "totalCost": 47.379999999999995,
     "priceGroup": "knife-exact:kershaw-fraxion",
-    "priceGroupCount": 2,
+    "priceGroupCount": 3,
     "status": "Inventory",
     "seller": "cleveland_liquidation",
-    "quantity": 2,
-    "inventoryCount": 2,
+    "quantity": 3,
+    "inventoryCount": 3,
     "barcode": "NC0000015032",
     "photo": "https://m.media-amazon.com/images/I/71WXV2PbwXL._AC_SL1500_.jpg",
     "photos": [
@@ -680,14 +680,15 @@
       "https://m.media-amazon.com/images/I/61gtxks-N8L._AC_SL1500_.jpg",
       "https://m.media-amazon.com/images/I/71z9WMpGjIL._AC_SL1500_.jpg",
       "https://m.media-amazon.com/images/I/71VGneQSptL._AC_SL1500_.jpg",
-      "https://m.media-amazon.com/images/I/819FT89bDUL._AC_SL1500_.jpg"
+      "https://m.media-amazon.com/images/I/819FT89bDUL._AC_SL1500_.jpg",
+      "https://cdn11.bigcommerce.com/s-efe0x2hvzk/images/stencil/1280x1280/products/4481/4830/fNbDiF6zFT8IXT5DEQHtcGo3Zh2zmltVvPCBwBhIlNignbIohYerS3aRypV6wXVV__46060.1774896404.jpg?c=2"
     ],
     "listingUrl": "",
     "description": "",
     "specs": "",
     "streamNotes": "",
     "notes": "\n\nMerged duplicate item #27 (087171054735)",
-    "stackTotalCost": 47.379999999999995
+    "stackTotalCost": 70.96
   },
   {
     "id": 20,
@@ -797,32 +798,6 @@
     "streamNotes": "",
     "notes": "",
     "stackTotalCost": 23.75
-  },
-  {
-    "id": 28,
-    "title": "KershawFraxion",
-    "category": "Knives",
-    "price": 33.01,
-    "ownDesiredPrice": 33.01,
-    "unitCost": 23.58,
-    "totalCost": 23.58,
-    "priceGroup": "knife-exact:kershawfraxion",
-    "priceGroupCount": 1,
-    "status": "Inventory",
-    "seller": "sambosblades",
-    "quantity": 1,
-    "inventoryCount": 1,
-    "barcode": "087171053431",
-    "photo": "https://cdn11.bigcommerce.com/s-efe0x2hvzk/images/stencil/1280x1280/products/4481/4830/fNbDiF6zFT8IXT5DEQHtcGo3Zh2zmltVvPCBwBhIlNignbIohYerS3aRypV6wXVV__46060.1774896404.jpg?c=2",
-    "photos": [
-      "https://cdn11.bigcommerce.com/s-efe0x2hvzk/images/stencil/1280x1280/products/4481/4830/fNbDiF6zFT8IXT5DEQHtcGo3Zh2zmltVvPCBwBhIlNignbIohYerS3aRypV6wXVV__46060.1774896404.jpg?c=2"
-    ],
-    "listingUrl": "",
-    "description": "",
-    "specs": "",
-    "streamNotes": "",
-    "notes": "",
-    "stackTotalCost": 23.58
   },
   {
     "id": 1356,
