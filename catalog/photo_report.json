@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-08T19:31:13",
+  "generated_at": "2026-06-09T17:21:48",
   "asset_count": 29,
   "assets": [
     "item_108_1780192836.jpg",
@@ -56,6 +56,21 @@
     {
       "id": 1330,
       "title": "Cheap BluePlastic Folder",
+      "category": "Knives"
+    },
+    {
+      "id": 1362,
+      "title": "Kershaw CL 82",
+      "category": "Knives"
+    },
+    {
+      "id": 1365,
+      "title": "Kershaw Cryo",
+      "category": "Knives"
+    },
+    {
+      "id": 1364,
+      "title": "Kershaw Kindred",
       "category": "Knives"
     },
     {
