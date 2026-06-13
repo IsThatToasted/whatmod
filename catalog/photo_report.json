@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-13T15:49:09",
+  "generated_at": "2026-06-13T16:23:46",
   "asset_count": 29,
   "assets": [
     "item_108_1780192836.jpg",
@@ -39,6 +39,11 @@
       "category": "Knives"
     },
     {
+      "id": 1388,
+      "title": "Black/Red Strop OEM",
+      "category": "Knives"
+    },
+    {
       "id": 16,
       "title": "Carhart Wallet Blue/Black",
       "category": "Knives"
@@ -54,18 +59,8 @@
       "category": "Knives"
     },
     {
-      "id": 1380,
+      "id": 1382,
       "title": "DREAMTECH BLADE SHOW",
-      "category": "Knives"
-    },
-    {
-      "id": 1378,
-      "title": "HX OUTDOORS HYLA ZD-120S \u2013 2.91\" 14C28N Button Lock Pocket Knife with Natural Green G10 Handle",
-      "category": "Knives"
-    },
-    {
-      "id": 1384,
-      "title": "Item Shown",
       "category": "Knives"
     },
     {
@@ -74,18 +69,13 @@
       "category": "Knives"
     },
     {
-      "id": 1388,
-      "title": "Knife in hand",
+      "id": 1389,
+      "title": "Pink OEM Tanto",
       "category": "Knives"
     },
     {
       "id": 100,
       "title": "Skulls windowbreaker",
-      "category": "Knives"
-    },
-    {
-      "id": 1390,
-      "title": "Small Item",
       "category": "Knives"
     },
     {
@@ -2121,11 +2111,6 @@
     {
       "id": 876,
       "title": "Relax watch",
-      "category": "Other"
-    },
-    {
-      "id": 1379,
-      "title": "Remette RNGD261",
       "category": "Other"
     },
     {
