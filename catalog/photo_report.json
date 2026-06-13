@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-13T17:00:22",
+  "generated_at": "2026-06-13T19:59:05",
   "asset_count": 29,
   "assets": [
     "item_108_1780192836.jpg",
@@ -34,6 +34,11 @@
   ],
   "missing_photo_items": [
     {
+      "id": 216,
+      "title": "8\" Hemp Fire Rope",
+      "category": "Knives"
+    },
+    {
       "id": 101,
       "title": "airforce lingerie",
       "category": "Knives"
@@ -64,6 +69,16 @@
       "category": "Knives"
     },
     {
+      "id": 290,
+      "title": "Emergency Fire Kit",
+      "category": "Knives"
+    },
+    {
+      "id": 334,
+      "title": "Fat Ferro Rod",
+      "category": "Knives"
+    },
+    {
       "id": 79,
       "title": "Kershaw Unknown",
       "category": "Knives"
@@ -74,8 +89,18 @@
       "category": "Knives"
     },
     {
+      "id": 336,
+      "title": "Pocket Survival Tent (Color:Rescue orange;)",
+      "category": "Knives"
+    },
+    {
       "id": 100,
       "title": "Skulls windowbreaker",
+      "category": "Knives"
+    },
+    {
+      "id": 335,
+      "title": "Survival Stove",
       "category": "Knives"
     },
     {
@@ -1694,11 +1719,6 @@
       "category": "Other"
     },
     {
-      "id": 216,
-      "title": "8\" Hemp Fire Rope",
-      "category": "Other"
-    },
-    {
       "id": 1058,
       "title": "A) Small Blind or Confirmed (See Screen)",
       "category": "Other"
@@ -1834,11 +1854,6 @@
       "category": "Other"
     },
     {
-      "id": 290,
-      "title": "Emergency Fire Kit",
-      "category": "Other"
-    },
-    {
       "id": 1366,
       "title": "Exotac toolROLL",
       "category": "Other"
@@ -1846,11 +1861,6 @@
     {
       "id": 921,
       "title": "Facial Reanimation Surgery",
-      "category": "Other"
-    },
-    {
-      "id": 334,
-      "title": "Fat Ferro Rod",
       "category": "Other"
     },
     {
@@ -2034,11 +2044,6 @@
       "category": "Other"
     },
     {
-      "id": 336,
-      "title": "Pocket Survival Tent (Color:Rescue orange;)",
-      "category": "Other"
-    },
-    {
       "id": 1117,
       "title": "Pokemon Sleepy Singles",
       "category": "Other"
@@ -2206,11 +2211,6 @@
     {
       "id": 1319,
       "title": "Storage item",
-      "category": "Other"
-    },
-    {
-      "id": 335,
-      "title": "Survival Stove",
       "category": "Other"
     },
     {
