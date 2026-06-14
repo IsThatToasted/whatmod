@@ -4,8 +4,8 @@ const DAYS = [
   { id:'2026-07-04', short:'Sat', label:'July 4', vibe:'Holiday / flex' },
   { id:'2026-07-05', short:'Sun', label:'July 5', vibe:'Head home' }
 ];
-const LS_KEY = 'wisconsin-trip-planner-v3';
-const OLD_KEYS = ['wisconsin-trip-planner-v2','trip-plan:wisconsin-july-2026'];
+const LS_KEY = 'wisconsin-trip-planner-v4';
+const OLD_KEYS = ['wisconsin-trip-planner-v3','wisconsin-trip-planner-v2','trip-plan:wisconsin-july-2026'];
 const TRIP_ID = () => window.TRIP_CONFIG?.TRIP_ID || 'wisconsin-july-2026';
 const HOUR_START = 5;
 const HOUR_END = 24;
@@ -27,7 +27,16 @@ const defaultSlots = [
   s('2026-07-05','15:00','22:00','Final drive home','York, PA','Long drive buffer.','drive')
 ];
 
-let state = { activeDay:DAYS[0].id, origin:'700 Fireside Rd, York, PA', destination:'Saukville, WI', slots:defaultSlots };
+let state = {
+  activeDay:DAYS[0].id,
+  origin:'700 Fireside Rd, York, PA',
+  destination:'Saukville, WI',
+  driveHours:14,
+  driveBlocks:4,
+  outboundStart:'07:00',
+  returnStart:'08:00',
+  slots:defaultSlots
+};
 let supa = null, user = null, saveTimer = null, cloudTimer = null, cloudReady = false;
 const $ = id => document.getElementById(id);
 
@@ -58,6 +67,12 @@ function bind(){
   $('saveCloudBtn').onclick = saveCloud;
   $('origin').oninput = e => { state.origin=e.target.value; persist(); };
   $('destination').oninput = e => { state.destination=e.target.value; persist(); };
+  $('driveHours').oninput = e => { state.driveHours = cleanNumber(e.target.value, 14); persist(); renderDriveBuilder(); };
+  $('driveBlocks').oninput = e => { state.driveBlocks = Math.max(1, Math.min(8, Math.round(cleanNumber(e.target.value, 4)))); persist(); renderDriveBuilder(); };
+  $('outboundStart').onchange = e => { state.outboundStart = e.target.value; persist(); renderDriveBuilder(); };
+  $('returnStart').onchange = e => { state.returnStart = e.target.value; persist(); renderDriveBuilder(); };
+  $('buildDriveBtn').onclick = buildDriveBlocks;
+  $('clearDriveBtn').onclick = clearDriveBlocks;
   $('slotStart').onchange = () => autoFixEnd('slotStart','slotEnd');
   $('editStart').onchange = () => autoFixEnd('editStart','editEnd');
 }
@@ -71,11 +86,14 @@ function fillTimeSelects(){
   document.querySelectorAll('select.timeSelect').forEach(sel => sel.innerHTML = opts);
   $('slotStart').value = '09:00';
   $('slotEnd').value = '10:00';
+  if($('outboundStart')) $('outboundStart').innerHTML = opts;
+  if($('returnStart')) $('returnStart').innerHTML = opts;
 }
 
 function render(){
   $('origin').value = state.origin;
   $('destination').value = state.destination;
+  renderDriveBuilder();
   $('slotDay').value = state.activeDay;
   $('dayTabs').innerHTML = DAYS.map(d=>`<button class="tab ${state.activeDay===d.id?'active':''}" data-day="${d.id}"><strong>${d.short} ${d.label}</strong><span>${d.vibe}</span></button>`).join('');
   document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{ state.activeDay=b.dataset.day; persist(); render(); });
@@ -214,6 +232,7 @@ function saveEdit(e){
       x.location = $('editLocation').value.trim();
       x.notes = $('editNotes').value.trim();
       x.type = guessType(`${x.title} ${x.notes}`);
+      if(x.type === 'drive') cascadeDriveBlocks(x);
     }
   } else {
     state.slots.push(s(state.activeDay, $('editStart').value, $('editEnd').value, title, $('editLocation').value.trim(), $('editNotes').value.trim(), guessType(title + ' ' + $('editNotes').value)));
@@ -230,6 +249,89 @@ function deleteSlot(){
   persist();
   render();
   $('editDialog').close();
+}
+
+
+
+function renderDriveBuilder(){
+  if(!$('driveHours')) return;
+  $('driveHours').value = state.driveHours ?? 14;
+  $('driveBlocks').value = state.driveBlocks ?? 4;
+  $('outboundStart').value = state.outboundStart || '07:00';
+  $('returnStart').value = state.returnStart || '08:00';
+  const duration = Math.round(((cleanNumber(state.driveHours,14) * 60) / Math.max(1, state.driveBlocks || 4)) / SNAP_MINUTES) * SNAP_MINUTES;
+  const label = `${Math.floor(duration/60)}h${duration%60 ? ' '+(duration%60)+'m' : ''}`;
+  $('driveSummary').textContent = `${state.driveBlocks || 4} drive blocks × ${label} each, generated on July 2 and July 5.`;
+}
+
+function buildDriveBlocks(){
+  const totalMins = Math.max(60, cleanNumber(state.driveHours,14) * 60);
+  const count = Math.max(1, Math.min(8, Math.round(cleanNumber(state.driveBlocks,4))));
+  const blockMins = Math.round((totalMins / count) / SNAP_MINUTES) * SNAP_MINUTES;
+  state.slots = state.slots.filter(x => !x.driveManaged);
+  state.slots.push(...makeDriveSeries('outbound', DAYS[0].id, state.outboundStart || '07:00', blockMins, count));
+  state.slots.push(...makeDriveSeries('return', DAYS[DAYS.length-1].id, state.returnStart || '08:00', blockMins, count));
+  state.activeDay = DAYS[0].id;
+  persist();
+  render();
+}
+
+function clearDriveBlocks(){
+  if(!confirm('Remove only the auto-managed drive blocks?')) return;
+  state.slots = state.slots.filter(x => !x.driveManaged);
+  persist();
+  render();
+}
+
+function makeDriveSeries(series, day, start, blockMins, count){
+  const isReturn = series === 'return';
+  let cur = normalizeTime(start);
+  const out = [];
+  for(let i=1;i<=count;i++){
+    const end = addMinutes(cur, blockMins);
+    out.push({
+      id: crypto.randomUUID(),
+      day,
+      start: cur,
+      end,
+      title: isReturn ? `Drive block ${i}: Wisconsin → York` : `Drive block ${i}: York → Wisconsin`,
+      location: isReturn ? state.origin : state.destination,
+      notes: `Auto-managed driving block. Edit one drive block time and the rest of this travel day will line up after it.`,
+      type:'drive',
+      driveManaged:true,
+      driveSeries:series,
+      driveIndex:i
+    });
+    cur = end;
+  }
+  return out;
+}
+
+function cascadeDriveBlocks(changed){
+  if(!changed.driveManaged) return;
+  const blocks = state.slots
+    .filter(x => x.driveManaged && x.driveSeries === changed.driveSeries && x.day === changed.day)
+    .sort((a,b)=>(a.driveIndex||0)-(b.driveIndex||0));
+  const idx = blocks.findIndex(x=>x.id===changed.id);
+  if(idx < 0) return;
+  const duration = Math.max(15, minutesBetween(changed.start, changed.end));
+  for(let i=idx+1;i<blocks.length;i++){
+    blocks[i].start = blocks[i-1].end;
+    blocks[i].end = addMinutes(blocks[i].start, duration);
+  }
+  for(let i=idx-1;i>=0;i--){
+    blocks[i].end = blocks[i+1].start;
+    blocks[i].start = addMinutes(blocks[i].end, -duration);
+  }
+  if(changed.driveSeries === 'outbound') state.outboundStart = blocks[0].start;
+  if(changed.driveSeries === 'return') state.returnStart = blocks[0].start;
+  state.driveBlocks = blocks.length;
+  state.driveHours = Math.round((duration * blocks.length / 60) * 100) / 100;
+}
+
+function cleanNumber(value, fallback){
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
 function openMaps(){
@@ -268,14 +370,17 @@ function normalizeSlots(slots){
     title: x.title || 'Untitled plan',
     location: x.location || x.address || '',
     notes: x.notes || '',
-    type: x.type || guessType(`${x.title||''} ${x.notes||''}`)
+    type: x.type || guessType(`${x.title||''} ${x.notes||''}`),
+    driveManaged: !!x.driveManaged,
+    driveSeries: x.driveSeries || '',
+    driveIndex: Number.isFinite(Number(x.driveIndex)) ? Number(x.driveIndex) : null
   }));
 }
 
 function resetTrip(){
   if(confirm('Reset back to the starter Wisconsin trip plan?')){
     localStorage.removeItem(LS_KEY);
-    state = {activeDay:DAYS[0].id,origin:'700 Fireside Rd, York, PA',destination:'Saukville, WI',slots:defaultSlots.map(x=>({...x,id:crypto.randomUUID()}))};
+    state = {activeDay:DAYS[0].id,origin:'700 Fireside Rd, York, PA',destination:'Saukville, WI',driveHours:14,driveBlocks:4,outboundStart:'07:00',returnStart:'08:00',slots:defaultSlots.map(x=>({...x,id:crypto.randomUUID()}))};
     persist();
     render();
   }
