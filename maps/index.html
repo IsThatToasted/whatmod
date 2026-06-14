@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Advanced Trip Planner</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">✦</div>
+        <div>
+          <h1>TripForge</h1>
+          <p>Route, fuel, schedule, conflicts.</p>
+        </div>
+      </div>
+
+      <section class="panel hero-panel">
+        <div class="panel-title-row">
+          <h2>Route Builder</h2>
+          <span id="routeStatus" class="pill muted">Idle</span>
+        </div>
+        <label>Start address
+          <input id="startInput" placeholder="York, PA" autocomplete="off" />
+        </label>
+        <label>Destination
+          <input id="endInput" placeholder="Ocean City, NJ" autocomplete="off" />
+        </label>
+        <div class="grid-2">
+          <label>MPG
+            <input id="mpgInput" type="number" min="1" step="0.1" value="24" />
+          </label>
+          <label>Tank size
+            <input id="tankInput" type="number" min="1" step="0.1" value="14" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="planRouteBtn" class="primary">Plan Route</button>
+          <button id="locateBtn">Use My Location</button>
+        </div>
+        <div class="external-card">
+          <strong>Open route externally</strong>
+          <div class="button-row compact">
+            <button id="routeGoogleBtn" class="small">Google Maps</button>
+            <button id="routeAppleBtn" class="small">Apple Maps</button>
+            <button id="routeWazeBtn" class="small">Waze</button>
+          </div>
+          <p class="hint">Uses the exact start/destination address text when available, with GPS fallback.</p>
+        </div>
+        <p class="hint">Uses OpenStreetMap + OSRM demo routing. For production, run your own OSRM/GraphHopper/Mapbox service.</p>
+      </section>
+
+      <section class="panel stats-panel">
+        <h2>Trip Estimate</h2>
+        <div class="stat-grid">
+          <div><span>Distance</span><strong id="distanceOut">—</strong></div>
+          <div><span>Drive time</span><strong id="durationOut">—</strong></div>
+          <div><span>Fuel needed</span><strong id="fuelOut">—</strong></div>
+          <div><span>Est. fuel cost</span><strong id="costOut">—</strong></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>Gas Finder</h2>
+          <button id="findGasBtn" class="small">Find along route</button>
+        </div>
+        <div class="grid-2">
+          <label>Search radius/stop
+            <select id="gasRadius">
+              <option value="3000">3 km</option>
+              <option value="6000" selected>6 km</option>
+              <option value="10000">10 km</option>
+            </select>
+          </label>
+          <label>Route samples
+            <select id="sampleCount">
+              <option>8</option>
+              <option selected>14</option>
+              <option>24</option>
+            </select>
+          </label>
+        </div>
+        <div id="gasList" class="gas-list empty-state">Plan a route, then search for fuel stops. Add prices manually to compare.</div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h2>Map + Day Planner</h2>
+          <p id="saveState">Autosaves locally</p>
+        </div>
+        <div class="button-row">
+          <button id="exportBtn">Export JSON</button>
+          <label class="import-label">Import JSON<input id="importInput" type="file" accept="application/json" /></label>
+          <button id="resetBtn" class="danger">Reset</button>
+        </div>
+      </div>
+
+      <section class="map-card">
+        <div id="map"></div>
+      </section>
+
+      <section class="planner-card">
+        <div class="planner-header">
+          <div>
+            <h2>Timeslot Planner</h2>
+            <p>Custom events, travel blocks, closing windows, overlap detection.</p>
+          </div>
+          <div class="planner-actions">
+            <label>Trip date <input id="tripDate" type="date" /></label>
+            <button id="addEventBtn" class="primary">Add Event</button>
+          </div>
+        </div>
+        <div id="conflictBanner" class="conflict-banner hidden"></div>
+        <div class="planner-layout">
+          <div class="timeline-wrap">
+            <div class="timeline-hours" id="timelineHours"></div>
+            <div class="timeline" id="timeline"></div>
+          </div>
+          <div class="event-editor panel">
+            <h3 id="editorTitle">Add / Edit Event</h3>
+            <label>Title<input id="evTitle" placeholder="Boardwalk, hotel check-in, dinner..." /></label>
+            <div class="grid-2">
+              <label>Start<input id="evStart" type="time" value="09:00" /></label>
+              <label>End<input id="evEnd" type="time" value="10:00" /></label>
+            </div>
+            <label>Location<input id="evLocation" placeholder="Optional address/place" /></label>
+            <div class="button-row compact">
+              <button id="eventGoogleBtn" class="small">Open in Google</button>
+              <button id="eventAppleBtn" class="small">Open in Apple</button>
+              <button id="eventWazeBtn" class="small">Open in Waze</button>
+            </div>
+            <div class="grid-2">
+              <label>Opens<input id="evOpen" type="time" /></label>
+              <label>Closes<input id="evClose" type="time" /></label>
+            </div>
+            <label>Type
+              <select id="evType">
+                <option value="event">Event</option>
+                <option value="travel">Travel</option>
+                <option value="food">Food</option>
+                <option value="hotel">Hotel</option>
+                <option value="fuel">Fuel</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label>Notes<textarea id="evNotes" rows="4" placeholder="Reservation number, ticket link, parking notes..."></textarea></label>
+            <div class="button-row stretch">
+              <button id="saveEventBtn" class="primary">Save Event</button>
+              <button id="clearEditorBtn">Clear</button>
+              <button id="deleteEventBtn" class="danger hidden">Delete</button>
+            </div>
+            <div class="tip-box">Tip: Add closing times to get automatic red flags when a planned event starts before opening or ends after closing.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="gasItemTemplate">
+    <article class="gas-item">
+      <div>
+        <strong class="gas-name"></strong>
+        <p class="gas-meta"></p>
+      </div>
+      <div class="gas-controls">
+        <label>$ / gal<input class="gas-price" type="number" step="0.01" min="0" placeholder="4.11" /></label>
+        <button class="add-gas-event small">Add stop</button>
+        <button class="open-google small">Google</button>
+        <button class="open-apple small">Apple</button>
+        <button class="open-waze small">Waze</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
