@@ -3,294 +3,193 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WhatMod for Chrome — Moderator tools for Whatnot mods</title>
-  <meta name="description" content="WhatMod for Chrome is a free moderation toolkit for Whatnot mods. Save messages, organize notes, manage reminders, and customize your mod workspace." />
-  <meta name="theme-color" content="#6d28ff" />
-  <meta property="og:title" content="WhatMod for Chrome — Built for mods. By mods." />
-  <meta property="og:description" content="A clean Chrome extension for Whatnot moderators: message banks, notes, reminders, shoe cards, dashboard tools, and customization." />
-  <meta property="og:image" content="assets/cover.png" />
-  <meta property="og:type" content="website" />
-  <meta name="google-site-verification" content="aVkuum8qbix59l4tZZJ4tyTkWgIE4bmRMtAq11MW4XM" />
-  <link rel="preload" as="image" href="assets/cover.png?v=20260520-chrome" />
-  <link rel="stylesheet" href="styles.css?v=20260520-chrome" />
+  <title>Advanced Trip Planner</title>
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="site-header" data-nav>
-    <a class="brand" href="#top" aria-label="WhatMod home">
-      <span class="brand-mark">W</span><span>What<span>Mod</span></span>
-    </a>
-
-    <nav class="nav-links" aria-label="Main navigation">
-      <a href="#features">Features</a>
-      <a href="#preview">Preview</a>
-      <a href="#install">Chrome</a>
-      <a href="#privacy">Privacy</a>
-      <a href="#faq">FAQ</a>
-      <a href="/purchases/">Tools</a>
-    </nav>
-
-    <div class="header-actions">
-      <a class="header-cta" href="#install">WhatMod for Chrome</a>
-    </div>
-
-    <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false" data-menu>☰</button>
-  </header>
-
-  <main id="top">
-    <section class="hero section-grid">
-      <div class="hero-copy reveal">
-        <p class="eyebrow">WhatMod for Chrome</p>
-        <h1>Moderator tools made simple for Whatnot mods.</h1>
-        <p class="hero-lede">
-          WhatMod is a free Chrome extension that helps moderators keep messages, notes,
-          reminders, shoe details, and dashboard tools organized in one polished workspace.
-        </p>
-
-        <div class="hero-actions">
-          <a class="button button-primary" href="#install">Get WhatMod for Chrome</a>
-          <a class="button button-secondary" href="#preview">See the toolkit</a>
-        </div>
-
-        <div class="stats" aria-label="WhatMod highlights">
-          <div><strong>Free</strong><span>No license required</span></div>
-          <div><strong>Local</strong><span>Saved in your browser</span></div>
-          <div><strong>Custom</strong><span>Built around your flow</span></div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">✦</div>
+        <div>
+          <h1>TripForge</h1>
+          <p>Route, fuel, schedule, conflicts.</p>
         </div>
       </div>
 
-      <div class="hero-media reveal delay-1">
-        <img src="assets/cover.png?v=20260520-chrome" alt="WhatMod branded splash graphic showing moderator tools for Whatnot mods" />
-      </div>
-    </section>
-
-    <section class="trust-strip" aria-label="Core pillars">
-      <span>Protect</span><span>Manage</span><span>Moderate</span><span>Organize</span>
-    </section>
-
-    <section id="features" class="section">
-      <div class="section-heading reveal">
-        <p class="eyebrow">Built for daily moderation</p>
-        <h2>Everything a mod reaches for during a live show.</h2>
-      </div>
-
-      <div class="feature-grid">
-        <article class="card reveal">
-          <div class="icon">⚡</div>
-          <h3>Custom Dash</h3>
-          <p>Create quick-access buttons for the messages and tools you use most while a stream is live.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">💬</div>
-          <h3>Message Banks</h3>
-          <p>Organize reusable messages for rules, sizing, reminders, announcements, and common chat moments.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">👟</div>
-          <h3>Shoes</h3>
-          <p>Keep size, condition, and product notes easy to reference when questions come in fast.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">⏰</div>
-          <h3>Auto Reminders</h3>
-          <p>Prepare reminder text for recurring show moments so important information stays close.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">📝</div>
-          <h3>Notes</h3>
-          <p>Save seller details, show instructions, reusable notes, and helpful moderation context.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">🎨</div>
-          <h3>Customization</h3>
-          <p>Adjust your workspace so WhatMod feels clean, comfortable, and ready for daily use.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="preview" class="section split-section">
-      <div class="panel reveal">
-        <p class="eyebrow">Preview</p>
-        <h2>A focused workspace for busy mods.</h2>
-        <p>
-          When chat is moving fast, WhatMod keeps the tools you need close without forcing you to jump
-          between documents, old messages, and extra tabs.
-        </p>
-
-        <ul class="check-list">
-          <li>Reusable message banks for common chat situations</li>
-          <li>Notes, shoe cards, and reminders in one place</li>
-          <li>Visual settings that make the extension feel like yours</li>
-          <li>Simple setup with no desktop app or subscription required</li>
-        </ul>
-      </div>
-
-      <div class="mockup reveal delay-1" aria-label="WhatMod extension mockup">
-        <div class="mockup-top"><span></span><span></span><span></span></div>
-        <div class="mockup-body">
-          <div class="sidebar">
-            <b>WhatMod</b>
-            <span>Dashboard</span>
-            <span>Custom Dash</span>
-            <span>Message Banks</span>
-            <span>Shoes</span>
-            <span>Notes</span>
+      <section class="panel hero-panel">
+        <div class="panel-title-row">
+          <h2>Route Builder</h2>
+          <span id="routeStatus" class="pill muted">Idle</span>
+        </div>
+        <label>Start address
+          <input id="startInput" placeholder="York, PA" autocomplete="off" />
+        </label>
+        <label>Destination
+          <input id="endInput" placeholder="Ocean City, NJ" autocomplete="off" />
+        </label>
+        <div class="grid-2">
+          <label>MPG
+            <input id="mpgInput" type="number" min="1" step="0.1" value="24" />
+          </label>
+          <label>Tank size
+            <input id="tankInput" type="number" min="1" step="0.1" value="14" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="planRouteBtn" class="primary">Plan Route</button>
+          <button id="locateBtn">Use My Location</button>
+        </div>
+        <div class="external-card">
+          <strong>Open route externally</strong>
+          <div class="button-row compact">
+            <button id="routeGoogleBtn" class="small">Google Maps</button>
+            <button id="routeAppleBtn" class="small">Apple Maps</button>
+            <button id="routeWazeBtn" class="small">Waze</button>
           </div>
+          <p class="hint">Google Maps opens the full route with selected gas waypoints. Apple Maps/Waze open the route or next stop as fallback navigation.</p>
+        </div>
+        <p class="hint">Uses OpenStreetMap + OSRM demo routing. For production, run your own OSRM/GraphHopper/Mapbox service.</p>
+      </section>
 
-          <div class="mock-content">
-            <div class="message-card">
-              <strong>Welcome message</strong>
-              <p>Welcome in! Please read the show details and ask questions before bidding.</p>
-            </div>
+      <section class="panel stats-panel">
+        <h2>Trip Estimate</h2>
+        <div class="stat-grid">
+          <div><span>Distance</span><strong id="distanceOut">—</strong></div>
+          <div><span>Drive time</span><strong id="durationOut">—</strong></div>
+          <div><span>Fuel needed</span><strong id="fuelOut">—</strong></div>
+          <div><span>Est. fuel cost</span><strong id="costOut">—</strong></div>
+        </div>
+      </section>
 
-            <div class="message-card">
-              <strong>Reminder</strong>
-              <p>Make sure your address is updated before entering any giveaways.</p>
-            </div>
-
-            <div class="message-card">
-              <strong>Sizing help</strong>
-              <p>Need sizing help? Drop the item and size you are looking for in chat.</p>
-            </div>
+      <section class="panel">
+        <div class="panel-title-row">
+          <h2>Gas Finder</h2>
+          <button id="findGasBtn" class="small">Find along route</button>
+        </div>
+        <div class="grid-2">
+          <label>Search radius/stop
+            <select id="gasRadius">
+              <option value="3000">3 km</option>
+              <option value="6000" selected>6 km</option>
+              <option value="10000">10 km</option>
+            </select>
+          </label>
+          <label>Route samples
+            <select id="sampleCount">
+              <option>8</option>
+              <option selected>14</option>
+              <option>24</option>
+            </select>
+          </label>
+        </div>
+        <div class="gas-waypoint-bar">
+          <span id="gasRouteSummary">Fuel stops will be picked automatically based on route distance, MPG, and tank size.</span>
+          <div class="button-row compact">
+            <button id="selectCheapGasBtn" class="small">Use 3 cheapest priced</button>
+            <button id="clearGasRouteBtn" class="small">Auto re-plan</button>
           </div>
         </div>
-      </div>
-    </section>
+        <div id="gasList" class="gas-list empty-state">Plan a route, then search for fuel stops. Add prices manually to compare.</div>
+      </section>
+    </aside>
 
-    <section class="section dark-band">
-      <div class="section-heading reveal">
-        <p class="eyebrow">Why WhatMod</p>
-        <h2>Simple tools that support the way moderators already work.</h2>
-      </div>
-
-      <div class="benefit-grid">
+    <main class="main">
+      <div class="topbar">
         <div>
-          <strong>Less repeated typing</strong>
-          <p>Keep trusted messages ready so you are not rewriting the same replies throughout every show.</p>
+          <h2>Map + Day Planner</h2>
+          <p id="saveState">Autosaves locally</p>
         </div>
-
-        <div>
-          <strong>Cleaner organization</strong>
-          <p>Store messages, notes, reminders, and shoe details in a single extension workspace.</p>
-        </div>
-
-        <div>
-          <strong>Daily comfort</strong>
-          <p>Use a polished interface built to feel good during long streams and everyday moderation.</p>
+        <div class="button-row">
+          <button id="exportBtn">Export JSON</button>
+          <label class="import-label">Import JSON<input id="importInput" type="file" accept="application/json" /></label>
+          <button id="resetBtn" class="danger">Reset</button>
         </div>
       </div>
-    </section>
 
-    <section id="install" class="section install-section">
-      <div class="install-card reveal">
-        <div>
-          <p class="eyebrow">Available for Chrome</p>
-          <h2>WhatMod for Chrome</h2>
-          <p class="price"><span>$</span>0 <small>/ free</small></p>
-          <p class="muted">
-            No license. No subscription. No Windows or Mac download. Install the extension in Chrome and keep your moderation setup in your browser.
-          </p>
+      <section class="map-card">
+        <div id="map"></div>
+      </section>
+
+      <section class="planner-card">
+        <div class="planner-header">
+          <div>
+            <h2>Timeslot Planner</h2>
+            <p>Custom events, travel blocks, closing windows, overlap detection.</p>
+          </div>
+          <div class="planner-actions">
+            <label>Trip date <input id="tripDate" type="date" /></label>
+            <button id="addEventBtn" class="primary">Add Event</button>
+          </div>
         </div>
+        <div id="conflictBanner" class="conflict-banner hidden"></div>
+        <div class="planner-layout">
+          <div class="timeline-wrap">
+            <div class="timeline-hours" id="timelineHours"></div>
+            <div class="timeline" id="timeline"></div>
+          </div>
+          <div class="event-editor panel">
+            <h3 id="editorTitle">Add / Edit Event</h3>
+            <label>Title<input id="evTitle" placeholder="Boardwalk, hotel check-in, dinner..." /></label>
+            <div class="grid-2">
+              <label>Start<input id="evStart" type="time" value="09:00" /></label>
+              <label>End<input id="evEnd" type="time" value="10:00" /></label>
+            </div>
+            <label>Location<input id="evLocation" placeholder="Optional address/place" /></label>
+            <div class="button-row compact">
+              <button id="eventGoogleBtn" class="small">Open in Google</button>
+              <button id="eventAppleBtn" class="small">Open in Apple</button>
+              <button id="eventWazeBtn" class="small">Open in Waze</button>
+            </div>
+            <div class="grid-2">
+              <label>Opens<input id="evOpen" type="time" /></label>
+              <label>Closes<input id="evClose" type="time" /></label>
+            </div>
+            <label>Type
+              <select id="evType">
+                <option value="event">Event</option>
+                <option value="travel">Travel</option>
+                <option value="food">Food</option>
+                <option value="hotel">Hotel</option>
+                <option value="fuel">Fuel</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label>Notes<textarea id="evNotes" rows="4" placeholder="Reservation number, ticket link, parking notes..."></textarea></label>
+            <div class="button-row stretch">
+              <button id="saveEventBtn" class="primary">Save Event</button>
+              <button id="clearEditorBtn">Clear</button>
+              <button id="deleteEventBtn" class="danger hidden">Delete</button>
+            </div>
+            <div class="tip-box">Tip: Add closing times to get automatic red flags when a planned event starts before opening or ends after closing.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
 
-        <ul class="check-list">
-          <li>Custom Dash</li>
-          <li>Message Banks</li>
-          <li>Shoe notes and condition cards</li>
-          <li>Auto reminder tools</li>
-          <li>Saved notes and preferences</li>
-          <li>Visual customization options</li>
-        </ul>
-
-        <a class="button button-primary full" href="#" aria-label="Chrome Web Store link coming soon">
-          Chrome Web Store Coming Soon
-        </a>
-
-        <p class="tiny">Replace this button URL with your Chrome Web Store listing once it is published.</p>
+  <template id="gasItemTemplate">
+    <article class="gas-item">
+      <div>
+        <strong class="gas-name"></strong>
+        <p class="gas-meta"></p>
       </div>
-    </section>
-
-    <section id="privacy" class="section privacy-section">
-      <div class="panel reveal">
-        <p class="eyebrow">Privacy-first setup</p>
-        <h2>Your workspace stays yours.</h2>
-        <p>
-          WhatMod is designed to save your messages, notes, reminders, and preferences locally in Chrome.
-          It does not require an account, payment, subscription, or separate desktop app.
-        </p>
-        <ul class="check-list">
-          <li>No paid license required for the Chrome extension</li>
-          <li>No Stripe checkout or subscription flow</li>
-          <li>No Windows or Mac installer needed</li>
-          <li>Independent tool; not affiliated with Whatnot</li>
-        </ul>
+      <div class="gas-controls">
+        <span class="gas-route-badge">Nearby option</span>
+        <label>$ / gal<input class="gas-price" type="number" step="0.01" min="0" placeholder="4.11" /></label>
+        <button class="add-gas-event small">Add stop</button>
+        <button class="open-google small">Google</button>
+        <button class="open-apple small">Apple</button>
+        <button class="open-waze small">Waze</button>
       </div>
-    </section>
+    </article>
+  </template>
 
-    <section id="faq" class="section faq-section">
-      <div class="section-heading reveal">
-        <p class="eyebrow">FAQ</p>
-        <h2>Everything moderators want to know.</h2>
-      </div>
-
-      <div class="faq-list">
-        <details open>
-          <summary>What is WhatMod?</summary>
-          <p>
-            WhatMod is a Chrome extension built for Whatnot moderators. It helps organize saved messages,
-            notes, reminders, shoe details, and dashboard tools in one customizable workspace.
-          </p>
-        </details>
-
-        <details>
-          <summary>Is WhatMod free?</summary>
-          <p>
-            Yes. WhatMod for Chrome is currently planned as a free extension with no license, subscription,
-            or paid account required.
-          </p>
-        </details>
-
-        <details>
-          <summary>Do I need Windows or Mac downloads?</summary>
-          <p>
-            No. WhatMod now runs as a Chrome extension, so there are no separate Windows or Mac desktop downloads.
-          </p>
-        </details>
-
-        <details>
-          <summary>Does WhatMod collect my data?</summary>
-          <p>
-            WhatMod is designed to store your saved messages, notes, reminders, and preferences locally in your browser.
-            It does not require an account or subscription.
-          </p>
-        </details>
-
-        <details>
-          <summary>Who is WhatMod made for?</summary>
-          <p>
-            WhatMod was designed for Whatnot moderators who want faster access to common messages,
-            cleaner notes, reusable show information, and a more organized moderation workflow.
-          </p>
-        </details>
-
-        <details>
-          <summary>Is WhatMod affiliated with Whatnot?</summary>
-          <p>
-            No. WhatMod is an independent moderation tool created for moderators who work within the Whatnot ecosystem.
-          </p>
-        </details>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="brand"><span class="brand-mark">W</span><span>What<span>Mod</span></span></div>
-    <p>WhatMod for Chrome. Moderator tools for Whatnot mods. Built for mods. By mods.</p>
-  </footer>
-
-  <script src="script.js?v=20260520-chrome" defer></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
