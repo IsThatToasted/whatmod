@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const storeKey = 'tripforge.v1';
+const GOOGLE_MAX_WAYPOINTS = 8; // Google Maps URLs reliably support about 10 total route points: origin + 8 stops + destination.
 
 const state = {
   start: null,
@@ -39,6 +40,11 @@ function navQuery(loc, includeName=true) {
   }
   return coords || label;
 }
+function googleWaypointQuery(loc) {
+  // Coordinates survive Google Maps URL parsing better than long OSM/Nominatim addresses,
+  // especially when several gas stops are chained as waypoints.
+  return locationCoords(loc) || navQuery(loc, false);
+}
 function externalUrl(app, loc) {
   const q = navQuery(loc);
   const coords = locationCoords(loc);
@@ -53,7 +59,7 @@ function selectedGasStopsForRoute() {
   return [...state.gasStations]
     .filter(g => g.selectedForRoute)
     .sort((a,b) => (a.routeProgress ?? Infinity) - (b.routeProgress ?? Infinity))
-    .slice(0, 9);
+    .slice(0, GOOGLE_MAX_WAYPOINTS);
 }
 function selectedGasCount() {
   return state.gasStations.filter(g => g.selectedForRoute).length;
@@ -65,7 +71,7 @@ function routeUrl(app) {
   const destCoords = locationCoords(state.end);
   if (app === 'google') {
     const stops = selectedGasStopsForRoute();
-    const waypointPart = stops.length ? `&waypoints=${encodeURIComponent(stops.map(g => navQuery(g, true)).join('|'))}` : '';
+    const waypointPart = stops.length ? `&waypoints=${stops.map(g => encodeURIComponent(googleWaypointQuery(g))).join('%7C')}` : '';
     return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=driving${waypointPart}`;
   }
   if (app === 'apple') return `https://maps.apple.com/?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(dest)}&dirflg=d`;
@@ -75,6 +81,12 @@ function routeUrl(app) {
 function openExternal(app, loc) {
   const url = loc ? externalUrl(app, loc) : routeUrl(app);
   if (url === '#') { alert('Add or select a location first.'); return; }
+  if (!loc && app === 'google') {
+    const total = selectedGasCount();
+    if (total > GOOGLE_MAX_WAYPOINTS) {
+      alert(`Google Maps route links can preload only ${GOOGLE_MAX_WAYPOINTS} gas stops here. Opening the first ${GOOGLE_MAX_WAYPOINTS} in route order. The remaining ${total - GOOGLE_MAX_WAYPOINTS} selected stop(s) can be opened individually from the gas list.`);
+    }
+  }
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 function stationDisplayAddress(g) {
@@ -294,9 +306,11 @@ function updateGasRouteSummary() {
   if (!el) return;
   const selected = selectedGasStopsForRoute();
   const totalSelected = selectedGasCount();
-  const extra = totalSelected > selected.length ? ` Google Maps URL uses the first ${selected.length} selected stops.` : '';
+  const extra = totalSelected > selected.length
+    ? ` Google Maps can only preload ${GOOGLE_MAX_WAYPOINTS} gas stops in one route link here, so ${totalSelected - selected.length} extra selected stop${totalSelected - selected.length === 1 ? '' : 's'} will not transfer. Open the extras individually with Apple/Waze/Google buttons.`
+    : '';
   el.textContent = selected.length
-    ? `${selected.length} selected waypoint${selected.length>1?'s':''} will be inserted into the full Google Maps route in route order.${extra}`
+    ? `${selected.length} selected gas stop${selected.length>1?'s':''} will be sent to Google Maps as coordinate waypoints in route order.${extra}`
     : 'Select gas stations below to include them as Google Maps waypoints.';
 }
 function selectCheapestGasStops(maxStops = 3) {
