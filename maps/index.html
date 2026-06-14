@@ -50,7 +50,7 @@
             <button id="routeAppleBtn" class="small">Apple Maps</button>
             <button id="routeWazeBtn" class="small">Waze</button>
           </div>
-          <p class="hint">Uses the exact start/destination address text when available, with GPS fallback.</p>
+          <p class="hint">Google Maps opens the full route with selected gas waypoints. Apple Maps/Waze open the route or next stop as fallback navigation.</p>
         </div>
         <p class="hint">Uses OpenStreetMap + OSRM demo routing. For production, run your own OSRM/GraphHopper/Mapbox service.</p>
       </section>
@@ -85,6 +85,13 @@
               <option>24</option>
             </select>
           </label>
+        </div>
+        <div class="gas-waypoint-bar">
+          <span id="gasRouteSummary">Select gas stations below to include them as Google Maps waypoints.</span>
+          <div class="button-row compact">
+            <button id="selectCheapGasBtn" class="small">Pick 3 cheapest priced</button>
+            <button id="clearGasRouteBtn" class="small">Clear waypoints</button>
+          </div>
         </div>
         <div id="gasList" class="gas-list empty-state">Plan a route, then search for fuel stops. Add prices manually to compare.</div>
       </section>
@@ -171,6 +178,7 @@
         <p class="gas-meta"></p>
       </div>
       <div class="gas-controls">
+        <label class="route-check"><input class="gas-route-select" type="checkbox" /> Route stop</label>
         <label>$ / gal<input class="gas-price" type="number" step="0.01" min="0" placeholder="4.11" /></label>
         <button class="add-gas-event small">Add stop</button>
         <button class="open-google small">Google</button>

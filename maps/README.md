@@ -43,3 +43,8 @@ http://localhost:8080
 This version uses public demo/community services. They are good for local testing and personal planning, but production traffic should use your own hosted routing/geocoding service or paid APIs.
 
 Real station-level gas prices usually require a paid/partner data provider. This app finds stations along the route and lets you enter prices manually, while keeping the exact station addresses and coordinates ready for navigation apps.
+
+
+## v3 Google Maps waypoint routing
+
+Gas stations now have a **Route stop** checkbox. Selected stations are sorted by their position along the planned route and inserted into the **Google Maps** full-route URL as waypoints. Apple Maps and Waze remain available for single-stop navigation/fallback links because their webpage URL schemes do not reliably preload full multi-stop routes.

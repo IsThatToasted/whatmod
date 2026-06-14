@@ -48,12 +48,26 @@ function externalUrl(app, loc) {
   if (app === 'waze') return coords ? `https://waze.com/ul?ll=${encodeURIComponent(coords)}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
   return '#';
 }
+
+function selectedGasStopsForRoute() {
+  return [...state.gasStations]
+    .filter(g => g.selectedForRoute)
+    .sort((a,b) => (a.routeProgress ?? Infinity) - (b.routeProgress ?? Infinity))
+    .slice(0, 9);
+}
+function selectedGasCount() {
+  return state.gasStations.filter(g => g.selectedForRoute).length;
+}
 function routeUrl(app) {
   if (!state.start || !state.end) return '#';
   const origin = navQuery(state.start, false);
   const dest = navQuery(state.end, false);
   const destCoords = locationCoords(state.end);
-  if (app === 'google') return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=driving`;
+  if (app === 'google') {
+    const stops = selectedGasStopsForRoute();
+    const waypointPart = stops.length ? `&waypoints=${encodeURIComponent(stops.map(g => navQuery(g, true)).join('|'))}` : '';
+    return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=driving${waypointPart}`;
+  }
   if (app === 'apple') return `https://maps.apple.com/?saddr=${encodeURIComponent(origin)}&daddr=${encodeURIComponent(dest)}&dirflg=d`;
   if (app === 'waze') return destCoords ? `https://waze.com/ul?ll=${encodeURIComponent(destCoords)}&navigate=yes` : `https://waze.com/ul?q=${encodeURIComponent(dest)}&navigate=yes`;
   return '#';
@@ -215,7 +229,7 @@ async function findGas() {
     seen.add(key);
     const name = el.tags?.brand || el.tags?.name || 'Fuel station';
     const dist = distanceToRoute({lat,lng}, state.route.coordinates);
-    stations.push({ id: crypto.randomUUID(), name, lat, lng, dist, price: '', address: addressFromTags(el.tags || {}) });
+    stations.push({ id: crypto.randomUUID(), name, lat, lng, dist, routeProgress: routeProgressIndex({lat,lng}, state.route.coordinates), selectedForRoute: false, price: '', address: addressFromTags(el.tags || {}) });
   }
   state.gasStations = stations.sort((a,b)=>a.dist-b.dist).slice(0,25);
   renderGasList();
@@ -232,6 +246,16 @@ function distanceToRoute(point, coords){
   for (let i=0;i<coords.length;i+=Math.max(1, Math.floor(coords.length/200))) best = Math.min(best, haversine(point, coords[i]));
   return best;
 }
+
+function routeProgressIndex(point, coords){
+  let best = Infinity, bestIdx = 0;
+  const step = Math.max(1, Math.floor(coords.length/300));
+  for (let i=0;i<coords.length;i+=step) {
+    const d = haversine(point, coords[i]);
+    if (d < best) { best = d; bestIdx = i; }
+  }
+  return bestIdx;
+}
 function haversine(a,b){
   const R=6371000, dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180;
   const s1=Math.sin(dLat/2), s2=Math.sin(dLng/2);
@@ -242,13 +266,17 @@ function haversine(a,b){
 function renderGasList() {
   gasMarkers.clearLayers();
   const box = $('gasList'); box.innerHTML = '';
-  if (!state.gasStations.length) { box.className = 'gas-list empty-state'; box.textContent = 'No fuel stops loaded yet.'; return; }
+  if (!state.gasStations.length) { box.className = 'gas-list empty-state'; box.textContent = 'No fuel stops loaded yet.'; updateGasRouteSummary(); return; }
   box.className = 'gas-list';
+  updateGasRouteSummary();
   const tpl = $('gasItemTemplate');
   state.gasStations.forEach(g => {
     const node = tpl.content.cloneNode(true);
     node.querySelector('.gas-name').textContent = g.name;
     node.querySelector('.gas-meta').textContent = `${(g.dist/1609.344).toFixed(1)} mi from route • ${g.address}`;
+    const select = node.querySelector('.gas-route-select');
+    select.checked = !!g.selectedForRoute;
+    select.addEventListener('change', () => { g.selectedForRoute = select.checked; updateGasRouteSummary(); save(); });
     const price = node.querySelector('.gas-price'); price.value = g.price || '';
     price.addEventListener('change', () => { g.price = price.value; updateStats(); save(); });
     node.querySelector('.add-gas-event').addEventListener('click', () => addGasEvent(g));
@@ -260,6 +288,32 @@ function renderGasList() {
   });
 }
 
+
+function updateGasRouteSummary() {
+  const el = $('gasRouteSummary');
+  if (!el) return;
+  const selected = selectedGasStopsForRoute();
+  const totalSelected = selectedGasCount();
+  const extra = totalSelected > selected.length ? ` Google Maps URL uses the first ${selected.length} selected stops.` : '';
+  el.textContent = selected.length
+    ? `${selected.length} selected waypoint${selected.length>1?'s':''} will be inserted into the full Google Maps route in route order.${extra}`
+    : 'Select gas stations below to include them as Google Maps waypoints.';
+}
+function selectCheapestGasStops(maxStops = 3) {
+  state.gasStations.forEach(g => g.selectedForRoute = false);
+  const priced = state.gasStations
+    .filter(g => parseFloat(g.price) > 0)
+    .sort((a,b) => parseFloat(a.price) - parseFloat(b.price))
+    .slice(0, maxStops);
+  priced.forEach(g => g.selectedForRoute = true);
+  renderGasList();
+  save();
+}
+function clearGasWaypoints() {
+  state.gasStations.forEach(g => g.selectedForRoute = false);
+  renderGasList();
+  save();
+}
 function timeToMin(t) { if (!t) return null; const [h,m] = t.split(':').map(Number); return h*60+m; }
 function minToTime(n) { return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`; }
 
@@ -339,6 +393,8 @@ $('planRouteBtn').addEventListener('click', async () => {
 });
 $('locateBtn').addEventListener('click', () => navigator.geolocation?.getCurrentPosition(pos => { state.start = { lat:pos.coords.latitude, lng:pos.coords.longitude, label:'My current location' }; $('startInput').value = state.start.label; save(); }, () => setStatus('Location denied', 'danger')));
 $('findGasBtn').addEventListener('click', () => findGas().catch(err => setStatus(err.message, 'danger')));
+$('selectCheapGasBtn').addEventListener('click', () => selectCheapestGasStops(3));
+$('clearGasRouteBtn').addEventListener('click', clearGasWaypoints);
 $('addEventBtn').addEventListener('click', clearEditor); $('saveEventBtn').addEventListener('click', saveEvent); $('clearEditorBtn').addEventListener('click', clearEditor); $('deleteEventBtn').addEventListener('click', deleteEvent);
 $('tripDate').addEventListener('change', () => { state.tripDate = $('tripDate').value; save(); });
 ['mpgInput','tankInput'].forEach(id => $(id).addEventListener('input', () => { updateStats(); save(); }));
