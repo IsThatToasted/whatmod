@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wisconsin Trip Planner</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">WI</div><div><h1>Wisconsin Trip</h1><p>July 2–5 • York PA → Saukville WI</p></div></div>
+      <section class="card compact">
+        <label>Start</label><input id="origin" value="700 Fireside Rd, York, PA" />
+        <label>Destination</label><input id="destination" value="Saukville, WI" />
+        <div class="two"><button id="mapsBtn">Open Route</button><button id="resetBtn" class="ghost">Reset</button></div>
+      </section>
+      <section class="card compact">
+        <h2>Sync</h2>
+        <p id="authStatus">Local mode. Add Supabase config for Google login.</p>
+        <button id="loginBtn">Login with Google</button>
+        <button id="logoutBtn" class="ghost hidden">Logout</button>
+        <button id="saveCloudBtn" class="ghost">Save / Sync</button>
+      </section>
+      <section class="card compact">
+        <h2>Add Timeslot</h2>
+        <label>Day</label><select id="slotDay"></select>
+        <label>Start</label><input id="slotStart" type="time" value="09:00" />
+        <label>End</label><input id="slotEnd" type="time" value="10:00" />
+        <label>Title</label><input id="slotTitle" placeholder="Coffee, drive, hotel check-in..." />
+        <label>Location / Link</label><input id="slotLocation" placeholder="Optional" />
+        <label>Notes</label><textarea id="slotNotes" rows="3" placeholder="Costs, reservation #, packing note..."></textarea>
+        <button id="addSlotBtn">Add to Planner</button>
+      </section>
+      <section class="card compact">
+        <h2>Trip Tools</h2>
+        <button id="exportBtn" class="ghost">Export JSON</button>
+        <label class="importLabel">Import JSON<input id="importFile" type="file" accept="application/json" /></label>
+      </section>
+    </aside>
+    <main>
+      <header class="hero">
+        <div><p class="eyebrow">Modern hourly itinerary</p><h2>Plan every stop, drive block, meal, hotel, and backup idea.</h2></div>
+        <button id="printBtn">Print / PDF</button>
+      </header>
+      <nav id="dayTabs" class="tabs"></nav>
+      <section id="routeSummary" class="route-card"></section>
+      <section id="planner" class="planner"></section>
+    </main>
+  </div>
+  <dialog id="editDialog">
+    <form method="dialog" class="modal">
+      <h2>Edit Timeslot</h2>
+      <input id="editId" type="hidden" />
+      <label>Title</label><input id="editTitle" />
+      <div class="two"><div><label>Start</label><input id="editStart" type="time" /></div><div><label>End</label><input id="editEnd" type="time" /></div></div>
+      <label>Location / Link</label><input id="editLocation" />
+      <label>Notes</label><textarea id="editNotes" rows="4"></textarea>
+      <div class="modal-actions"><button id="deleteSlotBtn" type="button" class="danger">Delete</button><span></span><button value="cancel" class="ghost">Cancel</button><button id="saveEditBtn" value="default">Save</button></div>
+    </form>
+  </dialog>
+  <script src="app.js"></script>
+</body>
+</html>
