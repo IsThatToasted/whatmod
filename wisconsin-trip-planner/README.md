@@ -1,26 +1,21 @@
-# Wisconsin Trip Planner
+# Wisconsin Road Trip Planner
 
-Static GitHub Pages trip planner for July 2–5, 2026 from 700 Fireside Rd, York PA to Saukville, WI.
+A fun, mobile-friendly, GitHub Pages-ready planner for the July 2–5 York, PA → Saukville, WI trip.
 
-## Run locally
-Open `index.html` directly, or run:
+## Files
+- `index.html` — app shell
+- `styles.css` — road-trip dashboard styling
+- `app.js` — planner, import/export, local save, Supabase sync
+- `config.js` — your Supabase project URL and publishable key
+- `supabase-schema.sql` — table + RLS policies
 
-```bash
-python -m http.server 8080
-```
+## Supabase setup
+1. Open Supabase SQL Editor and run `supabase-schema.sql`.
+2. In Supabase Auth → Providers, enable Google.
+3. In Supabase Auth → URL Configuration, add your GitHub Pages URL to allowed redirect URLs, for example:
+   - `https://YOURUSERNAME.github.io/YOURREPO/`
+   - your custom domain if using one
+4. Upload these files to GitHub Pages.
 
-Then visit `http://localhost:8080`.
-
-## GitHub Pages
-Upload these files to your repo root or `/docs`, then enable GitHub Pages.
-
-## Supabase + Google Login
-1. Create a Supabase project.
-2. In SQL Editor, run `supabase-schema.sql`.
-3. Enable Google provider in Authentication > Providers.
-4. Add your GitHub Pages URL and local URL to Authentication > URL Configuration > Redirect URLs.
-5. Rename `config.example.js` to `config.js` and fill in:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-
-The planner works without Supabase using browser local storage.
+## Notes
+The app still works without login using localStorage. Google login will not complete until Google provider credentials and Supabase redirect URLs are configured.
