@@ -87,10 +87,10 @@
           </label>
         </div>
         <div class="gas-waypoint-bar">
-          <span id="gasRouteSummary">Select gas stations below to include them as Google Maps waypoints.</span>
+          <span id="gasRouteSummary">Fuel stops will be picked automatically based on route distance, MPG, and tank size.</span>
           <div class="button-row compact">
-            <button id="selectCheapGasBtn" class="small">Pick 3 cheapest priced</button>
-            <button id="clearGasRouteBtn" class="small">Clear waypoints</button>
+            <button id="selectCheapGasBtn" class="small">Use 3 cheapest priced</button>
+            <button id="clearGasRouteBtn" class="small">Auto re-plan</button>
           </div>
         </div>
         <div id="gasList" class="gas-list empty-state">Plan a route, then search for fuel stops. Add prices manually to compare.</div>
@@ -178,7 +178,7 @@
         <p class="gas-meta"></p>
       </div>
       <div class="gas-controls">
-        <label class="route-check"><input class="gas-route-select" type="checkbox" /> Route stop</label>
+        <span class="gas-route-badge">Nearby option</span>
         <label>$ / gal<input class="gas-price" type="number" step="0.01" min="0" placeholder="4.11" /></label>
         <button class="add-gas-event small">Add stop</button>
         <button class="open-google small">Google</button>

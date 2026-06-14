@@ -51,3 +51,7 @@ Gas stations now have a **Route stop** checkbox. Selected stations are sorted by
 
 ## v4 waypoint behavior
 Google Maps web links now send gas stations as latitude/longitude waypoints, which is more reliable than long station addresses. Google Maps route URLs are still limited; this planner sends up to 8 gas stops in one full-route link, plus the start and final destination. Extra selected gas stops remain available as individual Google/Apple/Waze navigation buttons.
+
+## v5 update
+
+Fuel stops are now planned automatically. After you plan a route and click **Find along route**, the app uses your route distance, MPG, and tank size to pick a small practical set of fuel stops. Those planned stops are sent to Google Maps as waypoint coordinates automatically. Nearby backup stations are still shown, but they are not included in the full Google route unless you use the price override button.
