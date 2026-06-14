@@ -29,7 +29,7 @@
     <section class="hero-card">
       <div>
         <p class="kicker">Simple. Visual. Not corporate.</p>
-        <h2>Plan the ride hour-by-hour without fighting a spreadsheet.</h2>
+        <h2>Drag plans around, double-click an empty hour, and build each day fast.</h2>
         <p id="authStatus" class="status">Local save is active. Google sync is ready when Supabase auth is configured.</p>
       </div>
       <div class="route-box">
@@ -44,10 +44,10 @@
 
     <section class="quick-add">
       <select id="slotDay"></select>
-      <input id="slotStart" type="time" value="09:00" />
-      <input id="slotEnd" type="time" value="10:00" />
+      <select id="slotStart" class="timeSelect" aria-label="Start time"></select>
+      <select id="slotEnd" class="timeSelect" aria-label="End time"></select>
       <input id="slotTitle" placeholder="What are we doing?" />
-      <input id="slotLocation" placeholder="Where / link?" />
+      <input id="slotLocation" placeholder="Address / place / link" />
       <button id="addSlotBtn">+ Add</button>
     </section>
 
@@ -64,19 +64,19 @@
       </div>
     </section>
 
-    <section id="planner" class="planner"></section>
+    <section id="planner" class="planner" aria-label="Hourly trip planner"></section>
   </main>
 
   <dialog id="editDialog">
     <form method="dialog" class="modal">
       <input id="editId" type="hidden" />
-      <h2>Edit stop</h2>
+      <h2>Edit plan</h2>
       <label>Title<input id="editTitle" /></label>
       <div class="row">
-        <label>Start<input id="editStart" type="time" /></label>
-        <label>End<input id="editEnd" type="time" /></label>
+        <label>Start<select id="editStart" class="timeSelect"></select></label>
+        <label>End<select id="editEnd" class="timeSelect"></select></label>
       </div>
-      <label>Location / Link<input id="editLocation" /></label>
+      <label>Address / Place / Link<input id="editLocation" /></label>
       <label>Notes<textarea id="editNotes" rows="4"></textarea></label>
       <div class="modal-actions">
         <button id="deleteSlotBtn" type="button" class="danger">Delete</button>
