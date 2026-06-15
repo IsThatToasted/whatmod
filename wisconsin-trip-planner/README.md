@@ -1,47 +1,38 @@
-# Wisconsin Road Trip Planner
+# BondQuest — Relationship RPG Test App
 
-Static GitHub Pages trip planner for July 2–5 from York, PA to Saukville, WI.
+This folder replaces the old Wisconsin trip planner path with a static GitHub Pages web app.
 
-## New in this version
+## Features
 
-- Drag and drop events into different hour rows.
-- Dropped events auto-update their start and end time while keeping the same duration.
-- Double-click any empty hour to add a new event there.
-- Click any event to edit title, start/end, address/place/link, and notes.
-- Address/location chips open in Google Maps.
-- All visible planner times use 12-hour AM/PM labels, not 24-hour labels.
-- Changes save locally immediately and auto-save to Supabase per signed-in user.
-- Supabase client is exposed as `window.tripSupabase` for quick browser-console debugging.
+- Relationship RPG dashboard with XP, levels, streaks, and relationship stats
+- Quest board with generated and custom quests
+- DistanceSync milestones, visits, gift tracking, travel goals, and bucket list items
+- Consent-first bedroom compatibility builder that only reveals mutual overlaps
+- Memory Vault for relationship artifacts and notes
+- Long-distance date generator
+- Couples heat map / mood logging
+- Local storage fallback
+- Supabase auth and per-user cloud sync
 
 ## Files
 
 - `index.html` — app shell
-- `styles.css` — visual design
-- `app.js` — planner behavior and Supabase sync
-- `config.js` — live Supabase project config
+- `styles.css` — app styling
+- `app.js` — app behavior and Supabase sync
+- `config.js` — live Supabase config from the original folder
 - `config.example.js` — safe template
-- `supabase-schema.sql` — table + RLS policies
+- `supabase-schema.sql` — table and RLS policies
 
 ## Supabase setup
 
 Run `supabase-schema.sql` in the Supabase SQL editor.
 
-Google provider callback URL in Google Cloud:
+The app stores one JSON document per user/app in `public.bondquest_apps`.
 
-```text
-https://datpvcccejwgjavcytbx.supabase.co/auth/v1/callback
-```
-
-Supabase Auth URL Configuration should include your hosted app URL, for example:
+Make sure Supabase Auth URL Configuration includes your GitHub Pages path, for example:
 
 ```text
 https://whatmod.com/wisconsin-trip-planner/
 ```
 
-## Hosting
-
-Upload all files in this folder to your GitHub Pages folder/repo path, or serve them from:
-
-```text
-https://whatmod.com/wisconsin-trip-planner/
-```
+The app also works locally without login using browser localStorage.

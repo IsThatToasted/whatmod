@@ -3,103 +3,157 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wisconsin Road Trip Planner</title>
+  <title>BondQuest — Relationship RPG</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
 </head>
 <body>
-  <div class="page-bg"></div>
-  <main class="app">
+  <div class="bg"></div>
+  <main class="shell">
     <header class="topbar">
       <div class="brand">
-        <div class="badge">🚗</div>
+        <div class="crest">BQ</div>
         <div>
-          <h1>Wisconsin Road Trip</h1>
-          <p>July 2–5 • York, PA → Saukville, WI</p>
+          <h1>BondQuest</h1>
+          <p>A private co-op RPG for connection, distance, memories, and intimacy.</p>
         </div>
       </div>
-      <div class="top-actions">
-        <button id="loginBtn" class="pill">Google Login</button>
-        <button id="logoutBtn" class="pill ghost hidden">Logout</button>
-        <button id="saveCloudBtn" class="pill glow">Save / Sync</button>
+      <div class="actions">
+        <button id="loginBtn">Google Login</button>
+        <button id="logoutBtn" class="ghost hidden">Logout</button>
+        <button id="syncBtn" class="gold">Save / Sync</button>
       </div>
     </header>
 
-    <section class="hero-card">
+    <section class="hero">
       <div>
-        <p class="kicker">Simple. Visual. Not corporate.</p>
-        <h2>Drag plans around, double-click an empty hour, and build each day fast.</h2>
-        <p id="authStatus" class="status">Local save is active. Google sync is ready when Supabase auth is configured.</p>
+        <p class="kicker">Relationship operating system disguised as a game</p>
+        <h2>Your relationship is the character. Everything you do levels it up.</h2>
+        <p id="authStatus" class="muted">Local save is active. Login enables Supabase sync per user.</p>
       </div>
-      <div class="route-box">
-        <label>From<input id="origin" value="700 Fireside Rd, York, PA" /></label>
-        <label>To<input id="destination" value="Saukville, WI" /></label>
-        <div class="mini-actions">
-          <button id="mapsBtn">Open Google Route</button>
-          <button id="printBtn" class="ghost">Print / PDF</button>
+      <div class="couple-card">
+        <label>Partner A<input id="partnerA" placeholder="You" /></label>
+        <label>Partner B<input id="partnerB" placeholder="Partner" /></label>
+        <label>Next visit date<input id="nextVisit" type="date" /></label>
+      </div>
+    </section>
+
+    <nav class="tabs" id="tabs"></nav>
+
+    <section id="dashboard" class="panel active">
+      <div class="character-card">
+        <div class="level-orb"><span id="level">1</span><small>LVL</small></div>
+        <div class="char-main">
+          <h3 id="coupleName">You + Partner</h3>
+          <p id="xpText">0 / 100 XP to next level</p>
+          <div class="bar"><i id="xpBar"></i></div>
+          <div class="mini-grid">
+            <div><b id="countdown">—</b><span>days to next visit</span></div>
+            <div><b id="streak">0</b><span>quest streak</span></div>
+            <div><b id="memoryCount">0</b><span>memories</span></div>
+            <div><b id="matchCount">0</b><span>mutual matches</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><h3>Available Quests</h3><button id="newQuestBtn" class="ghost">Generate</button></div>
+          <div id="questList" class="list"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Today’s Status</h3><button id="logMoodBtn" class="ghost">Log</button></div>
+          <div id="heatSnapshot" class="heat"></div>
+          <p id="gmTip" class="gm"></p>
         </div>
       </div>
     </section>
 
-    <section class="drive-builder">
-      <div class="builder-copy">
-        <p class="kicker">Drive block builder</p>
-        <h2>Make the long drive easy to edit.</h2>
-        <p id="driveSummary">4 drive blocks × 3h 30m each, generated on July 2 and July 5.</p>
-      </div>
-      <label>Total drive hours<input id="driveHours" type="number" min="1" step="0.25" value="14" /></label>
-      <label>Blocks per drive day<input id="driveBlocks" type="number" min="1" max="8" step="1" value="4" /></label>
-      <label>Leave July 2<select id="outboundStart" class="timeSelect"></select></label>
-      <label>Leave July 5<select id="returnStart" class="timeSelect"></select></label>
-      <button id="buildDriveBtn">Build Drive Blocks</button>
-      <button id="clearDriveBtn" class="ghost">Clear Drive Blocks</button>
-    </section>
-
-    <section class="quick-add">
-      <select id="slotDay"></select>
-      <select id="slotStart" class="timeSelect" aria-label="Start time"></select>
-      <select id="slotEnd" class="timeSelect" aria-label="End time"></select>
-      <input id="slotTitle" placeholder="What are we doing?" />
-      <input id="slotLocation" placeholder="Address / place / link" />
-      <button id="addSlotBtn">+ Add</button>
-    </section>
-
-    <nav id="dayTabs" class="day-tabs"></nav>
-
-    <section class="trip-overview">
-      <div class="stat"><span id="totalSlots">0</span><small>planned blocks</small></div>
-      <div class="stat"><span>4</span><small>trip days</small></div>
-      <div class="stat"><span>~11–12h</span><small>drive estimate</small></div>
-      <div class="tools">
-        <button id="exportBtn" class="ghost">Export</button>
-        <label class="file-btn">Import<input id="importFile" type="file" accept="application/json" /></label>
-        <button id="resetBtn" class="ghost danger-lite">Reset</button>
+    <section id="quests" class="panel">
+      <div class="card">
+        <div class="card-head"><h3>Quest Board</h3><button id="addQuestBtn">Add Quest</button></div>
+        <div class="form-grid">
+          <input id="questTitle" placeholder="Quest title" />
+          <select id="questCategory"><option>Connection</option><option>Romance</option><option>Adventure</option><option>Intimacy</option><option>Support</option></select>
+          <input id="questXp" type="number" min="5" step="5" value="25" />
+          <button id="saveQuestBtn">Save Quest</button>
+        </div>
+        <div id="allQuests" class="list spacious"></div>
       </div>
     </section>
 
-    <section id="planner" class="planner" aria-label="Hourly trip planner"></section>
+    <section id="distance" class="panel">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-head"><h3>DistanceSync</h3><button id="addMilestoneBtn">Add</button></div>
+          <div class="form-grid two">
+            <input id="milestoneTitle" placeholder="Milestone, trip, goal, gift, bucket list item" />
+            <input id="milestoneDate" type="date" />
+            <select id="milestoneType"><option>Milestone</option><option>Visit</option><option>Bucket List</option><option>Gift</option><option>Travel</option></select>
+            <button id="saveMilestoneBtn">Save</button>
+          </div>
+          <div id="milestoneMap" class="timeline"></div>
+        </div>
+        <div class="card">
+          <h3>Long Distance Date Generator</h3>
+          <div class="form-grid one">
+            <input id="dateBudget" type="number" min="0" value="20" placeholder="Budget" />
+            <input id="dateMinutes" type="number" min="15" value="90" placeholder="Minutes available" />
+            <select id="dateVibe"><option>Cozy</option><option>Sexy but safe</option><option>Funny</option><option>Deep conversation</option><option>Adventure</option></select>
+            <button id="dateGenBtn">Generate Date Quest</button>
+          </div>
+          <div id="dateIdea" class="idea"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="compatibility" class="panel">
+      <div class="card">
+        <h3>Bedroom Compatibility Builder</h3>
+        <p class="muted">Private answers stay hidden unless both partners mark the same interest as open. This is designed for consent, boundaries, comfort, and connection.</p>
+        <div class="compat-grid" id="compatGrid"></div>
+        <div id="compatReport" class="report"></div>
+      </div>
+    </section>
+
+    <section id="memories" class="panel">
+      <div class="card">
+        <div class="card-head"><h3>Memory Vault Inventory</h3><button id="addMemoryBtn">Add Memory</button></div>
+        <div class="form-grid memory-form">
+          <input id="memoryTitle" placeholder="Memory title" />
+          <input id="memoryDate" type="date" />
+          <select id="memoryRarity"><option>Common</option><option>Rare</option><option>Epic</option><option>Legendary</option></select>
+          <input id="memoryUrl" placeholder="Photo/video URL optional" />
+          <textarea id="memoryNotes" placeholder="Notes, inside joke, what happened"></textarea>
+          <button id="saveMemoryBtn">Save Memory</button>
+        </div>
+        <div id="memoryVault" class="memory-grid"></div>
+      </div>
+    </section>
+
+    <section id="heatmap" class="panel">
+      <div class="card">
+        <div class="card-head"><h3>Couples Heat Map</h3><button id="saveMoodBtn">Save Mood Log</button></div>
+        <div class="slider-grid" id="sliderGrid"></div>
+        <div id="heatHistory" class="history"></div>
+      </div>
+    </section>
+
+    <section id="settings" class="panel">
+      <div class="card">
+        <h3>Settings / Export</h3>
+        <p class="muted">This test version saves locally first and syncs one JSON document to Supabase when logged in.</p>
+        <div class="settings-actions">
+          <button id="exportBtn">Export JSON</button>
+          <label class="file-btn">Import JSON<input id="importFile" type="file" accept="application/json" /></label>
+          <button id="resetBtn" class="danger">Reset Demo</button>
+        </div>
+        <pre id="debugBox"></pre>
+      </div>
+    </section>
   </main>
-
-  <dialog id="editDialog">
-    <form method="dialog" class="modal">
-      <input id="editId" type="hidden" />
-      <h2>Edit plan</h2>
-      <label>Title<input id="editTitle" /></label>
-      <div class="row">
-        <label>Start<select id="editStart" class="timeSelect"></select></label>
-        <label>End<select id="editEnd" class="timeSelect"></select></label>
-      </div>
-      <label>Address / Place / Link<input id="editLocation" /></label>
-      <label>Notes<textarea id="editNotes" rows="4"></textarea></label>
-      <div class="modal-actions">
-        <button id="deleteSlotBtn" type="button" class="danger">Delete</button>
-        <span></span>
-        <button value="cancel" class="ghost">Cancel</button>
-        <button id="saveEditBtn" value="default">Save</button>
-      </div>
-    </form>
-  </dialog>
 
   <script src="app.js"></script>
 </body>
