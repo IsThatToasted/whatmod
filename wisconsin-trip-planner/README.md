@@ -1,31 +1,17 @@
-# Bedroom Compatibility Builder
+# Bedroom Connection Builder
 
-Static GitHub Pages app backed by Supabase Auth, Postgres, RLS, and Realtime.
+A static GitHub Pages app backed by Supabase. Each adult signs in with Google, creates a private profile, joins a one-on-one bedroom compatibility builder, answers privately, and sees live compatibility card updates when both people answer.
+
+## Important
+
+This version removes all Supabase embedded joins from the frontend to avoid PostgREST schema-cache join errors. It also ships as `app-v3.js` with a cache-busted script tag so GitHub Pages does not keep serving an older broken `app.js`.
 
 ## Setup
 
-1. In Supabase, enable **Google** under Authentication → Providers.
-2. Add your GitHub Pages URL to Authentication → URL Configuration → Redirect URLs.
-3. Run `supabase-schema.sql` in the SQL editor.
-4. Confirm `config.js` has your Supabase URL and publishable/anon key.
-5. Open the app from GitHub Pages.
+1. Put your Supabase URL and anon/publishable key in `config.js`.
+2. Run `supabase-schema.sql` in Supabase SQL Editor.
+3. In Supabase Auth, enable Google OAuth.
+4. Add your GitHub Pages URL to allowed redirect URLs.
+5. Deploy these files.
 
-## Flow
-
-- User signs in with Google.
-- User creates a display profile attached to their auth account.
-- User creates a private compatibility builder.
-- App generates an invite link with `?session=<session id>`.
-- Partner opens the link, signs in with Google, and joins the same builder.
-- Each person answers on their own time.
-- Cards update live on both clients when either person answers.
-- Green means compatible, red means not compatible, yellow means waiting.
-- Final compatibility percentage only appears after both users answer every question.
-
-## Files
-
-- `index.html` - app layout
-- `styles.css` - dark modern UI
-- `app.js` - auth, profile, invite sessions, answers, live sync, scoring
-- `config.js` - Supabase config
-- `supabase-schema.sql` - database/RLS/realtime schema
+Adults 18+ only.

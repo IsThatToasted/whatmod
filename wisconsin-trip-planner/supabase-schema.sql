@@ -1,4 +1,4 @@
--- Bedroom Compatibility Builder schema
+-- Bedroom Connection Builder schema
 -- Run this in the Supabase SQL editor for the project used in config.js.
 
 create extension if not exists pgcrypto;
@@ -14,7 +14,7 @@ create table if not exists public.bcc_profiles (
 create table if not exists public.bcc_sessions (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users(id) on delete cascade,
-  title text not null default 'Compatibility Builder',
+  title text not null default 'Bedroom Connection Builder',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -26,6 +26,16 @@ create table if not exists public.bcc_session_members (
   created_at timestamptz not null default now(),
   primary key (session_id, user_id)
 );
+
+-- Optional direct foreign key for Supabase/PostgREST schema cache.
+-- The app does not depend on embedded joins, but this helps older cached clients avoid failing.
+do $$
+begin
+  alter table public.bcc_session_members
+    add constraint bcc_session_members_profile_fk
+    foreign key (user_id) references public.bcc_profiles(user_id) on delete cascade not valid;
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.bcc_answers (
   session_id uuid not null references public.bcc_sessions(id) on delete cascade,
@@ -73,7 +83,7 @@ begin
   where session_id = new.session_id;
 
   if member_count >= 2 then
-    raise exception 'This compatibility builder already has two people.';
+    raise exception 'This bedroom connection builder already has two people.';
   end if;
 
   return new;

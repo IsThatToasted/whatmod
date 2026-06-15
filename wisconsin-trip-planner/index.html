@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bedroom Compatibility Builder</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Bedroom Connection Builder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -16,9 +19,9 @@
   <main class="shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Private couples app</p>
-        <h1>Bedroom Compatibility Builder</h1>
-        <p class="subtitle">Answer privately. Reveal only overlap, mismatches, and your final compatibility score.</p>
+        <p class="eyebrow">Adults-only private app</p>
+        <h1>Bedroom Connection Builder</h1>
+        <p class="subtitle">Answer privately. Reveal only overlap, mismatches, and the final compatibility score after every card is complete.</p>
       </div>
       <div class="auth-panel">
         <div id="userBadge" class="user-badge hidden"></div>
@@ -31,7 +34,7 @@
       <div class="section-title">
         <p class="eyebrow">Profile required</p>
         <h2>Create your private profile</h2>
-        <p>This name is shown to your partner inside shared sessions.</p>
+        <p>This name is shown to the other person inside shared builders.</p>
       </div>
       <div class="form-row">
         <input id="displayNameInput" class="input" placeholder="Your display name" maxlength="50" />
@@ -41,14 +44,14 @@
 
     <section id="loadingView" class="card center-card">
       <div class="loader"></div>
-      <p>Loading your private compatibility space…</p>
+      <p>Loading your private connection space…</p>
     </section>
 
     <section id="signedOutView" class="card hero-card hidden">
       <div class="hero-copy">
         <p class="eyebrow">One-on-one sync</p>
         <h2>Find overlap without awkward guessing.</h2>
-        <p>Each partner signs in with their own Google account. Answers can be completed live or separately. Results update when both people answer.</p>
+        <p>Each person signs in with their own Google account. Answers can be completed live or separately. Results update when both people answer.</p>
       </div>
       <div class="hero-steps">
         <div><span>1</span>Sign in</div>
@@ -63,9 +66,9 @@
         <div class="section-title">
           <p class="eyebrow">Start here</p>
           <h2>Your compatibility builders</h2>
-          <p>Create a private link for one partner, or continue an existing session.</p>
+          <p>Create a private link for one other person, or continue an existing builder.</p>
         </div>
-        <button id="createSessionBtn" class="btn primary wide">Create new compatibility builder</button>
+        <button id="createSessionBtn" class="btn primary wide">Create new bedroom builder</button>
         <div id="sessionList" class="session-list"></div>
       </div>
 
@@ -85,9 +88,9 @@
       <div class="session-header card">
         <div>
           <button id="backBtn" class="link-btn">← Back</button>
-          <p class="eyebrow">Private builder</p>
+          <p class="eyebrow">Private bedroom builder</p>
           <h2 id="sessionTitle">Compatibility Builder</h2>
-          <p id="partnerLine" class="muted">Waiting for partner…</p>
+          <p id="partnerLine" class="muted">Waiting for the other person…</p>
         </div>
         <div class="session-actions">
           <button id="copyInviteBtn" class="btn ghost">Copy invite link</button>
@@ -101,7 +104,7 @@
           <input id="inviteLinkInput" class="input" readonly />
           <button id="copyInviteBtn2" class="btn primary">Copy</button>
         </div>
-        <p class="muted small">The other person must sign in with Google before their answers are saved.</p>
+        <p class="muted small">The other person must sign in with Google before their answers are saved. For adults 18+ only.</p>
       </div>
 
       <div class="progress-card card">
@@ -122,6 +125,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script src="app-v3.js?v=20260615-joinless-140"></script>
 </body>
 </html>
