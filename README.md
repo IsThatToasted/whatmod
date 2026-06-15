@@ -1,60 +1,53 @@
-# TripForge Advanced Trip Planner
+# WhatMod Website
 
-A self-contained local web app for route planning, fuel-stop discovery, fuel cost estimates, and a timeslot-based day planner with overlap and closing-time conflict detection.
+Static sales page for WhatMod. Ready for GitHub Pages.
 
-## What is included
-
-- OpenStreetMap/Leaflet map
-- OSRM demo routing through Leaflet Routing Machine
-- Start/destination geocoding through Nominatim
-- Gas/fuel stop search along the route through Overpass
-- Address resolving for fuel stops when OpenStreetMap station tags are incomplete
-- External navigation links for:
-  - Google Maps
-  - Apple Maps
-  - Waze
-- Start/end route launching into Google Maps, Apple Maps, or Waze
-- Per-station external navigation buttons and map-popup links
-- Event planner with custom events, travel, food, hotel, fuel, and custom blocks
-- Overlap warnings
-- Opening/closing time warnings
-- Manual fuel prices and MPG-based fuel-cost estimates
-- Local autosave
-- JSON import/export
-
-## How to run
-
-Open `index.html` in a modern browser.
-
-For best reliability, especially with browser security rules, run it from a tiny local server:
-
-```bash
-python -m http.server 8080
-```
-
-Then open:
+## File structure
 
 ```text
-http://localhost:8080
+whatmod/
+├── index.html
+├── styles.css
+├── script.js
+├── README.md
+└── assets/
+    └── cover.png
 ```
 
-## Notes
+## Stripe setup
 
-This version uses public demo/community services. They are good for local testing and personal planning, but production traffic should use your own hosted routing/geocoding service or paid APIs.
+The Stripe dashboard product URL is private/admin-only and cannot be used as a checkout link.
 
-Real station-level gas prices usually require a paid/partner data provider. This app finds stations along the route and lets you enter prices manually, while keeping the exact station addresses and coordinates ready for navigation apps.
+Create a Stripe Payment Link for the existing WhatMod 1 Month / 30 Day subscription product, then open `script.js` and replace:
 
+```js
+const STRIPE_PAYMENT_LINK = "PASTE_YOUR_STRIPE_PAYMENT_LINK_HERE";
+```
 
-## v3 Google Maps waypoint routing
+with your public link, which should look like:
 
-Gas stations now have a **Route stop** checkbox. Selected stations are sorted by their position along the planned route and inserted into the **Google Maps** full-route URL as waypoints. Apple Maps and Waze remain available for single-stop navigation/fallback links because their webpage URL schemes do not reliably preload full multi-stop routes.
+```js
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/...";
+```
 
-## v4 waypoint behavior
-Google Maps web links now send gas stations as latitude/longitude waypoints, which is more reliable than long station addresses. Google Maps route URLs are still limited; this planner sends up to 8 gas stops in one full-route link, plus the start and final destination. Extra selected gas stops remain available as individual Google/Apple/Waze navigation buttons.
+## GitHub Pages cache busting
 
-## v5 update
+This version already uses cache-busting query strings:
 
-Fuel stops are now planned automatically. After you plan a route and click **Find along route**, the app uses your route distance, MPG, and tank size to pick a small practical set of fuel stops. Those planned stops are sent to Google Maps as waypoint coordinates automatically. Nearby backup stations are still shown, but they are not included in the full Google route unless you use the price override button.
+```html
+styles.css?v=20260509-2
+script.js?v=20260509-2
+assets/cover.png?v=20260509
+```
 
-## v6 CORS fix
-Hosted domains can be blocked by direct browser requests to Nominatim. v6 uses Photon as the primary browser-friendly geocoder, keeps Nominatim as a fallback, and accepts raw coordinates like `39.9626,-76.7277` if a search provider is unavailable.
+When you update CSS or JS, change those version numbers in `index.html`, commit, wait for Pages to deploy, then hard refresh with Ctrl+Shift+R.
+
+## Important
+
+Make sure `index.html` starts with:
+
+```html
+<!doctype html>
+```
+
+If it starts with PNG/binary text, the image was accidentally uploaded over `index.html`.
