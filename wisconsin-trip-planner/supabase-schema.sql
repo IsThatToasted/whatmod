@@ -37,6 +37,30 @@ create table if not exists public.bcc_answers (
   primary key (session_id, user_id, question_id)
 );
 
+-- Direct profile foreign keys make Supabase/PostgREST embedded selects work reliably.
+-- Safe to rerun; if old tables already exist, this adds the missing relationships.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'bcc_session_members_user_profile_fk'
+  ) then
+    alter table public.bcc_session_members
+    add constraint bcc_session_members_user_profile_fk
+    foreign key (user_id) references public.bcc_profiles(user_id) on delete cascade;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'bcc_answers_user_profile_fk'
+  ) then
+    alter table public.bcc_answers
+    add constraint bcc_answers_user_profile_fk
+    foreign key (user_id) references public.bcc_profiles(user_id) on delete cascade;
+  end if;
+end $$;
+
 create or replace function public.bcc_touch_updated_at()
 returns trigger
 language plpgsql
