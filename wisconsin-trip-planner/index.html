@@ -3,158 +3,125 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BondQuest — Relationship RPG</title>
+  <title>Bedroom Compatibility Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
 </head>
 <body>
-  <div class="bg"></div>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+
   <main class="shell">
     <header class="topbar">
-      <div class="brand">
-        <div class="crest">BQ</div>
-        <div>
-          <h1>BondQuest</h1>
-          <p>A private co-op RPG for connection, distance, memories, and intimacy.</p>
-        </div>
+      <div>
+        <p class="eyebrow">Private couples app</p>
+        <h1>Bedroom Compatibility Builder</h1>
+        <p class="subtitle">Answer privately. Reveal only overlap, mismatches, and your final compatibility score.</p>
       </div>
-      <div class="actions">
-        <button id="loginBtn">Google Login</button>
-        <button id="logoutBtn" class="ghost hidden">Logout</button>
-        <button id="syncBtn" class="gold">Save / Sync</button>
+      <div class="auth-panel">
+        <div id="userBadge" class="user-badge hidden"></div>
+        <button id="loginBtn" class="btn primary">Continue with Google</button>
+        <button id="logoutBtn" class="btn ghost hidden">Sign out</button>
       </div>
     </header>
 
-    <section class="hero">
-      <div>
-        <p class="kicker">Relationship operating system disguised as a game</p>
-        <h2>Your relationship is the character. Everything you do levels it up.</h2>
-        <p id="authStatus" class="muted">Local save is active. Login enables Supabase sync per user.</p>
+    <section id="setupView" class="card setup-card hidden">
+      <div class="section-title">
+        <p class="eyebrow">Profile required</p>
+        <h2>Create your private profile</h2>
+        <p>This name is shown to your partner inside shared sessions.</p>
       </div>
-      <div class="couple-card">
-        <label>Partner A<input id="partnerA" placeholder="You" /></label>
-        <label>Partner B<input id="partnerB" placeholder="Partner" /></label>
-        <label>Next visit date<input id="nextVisit" type="date" /></label>
-      </div>
-    </section>
-
-    <nav class="tabs" id="tabs"></nav>
-
-    <section id="dashboard" class="panel active">
-      <div class="character-card">
-        <div class="level-orb"><span id="level">1</span><small>LVL</small></div>
-        <div class="char-main">
-          <h3 id="coupleName">You + Partner</h3>
-          <p id="xpText">0 / 100 XP to next level</p>
-          <div class="bar"><i id="xpBar"></i></div>
-          <div class="mini-grid">
-            <div><b id="countdown">—</b><span>days to next visit</span></div>
-            <div><b id="streak">0</b><span>quest streak</span></div>
-            <div><b id="memoryCount">0</b><span>memories</span></div>
-            <div><b id="matchCount">0</b><span>mutual matches</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="stats-grid" id="statsGrid"></div>
-      <div class="two-col">
-        <div class="card">
-          <div class="card-head"><h3>Available Quests</h3><button id="newQuestBtn" class="ghost">Generate</button></div>
-          <div id="questList" class="list"></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3>Today’s Status</h3><button id="logMoodBtn" class="ghost">Log</button></div>
-          <div id="heatSnapshot" class="heat"></div>
-          <p id="gmTip" class="gm"></p>
-        </div>
+      <div class="form-row">
+        <input id="displayNameInput" class="input" placeholder="Your display name" maxlength="50" />
+        <button id="saveProfileBtn" class="btn primary">Save profile</button>
       </div>
     </section>
 
-    <section id="quests" class="panel">
-      <div class="card">
-        <div class="card-head"><h3>Quest Board</h3><button id="addQuestBtn">Add Quest</button></div>
-        <div class="form-grid">
-          <input id="questTitle" placeholder="Quest title" />
-          <select id="questCategory"><option>Connection</option><option>Romance</option><option>Adventure</option><option>Intimacy</option><option>Support</option></select>
-          <input id="questXp" type="number" min="5" step="5" value="25" />
-          <button id="saveQuestBtn">Save Quest</button>
-        </div>
-        <div id="allQuests" class="list spacious"></div>
+    <section id="loadingView" class="card center-card">
+      <div class="loader"></div>
+      <p>Loading your private compatibility space…</p>
+    </section>
+
+    <section id="signedOutView" class="card hero-card hidden">
+      <div class="hero-copy">
+        <p class="eyebrow">One-on-one sync</p>
+        <h2>Find overlap without awkward guessing.</h2>
+        <p>Each partner signs in with their own Google account. Answers can be completed live or separately. Results update when both people answer.</p>
+      </div>
+      <div class="hero-steps">
+        <div><span>1</span>Sign in</div>
+        <div><span>2</span>Create or join a builder</div>
+        <div><span>3</span>Answer privately</div>
+        <div><span>4</span>Reveal compatible areas</div>
       </div>
     </section>
 
-    <section id="distance" class="panel">
-      <div class="two-col">
-        <div class="card">
-          <div class="card-head"><h3>DistanceSync</h3><button id="addMilestoneBtn">Add</button></div>
-          <div class="form-grid two">
-            <input id="milestoneTitle" placeholder="Milestone, trip, goal, gift, bucket list item" />
-            <input id="milestoneDate" type="date" />
-            <select id="milestoneType"><option>Milestone</option><option>Visit</option><option>Bucket List</option><option>Gift</option><option>Travel</option></select>
-            <button id="saveMilestoneBtn">Save</button>
-          </div>
-          <div id="milestoneMap" class="timeline"></div>
+    <section id="homeView" class="grid hidden">
+      <div class="card main-card">
+        <div class="section-title">
+          <p class="eyebrow">Start here</p>
+          <h2>Your compatibility builders</h2>
+          <p>Create a private link for one partner, or continue an existing session.</p>
         </div>
-        <div class="card">
-          <h3>Long Distance Date Generator</h3>
-          <div class="form-grid one">
-            <input id="dateBudget" type="number" min="0" value="20" placeholder="Budget" />
-            <input id="dateMinutes" type="number" min="15" value="90" placeholder="Minutes available" />
-            <select id="dateVibe"><option>Cozy</option><option>Sexy but safe</option><option>Funny</option><option>Deep conversation</option><option>Adventure</option></select>
-            <button id="dateGenBtn">Generate Date Quest</button>
-          </div>
-          <div id="dateIdea" class="idea"></div>
-        </div>
+        <button id="createSessionBtn" class="btn primary wide">Create new compatibility builder</button>
+        <div id="sessionList" class="session-list"></div>
       </div>
+
+      <aside class="card side-card">
+        <p class="eyebrow">How scoring works</p>
+        <h3>No upfront percentage</h3>
+        <p>You only see the final percentage after every question has both answers. Before that, cards show waiting, match, or mismatch.</p>
+        <div class="legend">
+          <span class="dot waiting"></span> Waiting for both answers
+          <span class="dot match"></span> Compatible
+          <span class="dot miss"></span> Not compatible
+        </div>
+      </aside>
     </section>
 
-    <section id="compatibility" class="panel">
-      <div class="card">
-        <h3>Bedroom Compatibility Builder</h3>
-        <p class="muted">Private answers stay hidden unless both partners mark the same interest as open. This is designed for consent, boundaries, comfort, and connection.</p>
-        <div class="compat-grid" id="compatGrid"></div>
-        <div id="compatReport" class="report"></div>
-      </div>
-    </section>
-
-    <section id="memories" class="panel">
-      <div class="card">
-        <div class="card-head"><h3>Memory Vault Inventory</h3><button id="addMemoryBtn">Add Memory</button></div>
-        <div class="form-grid memory-form">
-          <input id="memoryTitle" placeholder="Memory title" />
-          <input id="memoryDate" type="date" />
-          <select id="memoryRarity"><option>Common</option><option>Rare</option><option>Epic</option><option>Legendary</option></select>
-          <input id="memoryUrl" placeholder="Photo/video URL optional" />
-          <textarea id="memoryNotes" placeholder="Notes, inside joke, what happened"></textarea>
-          <button id="saveMemoryBtn">Save Memory</button>
+    <section id="sessionView" class="hidden">
+      <div class="session-header card">
+        <div>
+          <button id="backBtn" class="link-btn">← Back</button>
+          <p class="eyebrow">Private builder</p>
+          <h2 id="sessionTitle">Compatibility Builder</h2>
+          <p id="partnerLine" class="muted">Waiting for partner…</p>
         </div>
-        <div id="memoryVault" class="memory-grid"></div>
-      </div>
-    </section>
-
-    <section id="heatmap" class="panel">
-      <div class="card">
-        <div class="card-head"><h3>Couples Heat Map</h3><button id="saveMoodBtn">Save Mood Log</button></div>
-        <div class="slider-grid" id="sliderGrid"></div>
-        <div id="heatHistory" class="history"></div>
-      </div>
-    </section>
-
-    <section id="settings" class="panel">
-      <div class="card">
-        <h3>Settings / Export</h3>
-        <p class="muted">This test version saves locally first and syncs one JSON document to Supabase when logged in.</p>
-        <div class="settings-actions">
-          <button id="exportBtn">Export JSON</button>
-          <label class="file-btn">Import JSON<input id="importFile" type="file" accept="application/json" /></label>
-          <button id="resetBtn" class="danger">Reset Demo</button>
+        <div class="session-actions">
+          <button id="copyInviteBtn" class="btn ghost">Copy invite link</button>
+          <button id="toggleViewBtn" class="btn ghost">Card view</button>
         </div>
-        <pre id="debugBox"></pre>
       </div>
+
+      <div id="inviteBox" class="card invite-card hidden">
+        <p class="eyebrow">Invite link</p>
+        <div class="copy-row">
+          <input id="inviteLinkInput" class="input" readonly />
+          <button id="copyInviteBtn2" class="btn primary">Copy</button>
+        </div>
+        <p class="muted small">The other person must sign in with Google before their answers are saved.</p>
+      </div>
+
+      <div class="progress-card card">
+        <div class="progress-top">
+          <span id="progressText">0 of 0 complete together</span>
+          <span id="syncStatus">Live sync ready</span>
+        </div>
+        <div class="progress-track"><div id="progressBar"></div></div>
+      </div>
+
+      <div id="finalScoreCard" class="card final-score hidden"></div>
+
+      <div id="questionArea" class="question-area"></div>
     </section>
   </main>
 
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

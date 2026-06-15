@@ -1,5 +1,5 @@
-window.TRIP_CONFIG = {
+window.COMPAT_CONFIG = {
   SUPABASE_URL: "https://YOUR_PROJECT.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_xxxxxxxxxxxxxxxxx",
-  TRIP_ID: "bondquest-test-v1"
+  SUPABASE_PUBLISHABLE_KEY: "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY",
+  APP_ID: "bedroom-compatibility-builder-v1"
 };
