@@ -1,17 +1,20 @@
 # Bedroom Connection Builder
 
-A static GitHub Pages app backed by Supabase. Each adult signs in with Google, creates a private profile, joins a one-on-one bedroom compatibility builder, answers privately, and sees live compatibility card updates when both people answer.
+Private one-on-one adult bedroom compatibility builder using Supabase Auth, Supabase tables, realtime sync, and static GitHub Pages hosting.
 
-## Important
+## Deploy
 
-This version removes all Supabase embedded joins from the frontend to avoid PostgREST schema-cache join errors. It also ships as `app-v3.js` with a cache-busted script tag so GitHub Pages does not keep serving an older broken `app.js`.
+1. Upload these files to your GitHub Pages directory.
+2. Keep `config.js` with your Supabase URL and publishable/anon key.
+3. Run `supabase-schema.sql` in the Supabase SQL editor if you have not already.
+4. In Supabase Auth, add your GitHub Pages URL to allowed redirect URLs.
+5. Hard refresh the deployed page with `Ctrl + Shift + R`.
 
-## Setup
+## Notes
 
-1. Put your Supabase URL and anon/publishable key in `config.js`.
-2. Run `supabase-schema.sql` in Supabase SQL Editor.
-3. In Supabase Auth, enable Google OAuth.
-4. Add your GitHub Pages URL to allowed redirect URLs.
-5. Deploy these files.
-
-Adults 18+ only.
+- Existing table names are preserved: `bcc_profiles`, `bcc_sessions`, `bcc_session_members`, `bcc_answers`.
+- No embedded Supabase joins are used; this avoids schema-cache relationship errors.
+- The app includes 140 adult bedroom compatibility questions.
+- Each user signs in separately with Google.
+- Invite links are one-on-one. A third user is blocked by the app and schema trigger.
+- Results reveal after both users answer all questions.

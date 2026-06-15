@@ -3,25 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
   <title>Bedroom Connection Builder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=final-1" />
 </head>
 <body>
   <div class="bg-orb orb-a"></div>
   <div class="bg-orb orb-b"></div>
+  <div class="grain"></div>
 
   <main class="shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">Adults-only private app</p>
+        <p class="eyebrow">Private adult connection</p>
         <h1>Bedroom Connection Builder</h1>
-        <p class="subtitle">Answer privately. Reveal only overlap, mismatches, and the final compatibility score after every card is complete.</p>
+        <p class="subtitle">A one-on-one adult compatibility experience for turn-ons, curiosity, past experiences, fantasies, preferences, and shared bedroom chemistry.</p>
       </div>
       <div class="auth-panel">
         <div id="userBadge" class="user-badge hidden"></div>
@@ -34,7 +32,7 @@
       <div class="section-title">
         <p class="eyebrow">Profile required</p>
         <h2>Create your private profile</h2>
-        <p>This name is shown to the other person inside shared builders.</p>
+        <p>This name is shown to the person you invite into your private builder.</p>
       </div>
       <div class="form-row">
         <input id="displayNameInput" class="input" placeholder="Your display name" maxlength="50" />
@@ -44,20 +42,20 @@
 
     <section id="loadingView" class="card center-card">
       <div class="loader"></div>
-      <p>Loading your private connection space…</p>
+      <p>Loading your private builder…</p>
     </section>
 
     <section id="signedOutView" class="card hero-card hidden">
       <div class="hero-copy">
-        <p class="eyebrow">One-on-one sync</p>
-        <h2>Find overlap without awkward guessing.</h2>
-        <p>Each person signs in with their own Google account. Answers can be completed live or separately. Results update when both people answer.</p>
+        <p class="eyebrow">Adults only • one-on-one</p>
+        <h2>Find what overlaps without the awkward guessing.</h2>
+        <p>Each person signs in separately, answers privately, and can complete the builder live or on their own time. Matches reveal only when both people answer.</p>
       </div>
       <div class="hero-steps">
-        <div><span>1</span>Sign in</div>
-        <div><span>2</span>Create or join a builder</div>
-        <div><span>3</span>Answer privately</div>
-        <div><span>4</span>Reveal compatible areas</div>
+        <div><span>1</span>Sign in with Google</div>
+        <div><span>2</span>Create a private builder</div>
+        <div><span>3</span>Invite one person</div>
+        <div><span>4</span>Reveal mutual heat</div>
       </div>
     </section>
 
@@ -65,21 +63,22 @@
       <div class="card main-card">
         <div class="section-title">
           <p class="eyebrow">Start here</p>
-          <h2>Your compatibility builders</h2>
-          <p>Create a private link for one other person, or continue an existing builder.</p>
+          <h2>Your private builders</h2>
+          <p>Create a one-on-one invite link or continue a builder you already started.</p>
         </div>
         <button id="createSessionBtn" class="btn primary wide">Create new bedroom builder</button>
         <div id="sessionList" class="session-list"></div>
       </div>
 
       <aside class="card side-card">
-        <p class="eyebrow">How scoring works</p>
-        <h3>No upfront percentage</h3>
-        <p>You only see the final percentage after every question has both answers. Before that, cards show waiting, match, or mismatch.</p>
+        <p class="eyebrow">How it works</p>
+        <h3>Private answers. Better reveals.</h3>
+        <p>Cards show saved, waiting, match, curiosity, or mismatch. The full score appears at the end, with mutual favorites and conversation starters.</p>
         <div class="legend">
-          <span class="dot waiting"></span> Waiting for both answers
-          <span class="dot match"></span> Compatible
-          <span class="dot miss"></span> Not compatible
+          <span><i class="dot waiting"></i> Waiting</span>
+          <span><i class="dot match"></i> Mutual heat</span>
+          <span><i class="dot curious"></i> Shared curiosity</span>
+          <span><i class="dot miss"></i> Mismatch</span>
         </div>
       </aside>
     </section>
@@ -88,9 +87,9 @@
       <div class="session-header card">
         <div>
           <button id="backBtn" class="link-btn">← Back</button>
-          <p class="eyebrow">Private bedroom builder</p>
-          <h2 id="sessionTitle">Compatibility Builder</h2>
-          <p id="partnerLine" class="muted">Waiting for the other person…</p>
+          <p class="eyebrow">Private builder</p>
+          <h2 id="sessionTitle">Bedroom Connection Builder</h2>
+          <p id="partnerLine" class="muted">Waiting for invite…</p>
         </div>
         <div class="session-actions">
           <button id="copyInviteBtn" class="btn ghost">Copy invite link</button>
@@ -104,27 +103,25 @@
           <input id="inviteLinkInput" class="input" readonly />
           <button id="copyInviteBtn2" class="btn primary">Copy</button>
         </div>
-        <p class="muted small">The other person must sign in with Google before their answers are saved. For adults 18+ only.</p>
+        <p class="muted small">Only one other person can join. They must sign in with Google so their answers save privately.</p>
       </div>
 
       <div class="progress-card card">
         <div class="progress-top">
-          <span id="progressText">0 of 0 complete together</span>
+          <span id="progressText">0 of 0 answered by both</span>
           <span id="syncStatus">Live sync ready</span>
         </div>
         <div class="progress-track"><div id="progressBar"></div></div>
       </div>
 
       <div id="finalScoreCard" class="card final-score hidden"></div>
-
       <div id="questionArea" class="question-area"></div>
     </section>
   </main>
 
   <div id="toast" class="toast hidden"></div>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script src="app-v3.js?v=20260615-joinless-140"></script>
+  <script src="config.js?v=final-1"></script>
+  <script src="app.js?v=final-1"></script>
 </body>
 </html>
