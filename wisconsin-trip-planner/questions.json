@@ -1,0 +1,2082 @@
+[
+  {
+    "id": "q001_attraction_chemistry_confidence_in_a_private_setting_is_a_major_tu",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Confidence in the bedroom is a major turn-on."
+  },
+  {
+    "id": "q002_attraction_chemistry_playful_teasing_gets_me_excited",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Playful teasing gets me turned on."
+  },
+  {
+    "id": "q003_attraction_chemistry_strong_eye_contact_feels_sexy",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Strong eye contact feels sexy."
+  },
+  {
+    "id": "q004_attraction_chemistry_being_pursued_makes_me_feel_wanted",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Being pursued makes me feel wanted."
+  },
+  {
+    "id": "q005_attraction_chemistry_taking_the_lead_is_attractive_to_me",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Taking the lead is attractive to me."
+  },
+  {
+    "id": "q006_attraction_chemistry_a_seductive_voice_or_tone_turns_me_on",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "A seductive voice or tone turns me on."
+  },
+  {
+    "id": "q007_attraction_chemistry_bold_direct_desire_is_attractive",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Bold, direct desire is attractive."
+  },
+  {
+    "id": "q008_attraction_chemistry_a_slow_mysterious_build_up_is_attractive",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "A slow, mysterious build-up is attractive."
+  },
+  {
+    "id": "q009_attraction_chemistry_playful_confidence_is_more_attractive_than_pe",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Playful confidence is more attractive than perfection."
+  },
+  {
+    "id": "q010_attraction_chemistry_a_little_possessive_energy_can_be_sexy_when_i",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "A little possessive energy can be sexy when it feels mutual."
+  },
+  {
+    "id": "q011_attraction_chemistry_being_made_to_feel_irresistible_is_exciting",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Being made to feel irresistible is exciting."
+  },
+  {
+    "id": "q012_attraction_chemistry_flirty_tension_before_anything_physical_is_ho",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Flirty tension before anything physical is hot."
+  },
+  {
+    "id": "q013_attraction_chemistry_a_partner_who_knows_what_they_want_is_attract",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "A partner who knows what they want is attractive."
+  },
+  {
+    "id": "q014_attraction_chemistry_quiet_confidence_is_sexy_to_me",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Quiet confidence is sexy to me."
+  },
+  {
+    "id": "q015_attraction_chemistry_playful_smirks_and_subtle_looks_can_turn_me_o",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Playful smirks and subtle looks can turn me on."
+  },
+  {
+    "id": "q016_attraction_chemistry_feeling_chosen_and_wanted_increases_my_desire",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Feeling chosen and wanted increases my desire."
+  },
+  {
+    "id": "q017_attraction_chemistry_i_like_when_attraction_feels_obvious_without_",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "I like when attraction feels obvious without being forced."
+  },
+  {
+    "id": "q018_attraction_chemistry_being_complimented_in_a_flirtatious_way_gets_",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Being complimented in a flirtatious way gets my attention."
+  },
+  {
+    "id": "q019_attraction_chemistry_being_physically_admired_feels_exciting",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Being physically admired feels exciting."
+  },
+  {
+    "id": "q020_attraction_chemistry_mutual_chemistry_matters_more_than_a_perfect_",
+    "category": "Attraction & Chemistry",
+    "type": "attraction",
+    "text": "Mutual chemistry matters more than a perfect plan."
+  },
+  {
+    "id": "q021_kissing_touch_long_kissing_sessions_are_a_favorite",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Long kissing sessions are a favorite."
+  },
+  {
+    "id": "q022_kissing_touch_slow_kissing_before_anything_more_is_importan",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Slow kissing before anything more is important to me."
+  },
+  {
+    "id": "q023_kissing_touch_passionate_kissing_turns_me_on_quickly",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Passionate kissing turns me on quickly."
+  },
+  {
+    "id": "q024_kissing_touch_neck_kisses_are_a_major_turn_on",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Neck kisses are a major turn-on."
+  },
+  {
+    "id": "q025_kissing_touch_being_touched_slowly_feels_sexy",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Being touched slowly feels sexy."
+  },
+  {
+    "id": "q026_kissing_touch_playful_touching_and_teasing_excites_me",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Playful touching and teasing excites me."
+  },
+  {
+    "id": "q027_kissing_touch_gentle_touch_is_appealing_when_the_mood_is_in",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Gentle touch is appealing when the mood is intimate."
+  },
+  {
+    "id": "q028_kissing_touch_intense_touch_is_appealing_when_the_mood_is_r",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Intense touch is appealing when the mood is right."
+  },
+  {
+    "id": "q029_kissing_touch_massages_can_be_part_of_a_sexy_build_up",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Massages can be part of a sexy build-up."
+  },
+  {
+    "id": "q030_kissing_touch_physical_affection_throughout_the_day_turns_m",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Physical affection throughout the day turns me on."
+  },
+  {
+    "id": "q031_kissing_touch_private_affection_feels_more_exciting_than_pu",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Private affection feels more exciting than public affection."
+  },
+  {
+    "id": "q032_kissing_touch_light_public_affection_can_build_anticipation",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Light public affection can build anticipation."
+  },
+  {
+    "id": "q033_kissing_touch_being_pulled_close_feels_sexy",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Being pulled close feels sexy."
+  },
+  {
+    "id": "q034_kissing_touch_being_held_firmly_can_be_attractive_when_mutu",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Being held firmly can be attractive when mutual."
+  },
+  {
+    "id": "q035_kissing_touch_soft_touching_can_be_just_as_exciting_as_inte",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Soft touching can be just as exciting as intense touching."
+  },
+  {
+    "id": "q036_kissing_touch_i_like_touch_that_starts_innocent_and_becomes",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "I like touch that starts innocent and becomes suggestive."
+  },
+  {
+    "id": "q037_kissing_touch_having_my_hair_touched_or_played_with_feels_a",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Having my hair touched or played with feels appealing."
+  },
+  {
+    "id": "q038_kissing_touch_being_kissed_unexpectedly_is_exciting",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Being kissed unexpectedly is exciting."
+  },
+  {
+    "id": "q039_kissing_touch_taking_time_with_touch_matters_to_me",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "Taking time with touch matters to me."
+  },
+  {
+    "id": "q040_kissing_touch_i_like_when_touch_feels_intentional_instead_o",
+    "category": "Kissing & Touch",
+    "type": "affection",
+    "text": "I like when touch feels intentional instead of rushed."
+  },
+  {
+    "id": "q041_bedroom_energy_style_slow_and_romantic_is_an_ideal_pace_for_me",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "Slow and romantic is an ideal pace for me."
+  },
+  {
+    "id": "q042_bedroom_energy_style_playful_and_fun_bedroom_energy_appeals_to_me",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "Playful and fun bedroom energy appeals to me."
+  },
+  {
+    "id": "q043_bedroom_energy_style_passionate_and_intense_bedroom_energy_appeals",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "Passionate and intense bedroom energy appeals to me."
+  },
+  {
+    "id": "q044_bedroom_energy_style_spontaneous_moments_excite_me",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "Spontaneous sex excite me."
+  },
+  {
+    "id": "q045_bedroom_energy_style_planned_private_nights_can_be_very_sexy",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "Planned private nights can be very sexy."
+  },
+  {
+    "id": "q046_bedroom_energy_style_building_anticipation_for_hours_beforehand_is",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "Building anticipation for hours beforehand is exciting."
+  },
+  {
+    "id": "q047_bedroom_energy_style_i_like_a_mix_of_sweet_and_dirty_energy",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I like a mix of sweet and dirty energy."
+  },
+  {
+    "id": "q048_bedroom_energy_style_variety_is_important_to_keeping_things_exciti",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "Variety is important to keeping things exciting."
+  },
+  {
+    "id": "q049_bedroom_energy_style_familiar_favorites_done_really_well_are_attra",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "Familiar favorites done really well are attractive to me."
+  },
+  {
+    "id": "q050_bedroom_energy_style_i_enjoy_taking_turns_leading",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I enjoy taking turns leading."
+  },
+  {
+    "id": "q051_bedroom_energy_style_i_like_being_guided_by_the_other_person",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I like being guided by the other person."
+  },
+  {
+    "id": "q052_bedroom_energy_style_i_like_guiding_the_other_person",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I like guiding the other person."
+  },
+  {
+    "id": "q053_bedroom_energy_style_i_enjoy_teasing_before_giving_in",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I enjoy teasing before giving in."
+  },
+  {
+    "id": "q054_bedroom_energy_style_i_like_a_confident_take_charge_vibe",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I like a confident, take-charge vibe."
+  },
+  {
+    "id": "q055_bedroom_energy_style_i_enjoy_a_relaxed_pace_with_no_pressure",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I enjoy a relaxed pace with no pressure."
+  },
+  {
+    "id": "q056_bedroom_energy_style_i_like_when_private_time_feels_intentional_an",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I like when private time feels intentional and special."
+  },
+  {
+    "id": "q057_bedroom_energy_style_i_enjoy_switching_between_playful_and_serious",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I enjoy switching between playful and serious energy."
+  },
+  {
+    "id": "q058_bedroom_energy_style_i_like_when_the_mood_feels_luxurious_and_unhu",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I like when the mood feels luxurious and unhurried."
+  },
+  {
+    "id": "q059_bedroom_energy_style_i_enjoy_feeling_completely_focused_on_each_ot",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I enjoy feeling completely focused on each other."
+  },
+  {
+    "id": "q060_bedroom_energy_style_i_like_when_the_energy_changes_naturally_base",
+    "category": "Bedroom Energy & Style",
+    "type": "style",
+    "text": "I like when the energy changes naturally based on mood."
+  },
+  {
+    "id": "q061_communication_desire_flirty_texts_during_the_day_turn_me_on",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "Flirty texts during the day turn me on."
+  },
+  {
+    "id": "q062_communication_desire_voice_messages_can_feel_very_sexy",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "Voice messages can feel very sexy."
+  },
+  {
+    "id": "q063_communication_desire_i_like_being_told_exactly_what_someone_wants",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like being told exactly what someone wants."
+  },
+  {
+    "id": "q064_communication_desire_i_like_telling_someone_exactly_what_i_want",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like telling someone exactly what I want."
+  },
+  {
+    "id": "q065_communication_desire_i_enjoy_talking_about_fantasies_at_a_comforta",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I enjoy talking about fantasies at a comfortable pace."
+  },
+  {
+    "id": "q066_communication_desire_i_like_being_asked_what_feels_good",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like being asked what feels good."
+  },
+  {
+    "id": "q067_communication_desire_i_like_giving_feedback_in_the_moment",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like giving feedback in the moment."
+  },
+  {
+    "id": "q068_communication_desire_i_like_receiving_feedback_in_the_moment",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like receiving feedback in the moment."
+  },
+  {
+    "id": "q069_communication_desire_playful_sexting_when_apart_sounds_exciting",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "Playful sexting when apart sounds exciting."
+  },
+  {
+    "id": "q070_communication_desire_suggestive_photos_can_be_exciting_when_trust_",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "Suggestive photos can be exciting when trust is already there."
+  },
+  {
+    "id": "q071_communication_desire_building_anticipation_before_meeting_up_is_at",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "Building anticipation before meeting up is attractive."
+  },
+  {
+    "id": "q072_communication_desire_direct_invitations_are_sexier_than_vague_hint",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "Direct invitations are sexier than vague hints."
+  },
+  {
+    "id": "q073_communication_desire_i_like_being_complimented_during_intimate_mom",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like being complimented during intimate sex."
+  },
+  {
+    "id": "q074_communication_desire_i_like_giving_compliments_during_intimate_mom",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like giving compliments during intimate sex."
+  },
+  {
+    "id": "q075_communication_desire_checking_in_without_killing_the_mood_is_impor",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "Checking in without killing the mood is important to me."
+  },
+  {
+    "id": "q076_communication_desire_i_like_playful_code_words_or_private_jokes",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like playful code words or private jokes."
+  },
+  {
+    "id": "q077_communication_desire_i_enjoy_being_teased_through_messages_before_",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I enjoy being teased through messages before seeing someone."
+  },
+  {
+    "id": "q078_communication_desire_i_like_when_desire_is_communicated_clearly",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like when desire is communicated clearly."
+  },
+  {
+    "id": "q079_communication_desire_i_like_when_someone_remembers_what_i_said_i_e",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I like when someone remembers what I said I enjoy."
+  },
+  {
+    "id": "q080_communication_desire_i_enjoy_debriefing_favorite_moments_later_in_",
+    "category": "Communication & Desire",
+    "type": "desire",
+    "text": "I enjoy debriefing favorite moments later in a playful way."
+  },
+  {
+    "id": "q081_exploration_curiosity_trying_new_bedroom_ideas_together_sounds_exci",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Trying new bedroom ideas together sounds exciting."
+  },
+  {
+    "id": "q082_exploration_curiosity_fantasy_discussions_sound_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Fantasy discussions sound exciting."
+  },
+  {
+    "id": "q083_exploration_curiosity_romantic_roleplay_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Romantic roleplay sounds exciting."
+  },
+  {
+    "id": "q084_exploration_curiosity_playful_costumes_or_outfits_sound_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Playful costumes or outfits sound exciting."
+  },
+  {
+    "id": "q085_exploration_curiosity_using_toys_together_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Using toys together sounds exciting."
+  },
+  {
+    "id": "q086_exploration_curiosity_light_sensory_play_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Light sensory play sounds exciting."
+  },
+  {
+    "id": "q087_exploration_curiosity_blindfold_style_anticipation_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Blindfold-style anticipation sounds exciting."
+  },
+  {
+    "id": "q088_exploration_curiosity_taking_turns_being_in_control_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Taking turns being in control sounds exciting."
+  },
+  {
+    "id": "q089_exploration_curiosity_power_exchange_energy_sounds_exciting_when_mu",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Power-exchange energy sounds exciting when mutual."
+  },
+  {
+    "id": "q090_exploration_curiosity_being_more_dominant_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Being more dominant sounds exciting."
+  },
+  {
+    "id": "q091_exploration_curiosity_being_more_submissive_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Being more submissive sounds exciting."
+  },
+  {
+    "id": "q092_exploration_curiosity_switching_between_dominant_and_submissive_ene",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Switching between dominant and submissive energy sounds exciting."
+  },
+  {
+    "id": "q093_exploration_curiosity_exploring_praise_and_admiration_sounds_exciti",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Exploring praise and admiration sounds exciting."
+  },
+  {
+    "id": "q094_exploration_curiosity_exploring_teasing_and_delayed_gratification_s",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Exploring teasing and delayed gratification sounds exciting."
+  },
+  {
+    "id": "q095_exploration_curiosity_exploring_a_hotel_night_fantasy_sounds_exciti",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Exploring a hotel-night fantasy sounds exciting."
+  },
+  {
+    "id": "q096_exploration_curiosity_exploring_vacation_intimacy_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Exploring vacation intimacy sounds exciting."
+  },
+  {
+    "id": "q097_exploration_curiosity_exploring_a_spontaneous_quick_moment_sounds_e",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Exploring a spontaneous quick moment sounds exciting."
+  },
+  {
+    "id": "q098_exploration_curiosity_trying_a_new_position_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Trying a new position sounds exciting."
+  },
+  {
+    "id": "q099_exploration_curiosity_creating_a_shared_bedroom_bucket_list_sounds_",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Creating a shared bedroom bucket list sounds exciting."
+  },
+  {
+    "id": "q100_exploration_curiosity_revisiting_mutual_favorites_sounds_exciting",
+    "category": "Exploration & Curiosity",
+    "type": "exploration",
+    "text": "Revisiting mutual favorites sounds exciting."
+  },
+  {
+    "id": "q101_positions_pace_face_to_face_positions_feel_especially_intima",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Missionary feels especially intimate."
+  },
+  {
+    "id": "q102_positions_pace_positions_with_strong_eye_contact_are_appeali",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Positions with strong eye contact are appealing."
+  },
+  {
+    "id": "q103_positions_pace_positions_with_a_confident_lead_are_appealing",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Positions with a confident lead are appealing."
+  },
+  {
+    "id": "q104_positions_pace_positions_that_feel_slow_and_sensual_are_appe",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Positions that feel slow and sensual are appealing."
+  },
+  {
+    "id": "q105_positions_pace_positions_that_feel_intense_and_energetic_are",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Positions that feel intense and energetic are appealing."
+  },
+  {
+    "id": "q106_positions_pace_being_on_top_sounds_appealing",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Being on top sounds appealing."
+  },
+  {
+    "id": "q107_positions_pace_having_the_other_person_on_top_sounds_appeali",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Having the other person on top sounds appealing."
+  },
+  {
+    "id": "q108_positions_pace_standing_or_against_the_wall_energy_sounds_ap",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Standing or against-the-wall energy sounds appealing."
+  },
+  {
+    "id": "q109_positions_pace_lazy_morning_intimacy_sounds_appealing",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Lazy morning intimacy sounds appealing."
+  },
+  {
+    "id": "q110_positions_pace_long_drawn_out_sessions_sound_appealing",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Long, drawn-out sessions sound appealing."
+  },
+  {
+    "id": "q111_positions_pace_quick_heated_moments_sound_appealing",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Quick, heated sex sound appealing."
+  },
+  {
+    "id": "q112_positions_pace_changing_positions_often_sounds_appealing",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Changing positions often sounds appealing."
+  },
+  {
+    "id": "q113_positions_pace_taking_time_with_foreplay_is_important_to_me",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "Taking time with foreplay is important to me."
+  },
+  {
+    "id": "q114_positions_pace_i_enjoy_focusing_on_the_other_person_s_pleasu",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "I enjoy focusing on the other person’s pleasure."
+  },
+  {
+    "id": "q115_positions_pace_i_enjoy_when_my_pleasure_is_focused_on",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "I enjoy when my pleasure is focused on."
+  },
+  {
+    "id": "q116_positions_pace_i_like_learning_exactly_what_works_for_the_ot",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "I like learning exactly what works for the other person."
+  },
+  {
+    "id": "q117_positions_pace_i_like_being_shown_what_works_for_me",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "I like being shown what works for me."
+  },
+  {
+    "id": "q118_positions_pace_i_enjoy_a_slower_pleasure_focused_pace",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "I enjoy a slower pleasure-focused pace."
+  },
+  {
+    "id": "q119_positions_pace_i_enjoy_a_more_eager_hungry_energy",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "I enjoy a more eager, hungry energy."
+  },
+  {
+    "id": "q120_positions_pace_i_like_when_pleasure_feels_mutual_and_balance",
+    "category": "Positions & Pace",
+    "type": "style",
+    "text": "I like when pleasure feels mutual and balanced."
+  },
+  {
+    "id": "q121_praise_teasing_control_i_like_being_praised_for_what_i_do_well",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "I like being praised for what I do well."
+  },
+  {
+    "id": "q122_praise_teasing_control_i_like_giving_praise_when_something_feels_goo",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "I like giving praise when something feels good."
+  },
+  {
+    "id": "q123_praise_teasing_control_praise_focused_bedroom_energy_turns_me_on",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Praise-focused bedroom energy turns me on."
+  },
+  {
+    "id": "q124_praise_teasing_control_dirty_talk_turns_me_on",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Dirty talk turns me on."
+  },
+  {
+    "id": "q125_praise_teasing_control_light_roughness_sounds_exciting_when_mutual",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Light roughness sounds exciting when mutual."
+  },
+  {
+    "id": "q126_praise_teasing_control_hair_pulling_sounds_exciting_when_mutual",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Hair pulling sounds exciting when mutual."
+  },
+  {
+    "id": "q127_praise_teasing_control_being_pinned_down_sounds_exciting_when_mutual",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Being pinned down sounds exciting when mutual."
+  },
+  {
+    "id": "q128_praise_teasing_control_pinning_someone_down_sounds_exciting_when_mut",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Pinning someone down sounds exciting when mutual."
+  },
+  {
+    "id": "q129_praise_teasing_control_light_spanking_sounds_exciting_when_mutual",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Light spanking sounds exciting when mutual."
+  },
+  {
+    "id": "q130_praise_teasing_control_being_told_what_to_do_sounds_exciting_when_mu",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Being told what to do sounds exciting when mutual."
+  },
+  {
+    "id": "q131_praise_teasing_control_telling_someone_what_to_do_sounds_exciting_wh",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Telling someone what to do sounds exciting when mutual."
+  },
+  {
+    "id": "q132_praise_teasing_control_begging_or_being_begged_for_sounds_exciting",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Begging or being begged for sounds exciting."
+  },
+  {
+    "id": "q133_praise_teasing_control_jealous_or_possessive_fantasy_energy_sounds_e",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Jealous or possessive fantasy energy sounds exciting when clearly playful."
+  },
+  {
+    "id": "q134_praise_teasing_control_bossy_bedroom_energy_sounds_exciting",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Bossy bedroom energy sounds exciting."
+  },
+  {
+    "id": "q135_praise_teasing_control_soft_dominance_sounds_exciting",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Soft dominance sounds exciting."
+  },
+  {
+    "id": "q136_praise_teasing_control_bratty_teasing_sounds_exciting",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Bratty teasing sounds exciting."
+  },
+  {
+    "id": "q137_praise_teasing_control_being_rewarded_with_affection_sounds_exciting",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Being rewarded with affection sounds exciting."
+  },
+  {
+    "id": "q138_praise_teasing_control_playful_rules_sound_exciting_when_mutual",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Playful rules sound exciting when mutual."
+  },
+  {
+    "id": "q139_praise_teasing_control_being_challenged_in_a_flirtatious_way_sounds_",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Being challenged in a flirtatious way sounds exciting."
+  },
+  {
+    "id": "q140_praise_teasing_control_having_control_handed_over_to_me_sounds_excit",
+    "category": "Praise, Teasing & Control",
+    "type": "exploration",
+    "text": "Having control handed over to me sounds exciting."
+  },
+  {
+    "id": "q141_atmosphere_setting_luxury_hotel_energy_is_a_turn_on",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Luxury hotel energy is a turn-on."
+  },
+  {
+    "id": "q142_atmosphere_setting_vacation_intimacy_is_a_turn_on",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Vacation intimacy is a turn-on."
+  },
+  {
+    "id": "q143_atmosphere_setting_candlelight_and_music_set_the_mood_for_me",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Candlelight and music set the mood for me."
+  },
+  {
+    "id": "q144_atmosphere_setting_dim_lighting_feels_sexier_than_bright_lightin",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Dim lighting feels sexier than bright lighting."
+  },
+  {
+    "id": "q145_atmosphere_setting_dressing_up_for_a_private_night_feels_excitin",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Dressing up for a private night feels exciting."
+  },
+  {
+    "id": "q146_atmosphere_setting_a_clean_cozy_room_helps_me_relax_and_enjoy_it",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A clean, cozy room helps me relax and enjoy it."
+  },
+  {
+    "id": "q147_atmosphere_setting_a_dramatic_date_night_build_up_turns_me_on",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A dramatic date-night build-up turns me on."
+  },
+  {
+    "id": "q148_atmosphere_setting_a_shower_or_bath_setting_sounds_appealing",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A shower or bath setting sounds appealing."
+  },
+  {
+    "id": "q149_atmosphere_setting_a_weekend_getaway_atmosphere_sounds_appealing",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A weekend getaway atmosphere sounds appealing."
+  },
+  {
+    "id": "q150_atmosphere_setting_a_private_cabin_or_secluded_stay_sounds_appea",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A private cabin or secluded stay sounds appealing."
+  },
+  {
+    "id": "q151_atmosphere_setting_a_spontaneous_private_moment_away_from_routin",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A spontaneous private moment away from routine sounds appealing."
+  },
+  {
+    "id": "q152_atmosphere_setting_a_slow_night_with_drinks_and_flirting_sounds_",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A slow night with drinks and flirting sounds appealing."
+  },
+  {
+    "id": "q153_atmosphere_setting_a_movie_night_build_up_sounds_appealing",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A movie-night build-up sounds appealing."
+  },
+  {
+    "id": "q154_atmosphere_setting_fresh_sheets_and_a_prepared_room_feel_sexy_to",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Fresh sheets and a prepared room feel sexy to me."
+  },
+  {
+    "id": "q155_atmosphere_setting_music_can_make_the_mood_much_better",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Music can make the mood much better."
+  },
+  {
+    "id": "q156_atmosphere_setting_soft_lighting_helps_me_feel_more_comfortable",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Soft lighting helps me feel more comfortable."
+  },
+  {
+    "id": "q157_atmosphere_setting_a_playful_surprise_setting_sounds_exciting",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A playful surprise setting sounds exciting."
+  },
+  {
+    "id": "q158_atmosphere_setting_a_romantic_dinner_leading_into_private_time_s",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A romantic dinner leading into private time sounds appealing."
+  },
+  {
+    "id": "q159_atmosphere_setting_getting_ready_separately_and_then_revealing_t",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "Getting ready separately and then revealing the look sounds exciting."
+  },
+  {
+    "id": "q160_atmosphere_setting_a_no_phone_private_night_sounds_appealing",
+    "category": "Atmosphere & Setting",
+    "type": "attraction",
+    "text": "A no-phone private night sounds appealing."
+  },
+  {
+    "id": "q161_frequency_initiation_flirting_throughout_the_day_is_something_i_wa",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "Flirting throughout the day is something I want."
+  },
+  {
+    "id": "q162_frequency_initiation_bedroom_connection_several_times_a_week_sound",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "Bedroom connection several times a week sounds ideal."
+  },
+  {
+    "id": "q163_frequency_initiation_morning_intimacy_sounds_ideal",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "Morning intimacy sounds ideal."
+  },
+  {
+    "id": "q164_frequency_initiation_nighttime_intimacy_sounds_ideal",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "Nighttime intimacy sounds ideal."
+  },
+  {
+    "id": "q165_frequency_initiation_spontaneous_initiation_is_something_i_want",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "Spontaneous initiation is something I want."
+  },
+  {
+    "id": "q166_frequency_initiation_planned_intimate_nights_are_something_i_want",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "Planned intimate nights are something I want."
+  },
+  {
+    "id": "q167_frequency_initiation_i_like_initiating",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like initiating."
+  },
+  {
+    "id": "q168_frequency_initiation_i_like_being_initiated_toward",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like being initiated toward."
+  },
+  {
+    "id": "q169_frequency_initiation_i_enjoy_being_surprised_with_desire",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I enjoy being surprised with desire."
+  },
+  {
+    "id": "q170_frequency_initiation_i_enjoy_surprising_someone_with_desire",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I enjoy surprising someone with desire."
+  },
+  {
+    "id": "q171_frequency_initiation_i_like_slow_build_ups_more_than_sudden_starts",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like slow build-ups more than sudden starts."
+  },
+  {
+    "id": "q172_frequency_initiation_i_like_sudden_sparks_when_the_chemistry_is_th",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like sudden sparks when the chemistry is there."
+  },
+  {
+    "id": "q173_frequency_initiation_i_prefer_clear_signals_over_guessing",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I prefer clear signals over guessing."
+  },
+  {
+    "id": "q174_frequency_initiation_i_like_when_both_people_take_turns_starting_t",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like when both people take turns starting things."
+  },
+  {
+    "id": "q175_frequency_initiation_i_enjoy_playful_invitations",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I enjoy playful invitations."
+  },
+  {
+    "id": "q176_frequency_initiation_i_enjoy_bold_invitations",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I enjoy bold invitations."
+  },
+  {
+    "id": "q177_frequency_initiation_i_like_private_time_after_a_good_date",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like private time after a good date."
+  },
+  {
+    "id": "q178_frequency_initiation_i_like_private_time_after_a_stressful_day_to_",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like sex after a stressful day to reconnect."
+  },
+  {
+    "id": "q179_frequency_initiation_i_like_a_steady_rhythm_of_affection_and_desir",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like a steady rhythm of affection and desire."
+  },
+  {
+    "id": "q180_frequency_initiation_i_like_leaving_room_for_spontaneous_mood_chan",
+    "category": "Frequency & Initiation",
+    "type": "frequency",
+    "text": "I like leaving room for spontaneous mood changes."
+  },
+  {
+    "id": "q181_past_experience_comfort_i_have_enjoyed_trying_new_positions",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed trying new positions."
+  },
+  {
+    "id": "q182_past_experience_comfort_i_have_enjoyed_using_toys_or_accessories",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed using toys or accessories."
+  },
+  {
+    "id": "q183_past_experience_comfort_i_have_enjoyed_roleplay_or_fantasy_themes",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed roleplay or fantasy themes."
+  },
+  {
+    "id": "q184_past_experience_comfort_i_have_enjoyed_dirty_talk",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed dirty talk."
+  },
+  {
+    "id": "q185_past_experience_comfort_i_have_enjoyed_power_dynamic_play",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed power-dynamic play."
+  },
+  {
+    "id": "q186_past_experience_comfort_i_have_enjoyed_praise_focused_energy",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed praise-focused energy."
+  },
+  {
+    "id": "q187_past_experience_comfort_i_have_enjoyed_rougher_energy_when_mutual",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed rougher energy when mutual."
+  },
+  {
+    "id": "q188_past_experience_comfort_i_have_enjoyed_slow_romantic_intimacy",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed slow romantic sex."
+  },
+  {
+    "id": "q189_past_experience_comfort_i_have_enjoyed_spontaneous_moments",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed spontaneous sex."
+  },
+  {
+    "id": "q190_past_experience_comfort_i_have_enjoyed_planned_private_nights",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed planned private nights."
+  },
+  {
+    "id": "q191_past_experience_comfort_i_have_enjoyed_lingerie_or_outfit_focused_mom",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed lingerie or outfit-focused sex."
+  },
+  {
+    "id": "q192_past_experience_comfort_i_have_enjoyed_fantasy_discussions",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed fantasy discussions."
+  },
+  {
+    "id": "q193_past_experience_comfort_i_have_enjoyed_playful_teasing",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed playful teasing."
+  },
+  {
+    "id": "q194_past_experience_comfort_i_have_enjoyed_long_kissing_focused_sessions",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed long kissing-focused sessions."
+  },
+  {
+    "id": "q195_past_experience_comfort_i_have_enjoyed_giving_direct_feedback",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed giving direct feedback."
+  },
+  {
+    "id": "q196_past_experience_comfort_i_have_enjoyed_receiving_direct_feedback",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed receiving direct feedback."
+  },
+  {
+    "id": "q197_past_experience_comfort_i_have_enjoyed_taking_the_lead",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed taking the lead."
+  },
+  {
+    "id": "q198_past_experience_comfort_i_have_enjoyed_letting_someone_else_lead",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed letting someone else lead."
+  },
+  {
+    "id": "q199_past_experience_comfort_i_have_enjoyed_trying_something_once_just_to_",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed trying something once just to see."
+  },
+  {
+    "id": "q200_past_experience_comfort_i_have_enjoyed_creating_repeat_favorites",
+    "category": "Past Experience & Comfort",
+    "type": "experience",
+    "text": "I have enjoyed creating repeat favorites."
+  },
+  {
+    "id": "q201_appearance_fashion_a_partner_wearing_lingerie_is_attractive_to_m",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "A partner wearing lingerie is attractive to me."
+  },
+  {
+    "id": "q202_appearance_fashion_a_partner_dressing_up_for_a_private_night_is_",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "A partner dressing up for a private night is attractive to me."
+  },
+  {
+    "id": "q203_appearance_fashion_stockings_or_thigh_highs_are_attractive_to_me",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Stockings or thigh-highs are attractive to me."
+  },
+  {
+    "id": "q204_appearance_fashion_heels_are_attractive_to_me",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Heels are attractive to me."
+  },
+  {
+    "id": "q205_appearance_fashion_seeing_a_partner_in_nothing_but_a_shirt_is_at",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Seeing a partner in nothing but a shirt is attractive to me."
+  },
+  {
+    "id": "q206_appearance_fashion_matching_or_themed_outfits_sound_fun",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Matching or themed outfits sound fun."
+  },
+  {
+    "id": "q207_appearance_fashion_watching_a_partner_get_dressed_up_is_exciting",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Watching a partner get dressed up is exciting."
+  },
+  {
+    "id": "q208_appearance_fashion_watching_a_partner_slowly_reveal_their_outfit",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Watching a partner slowly reveal their outfit is exciting."
+  },
+  {
+    "id": "q209_appearance_fashion_a_partner_taking_extra_effort_with_appearance",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "A partner taking extra effort with appearance is a turn-on."
+  },
+  {
+    "id": "q210_appearance_fashion_cosplay_style_outfits_sound_fun",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Cosplay-style outfits sound fun."
+  },
+  {
+    "id": "q211_appearance_fashion_uniform_inspired_outfits_are_attractive_to_me",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Uniform-inspired outfits are attractive to me."
+  },
+  {
+    "id": "q212_appearance_fashion_a_partner_modeling_different_outfits_sounds_e",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "A partner modeling different outfits sounds exciting."
+  },
+  {
+    "id": "q213_appearance_fashion_lingerie_shopping_together_sounds_fun",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Lingerie shopping together sounds fun."
+  },
+  {
+    "id": "q214_appearance_fashion_revealing_but_tasteful_outfits_are_attractive",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Revealing but tasteful outfits are attractive to me."
+  },
+  {
+    "id": "q215_appearance_fashion_surprise_outfit_reveals_are_exciting",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Surprise outfit reveals are exciting."
+  },
+  {
+    "id": "q216_appearance_fashion_leather_inspired_fashion_is_attractive_to_me",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Leather-inspired fashion is attractive to me."
+  },
+  {
+    "id": "q217_appearance_fashion_lace_is_attractive_to_me",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Lace is attractive to me."
+  },
+  {
+    "id": "q218_appearance_fashion_silk_or_satin_is_attractive_to_me",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Silk or satin is attractive to me."
+  },
+  {
+    "id": "q219_appearance_fashion_a_partner_wearing_my_favorite_color_is_attrac",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "A partner wearing my favorite color is attractive to me."
+  },
+  {
+    "id": "q220_appearance_fashion_dressing_specifically_to_impress_a_partner_is",
+    "category": "Appearance & Fashion",
+    "type": "attraction",
+    "text": "Dressing specifically to impress a partner is attractive to me."
+  },
+  {
+    "id": "q221_power_dynamics_roles_taking_charge_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Taking charge sounds exciting."
+  },
+  {
+    "id": "q222_power_dynamics_roles_being_guided_by_a_partner_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Being guided by a partner sounds exciting."
+  },
+  {
+    "id": "q223_power_dynamics_roles_switching_roles_depending_on_mood_sounds_exci",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Switching roles depending on mood sounds exciting."
+  },
+  {
+    "id": "q224_power_dynamics_roles_being_given_instructions_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Being given instructions sounds exciting."
+  },
+  {
+    "id": "q225_power_dynamics_roles_giving_instructions_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Giving instructions sounds exciting."
+  },
+  {
+    "id": "q226_power_dynamics_roles_earning_praise_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Earning praise sounds exciting."
+  },
+  {
+    "id": "q227_power_dynamics_roles_giving_praise_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Giving praise sounds exciting."
+  },
+  {
+    "id": "q228_power_dynamics_roles_playful_obedience_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Playful obedience sounds exciting."
+  },
+  {
+    "id": "q229_power_dynamics_roles_playful_rebellion_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Playful rebellion sounds exciting."
+  },
+  {
+    "id": "q230_power_dynamics_roles_bratty_teasing_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Bratty back-and-forth energy sounds exciting."
+  },
+  {
+    "id": "q231_power_dynamics_roles_playful_power_exchanges_sound_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Playful power exchanges sound exciting."
+  },
+  {
+    "id": "q232_power_dynamics_roles_taking_control_of_a_situation_sounds_exciting",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Taking control of a situation sounds exciting."
+  },
+  {
+    "id": "q233_power_dynamics_roles_having_a_partner_confidently_take_control_sou",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Having a partner confidently take control sounds exciting."
+  },
+  {
+    "id": "q234_power_dynamics_roles_being_gently_spoiled_sounds_appealing",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Being gently spoiled sounds appealing."
+  },
+  {
+    "id": "q235_power_dynamics_roles_spoiling_a_partner_sounds_appealing",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Spoiling a partner sounds appealing."
+  },
+  {
+    "id": "q236_power_dynamics_roles_being_the_center_of_attention_sounds_appealin",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Being the center of attention sounds appealing."
+  },
+  {
+    "id": "q237_power_dynamics_roles_making_a_partner_feel_desired_sounds_appealin",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Making a partner feel desired sounds appealing."
+  },
+  {
+    "id": "q238_power_dynamics_roles_role_based_dynamics_sound_interesting_to_expl",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Role-based dynamics sound interesting to explore."
+  },
+  {
+    "id": "q239_power_dynamics_roles_negotiated_control_sounds_appealing_when_trus",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Negotiated control sounds appealing when trust is strong."
+  },
+  {
+    "id": "q240_power_dynamics_roles_switching_between_soft_and_intense_roles_soun",
+    "category": "Power Dynamics & Roles",
+    "type": "exploration",
+    "text": "Switching between soft and intense roles sounds exciting."
+  },
+  {
+    "id": "q241_fantasy_scenario_play_trying_something_completely_new_sounds_exciti",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Trying something completely new sounds exciting."
+  },
+  {
+    "id": "q242_fantasy_scenario_play_exploring_fantasies_together_sounds_exciting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Exploring fantasies together sounds exciting."
+  },
+  {
+    "id": "q243_fantasy_scenario_play_sharing_private_fantasies_sounds_exciting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Sharing private fantasies sounds exciting."
+  },
+  {
+    "id": "q244_fantasy_scenario_play_discussing_bucket_list_experiences_sounds_exc",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Discussing bucket-list experiences sounds exciting."
+  },
+  {
+    "id": "q245_fantasy_scenario_play_fantasy_roleplay_sounds_exciting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Fantasy roleplay sounds exciting."
+  },
+  {
+    "id": "q246_fantasy_scenario_play_character_roleplay_sounds_exciting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Character roleplay sounds exciting."
+  },
+  {
+    "id": "q247_fantasy_scenario_play_romantic_roleplay_sounds_exciting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Soft romantic scenario play sounds exciting."
+  },
+  {
+    "id": "q248_fantasy_scenario_play_adventure_themed_roleplay_sounds_exciting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Adventure-themed roleplay sounds exciting."
+  },
+  {
+    "id": "q249_fantasy_scenario_play_light_restraint_themes_sound_interesting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Light restraint themes sound interesting."
+  },
+  {
+    "id": "q250_fantasy_scenario_play_blindfold_themes_sound_interesting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Blindfold themes sound interesting."
+  },
+  {
+    "id": "q251_fantasy_scenario_play_sensory_play_themes_sound_interesting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Sensory-play themes sound interesting."
+  },
+  {
+    "id": "q252_fantasy_scenario_play_temperature_play_themes_sound_interesting",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Temperature-play themes sound interesting."
+  },
+  {
+    "id": "q253_fantasy_scenario_play_watching_a_partner_take_the_lead_sounds_excit",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Watching a partner take the lead sounds exciting."
+  },
+  {
+    "id": "q254_fantasy_scenario_play_being_the_one_who_takes_the_lead_sounds_excit",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Being the one who takes the lead sounds exciting."
+  },
+  {
+    "id": "q255_fantasy_scenario_play_exploring_strap_on_or_pegging_curiosity_sound",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Exploring strap-on or pegging curiosity sounds interesting."
+  },
+  {
+    "id": "q256_fantasy_scenario_play_watching_a_partner_explore_a_fantasy_sounds_e",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Watching a partner explore a fantasy sounds exciting."
+  },
+  {
+    "id": "q257_fantasy_scenario_play_trying_a_fantasy_at_least_once_sounds_appeali",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Trying a fantasy at least once sounds appealing."
+  },
+  {
+    "id": "q258_fantasy_scenario_play_building_anticipation_over_several_days_sound",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Building anticipation over several days sounds exciting."
+  },
+  {
+    "id": "q259_fantasy_scenario_play_having_a_shared_fantasy_checklist_sounds_appe",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Having a shared fantasy checklist sounds appealing."
+  },
+  {
+    "id": "q260_fantasy_scenario_play_regularly_exploring_new_experiences_together_",
+    "category": "Fantasy & Scenario Play",
+    "type": "exploration",
+    "text": "Regularly exploring new experiences together sounds appealing."
+  },
+  {
+    "id": "q261_toys_accessories_play_adding_a_toy_into_private_time_sounds_excitin",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Adding a toy into sex sounds exciting."
+  },
+  {
+    "id": "q262_toys_accessories_play_letting_a_partner_choose_an_accessory_sounds_",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Letting a partner choose an accessory sounds exciting."
+  },
+  {
+    "id": "q263_toys_accessories_play_choosing_an_accessory_for_a_partner_sounds_ex",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Choosing an accessory for a partner sounds exciting."
+  },
+  {
+    "id": "q264_toys_accessories_play_using_massage_oil_sounds_appealing",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using massage oil sounds appealing."
+  },
+  {
+    "id": "q265_toys_accessories_play_using_blindfolds_for_anticipation_sounds_appe",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using blindfolds for anticipation sounds appealing."
+  },
+  {
+    "id": "q266_toys_accessories_play_using_soft_restraints_sounds_appealing_when_m",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using soft restraints sounds appealing when mutual."
+  },
+  {
+    "id": "q267_toys_accessories_play_using_mirrors_or_visual_play_sounds_appealing",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using mirrors or visual play sounds appealing."
+  },
+  {
+    "id": "q268_toys_accessories_play_using_music_to_guide_the_mood_sounds_appealin",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using music to guide the mood sounds appealing."
+  },
+  {
+    "id": "q269_toys_accessories_play_using_lingerie_as_part_of_the_experience_soun",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using lingerie as part of the experience sounds appealing."
+  },
+  {
+    "id": "q270_toys_accessories_play_using_costumes_as_part_of_the_experience_soun",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using costumes as part of the experience sounds appealing."
+  },
+  {
+    "id": "q271_toys_accessories_play_using_playful_props_sounds_appealing",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using playful props sounds appealing."
+  },
+  {
+    "id": "q272_toys_accessories_play_using_a_shared_yes_maybe_no_list_sounds_appea",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Using a shared yes/maybe/no list sounds appealing."
+  },
+  {
+    "id": "q273_toys_accessories_play_trying_a_new_accessory_once_sounds_appealing",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Trying a new accessory once sounds appealing."
+  },
+  {
+    "id": "q274_toys_accessories_play_keeping_a_favorites_drawer_sounds_appealing",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Keeping a favorites drawer sounds appealing."
+  },
+  {
+    "id": "q275_toys_accessories_play_surprising_a_partner_with_something_new_sound",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Surprising a partner with something new sounds appealing."
+  },
+  {
+    "id": "q276_toys_accessories_play_being_surprised_with_something_new_sounds_app",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Being surprised with something new sounds appealing."
+  },
+  {
+    "id": "q277_toys_accessories_play_browsing_adult_items_together_sounds_appealin",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Browsing adult items together sounds appealing."
+  },
+  {
+    "id": "q278_toys_accessories_play_sending_a_partner_a_link_to_something_interes",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Sending a partner a link to something interesting sounds appealing."
+  },
+  {
+    "id": "q279_toys_accessories_play_saving_ideas_for_later_sounds_appealing",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Saving ideas for later sounds appealing."
+  },
+  {
+    "id": "q280_toys_accessories_play_building_a_private_wishlist_sounds_appealing",
+    "category": "Toys, Accessories & Play",
+    "type": "exploration",
+    "text": "Building a private wishlist sounds appealing."
+  },
+  {
+    "id": "q281_afterglow_repeat_favorites_afterward_cuddling_makes_the_whole_experience",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "After sex cuddling makes the whole experience better."
+  },
+  {
+    "id": "q282_afterglow_repeat_favorites_talking_about_favorite_moments_afterward_soun",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "Talking about favorite moments after sex sounds nice."
+  },
+  {
+    "id": "q283_afterglow_repeat_favorites_falling_asleep_close_afterward_is_ideal",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "Falling asleep close after sex is ideal."
+  },
+  {
+    "id": "q284_afterglow_repeat_favorites_i_like_repeating_what_worked_best",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like repeating what worked best."
+  },
+  {
+    "id": "q285_afterglow_repeat_favorites_i_like_saving_shared_favorites_for_next_time",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like saving shared favorites for next time."
+  },
+  {
+    "id": "q286_afterglow_repeat_favorites_i_like_playful_comments_afterward",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like playful comments after sex."
+  },
+  {
+    "id": "q287_afterglow_repeat_favorites_i_like_being_reassured_that_the_other_person_",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like being reassured that the other person enjoyed it."
+  },
+  {
+    "id": "q288_afterglow_repeat_favorites_i_like_giving_reassurance_that_i_enjoyed_it",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like giving reassurance that I enjoyed it."
+  },
+  {
+    "id": "q289_afterglow_repeat_favorites_i_like_laughing_together_afterward",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like laughing together after sex."
+  },
+  {
+    "id": "q290_afterglow_repeat_favorites_i_like_quiet_closeness_afterward",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like quiet closeness after sex."
+  },
+  {
+    "id": "q291_afterglow_repeat_favorites_i_like_a_shower_together_afterward",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like a shower together after sex."
+  },
+  {
+    "id": "q292_afterglow_repeat_favorites_i_like_snacks_or_drinks_afterward",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like snacks or drinks after sex."
+  },
+  {
+    "id": "q293_afterglow_repeat_favorites_i_like_checking_in_about_what_felt_best",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like checking in about what felt best."
+  },
+  {
+    "id": "q294_afterglow_repeat_favorites_i_like_remembering_favorite_moments_later",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like remembering favorite moments later."
+  },
+  {
+    "id": "q295_afterglow_repeat_favorites_i_like_turning_favorite_moments_into_future_p",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like turning favorite moments into future plans."
+  },
+  {
+    "id": "q296_afterglow_repeat_favorites_i_like_knowing_what_the_other_person_wants_re",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like knowing what the other person wants repeated."
+  },
+  {
+    "id": "q297_afterglow_repeat_favorites_i_like_being_asked_what_i_want_repeated",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like being asked what I want repeated."
+  },
+  {
+    "id": "q298_afterglow_repeat_favorites_i_like_a_sweet_message_later_after_private_ti",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like a sweet message later after sex."
+  },
+  {
+    "id": "q299_afterglow_repeat_favorites_i_like_playful_teasing_later_about_what_happe",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like playful teasing later about what happened during sex."
+  },
+  {
+    "id": "q300_afterglow_repeat_favorites_i_like_ending_private_time_feeling_wanted_and",
+    "category": "Afterglow & Repeat Favorites",
+    "type": "affection",
+    "text": "I like sex ending feeling wanted and safe."
+  },
+  {
+    "id": "q301_custom_advanced_section_a_custom_01",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-01 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q302_custom_advanced_section_a_custom_02",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-02 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q303_custom_advanced_section_a_custom_03",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-03 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q304_custom_advanced_section_a_custom_04",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-04 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q305_custom_advanced_section_a_custom_05",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-05 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q306_custom_advanced_section_a_custom_06",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-06 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q307_custom_advanced_section_a_custom_07",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-07 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q308_custom_advanced_section_a_custom_08",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-08 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q309_custom_advanced_section_a_custom_09",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-09 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q310_custom_advanced_section_a_custom_10",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-10 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q311_custom_advanced_section_a_custom_11",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-11 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q312_custom_advanced_section_a_custom_12",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-12 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q313_custom_advanced_section_a_custom_13",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-13 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q314_custom_advanced_section_a_custom_14",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-14 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q315_custom_advanced_section_a_custom_15",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-15 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q316_custom_advanced_section_a_custom_16",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-16 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q317_custom_advanced_section_a_custom_17",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-17 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q318_custom_advanced_section_a_custom_18",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-18 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q319_custom_advanced_section_a_custom_19",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-19 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q320_custom_advanced_section_a_custom_20",
+    "category": "Custom Advanced Section A",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM A-20 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q321_custom_advanced_section_b_custom_01",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-01 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q322_custom_advanced_section_b_custom_02",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-02 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q323_custom_advanced_section_b_custom_03",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-03 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q324_custom_advanced_section_b_custom_04",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-04 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q325_custom_advanced_section_b_custom_05",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-05 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q326_custom_advanced_section_b_custom_06",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-06 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q327_custom_advanced_section_b_custom_07",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-07 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q328_custom_advanced_section_b_custom_08",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-08 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q329_custom_advanced_section_b_custom_09",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-09 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q330_custom_advanced_section_b_custom_10",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-10 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q331_custom_advanced_section_b_custom_11",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-11 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q332_custom_advanced_section_b_custom_12",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-12 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q333_custom_advanced_section_b_custom_13",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-13 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q334_custom_advanced_section_b_custom_14",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-14 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q335_custom_advanced_section_b_custom_15",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-15 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q336_custom_advanced_section_b_custom_16",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-16 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q337_custom_advanced_section_b_custom_17",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-17 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q338_custom_advanced_section_b_custom_18",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-18 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q339_custom_advanced_section_b_custom_19",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-19 — replace this with your own private adult compatibility prompt.]"
+  },
+  {
+    "id": "q340_custom_advanced_section_b_custom_20",
+    "category": "Custom Advanced Section B",
+    "type": "exploration",
+    "custom": true,
+    "text": "[CUSTOM B-20 — replace this with your own private adult compatibility prompt.]"
+  }
+]

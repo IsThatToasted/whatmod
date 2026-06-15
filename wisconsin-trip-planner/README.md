@@ -1,20 +1,48 @@
 # Bedroom Connection Builder
 
-Private one-on-one adult bedroom compatibility builder using Supabase Auth, Supabase tables, realtime sync, and static GitHub Pages hosting.
+Private one-on-one bedroom compatibility builder using Google login + Supabase.
 
-## Deploy
+## What changed in this version
 
-1. Upload these files to your GitHub Pages directory.
-2. Keep `config.js` with your Supabase URL and publishable/anon key.
-3. Run `supabase-schema.sql` in the Supabase SQL editor if you have not already.
-4. In Supabase Auth, add your GitHub Pages URL to allowed redirect URLs.
-5. Hard refresh the deployed page with `Ctrl + Shift + R`.
+- Keeps the existing Supabase config, auth, profiles, sessions, invite links, answers, and realtime sync.
+- Moves all questions into `questions.json` so you can edit content without touching app logic.
+- Adds collapsible category sections with per-section progress.
+- Expands the question set to 340 total prompts.
+- Includes two custom placeholder sections you can replace with your own private prompts.
+- Uses safer separate Supabase queries instead of embedded joins.
 
-## Notes
+## Files
 
-- Existing table names are preserved: `bcc_profiles`, `bcc_sessions`, `bcc_session_members`, `bcc_answers`.
-- No embedded Supabase joins are used; this avoids schema-cache relationship errors.
-- The app includes 140 adult bedroom compatibility questions.
-- Each user signs in separately with Google.
-- Invite links are one-on-one. A third user is blocked by the app and schema trigger.
-- Results reveal after both users answer all questions.
+- `index.html` — app shell
+- `styles.css` — dark luxury theme and collapsible sections
+- `app.js` — auth, session, realtime, scoring, UI rendering
+- `questions.json` — editable question bank
+- `config.js` — your Supabase config
+- `supabase-schema.sql` — database schema
+
+## Editing questions
+
+Open `questions.json`. Each question has:
+
+```json
+{
+  "id": "q001_example",
+  "category": "Attraction & Chemistry",
+  "type": "attraction",
+  "text": "Your question text here."
+}
+```
+
+Keep each `id` unique. The `type` controls the answer buttons. Supported types:
+
+- `attraction`
+- `affection`
+- `style`
+- `desire`
+- `exploration`
+- `experience`
+- `frequency`
+
+## Important
+
+If you replace placeholders with new questions, keep the IDs stable after people start answering, or old saved answers will no longer line up with those prompts.
