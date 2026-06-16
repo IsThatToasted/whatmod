@@ -30,12 +30,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 20.21,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 103,
@@ -69,12 +69,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 10.74,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 216,
@@ -105,12 +105,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 13.97,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 1343,
@@ -145,12 +145,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 29.48,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 1353,
@@ -185,12 +185,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 28.0,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1351,
@@ -227,12 +227,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 9.0,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
-    "pricePointSort": 0,
-    "pricePointStep": 13,
-    "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 101,
@@ -263,12 +263,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 5.0,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
+    "pricePoint": "$0-$9 Price Point",
+    "pricePointLabel": "$0-$9 Price Point",
     "pricePointSort": 0,
-    "pricePointStep": 13,
+    "pricePointStep": 10,
     "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePointMax": 9
   },
   {
     "id": 1388,
@@ -299,12 +299,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 20.48,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 15,
@@ -338,12 +338,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 9.15,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
-    "pricePointSort": 0,
-    "pricePointStep": 13,
-    "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 14,
@@ -376,12 +376,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 10.31,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 16,
@@ -412,12 +412,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 12.75,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 13,
@@ -450,12 +450,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 5.0,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
+    "pricePoint": "$0-$9 Price Point",
+    "pricePointLabel": "$0-$9 Price Point",
     "pricePointSort": 0,
-    "pricePointStep": 13,
+    "pricePointStep": 10,
     "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePointMax": 9
   },
   {
     "id": 1331,
@@ -486,12 +486,12 @@
     "reversiblePocketClip": "",
     "notes": "Split from item #21",
     "stackTotalCost": 8.38,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
-    "pricePointSort": 0,
-    "pricePointStep": 13,
-    "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 1330,
@@ -522,12 +522,12 @@
     "reversiblePocketClip": "",
     "notes": "Split from item #21",
     "stackTotalCost": 8.38,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
-    "pricePointSort": 0,
-    "pricePointStep": 13,
-    "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 65,
@@ -562,12 +562,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 18.95,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 26,
@@ -600,12 +600,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 21.0,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 108,
@@ -639,12 +639,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 25.86,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1369,
@@ -677,12 +677,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 24.44,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1342,
@@ -716,12 +716,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 25.87,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1355,
@@ -755,12 +755,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 19.87,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 1382,
@@ -791,12 +791,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 30.28,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 1380,
@@ -830,12 +830,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 21.0,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 1381,
@@ -869,12 +869,12 @@
     "reversiblePocketClip": "No",
     "notes": "",
     "stackTotalCost": 70.71000000000001,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 30,
@@ -913,12 +913,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 42.58,
-    "pricePoint": "$52-$64 Price Point",
-    "pricePointLabel": "$52-$64 Price Point",
-    "pricePointSort": 52,
-    "pricePointStep": 13,
-    "pricePointMin": 52,
-    "pricePointMax": 64
+    "pricePoint": "$50-$59 Price Point",
+    "pricePointLabel": "$50-$59 Price Point",
+    "pricePointSort": 50,
+    "pricePointStep": 10,
+    "pricePointMin": 50,
+    "pricePointMax": 59
   },
   {
     "id": 1341,
@@ -952,12 +952,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 57.43,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 1383,
@@ -990,12 +990,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 36.8,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$50-$59 Price Point",
+    "pricePointLabel": "$50-$59 Price Point",
+    "pricePointSort": 50,
+    "pricePointStep": 10,
+    "pricePointMin": 50,
+    "pricePointMax": 59
   },
   {
     "id": 1390,
@@ -1029,12 +1029,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 15.0,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 290,
@@ -1065,12 +1065,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 19.79,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 334,
@@ -1101,12 +1101,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 11.66,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 333,
@@ -1139,12 +1139,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 23.0,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 332,
@@ -1177,12 +1177,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 12.0,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 106,
@@ -1215,12 +1215,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 21.15,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 107,
@@ -1255,12 +1255,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 21.75,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 102,
@@ -1293,12 +1293,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 4.35,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
+    "pricePoint": "$0-$9 Price Point",
+    "pricePointLabel": "$0-$9 Price Point",
     "pricePointSort": 0,
-    "pricePointStep": 13,
+    "pricePointStep": 10,
     "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePointMax": 9
   },
   {
     "id": 1378,
@@ -1331,12 +1331,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 27.0,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 35,
@@ -1373,12 +1373,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 27.75,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 34,
@@ -1412,12 +1412,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged duplicate item #1363 (no barcode)",
     "stackTotalCost": 41.459999999999994,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 1365,
@@ -1452,12 +1452,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged into item #1360 on 2026-06-08 18:22:22.",
     "stackTotalCost": 25.75,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1,
@@ -1495,12 +1495,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged duplicate item #27 (087171054735)",
     "stackTotalCost": 70.96,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1364,
@@ -1535,12 +1535,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged into item #1360 on 2026-06-08 18:22:22.",
     "stackTotalCost": 27.15,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 20,
@@ -1575,12 +1575,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 42.68,
-    "pricePoint": "$52-$64 Price Point",
-    "pricePointLabel": "$52-$64 Price Point",
-    "pricePointSort": 52,
-    "pricePointStep": 13,
-    "pricePointMin": 52,
-    "pricePointMax": 64
+    "pricePoint": "$50-$59 Price Point",
+    "pricePointLabel": "$50-$59 Price Point",
+    "pricePointSort": 50,
+    "pricePointStep": 10,
+    "pricePointMin": 50,
+    "pricePointMax": 59
   },
   {
     "id": 8,
@@ -1616,12 +1616,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged duplicate item #1361 (no barcode)",
     "stackTotalCost": 55.75,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1362,
@@ -1655,12 +1655,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged into item #1360 on 2026-06-08 18:22:22.",
     "stackTotalCost": 11.0,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 79,
@@ -1691,12 +1691,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 30.75,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 1347,
@@ -1731,12 +1731,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 23.75,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1356,
@@ -1774,12 +1774,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged duplicate item #1357 (no barcode)",
     "stackTotalCost": 70.34,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 1385,
@@ -1812,12 +1812,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 30.28,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 289,
@@ -1851,12 +1851,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 70.53,
-    "pricePoint": "$91-$103 Price Point",
-    "pricePointLabel": "$91-$103 Price Point",
-    "pricePointSort": 91,
-    "pricePointStep": 13,
-    "pricePointMin": 91,
-    "pricePointMax": 103
+    "pricePoint": "$90-$99 Price Point",
+    "pricePointLabel": "$90-$99 Price Point",
+    "pricePointSort": 90,
+    "pricePointStep": 10,
+    "pricePointMin": 90,
+    "pricePointMax": 99
   },
   {
     "id": 22,
@@ -1891,12 +1891,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 22.0,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 11,
@@ -1933,12 +1933,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 11.28,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 12,
@@ -1974,12 +1974,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 13.8,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 32,
@@ -2015,12 +2015,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 10.19,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 25,
@@ -2057,12 +2057,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 7.0,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
+    "pricePoint": "$0-$9 Price Point",
+    "pricePointLabel": "$0-$9 Price Point",
     "pricePointSort": 0,
-    "pricePointStep": 13,
+    "pricePointStep": 10,
     "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePointMax": 9
   },
   {
     "id": 18,
@@ -2095,12 +2095,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 7.66,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
-    "pricePointSort": 0,
-    "pricePointStep": 13,
-    "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 1352,
@@ -2134,12 +2134,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 11.0,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 1370,
@@ -2172,12 +2172,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 9.91,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 31,
@@ -2213,12 +2213,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 23.03,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 62,
@@ -2254,12 +2254,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 21.93,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 63,
@@ -2294,12 +2294,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 13.37,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 64,
@@ -2335,12 +2335,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 12.68,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 99,
@@ -2373,12 +2373,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 7.48,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
-    "pricePointSort": 0,
-    "pricePointStep": 13,
-    "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 1389,
@@ -2409,12 +2409,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 21.86,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 336,
@@ -2445,12 +2445,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 18.89,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 1358,
@@ -2485,12 +2485,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 29.8,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 1346,
@@ -2526,12 +2526,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 57.8,
-    "pricePoint": "$78-$90 Price Point",
-    "pricePointLabel": "$78-$90 Price Point",
-    "pricePointSort": 78,
-    "pricePointStep": 13,
-    "pricePointMin": 78,
-    "pricePointMax": 90
+    "pricePoint": "$80-$89 Price Point",
+    "pricePointLabel": "$80-$89 Price Point",
+    "pricePointSort": 80,
+    "pricePointStep": 10,
+    "pricePointMin": 80,
+    "pricePointMax": 89
   },
   {
     "id": 66,
@@ -2568,12 +2568,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged duplicate item #1345 (6976105884613)",
     "stackTotalCost": 78.78,
-    "pricePoint": "$52-$64 Price Point",
-    "pricePointLabel": "$52-$64 Price Point",
-    "pricePointSort": 52,
-    "pricePointStep": 13,
-    "pricePointMin": 52,
-    "pricePointMax": 64
+    "pricePoint": "$50-$59 Price Point",
+    "pricePointLabel": "$50-$59 Price Point",
+    "pricePointSort": 50,
+    "pricePointStep": 10,
+    "pricePointMin": 50,
+    "pricePointMax": 59
   },
   {
     "id": 1340,
@@ -2608,12 +2608,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 30.28,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 1344,
@@ -2648,12 +2648,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged duplicate item #1354 (850068416202)",
     "stackTotalCost": 56.86,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 1371,
@@ -2688,12 +2688,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 28.86,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 29,
@@ -2728,12 +2728,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 28.8,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 1379,
@@ -2768,12 +2768,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 31.0,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$40-$49 Price Point",
+    "pricePointLabel": "$40-$49 Price Point",
+    "pricePointSort": 40,
+    "pricePointStep": 10,
+    "pricePointMin": 40,
+    "pricePointMax": 49
   },
   {
     "id": 33,
@@ -2811,12 +2811,12 @@
     "reversiblePocketClip": "",
     "notes": "\n\nMerged duplicate item #1386 (no barcode)",
     "stackTotalCost": 45.09,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$30-$39 Price Point",
+    "pricePointLabel": "$30-$39 Price Point",
+    "pricePointSort": 30,
+    "pricePointStep": 10,
+    "pricePointMin": 30,
+    "pricePointMax": 39
   },
   {
     "id": 70,
@@ -2849,12 +2849,12 @@
     "reversiblePocketClip": "",
     "notes": "Merged duplicate item #84 (NC0000842149)",
     "stackTotalCost": 41.6,
-    "pricePoint": "$26-$38 Price Point",
-    "pricePointLabel": "$26-$38 Price Point",
-    "pricePointSort": 26,
-    "pricePointStep": 13,
-    "pricePointMin": 26,
-    "pricePointMax": 38
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 100,
@@ -2885,12 +2885,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 4.64,
-    "pricePoint": "$0-$12 Price Point",
-    "pricePointLabel": "$0-$12 Price Point",
+    "pricePoint": "$0-$9 Price Point",
+    "pricePointLabel": "$0-$9 Price Point",
     "pricePointSort": 0,
-    "pricePointStep": 13,
+    "pricePointStep": 10,
     "pricePointMin": 0,
-    "pricePointMax": 12
+    "pricePointMax": 9
   },
   {
     "id": 23,
@@ -2924,12 +2924,12 @@
     "reversiblePocketClip": "Yes",
     "notes": "Merged duplicate item #104 (no barcode)\nMerged duplicate item #105 (no barcode)",
     "stackTotalCost": 41.31,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$10-$19 Price Point",
+    "pricePointLabel": "$10-$19 Price Point",
+    "pricePointSort": 10,
+    "pricePointStep": 10,
+    "pricePointMin": 10,
+    "pricePointMax": 19
   },
   {
     "id": 335,
@@ -2960,12 +2960,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 15.25,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 261,
@@ -3006,12 +3006,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 36.54,
-    "pricePoint": "$39-$51 Price Point",
-    "pricePointLabel": "$39-$51 Price Point",
-    "pricePointSort": 39,
-    "pricePointStep": 13,
-    "pricePointMin": 39,
-    "pricePointMax": 51
+    "pricePoint": "$50-$59 Price Point",
+    "pricePointLabel": "$50-$59 Price Point",
+    "pricePointSort": 50,
+    "pricePointStep": 10,
+    "pricePointMin": 50,
+    "pricePointMax": 59
   },
   {
     "id": 331,
@@ -3046,12 +3046,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 44.0,
-    "pricePoint": "$52-$64 Price Point",
-    "pricePointLabel": "$52-$64 Price Point",
-    "pricePointSort": 52,
-    "pricePointStep": 13,
-    "pricePointMin": 52,
-    "pricePointMax": 64
+    "pricePoint": "$60-$69 Price Point",
+    "pricePointLabel": "$60-$69 Price Point",
+    "pricePointSort": 60,
+    "pricePointStep": 10,
+    "pricePointMin": 60,
+    "pricePointMax": 69
   },
   {
     "id": 24,
@@ -3086,12 +3086,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 17.0,
-    "pricePoint": "$13-$25 Price Point",
-    "pricePointLabel": "$13-$25 Price Point",
-    "pricePointSort": 13,
-    "pricePointStep": 13,
-    "pricePointMin": 13,
-    "pricePointMax": 25
+    "pricePoint": "$20-$29 Price Point",
+    "pricePointLabel": "$20-$29 Price Point",
+    "pricePointSort": 20,
+    "pricePointStep": 10,
+    "pricePointMin": 20,
+    "pricePointMax": 29
   },
   {
     "id": 80,
@@ -3131,12 +3131,12 @@
     "reversiblePocketClip": "",
     "notes": "",
     "stackTotalCost": 41.48,
-    "pricePoint": "$52-$64 Price Point",
-    "pricePointLabel": "$52-$64 Price Point",
-    "pricePointSort": 52,
-    "pricePointStep": 13,
-    "pricePointMin": 52,
-    "pricePointMax": 64
+    "pricePoint": "$50-$59 Price Point",
+    "pricePointLabel": "$50-$59 Price Point",
+    "pricePointSort": 50,
+    "pricePointStep": 10,
+    "pricePointMin": 50,
+    "pricePointMax": 59
   },
   {
     "id": 145,
