@@ -91,8 +91,10 @@
     "quantity": 1,
     "inventoryCount": 1,
     "barcode": "NC0002169869",
-    "photo": "",
-    "photos": [],
+    "photo": "https://lonesurvivalist.com/cdn/shop/files/2E7C1DE9-4273-47AF-A48D-D3FE30D6DBBA_a6d1ccab-dd5b-4ca5-bb5d-c48c8454486e.png?v=1724334374",
+    "photos": [
+      "https://lonesurvivalist.com/cdn/shop/files/2E7C1DE9-4273-47AF-A48D-D3FE30D6DBBA_a6d1ccab-dd5b-4ca5-bb5d-c48c8454486e.png?v=1724334374"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -1087,8 +1089,10 @@
     "quantity": 1,
     "inventoryCount": 1,
     "barcode": "NC0003347045",
-    "photo": "",
-    "photos": [],
+    "photo": "https://lonesurvivalist.com/cdn/shop/files/ferrorodprod.png?v=1734115663",
+    "photos": [
+      "https://lonesurvivalist.com/cdn/shop/files/ferrorodprod.png?v=1734115663"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2431,8 +2435,11 @@
     "quantity": 1,
     "inventoryCount": 1,
     "barcode": "NC0003362598",
-    "photo": "",
-    "photos": [],
+    "photo": "https://lonesurvivalist.com/cdn/shop/files/orangepockettent.png?v=1765562552",
+    "photos": [
+      "https://lonesurvivalist.com/cdn/shop/files/orangepockettent.png?v=1765562552",
+      "https://lonesurvivalist.com/cdn/shop/files/yayayaayayyaya_bean_ju8ice.png?v=1765562951"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -2946,8 +2953,10 @@
     "quantity": 1,
     "inventoryCount": 1,
     "barcode": "NC0003351334",
-    "photo": "",
-    "photos": [],
+    "photo": "https://lonesurvivalist.com/cdn/shop/files/survivalgrille1.png?v=1724433006&width=1280",
+    "photos": [
+      "https://lonesurvivalist.com/cdn/shop/files/survivalgrille1.png?v=1724433006&width=1280"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -9038,8 +9047,10 @@
     "quantity": 2,
     "inventoryCount": 2,
     "barcode": "",
-    "photo": "",
-    "photos": [],
+    "photo": "https://fimgs.net/mdimg/perfume-thumbs/dark-375x500.111414.avif",
+    "photos": [
+      "https://fimgs.net/mdimg/perfume-thumbs/dark-375x500.111414.avif"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -9050,7 +9061,7 @@
     "bladeType": "",
     "bladeGrind": "",
     "reversiblePocketClip": "",
-    "notes": "\n\nMerged duplicate item #598 (no barcode)",
+    "notes": "Merged duplicate item #598 (no barcode)",
     "stackTotalCost": 47.92,
     "pricePoint": "$30-$39 Price Point",
     "pricePointLabel": "$30-$39 Price Point",
@@ -9902,8 +9913,10 @@
     "quantity": 1,
     "inventoryCount": 1,
     "barcode": "",
-    "photo": "",
-    "photos": [],
+    "photo": "https://fimgs.net/mdimg/perfume-thumbs/dark-375x500.75902.avif",
+    "photos": [
+      "https://fimgs.net/mdimg/perfume-thumbs/dark-375x500.75902.avif"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -9938,8 +9951,10 @@
     "quantity": 1,
     "inventoryCount": 1,
     "barcode": "6291107454412",
-    "photo": "",
-    "photos": [],
+    "photo": "https://fimgs.net/mdimg/perfume-thumbs/dark-375x500.63062.avif",
+    "photos": [
+      "https://fimgs.net/mdimg/perfume-thumbs/dark-375x500.63062.avif"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -12098,8 +12113,10 @@
     "quantity": 3,
     "inventoryCount": 3,
     "barcode": "",
-    "photo": "",
-    "photos": [],
+    "photo": "https://orientalaromas.com/cdn/shop/files/29AE71AB-AD3F-496C-9C55-BF1116540894_590x767.webp?v=1776107245",
+    "photos": [
+      "https://orientalaromas.com/cdn/shop/files/29AE71AB-AD3F-496C-9C55-BF1116540894_590x767.webp?v=1776107245"
+    ],
     "listingUrl": "",
     "description": "",
     "specs": "",
@@ -12110,7 +12127,7 @@
     "bladeType": "",
     "bladeGrind": "",
     "reversiblePocketClip": "",
-    "notes": "\n\nMerged duplicate item #366 (no barcode)\nMerged duplicate item #367 (no barcode)",
+    "notes": "Merged duplicate item #366 (no barcode)\nMerged duplicate item #367 (no barcode)",
     "stackTotalCost": 48.760000000000005,
     "pricePoint": "$20-$29 Price Point",
     "pricePointLabel": "$20-$29 Price Point",

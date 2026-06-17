@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-16T16:38:13",
+  "generated_at": "2026-06-17T14:58:03",
   "asset_count": 29,
   "assets": [
     "item_108_1780192836.jpg",
@@ -33,11 +33,6 @@
     "item_65_20260601_185840_342854.jpg"
   ],
   "missing_photo_items": [
-    {
-      "id": 216,
-      "title": "8\" Hemp Fire Rope",
-      "category": "Knives"
-    },
     {
       "id": 101,
       "title": "airforce lingerie",
@@ -74,11 +69,6 @@
       "category": "Knives"
     },
     {
-      "id": 334,
-      "title": "Fat Ferro Rod",
-      "category": "Knives"
-    },
-    {
       "id": 79,
       "title": "Kershaw Unknown",
       "category": "Knives"
@@ -89,18 +79,8 @@
       "category": "Knives"
     },
     {
-      "id": 336,
-      "title": "Pocket Survival Tent (Color:Rescue orange;)",
-      "category": "Knives"
-    },
-    {
       "id": 100,
       "title": "Skulls windowbreaker",
-      "category": "Knives"
-    },
-    {
-      "id": 335,
-      "title": "Survival Stove",
       "category": "Knives"
     },
     {
@@ -414,11 +394,6 @@
       "category": "Fragrances"
     },
     {
-      "id": 372,
-      "title": "Fire on Ice Edp 3.7oz 110ml by Lattafa",
-      "category": "Fragrances"
-    },
-    {
       "id": 292,
       "title": "Flux in house fragrance",
       "category": "Fragrances"
@@ -531,16 +506,6 @@
     {
       "id": 616,
       "title": "LATTAFA Khamrah Qahwa EDP 100ml / 3.4oz",
-      "category": "Fragrances"
-    },
-    {
-      "id": 355,
-      "title": "Lattafa Perfumes Hayaati [M] EDP 100ml",
-      "category": "Fragrances"
-    },
-    {
-      "id": 303,
-      "title": "Lattafa Rouge EDP 100ml",
       "category": "Fragrances"
     },
     {
@@ -836,11 +801,6 @@
     {
       "id": 553,
       "title": "Odyssey Toffee Coffee by Armaf EDP Spray, 3.4oz",
-      "category": "Fragrances"
-    },
-    {
-      "id": 311,
-      "title": "Opulent Dubai by Lattafa 3.4 OZ",
       "category": "Fragrances"
     },
     {
