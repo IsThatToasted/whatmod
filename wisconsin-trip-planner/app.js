@@ -22,10 +22,12 @@ CQ.init=async()=>{
       await CQ.clearOldAuth('Your saved login expired. Please login again.');
     }else{
       CQ.user=data.session?.user||null;
+      if(CQ.user) CQ.stampLogin(CQ.user);
     }
     CQ.sb.auth.onAuthStateChange(async(event,session)=>{
       if(session && CQ.sessionIsStale(session)){await CQ.clearOldAuth('Your saved login expired. Please login again.'); CQ.render(); return;}
       CQ.user=session?.user||null;
+      if(CQ.user) CQ.stampLogin(CQ.user);
       if(event==='SIGNED_IN' || event==='TOKEN_REFRESHED') CQ.markLoginFresh();
       await CQ.afterAuth();
       if(CQ.user) CQ.state.view='app';
@@ -71,7 +73,7 @@ CQ.ensureProfile=async(name,silent=false)=>{
 };
 CQ.levelFromXP=xp=>{let l=1;(CQ.content.settings.levelCurve||[]).forEach((v,i)=>{if(xp>=v)l=i+1});return l};
 CQ.addXP=async n=>{CQ.state.xp+=n;const old=CQ.state.level;CQ.state.level=CQ.levelFromXP(CQ.state.xp);await CQ.save();CQ.toast(old<CQ.state.level?`Level up — Level ${CQ.state.level}`:`+${n} XP`);};
-CQ.signIn=async()=>{if(!CQ.sb)return CQ.toast('Supabase config is missing.');localStorage.removeItem('cq_login_at');const {error}=await CQ.sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname,queryParams:{prompt:'select_account'}}});if(error)CQ.toast(error.message)};
+CQ.signIn=async()=>{if(!CQ.sb)return CQ.toast('Supabase config is missing.');const {error}=await CQ.sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname,queryParams:{prompt:'select_account'}}});if(error)CQ.toast(error.message)};
 CQ.signOut=async()=>{if(CQ.sb)await CQ.sb.auth.signOut();['cq_login_at','cq_last_user'].forEach(k=>localStorage.removeItem(k));CQ.user=null;CQ.profile=null;CQ.state.view='home';CQ.render()};
 CQ.secretCount=()=>Object.values(CQ.state.secrets||{}).filter(v=>String(v||'').trim()).length;
 CQ.areaUnlocked=a=>CQ.state.level>=a.unlock.level&&CQ.state.xp>=a.unlock.xp&&CQ.secretCount()>=a.unlock.secrets&&(a.unlock.completedAreas||[]).every(id=>CQ.state.completedAreas.includes(id));
