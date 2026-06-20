@@ -1,5 +1,4 @@
-window.COMPAT_CONFIG = {
-  SUPABASE_URL: "https://datpvcccejwgjavcytbx.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_DdY63fEbxDzq72UnPyH1KQ_xTpOXPvy",
-  APP_ID: "bedroom-compatibility-builder-v1"
+window.CQ_CONFIG = {
+  SUPABASE_URL: "https://YOUR-PROJECT.supabase.co",
+  SUPABASE_ANON_KEY: "YOUR-ANON-KEY"
 };
