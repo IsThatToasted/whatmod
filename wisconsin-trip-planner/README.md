@@ -55,3 +55,13 @@ The global setting is:
 ## Safety/content note
 
 The packaged content stays structured and compatibility-focused. Items you likely want to make more direct are labeled with `CUSTOM_REPLACE...` so you can replace them in your own editor before launch.
+
+## v4 working-login patch
+
+This package preserves the full uploaded v4 project and patches only the login/session behavior in `app.js`:
+
+- Keeps the complete app/editor/content package intact.
+- Accepts a fresh OAuth return immediately.
+- Accepts legacy sessions with no `cq_login_at` stamp once, then stamps them.
+- Uses only the app's own 72-hour login stamp for forced re-login.
+- Does not reject a valid Supabase refresh session because of Supabase's short-lived token expiry timestamp.
