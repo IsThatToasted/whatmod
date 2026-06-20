@@ -90,3 +90,37 @@ create index if not exists cq_connections_invite_idx on cq_connections(invite_co
 
 -- v4.1 compatibility patch for earlier cq_profiles tables
 alter table cq_profiles add column if not exists email text;
+
+-- v4.3 connection setup patch: allow joining by invite code without exposing private data.
+create or replace function cq_join_connection(p_invite_code text)
+returns cq_connections
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  row_out cq_connections;
+begin
+  update cq_connections
+    set partner_id = auth.uid(), status = 'paired'
+    where invite_code = p_invite_code
+      and partner_id is null
+      and owner_id <> auth.uid()
+    returning * into row_out;
+
+  if row_out.id is null then
+    select * into row_out
+    from cq_connections
+    where invite_code = p_invite_code
+      and (owner_id = auth.uid() or partner_id = auth.uid());
+  end if;
+
+  if row_out.id is null then
+    raise exception 'Invalid, used, or unavailable invite code';
+  end if;
+
+  return row_out;
+end;
+$$;
+
+grant execute on function cq_join_connection(text) to authenticated;
