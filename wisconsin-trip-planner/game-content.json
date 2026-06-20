@@ -1,0 +1,2603 @@
+{
+  "meta": {
+    "title": "Connection Quest",
+    "version": "2.0.0",
+    "storageNote": "Static content lives in JSON; Supabase stores only compact user/session state."
+  },
+  "areas": [
+    {
+      "id": "intro",
+      "name": "Intro",
+      "icon": "\ud83c\udf19",
+      "unlockLevel": 1,
+      "description": "Start with playful basics and build trust.",
+      "theme": "intro"
+    },
+    {
+      "id": "attraction",
+      "name": "Attraction",
+      "icon": "\ud83d\udc98",
+      "unlockLevel": 1,
+      "description": "Explore what pulls you toward each other.",
+      "theme": "attraction"
+    },
+    {
+      "id": "excitement",
+      "name": "Excitement",
+      "icon": "\u26a1",
+      "unlockLevel": 2,
+      "description": "Turn up anticipation and discover what feels thrilling.",
+      "theme": "excitement"
+    },
+    {
+      "id": "romance",
+      "name": "Romance",
+      "icon": "\ud83e\udd42",
+      "unlockLevel": 3,
+      "description": "Learn what makes the connection feel cherished.",
+      "theme": "romance"
+    },
+    {
+      "id": "affection",
+      "name": "Affection",
+      "icon": "\ud83e\udef6",
+      "unlockLevel": 4,
+      "description": "Discover touch, closeness, and reassurance styles.",
+      "theme": "affection"
+    },
+    {
+      "id": "communication",
+      "name": "Communication",
+      "icon": "\ud83d\udddd\ufe0f",
+      "unlockLevel": 5,
+      "description": "Make honesty and boundaries feel easy.",
+      "theme": "communication"
+    },
+    {
+      "id": "fantasy",
+      "name": "Fantasy",
+      "icon": "\ud83c\udfad",
+      "unlockLevel": 7,
+      "description": "Explore imagination, curiosity, and private worlds.",
+      "theme": "fantasy"
+    },
+    {
+      "id": "bedroom",
+      "name": "Bedroom Builder",
+      "icon": "\ud83d\udd25",
+      "unlockLevel": 10,
+      "description": "The hidden advanced builder for intimate compatibility.",
+      "theme": "bedroom"
+    },
+    {
+      "id": "future",
+      "name": "Future",
+      "icon": "\ud83c\udf0c",
+      "unlockLevel": 12,
+      "description": "See whether your dreams and rhythms can grow together.",
+      "theme": "future"
+    }
+  ],
+  "challenges": [
+    {
+      "id": "c001_intro",
+      "areaId": "intro",
+      "name": "First Impression Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does first impression feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "first impression",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c002_intro",
+      "areaId": "intro",
+      "name": "Comfort Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does comfort feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "comfort",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c003_intro",
+      "areaId": "intro",
+      "name": "Curiosity Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does curiosity feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "curiosity",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c004_intro",
+      "areaId": "intro",
+      "name": "Conversation Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does conversation feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "conversation",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c005_intro",
+      "areaId": "intro",
+      "name": "First Impression Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does first impression feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "first impression",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c006_intro",
+      "areaId": "intro",
+      "name": "Comfort Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does comfort feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "comfort",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c007_intro",
+      "areaId": "intro",
+      "name": "Curiosity Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does curiosity feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "curiosity",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c008_intro",
+      "areaId": "intro",
+      "name": "Conversation Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does conversation feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "conversation",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c009_intro",
+      "areaId": "intro",
+      "name": "First Impression Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does first impression feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "first impression",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c010_intro",
+      "areaId": "intro",
+      "name": "Comfort Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does comfort feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "comfort",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c011_intro",
+      "areaId": "intro",
+      "name": "Curiosity Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does curiosity feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "curiosity",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c012_intro",
+      "areaId": "intro",
+      "name": "Conversation Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does conversation feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "conversation",
+        "intro"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c013_attraction",
+      "areaId": "attraction",
+      "name": "Confidence Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does confidence feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "confidence",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c014_attraction",
+      "areaId": "attraction",
+      "name": "Style Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does style feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "style",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c015_attraction",
+      "areaId": "attraction",
+      "name": "Energy Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does energy feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "energy",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c016_attraction",
+      "areaId": "attraction",
+      "name": "Flirting Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does flirting feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "flirting",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c017_attraction",
+      "areaId": "attraction",
+      "name": "Confidence Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does confidence feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "confidence",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c018_attraction",
+      "areaId": "attraction",
+      "name": "Style Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does style feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "style",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c019_attraction",
+      "areaId": "attraction",
+      "name": "Energy Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does energy feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "energy",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c020_attraction",
+      "areaId": "attraction",
+      "name": "Flirting Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does flirting feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "flirting",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c021_attraction",
+      "areaId": "attraction",
+      "name": "Confidence Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does confidence feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "confidence",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c022_attraction",
+      "areaId": "attraction",
+      "name": "Style Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does style feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "style",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c023_attraction",
+      "areaId": "attraction",
+      "name": "Energy Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does energy feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "energy",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c024_attraction",
+      "areaId": "attraction",
+      "name": "Flirting Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does flirting feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "flirting",
+        "attraction"
+      ],
+      "revealLevel": 1
+    },
+    {
+      "id": "c025_excitement",
+      "areaId": "excitement",
+      "name": "Surprise Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does surprise feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "surprise",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c026_excitement",
+      "areaId": "excitement",
+      "name": "Teasing Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does teasing feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "teasing",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c027_excitement",
+      "areaId": "excitement",
+      "name": "Spontaneity Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does spontaneity feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "spontaneity",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c028_excitement",
+      "areaId": "excitement",
+      "name": "Adventure Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does adventure feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "adventure",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c029_excitement",
+      "areaId": "excitement",
+      "name": "Surprise Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does surprise feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "surprise",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c030_excitement",
+      "areaId": "excitement",
+      "name": "Teasing Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does teasing feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "teasing",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c031_excitement",
+      "areaId": "excitement",
+      "name": "Spontaneity Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does spontaneity feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "spontaneity",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c032_excitement",
+      "areaId": "excitement",
+      "name": "Adventure Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does adventure feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "adventure",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c033_excitement",
+      "areaId": "excitement",
+      "name": "Surprise Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does surprise feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "surprise",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c034_excitement",
+      "areaId": "excitement",
+      "name": "Teasing Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does teasing feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "teasing",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c035_excitement",
+      "areaId": "excitement",
+      "name": "Spontaneity Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does spontaneity feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "spontaneity",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c036_excitement",
+      "areaId": "excitement",
+      "name": "Adventure Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does adventure feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "adventure",
+        "excitement"
+      ],
+      "revealLevel": 2
+    },
+    {
+      "id": "c037_romance",
+      "areaId": "romance",
+      "name": "Dates Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does dates feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "dates",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c038_romance",
+      "areaId": "romance",
+      "name": "Attention Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does attention feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "attention",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c039_romance",
+      "areaId": "romance",
+      "name": "Words Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does words feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "words",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c040_romance",
+      "areaId": "romance",
+      "name": "Gestures Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does gestures feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "gestures",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c041_romance",
+      "areaId": "romance",
+      "name": "Dates Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does dates feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "dates",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c042_romance",
+      "areaId": "romance",
+      "name": "Attention Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does attention feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "attention",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c043_romance",
+      "areaId": "romance",
+      "name": "Words Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does words feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "words",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c044_romance",
+      "areaId": "romance",
+      "name": "Gestures Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does gestures feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "gestures",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c045_romance",
+      "areaId": "romance",
+      "name": "Dates Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does dates feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "dates",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c046_romance",
+      "areaId": "romance",
+      "name": "Attention Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does attention feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "attention",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c047_romance",
+      "areaId": "romance",
+      "name": "Words Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does words feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "words",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c048_romance",
+      "areaId": "romance",
+      "name": "Gestures Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does gestures feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "gestures",
+        "romance"
+      ],
+      "revealLevel": 3
+    },
+    {
+      "id": "c049_affection",
+      "areaId": "affection",
+      "name": "Cuddling Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does cuddling feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "cuddling",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c050_affection",
+      "areaId": "affection",
+      "name": "Touch Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does touch feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "touch",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c051_affection",
+      "areaId": "affection",
+      "name": "Aftercare Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does aftercare feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "aftercare",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c052_affection",
+      "areaId": "affection",
+      "name": "Presence Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does presence feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "presence",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c053_affection",
+      "areaId": "affection",
+      "name": "Cuddling Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does cuddling feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "cuddling",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c054_affection",
+      "areaId": "affection",
+      "name": "Touch Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does touch feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "touch",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c055_affection",
+      "areaId": "affection",
+      "name": "Aftercare Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does aftercare feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "aftercare",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c056_affection",
+      "areaId": "affection",
+      "name": "Presence Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does presence feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "presence",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c057_affection",
+      "areaId": "affection",
+      "name": "Cuddling Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does cuddling feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "cuddling",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c058_affection",
+      "areaId": "affection",
+      "name": "Touch Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does touch feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "touch",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c059_affection",
+      "areaId": "affection",
+      "name": "Aftercare Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does aftercare feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "aftercare",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c060_affection",
+      "areaId": "affection",
+      "name": "Presence Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does presence feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "presence",
+        "affection"
+      ],
+      "revealLevel": 4
+    },
+    {
+      "id": "c061_communication",
+      "areaId": "communication",
+      "name": "Directness Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does directness feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "directness",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c062_communication",
+      "areaId": "communication",
+      "name": "Check-Ins Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does check-ins feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "check-ins",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c063_communication",
+      "areaId": "communication",
+      "name": "Reassurance Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does reassurance feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "reassurance",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c064_communication",
+      "areaId": "communication",
+      "name": "Repair Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does repair feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "repair",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c065_communication",
+      "areaId": "communication",
+      "name": "Directness Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does directness feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "directness",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c066_communication",
+      "areaId": "communication",
+      "name": "Check-Ins Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does check-ins feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "check-ins",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c067_communication",
+      "areaId": "communication",
+      "name": "Reassurance Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does reassurance feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "reassurance",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c068_communication",
+      "areaId": "communication",
+      "name": "Repair Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does repair feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "repair",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c069_communication",
+      "areaId": "communication",
+      "name": "Directness Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does directness feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "directness",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c070_communication",
+      "areaId": "communication",
+      "name": "Check-Ins Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does check-ins feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "check-ins",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c071_communication",
+      "areaId": "communication",
+      "name": "Reassurance Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does reassurance feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "reassurance",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c072_communication",
+      "areaId": "communication",
+      "name": "Repair Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does repair feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "repair",
+        "communication"
+      ],
+      "revealLevel": 5
+    },
+    {
+      "id": "c073_fantasy",
+      "areaId": "fantasy",
+      "name": "Roleplay Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does roleplay feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "roleplay",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c074_fantasy",
+      "areaId": "fantasy",
+      "name": "Mystery Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does mystery feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "mystery",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c075_fantasy",
+      "areaId": "fantasy",
+      "name": "Taboo-Lite Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does taboo-lite feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "taboo-lite",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c076_fantasy",
+      "areaId": "fantasy",
+      "name": "Storytelling Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does storytelling feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "storytelling",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c077_fantasy",
+      "areaId": "fantasy",
+      "name": "Roleplay Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does roleplay feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "roleplay",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c078_fantasy",
+      "areaId": "fantasy",
+      "name": "Mystery Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does mystery feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "mystery",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c079_fantasy",
+      "areaId": "fantasy",
+      "name": "Taboo-Lite Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does taboo-lite feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "taboo-lite",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c080_fantasy",
+      "areaId": "fantasy",
+      "name": "Storytelling Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does storytelling feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "storytelling",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c081_fantasy",
+      "areaId": "fantasy",
+      "name": "Roleplay Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does roleplay feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "roleplay",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c082_fantasy",
+      "areaId": "fantasy",
+      "name": "Mystery Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does mystery feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "mystery",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c083_fantasy",
+      "areaId": "fantasy",
+      "name": "Taboo-Lite Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does taboo-lite feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "taboo-lite",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c084_fantasy",
+      "areaId": "fantasy",
+      "name": "Storytelling Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does storytelling feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "storytelling",
+        "fantasy"
+      ],
+      "revealLevel": 7
+    },
+    {
+      "id": "c085_bedroom",
+      "areaId": "bedroom",
+      "name": "Turn-Ons Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does turn-ons feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "turn-ons",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c086_bedroom",
+      "areaId": "bedroom",
+      "name": "Boundaries Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does boundaries feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "boundaries",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c087_bedroom",
+      "areaId": "bedroom",
+      "name": "Pace Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does pace feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "pace",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c088_bedroom",
+      "areaId": "bedroom",
+      "name": "Private Chemistry Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does private chemistry feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "private chemistry",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c089_bedroom",
+      "areaId": "bedroom",
+      "name": "Turn-Ons Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does turn-ons feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "turn-ons",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c090_bedroom",
+      "areaId": "bedroom",
+      "name": "Boundaries Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does boundaries feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "boundaries",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c091_bedroom",
+      "areaId": "bedroom",
+      "name": "Pace Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does pace feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "pace",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c092_bedroom",
+      "areaId": "bedroom",
+      "name": "Private Chemistry Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does private chemistry feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "private chemistry",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c093_bedroom",
+      "areaId": "bedroom",
+      "name": "Turn-Ons Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does turn-ons feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "turn-ons",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c094_bedroom",
+      "areaId": "bedroom",
+      "name": "Boundaries Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does boundaries feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "boundaries",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c095_bedroom",
+      "areaId": "bedroom",
+      "name": "Pace Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does pace feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "pace",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c096_bedroom",
+      "areaId": "bedroom",
+      "name": "Private Chemistry Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does private chemistry feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "private chemistry",
+        "bedroom"
+      ],
+      "revealLevel": 10
+    },
+    {
+      "id": "c097_future",
+      "areaId": "future",
+      "name": "Plans Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does plans feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "plans",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c098_future",
+      "areaId": "future",
+      "name": "Rituals Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does rituals feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "rituals",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c099_future",
+      "areaId": "future",
+      "name": "Growth Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does growth feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "growth",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c100_future",
+      "areaId": "future",
+      "name": "Commitment Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does commitment feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "commitment",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c101_future",
+      "areaId": "future",
+      "name": "Plans Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does plans feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "plans",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c102_future",
+      "areaId": "future",
+      "name": "Rituals Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does rituals feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "rituals",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c103_future",
+      "areaId": "future",
+      "name": "Growth Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does growth feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "growth",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c104_future",
+      "areaId": "future",
+      "name": "Commitment Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does commitment feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "commitment",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c105_future",
+      "areaId": "future",
+      "name": "Plans Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does plans feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "plans",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c106_future",
+      "areaId": "future",
+      "name": "Rituals Spark",
+      "type": "choice",
+      "xp": 25,
+      "prompt": "How does rituals feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "rituals",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c107_future",
+      "areaId": "future",
+      "name": "Growth Spark",
+      "type": "choice",
+      "xp": 35,
+      "prompt": "How does growth feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "growth",
+        "future"
+      ],
+      "revealLevel": 12
+    },
+    {
+      "id": "c108_future",
+      "areaId": "future",
+      "name": "Commitment Spark",
+      "type": "choice",
+      "xp": 45,
+      "prompt": "How does commitment feel when you are building chemistry with someone?",
+      "answers": [
+        "Love it",
+        "Into it",
+        "Curious",
+        "Depends on the person",
+        "Not my thing"
+      ],
+      "tags": [
+        "commitment",
+        "future"
+      ],
+      "revealLevel": 12
+    }
+  ],
+  "secretPrompts": [
+    {
+      "id": "s001_intro",
+      "areaId": "intro",
+      "category": "Intro",
+      "unlockLevel": 2,
+      "prompt": "A private first impression detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s002_intro",
+      "areaId": "intro",
+      "category": "Intro",
+      "unlockLevel": 3,
+      "prompt": "A private comfort detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s003_intro",
+      "areaId": "intro",
+      "category": "Intro",
+      "unlockLevel": 4,
+      "prompt": "A private curiosity detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s004_attraction",
+      "areaId": "attraction",
+      "category": "Attraction",
+      "unlockLevel": 2,
+      "prompt": "A private confidence detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s005_attraction",
+      "areaId": "attraction",
+      "category": "Attraction",
+      "unlockLevel": 3,
+      "prompt": "A private style detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s006_attraction",
+      "areaId": "attraction",
+      "category": "Attraction",
+      "unlockLevel": 4,
+      "prompt": "A private energy detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s007_excitement",
+      "areaId": "excitement",
+      "category": "Excitement",
+      "unlockLevel": 3,
+      "prompt": "A private surprise detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s008_excitement",
+      "areaId": "excitement",
+      "category": "Excitement",
+      "unlockLevel": 4,
+      "prompt": "A private teasing detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s009_excitement",
+      "areaId": "excitement",
+      "category": "Excitement",
+      "unlockLevel": 5,
+      "prompt": "A private spontaneity detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s010_romance",
+      "areaId": "romance",
+      "category": "Romance",
+      "unlockLevel": 4,
+      "prompt": "A private dates detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s011_romance",
+      "areaId": "romance",
+      "category": "Romance",
+      "unlockLevel": 5,
+      "prompt": "A private attention detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s012_romance",
+      "areaId": "romance",
+      "category": "Romance",
+      "unlockLevel": 6,
+      "prompt": "A private words detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s013_affection",
+      "areaId": "affection",
+      "category": "Affection",
+      "unlockLevel": 5,
+      "prompt": "A private cuddling detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s014_affection",
+      "areaId": "affection",
+      "category": "Affection",
+      "unlockLevel": 6,
+      "prompt": "A private touch detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s015_affection",
+      "areaId": "affection",
+      "category": "Affection",
+      "unlockLevel": 7,
+      "prompt": "A private aftercare detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s016_communication",
+      "areaId": "communication",
+      "category": "Communication",
+      "unlockLevel": 6,
+      "prompt": "A private directness detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s017_communication",
+      "areaId": "communication",
+      "category": "Communication",
+      "unlockLevel": 7,
+      "prompt": "A private check-ins detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s018_communication",
+      "areaId": "communication",
+      "category": "Communication",
+      "unlockLevel": 8,
+      "prompt": "A private reassurance detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s019_fantasy",
+      "areaId": "fantasy",
+      "category": "Fantasy",
+      "unlockLevel": 8,
+      "prompt": "A private roleplay detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s020_fantasy",
+      "areaId": "fantasy",
+      "category": "Fantasy",
+      "unlockLevel": 9,
+      "prompt": "A private mystery detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s021_fantasy",
+      "areaId": "fantasy",
+      "category": "Fantasy",
+      "unlockLevel": 10,
+      "prompt": "A private taboo-lite detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s022_bedroom",
+      "areaId": "bedroom",
+      "category": "Bedroom Builder",
+      "unlockLevel": 11,
+      "prompt": "A private turn-ons detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s023_bedroom",
+      "areaId": "bedroom",
+      "category": "Bedroom Builder",
+      "unlockLevel": 12,
+      "prompt": "A private boundaries detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s024_bedroom",
+      "areaId": "bedroom",
+      "category": "Bedroom Builder",
+      "unlockLevel": 13,
+      "prompt": "A private pace detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s025_future",
+      "areaId": "future",
+      "category": "Future",
+      "unlockLevel": 13,
+      "prompt": "A private plans detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s026_future",
+      "areaId": "future",
+      "category": "Future",
+      "unlockLevel": 14,
+      "prompt": "A private rituals detail I would want the right person to know is\u2026"
+    },
+    {
+      "id": "s027_future",
+      "areaId": "future",
+      "category": "Future",
+      "unlockLevel": 15,
+      "prompt": "A private growth detail I would want the right person to know is\u2026"
+    }
+  ],
+  "levels": [
+    {
+      "level": 1,
+      "title": "New Spark",
+      "xpRequired": 0
+    },
+    {
+      "level": 2,
+      "title": "Curious Explorer",
+      "xpRequired": 180
+    },
+    {
+      "level": 3,
+      "title": "Flirt Initiate",
+      "xpRequired": 360
+    },
+    {
+      "level": 4,
+      "title": "Chemistry Detected",
+      "xpRequired": 540
+    },
+    {
+      "level": 5,
+      "title": "Secret Keeper",
+      "xpRequired": 720
+    },
+    {
+      "level": 6,
+      "title": "Heat Seeker",
+      "xpRequired": 900
+    },
+    {
+      "level": 7,
+      "title": "Deep Diver",
+      "xpRequired": 1080
+    },
+    {
+      "level": 8,
+      "title": "Velvet Rebel",
+      "xpRequired": 1260
+    },
+    {
+      "level": 9,
+      "title": "Fantasy Cartographer",
+      "xpRequired": 1440
+    },
+    {
+      "level": 10,
+      "title": "Bedroom Builder Unlocked",
+      "xpRequired": 1620
+    },
+    {
+      "level": 11,
+      "title": "Partner in Mischief",
+      "xpRequired": 1800
+    },
+    {
+      "level": 12,
+      "title": "Dangerously Compatible",
+      "xpRequired": 1980
+    },
+    {
+      "level": 13,
+      "title": "Legendary Connection",
+      "xpRequired": 2160
+    },
+    {
+      "level": 14,
+      "title": "Legendary Connection",
+      "xpRequired": 2340
+    },
+    {
+      "level": 15,
+      "title": "Legendary Connection",
+      "xpRequired": 2520
+    },
+    {
+      "level": 16,
+      "title": "Legendary Connection",
+      "xpRequired": 2700
+    },
+    {
+      "level": 17,
+      "title": "Legendary Connection",
+      "xpRequired": 2880
+    },
+    {
+      "level": 18,
+      "title": "Legendary Connection",
+      "xpRequired": 3060
+    },
+    {
+      "level": 19,
+      "title": "Legendary Connection",
+      "xpRequired": 3240
+    },
+    {
+      "level": 20,
+      "title": "Legendary Connection",
+      "xpRequired": 3420
+    },
+    {
+      "level": 21,
+      "title": "Legendary Connection",
+      "xpRequired": 3600
+    },
+    {
+      "level": 22,
+      "title": "Legendary Connection",
+      "xpRequired": 3780
+    },
+    {
+      "level": 23,
+      "title": "Legendary Connection",
+      "xpRequired": 3960
+    },
+    {
+      "level": 24,
+      "title": "Legendary Connection",
+      "xpRequired": 4140
+    },
+    {
+      "level": 25,
+      "title": "Legendary Connection",
+      "xpRequired": 4320
+    },
+    {
+      "level": 26,
+      "title": "Legendary Connection",
+      "xpRequired": 4500
+    },
+    {
+      "level": 27,
+      "title": "Legendary Connection",
+      "xpRequired": 4680
+    },
+    {
+      "level": 28,
+      "title": "Legendary Connection",
+      "xpRequired": 4860
+    },
+    {
+      "level": 29,
+      "title": "Legendary Connection",
+      "xpRequired": 5040
+    },
+    {
+      "level": 30,
+      "title": "Legendary Connection",
+      "xpRequired": 5220
+    }
+  ],
+  "achievements": [
+    {
+      "id": "first_match",
+      "name": "First Match",
+      "description": "Both answered the same challenge."
+    },
+    {
+      "id": "area_clear",
+      "name": "Area Cleared",
+      "description": "Complete every challenge in an area."
+    },
+    {
+      "id": "vault_key",
+      "name": "Vault Key",
+      "description": "Unlock your first secret."
+    }
+  ]
+}

@@ -1,127 +1,114 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bedroom Connection Builder</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connection Quest</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=expanded-1" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="bg-orb orb-a"></div>
-  <div class="bg-orb orb-b"></div>
-  <div class="grain"></div>
+  <div class="ambient"><span></span><span></span><span></span></div>
+  <div id="toast" class="toast hidden"></div>
 
-  <main class="shell">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Private adult connection</p>
-        <h1>Bedroom Connection Builder</h1>
-        <p class="subtitle">A private one-on-one bedroom compatibility experience for turn-ons, curiosity, style, desire, past experiences, fantasies, and shared chemistry.</p>
-      </div>
-      <div class="auth-panel">
-        <div id="userBadge" class="user-badge hidden"></div>
-        <button id="loginBtn" class="btn primary">Continue with Google</button>
-        <button id="logoutBtn" class="btn ghost hidden">Sign out</button>
-      </div>
-    </header>
+  <header class="topbar">
+    <button id="homeLogo" class="brand ghost-btn"><span class="sigil">CQ</span><span><b>Connection Quest</b><em>compatibility adventure</em></span></button>
+    <div class="top-actions">
+      <button id="hiddenBuilderBtn" class="pill ghost-btn hidden">Bedroom Builder</button>
+      <span id="userBadge" class="user-badge hidden"></span>
+      <button id="logoutBtn" class="pill hidden">Logout</button>
+    </div>
+  </header>
 
-    <section id="setupView" class="card setup-card hidden">
-      <div class="section-title">
-        <p class="eyebrow">Profile required</p>
-        <h2>Create your private profile</h2>
-        <p>This name is shown to the person you invite into your private builder.</p>
-      </div>
-      <div class="form-row">
-        <input id="displayNameInput" class="input" placeholder="Your display name" maxlength="50" />
-        <button id="saveProfileBtn" class="btn primary">Save profile</button>
-      </div>
-    </section>
+  <main>
+    <section id="loadingView" class="view center-card"><div class="loader"></div><h1>Opening your connection…</h1></section>
 
-    <section id="loadingView" class="card center-card">
-      <div class="loader"></div>
-      <p>Loading your private builder…</p>
-    </section>
-
-    <section id="signedOutView" class="card hero-card hidden">
+    <section id="signedOutView" class="view hero hidden">
       <div class="hero-copy">
-        <p class="eyebrow">Adults only • one-on-one</p>
-        <h2>Find what overlaps without the awkward guessing.</h2>
-        <p>Each person signs in separately, answers privately, and can complete the builder live or on their own time. Matches reveal only when both people answer.</p>
+        <p class="eyebrow">private two-person compatibility game</p>
+        <h1>Turn questions into a sensual adventure.</h1>
+        <p>Unlock areas, earn XP, reveal secrets, and discover chemistry together without making the app feel like a boring survey.</p>
+        <button id="loginBtn" class="primary glow">Continue with Google</button>
       </div>
-      <div class="hero-steps">
-        <div><span>1</span>Sign in with Google</div>
-        <div><span>2</span>Create a private builder</div>
-        <div><span>3</span>Invite one person</div>
-        <div><span>4</span>Reveal shared heat</div>
+      <div class="phone-preview">
+        <div class="quest-card floating"><span>Intro</span><h3>First Spark</h3><p>Share the vibe you notice first.</p><b>+25 XP</b></div>
+        <div class="quest-card floating delay"><span>Secret</span><h3>Hidden Reveal</h3><p>Unlocks at Level 4.</p><b>🔒</b></div>
       </div>
     </section>
 
-    <section id="homeView" class="grid hidden">
-      <div class="card main-card">
-        <div class="section-title">
-          <p class="eyebrow">Start here</p>
-          <h2>Your private builders</h2>
-          <p>Create a one-on-one invite link or continue a builder you already started.</p>
-        </div>
-        <button id="createSessionBtn" class="btn primary wide">Create new bedroom builder</button>
-        <div id="sessionList" class="session-list"></div>
+    <section id="setupView" class="view setup hidden">
+      <div class="panel narrow">
+        <p class="eyebrow">first login</p>
+        <h2>Create your player profile</h2>
+        <label>Display name<input id="displayNameInput" placeholder="Your name" /></label>
+        <label>Your vibe<select id="vibeInput"><option>Curious</option><option>Playful</option><option>Romantic</option><option>Bold</option><option>Mysterious</option></select></label>
+        <button id="saveProfileBtn" class="primary">Save profile</button>
       </div>
-
-      <aside class="card side-card">
-        <p class="eyebrow">How it works</p>
-        <h3>Private answers. Better reveals.</h3>
-        <p>Cards show saved, waiting, match, curiosity, or mismatch. The full score appears at the end, with mutual favorites and conversation starters.</p>
-        <div class="legend">
-          <span><i class="dot waiting"></i> Waiting</span>
-          <span><i class="dot match"></i> Mutual heat</span>
-          <span><i class="dot curious"></i> Shared curiosity</span>
-          <span><i class="dot miss"></i> Mismatch</span>
-        </div>
-      </aside>
     </section>
 
-    <section id="sessionView" class="hidden">
-      <div class="session-header card">
-        <div>
-          <button id="backBtn" class="link-btn">← Back</button>
-          <p class="eyebrow">Private builder</p>
-          <h2 id="sessionTitle">Bedroom Connection Builder</h2>
-          <p id="partnerLine" class="muted">Waiting for invite…</p>
-        </div>
-        <div class="session-actions">
-          <button id="copyInviteBtn" class="btn ghost">Copy invite link</button>
-          <button id="toggleViewBtn" class="btn ghost">Card view</button>
-        </div>
+    <section id="onboardingView" class="view hidden">
+      <div class="panel wide">
+        <p class="eyebrow">secret vault setup</p>
+        <h2>Fill your starter secrets</h2>
+        <p class="muted">These are private until the game unlocks them. Keep answers short to save storage and keep the game fast.</p>
+        <div id="secretSetupGrid" class="secret-grid"></div>
+        <button id="saveSecretsBtn" class="primary">Save secrets and enter</button>
       </div>
+    </section>
 
-      <div id="inviteBox" class="card invite-card hidden">
-        <p class="eyebrow">Invite link</p>
-        <div class="copy-row">
-          <input id="inviteLinkInput" class="input" readonly />
-          <button id="copyInviteBtn2" class="btn primary">Copy</button>
+    <section id="homeView" class="view hidden">
+      <div class="dashboard-grid">
+        <div class="panel hero-panel">
+          <p class="eyebrow">start or resume</p>
+          <h2>Your Connections</h2>
+          <p class="muted">Create a private quest, send the invite link, and explore together.</p>
+          <button id="createSessionBtn" class="primary glow">Create New Quest</button>
         </div>
-        <p class="muted small">Only one other person can join. They must sign in with Google so their answers save privately.</p>
+        <div class="panel"><h3>Active Quests</h3><div id="sessionList" class="session-list"></div></div>
       </div>
+    </section>
 
-      <div class="progress-card card">
-        <div class="progress-top">
-          <span id="progressText">0 of 0 answered by both</span>
-          <span id="syncStatus">Live sync ready</span>
-        </div>
-        <div class="progress-track"><div id="progressBar"></div></div>
+    <section id="gameView" class="view hidden">
+      <div class="game-shell">
+        <aside class="side-panel panel">
+          <button id="backBtn" class="pill">← Connections</button>
+          <h2 id="sessionTitle">Connection Quest</h2>
+          <p id="partnerLine" class="muted">Waiting for partner…</p>
+          <div class="level-box">
+            <div><span>Level</span><b id="levelText">1</b></div>
+            <div><span>XP</span><b id="xpText">0</b></div>
+          </div>
+          <div class="progress-track"><div id="xpBar"></div></div>
+          <p id="progressText" class="tiny"></p>
+          <button id="copyInviteBtn" class="pill full">Copy Invite Link</button>
+          <button id="openSecretsBtn" class="pill full">Secret Vault</button>
+          <button id="openBuilderBtn" class="pill full hidden">Open Bedroom Builder</button>
+          <p id="syncStatus" class="tiny">Sync connecting…</p>
+        </aside>
+        <section class="stage">
+          <div class="stage-top">
+            <div><p class="eyebrow">quest map</p><h1>Choose an Area</h1></div>
+            <div class="score-chip"><span>Compatibility</span><b id="compatText">0%</b></div>
+          </div>
+          <div id="areaMap" class="area-map"></div>
+          <div id="challengeStage" class="challenge-stage hidden"></div>
+        </section>
       </div>
+    </section>
 
-      <div id="finalScoreCard" class="card final-score hidden"></div>
-      <div id="questionArea" class="question-area"></div>
+    <section id="builderView" class="view hidden">
+      <div class="panel builder-panel">
+        <div class="builder-head"><div><p class="eyebrow">legacy mode</p><h2>Bedroom Builder</h2><p class="muted">The original compatibility builder is preserved here as a hidden advanced area.</p></div><button id="closeBuilderBtn" class="pill">Back to Quest</button></div>
+        <div id="legacyQuestionArea"></div>
+      </div>
     </section>
   </main>
 
-  <div id="toast" class="toast hidden"></div>
+  <div id="secretModal" class="modal hidden"><div class="modal-card"><button id="closeSecretModal" class="x">×</button><h2>Secret Vault</h2><p class="muted">Unlocked based on your connection level and completed areas.</p><div id="secretVault"></div></div></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=expanded-1"></script>
-  <script src="app.js?v=expanded-1"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

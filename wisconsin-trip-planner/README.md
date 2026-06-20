@@ -1,48 +1,78 @@
-# Bedroom Connection Builder
+# Connection Quest
 
-Private one-on-one bedroom compatibility builder using Google login + Supabase.
+A gamified two-person compatibility app that keeps the original Bedroom Builder concept intact as a hidden advanced unlock.
 
-## What changed in this version
+## What changed
 
-- Keeps the existing Supabase config, auth, profiles, sessions, invite links, answers, and realtime sync.
-- Moves all questions into `questions.json` so you can edit content without touching app logic.
-- Adds collapsible category sections with per-section progress.
-- Expands the question set to 340 total prompts.
-- Includes two custom placeholder sections you can replace with your own private prompts.
-- Uses safer separate Supabase queries instead of embedded joins.
+- Quest map with unlockable areas
+- XP and level progression
+- Challenge cards instead of plain survey rows
+- Secret Vault with level-based reveals
+- Hidden Bedroom Builder button unlocked at Level 10
+- Supabase login, sessions, invite links, answers, realtime sync retained
+- Storage-efficient design: most game content lives in `game-content.json`; Supabase only stores profiles, sessions, compact answers, XP, and short secrets
+- Windows admin editor for editing areas, challenge names, answers, secret prompts, XP values, and unlock levels
 
 ## Files
 
-- `index.html` — app shell
-- `styles.css` — dark luxury theme and collapsible sections
-- `app.js` — auth, session, realtime, scoring, UI rendering
-- `questions.json` — editable question bank
-- `config.js` — your Supabase config
-- `supabase-schema.sql` — database schema
+- `index.html` - app shell
+- `styles.css` - animated premium UI
+- `app.js` - Supabase game logic
+- `game-content.json` - editable game data
+- `supabase-schema.sql` - database schema and RLS policies
+- `config.js` - your existing Supabase connection
+- `admin_editor/connection_quest_editor.py` - Windows/Python content editor
+- `admin_editor/run_editor.bat` - double-click launcher
 
-## Editing questions
+## Setup
 
-Open `questions.json`. Each question has:
+1. Upload these files to your GitHub Pages project or run locally with a simple server.
+2. In Supabase SQL Editor, run `supabase-schema.sql`.
+3. Confirm Google login redirect URLs include your local and hosted URLs.
+4. Edit `game-content.json` directly or launch the editor:
 
-```json
-{
-  "id": "q001_example",
-  "category": "Attraction & Chemistry",
-  "type": "attraction",
-  "text": "Your question text here."
-}
+```bat
+admin_editor\run_editor.bat
 ```
 
-Keep each `id` unique. The `type` controls the answer buttons. Supported types:
+## Local test server
 
-- `attraction`
-- `affection`
-- `style`
-- `desire`
-- `exploration`
-- `experience`
-- `frequency`
+From the project folder:
 
-## Important
+```bash
+python -m http.server 5173
+```
 
-If you replace placeholders with new questions, keep the IDs stable after people start answering, or old saved answers will no longer line up with those prompts.
+Open:
+
+```text
+http://localhost:5173
+```
+
+## Storage efficiency notes
+
+The app deliberately avoids storing full challenge text, area names, animation state, or long unlock logs in Supabase. Those remain in `game-content.json`. Supabase stores only:
+
+- one profile row per user
+- one session row per connection
+- one answer row per answered challenge
+- one compact XP/player state row per user per session
+- short secret answers only
+
+This keeps database growth predictable and cheap.
+
+## Editing the game
+
+Use the Windows admin editor to change:
+
+- area names
+- area unlock levels
+- area descriptions
+- challenge titles
+- challenge prompts
+- answer choices
+- XP rewards
+- secret prompts
+- secret unlock levels
+
+After saving, redeploy or refresh the browser. The app fetches `game-content.json` without cache during development.
