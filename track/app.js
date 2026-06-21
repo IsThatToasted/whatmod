@@ -15,7 +15,8 @@ const els = {
   itemTitle: document.getElementById('itemTitle'), itemDate: document.getElementById('itemDate'), itemTime: document.getElementById('itemTime'), itemEndTime: document.getElementById('itemEndTime'), itemType: document.getElementById('itemType'), itemBudget: document.getElementById('itemBudget'), itemLocation: document.getElementById('itemLocation'), itemNotes: document.getElementById('itemNotes'), saveItemBtn: document.getElementById('saveItemBtn'),
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
-  inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList')
+  inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
+  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks')
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
@@ -35,6 +36,65 @@ function currentMembership() { return members.find(m => m.trip_id === activeTrip
 function canEdit() { return ['owner', 'editor'].includes(currentMembership()?.role); }
 function canDeleteTrip() { return currentMembership()?.role === 'owner'; }
 function inviteTokenFromUrl() { return new URLSearchParams(location.search).get('invite'); }
+
+const locationCache = new Map();
+let locationSearchTimer = null;
+function mapsUrl(query, app = 'google') {
+  const q = encodeURIComponent(query || '');
+  if (!q) return '#';
+  if (app === 'apple') return `https://maps.apple.com/?q=${q}`;
+  if (app === 'waze') return `https://waze.com/ul?q=${q}&navigate=yes`;
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+function renderMapLinks(container, query) {
+  if (!container) return;
+  const clean = (query || '').trim();
+  if (!clean) { container.classList.add('hidden'); container.innerHTML = ''; return; }
+  container.innerHTML = `<a target="_blank" rel="noopener" href="${mapsUrl(clean, 'google')}">Google Maps</a><a target="_blank" rel="noopener" href="${mapsUrl(clean, 'apple')}">Apple Maps</a><a target="_blank" rel="noopener" href="${mapsUrl(clean, 'waze')}">Waze</a>`;
+  container.classList.remove('hidden');
+}
+async function fetchLocationSuggestions(query) {
+  const clean = query.trim();
+  if (clean.length < 3) return [];
+  if (locationCache.has(clean.toLowerCase())) return locationCache.get(clean.toLowerCase());
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(clean)}`;
+  try {
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error('Location lookup failed');
+    const data = await res.json();
+    const suggestions = data.map(row => ({ label: row.display_name, lat: row.lat, lon: row.lon })).filter(x => x.label);
+    locationCache.set(clean.toLowerCase(), suggestions);
+    return suggestions;
+  } catch (err) {
+    console.warn('Autocomplete unavailable:', err);
+    return [];
+  }
+}
+function setupLocationAutocomplete(input, suggestionBox, linksBox) {
+  if (!input || !suggestionBox) return;
+  const close = () => { suggestionBox.classList.add('hidden'); suggestionBox.innerHTML = ''; };
+  input.addEventListener('input', () => {
+    renderMapLinks(linksBox, input.value);
+    clearTimeout(locationSearchTimer);
+    const q = input.value.trim();
+    if (q.length < 3) return close();
+    locationSearchTimer = setTimeout(async () => {
+      const suggestions = await fetchLocationSuggestions(q);
+      if (!suggestions.length) return close();
+      suggestionBox.innerHTML = suggestions.map(s => `<button type="button" data-label="${escapeHtml(s.label)}"><strong>${escapeHtml(s.label.split(',')[0])}</strong><span>${escapeHtml(s.label.split(',').slice(1, 4).join(',').trim())}</span></button>`).join('');
+      suggestionBox.classList.remove('hidden');
+      suggestionBox.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+        input.value = btn.dataset.label;
+        close();
+        renderMapLinks(linksBox, input.value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }));
+    }, 350);
+  });
+  input.addEventListener('focus', () => renderMapLinks(linksBox, input.value));
+  document.addEventListener('click', e => { if (!suggestionBox.contains(e.target) && e.target !== input) close(); });
+}
+
 
 async function init() {
   pendingInviteToken = inviteTokenFromUrl();
@@ -128,6 +188,7 @@ function openItemDialog(date, item = null) {
   els.itemDialogTitle.textContent = item ? 'Edit itinerary item' : 'Add itinerary item';
   els.editingItemId.value = item?.id || ''; els.itemTitle.value = item?.title || ''; els.itemDate.value = item?.item_date || date || selectedDay || currentTrip()?.start_date || todayISO();
   els.itemTime.value = item?.start_time || ''; els.itemEndTime.value = item?.end_time || ''; els.itemType.value = item?.item_type || 'event'; els.itemBudget.value = item?.budget || ''; els.itemLocation.value = item?.location || ''; els.itemNotes.value = item?.notes || '';
+  renderMapLinks(els.itemLocationMapLinks, els.itemLocation.value);
   els.itemDialog.showModal(); setTimeout(() => els.itemTitle.focus(), 50);
 }
 async function saveItemFromDialog(e) {
@@ -160,7 +221,7 @@ async function copyInviteLink() { if (!els.inviteLink.value) return; await navig
 function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); }
 function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
-  const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; selectedDay ||= t.start_date;
+  const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
   const editable = canEdit();
   [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
   els.deleteTripBtn.disabled = !canDeleteTrip();
@@ -202,7 +263,9 @@ function renderItem(item) {
   const tpl = document.getElementById('itemTemplate').content.cloneNode(true); const card = tpl.querySelector('.item-card'); card.dataset.id = item.id; card.draggable = canEdit();
   const time = [fmtTime(item.start_time), fmtTime(item.end_time)].filter(Boolean).join(' - ');
   tpl.querySelector('.time-chip').textContent = time || 'Anytime'; tpl.querySelector('.item-type').textContent = typeIcon[item.item_type] || '📌'; tpl.querySelector('h3').textContent = item.title;
-  const parts = [item.location, Number(item.budget || 0) ? money(item.budget) : '', item.item_type].filter(Boolean); tpl.querySelector('.item-meta').textContent = parts.join(' • '); tpl.querySelector('.item-notes').textContent = item.notes || '';
+  const meta = tpl.querySelector('.item-meta');
+  const parts = [Number(item.budget || 0) ? money(item.budget) : '', item.item_type].filter(Boolean);
+  meta.innerHTML = `${item.location ? `<a class="location-link" target="_blank" rel="noopener" href="${mapsUrl(item.location, 'google')}">📍 ${escapeHtml(item.location)}</a>${parts.length ? ' • ' : ''}` : ''}${escapeHtml(parts.join(' • '))}`; tpl.querySelector('.item-notes').textContent = item.notes || '';
   const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); editBtn.disabled = delBtn.disabled = !canEdit();
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item)); delBtn.addEventListener('click', () => deleteItem(item.id));
   if (canEdit()) { card.addEventListener('dragstart', () => { draggedId = item.id; card.classList.add('dragging'); }); card.addEventListener('dragend', () => card.classList.remove('dragging')); }
@@ -218,6 +281,8 @@ els.createTripConfirm.addEventListener('click', e => { e.preventDefault(); els.t
 els.deleteTripBtn.addEventListener('click', deleteTrip); ['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => els[k].addEventListener('input', queueTripSave));
 els.addAnyItemBtn.addEventListener('click', () => openItemDialog(selectedDay)); els.saveItemBtn.addEventListener('click', saveItemFromDialog);
 els.createInviteBtn.addEventListener('click', createInviteLink); els.copyInviteBtn.addEventListener('click', copyInviteLink);
+setupLocationAutocomplete(els.destination, els.destinationSuggestions, els.destinationMapLinks);
+setupLocationAutocomplete(els.itemLocation, els.itemLocationSuggestions, els.itemLocationMapLinks);
 els.expandAllBtn.addEventListener('click', () => { document.body.classList.add('show-all-days'); renderTimeline(); }); els.collapseAllBtn.addEventListener('click', () => { document.body.classList.remove('show-all-days'); renderTimeline(); });
 els.exportBtn.addEventListener('click', exportJson); els.importInput.addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
 init();

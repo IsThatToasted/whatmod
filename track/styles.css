@@ -149,3 +149,43 @@ button:disabled, input:disabled, textarea:disabled, select:disabled { opacity: .
 @media (max-width: 880px) {
   .share-panel, .share-actions, .invite-output { grid-template-columns: 1fr; }
 }
+
+.suggestions {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  gap: 8px;
+  margin-top: -4px;
+  grid-column: 1 / -1;
+}
+.suggestions button {
+  width: 100%;
+  text-align: left;
+  background: rgba(255,255,255,.09);
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: none;
+  padding: .75rem .85rem;
+  border-radius: 14px;
+}
+.suggestions button strong, .suggestions button span { display:block; }
+.suggestions button span { color: var(--muted); font-size: .78rem; margin-top: 3px; font-weight: 700; }
+.map-links {
+  display:flex;
+  flex-wrap:wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.map-links a, .location-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 900;
+}
+.map-links a {
+  border: 1px solid rgba(121,220,255,.28);
+  background: rgba(121,220,255,.10);
+  border-radius: 999px;
+  padding: .48rem .68rem;
+  font-size: .82rem;
+}
+.map-links a:hover, .location-link:hover { text-decoration: underline; }

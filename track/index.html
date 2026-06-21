@@ -62,7 +62,9 @@
           </div>
           <div class="field">
             <label>Destination / address</label>
-            <input id="destination" placeholder="Pewaukee, WI" />
+            <input id="destination" class="location-input" placeholder="Pewaukee, WI" autocomplete="off" />
+              <div id="destinationSuggestions" class="suggestions hidden"></div>
+              <div id="destinationMapLinks" class="map-links hidden"></div>
           </div>
           <div class="field">
             <label>Trip notes</label>
@@ -151,7 +153,9 @@
         <label>Start time<input id="itemTime" type="time" /></label>
         <label>End time<input id="itemEndTime" type="time" /></label>
         <label>Budget $<input id="itemBudget" type="number" min="0" step="0.01" placeholder="0" /></label>
-        <label>Location<input id="itemLocation" placeholder="Address / location" /></label>
+        <label>Location<input id="itemLocation" class="location-input" placeholder="Address / location" autocomplete="off" /></label>
+        <div id="itemLocationSuggestions" class="suggestions hidden"></div>
+        <div id="itemLocationMapLinks" class="map-links hidden"></div>
       </div>
       <label class="full">Notes<textarea id="itemNotes" rows="3" placeholder="Notes, confirmation numbers, tips..."></textarea></label>
       <div class="dialog-actions">
