@@ -13,6 +13,7 @@
       <div>
         <p class="eyebrow">whatmod.com/track</p>
         <h1>Itinerary Tracker</h1>
+        <p class="subtitle">A clean day-by-day trip board that saves to Supabase.</p>
       </div>
       <div class="auth-card" id="authArea">
         <button id="googleBtn" class="ghost-btn">Continue with Google</button>
@@ -29,7 +30,7 @@
         <h2>Track trips, drives, events, stops, and budgets.</h2>
         <p>Sign in to save your itinerary to Supabase and sync across devices.</p>
         <div class="pill-row">
-          <span>Day-by-day planner</span><span>Budget notes</span><span>Drive blocks</span><span>Live Supabase save</span>
+          <span>Auto day generator</span><span>Visual planner</span><span>Quick add</span><span>Budget total</span>
         </div>
       </section>
 
@@ -44,65 +45,55 @@
           <span id="saveStatus" class="save-status">Ready</span>
         </div>
 
-        <section class="trip-editor glass">
-          <div class="field span2">
+        <section class="trip-hero glass">
+          <div class="trip-title-block">
             <label>Trip title</label>
             <input id="tripTitle" placeholder="Wisconsin Trip" />
           </div>
-          <div class="field">
-            <label>Start date</label>
-            <input id="startDate" type="date" />
+          <div class="date-row">
+            <div class="field">
+              <label>Start date</label>
+              <input id="startDate" type="date" />
+            </div>
+            <div class="field">
+              <label>End date</label>
+              <input id="endDate" type="date" />
+            </div>
           </div>
           <div class="field">
-            <label>End date</label>
-            <input id="endDate" type="date" />
-          </div>
-          <div class="field span2">
             <label>Destination / address</label>
             <input id="destination" placeholder="Pewaukee, WI" />
           </div>
-          <div class="field span2">
+          <div class="field">
             <label>Trip notes</label>
-            <textarea id="tripNotes" rows="2" placeholder="Important reminders, travel tips, hotel info..."></textarea>
+            <textarea id="tripNotes" rows="2" placeholder="Hotel info, travel tips, confirmation numbers..."></textarea>
           </div>
         </section>
 
         <section class="summary-grid">
           <div class="metric glass"><span>Total budget</span><strong id="totalBudget">$0</strong></div>
-          <div class="metric glass"><span>Planned stops</span><strong id="stopCount">0</strong></div>
+          <div class="metric glass"><span>Planned items</span><strong id="stopCount">0</strong></div>
           <div class="metric glass"><span>Trip days</span><strong id="dayCount">0</strong></div>
         </section>
 
-        <section class="event-composer glass">
-          <h2>Add itinerary item</h2>
-          <div class="composer-grid">
-            <input id="itemTitle" placeholder="Stop / event title" />
-            <input id="itemDate" type="date" />
-            <input id="itemTime" type="time" />
-            <input id="itemEndTime" type="time" />
-            <select id="itemType">
-              <option value="event">Event</option>
-              <option value="drive">Drive block</option>
-              <option value="food">Food</option>
-              <option value="hotel">Hotel</option>
-              <option value="gas">Gas stop</option>
-              <option value="todo">To-do</option>
-            </select>
-            <input id="itemBudget" type="number" min="0" step="0.01" placeholder="Budget $" />
-            <input id="itemLocation" class="wide" placeholder="Address / location" />
-            <textarea id="itemNotes" class="wide" rows="2" placeholder="Notes, confirmation numbers, tips..."></textarea>
+        <section class="planner-panel glass">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Plan by day</p>
+              <h2 id="plannerTitle">Your itinerary</h2>
+            </div>
+            <button id="addAnyItemBtn">+ Add item</button>
           </div>
-          <button id="addItemBtn">Add item</button>
+          <div id="dayTabs" class="day-tabs"></div>
+          <section id="timeline" class="timeline"></section>
         </section>
 
         <section class="timeline-controls">
-          <button id="expandAllBtn" class="ghost-btn">Expand all</button>
-          <button id="collapseAllBtn" class="ghost-btn">Collapse all</button>
+          <button id="expandAllBtn" class="ghost-btn">Show all days</button>
+          <button id="collapseAllBtn" class="ghost-btn">Compact view</button>
           <button id="exportBtn" class="ghost-btn">Export JSON</button>
           <label class="import-label ghost-btn">Import JSON<input id="importInput" type="file" accept="application/json" /></label>
         </section>
-
-        <section id="timeline" class="timeline"></section>
       </section>
     </main>
   </div>
@@ -120,8 +111,39 @@
     </form>
   </dialog>
 
+  <dialog id="itemDialog">
+    <form method="dialog" class="dialog-card item-dialog-card">
+      <h2 id="itemDialogTitle">Add itinerary item</h2>
+      <input id="editingItemId" type="hidden" />
+      <label class="full">Title<input id="itemTitle" placeholder="Dinner, hotel check-in, drive block..." /></label>
+      <div class="dialog-grid">
+        <label>Date<input id="itemDate" type="date" /></label>
+        <label>Type
+          <select id="itemType">
+            <option value="event">Event</option>
+            <option value="drive">Drive block</option>
+            <option value="food">Food</option>
+            <option value="hotel">Hotel</option>
+            <option value="gas">Gas stop</option>
+            <option value="todo">To-do</option>
+          </select>
+        </label>
+        <label>Start time<input id="itemTime" type="time" /></label>
+        <label>End time<input id="itemEndTime" type="time" /></label>
+        <label>Budget $<input id="itemBudget" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label>Location<input id="itemLocation" placeholder="Address / location" /></label>
+      </div>
+      <label class="full">Notes<textarea id="itemNotes" rows="3" placeholder="Notes, confirmation numbers, tips..."></textarea></label>
+      <div class="dialog-actions">
+        <button value="cancel" class="ghost-btn">Cancel</button>
+        <button id="saveItemBtn" value="default">Save item</button>
+      </div>
+    </form>
+  </dialog>
+
   <template id="itemTemplate">
     <article class="item-card" draggable="true">
+      <div class="time-chip"></div>
       <div class="item-main">
         <div class="item-type"></div>
         <div>
