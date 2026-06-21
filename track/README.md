@@ -2,21 +2,31 @@
 
 Static app intended for: `https://whatmod.com/track/`
 
+## What this version adds
+- Signed-in collaborator access
+- Owner/editor/viewer trip roles
+- Invite links like `https://whatmod.com/track/?invite=...`
+- Invited users must sign in before the trip is added to their account
+- Editors can update trip details and itinerary items
+- Viewers can see the itinerary but cannot edit
+
 ## Files
 - `index.html` — app shell
 - `styles.css` — responsive dark UI
-- `app.js` — Supabase auth + CRUD logic
-- `schema.sql` — Supabase tables and RLS policies
+- `app.js` — Supabase auth, invite acceptance, shared CRUD logic
+- `schema.sql` — Supabase tables, RLS policies, invite RPC function
 
-## Supabase setup
+## Supabase setup/update
 1. Open Supabase SQL Editor.
-2. Paste and run `schema.sql`.
-3. Go to Authentication → URL Configuration.
-4. Set Site URL to `https://whatmod.com/track/`.
-5. Add Redirect URLs:
+2. Paste and run the full `schema.sql` file.
+3. This is safe to rerun. It backfills owner memberships for existing trips.
+4. Go to Authentication → URL Configuration.
+5. Set Site URL to `https://whatmod.com/track/`.
+6. Add Redirect URLs:
    - `https://whatmod.com/track/`
    - `https://whatmod.com/track`
-6. Enable Google provider if using Google login, or use magic-link email login.
+   - `https://whatmod.com/track/?invite=*`
+7. Enable Google provider or magic-link email login.
 
 ## GitHub Pages deployment
 Place these files in a `/track` folder in your GitHub Pages repository so the final URL is:
@@ -24,3 +34,12 @@ Place these files in a `/track` folder in your GitHub Pages repository so the fi
 `https://whatmod.com/track/`
 
 The Supabase URL and publishable key are already configured in `app.js`.
+
+## How invites work
+1. Trip owner/editor signs in.
+2. Opens the trip.
+3. Chooses `Can edit` or `View only`.
+4. Clicks `Create invite link`.
+5. Sends the copied link to the other user.
+6. The invited user opens the link and signs in.
+7. The app accepts the invite and adds that trip to their trip list.

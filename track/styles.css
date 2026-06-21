@@ -125,3 +125,27 @@ dialog::backdrop { background: rgba(0,0,0,.68); backdrop-filter: blur(5px); }
   .item-actions button { flex:1; }
   .toolbar button, .toolbar .ghost-btn { flex: 1; }
 }
+
+.role-badge {
+  align-self: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: .72rem .9rem;
+  font-weight: 950;
+  color: var(--accent);
+  background: rgba(121,220,255,.10);
+}
+.role-badge.owner { color: #ffe19b; background: rgba(255,225,155,.12); }
+.role-badge.editor { color: var(--accent); }
+.role-badge.viewer { color: var(--muted); background: rgba(255,255,255,.06); }
+.share-panel { padding: 18px; display:grid; grid-template-columns: 1.25fr auto; gap: 14px; align-items:start; margin-bottom: 16px; }
+.helper-text { margin: 0; color: var(--muted); line-height: 1.45; }
+.share-actions { display:grid; grid-template-columns: 150px auto; gap: 10px; align-items:end; }
+.invite-output { grid-column: 1 / -1; display:grid; grid-template-columns: 1fr auto; gap: 10px; }
+.collab-list { grid-column: 1 / -1; display:flex; flex-wrap:wrap; gap: 8px; }
+.collab-pill { border:1px solid var(--line); background:rgba(255,255,255,.06); border-radius:999px; padding:.56rem .75rem; display:flex; gap:8px; align-items:center; }
+.collab-pill span { color: var(--muted); text-transform: capitalize; }
+button:disabled, input:disabled, textarea:disabled, select:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
+@media (max-width: 880px) {
+  .share-panel, .share-actions, .invite-output { grid-template-columns: 1fr; }
+}
