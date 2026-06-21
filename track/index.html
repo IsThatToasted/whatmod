@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Itinerary Tracker</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">whatmod.com/track</p>
+        <h1>Itinerary Tracker</h1>
+      </div>
+      <div class="auth-card" id="authArea">
+        <button id="googleBtn" class="ghost-btn">Continue with Google</button>
+        <div class="email-login">
+          <input id="emailInput" type="email" placeholder="Email for magic link" />
+          <button id="emailBtn">Send link</button>
+        </div>
+        <button id="logoutBtn" class="ghost-btn hidden">Log out</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="signedOut" class="hero-card">
+        <h2>Track trips, drives, events, stops, and budgets.</h2>
+        <p>Sign in to save your itinerary to Supabase and sync across devices.</p>
+        <div class="pill-row">
+          <span>Day-by-day planner</span><span>Budget notes</span><span>Drive blocks</span><span>Live Supabase save</span>
+        </div>
+      </section>
+
+      <section id="appArea" class="hidden">
+        <div class="toolbar glass">
+          <div>
+            <label for="tripSelect">Trip</label>
+            <select id="tripSelect"></select>
+          </div>
+          <button id="newTripBtn">+ New trip</button>
+          <button id="deleteTripBtn" class="danger ghost-btn">Delete trip</button>
+          <span id="saveStatus" class="save-status">Ready</span>
+        </div>
+
+        <section class="trip-editor glass">
+          <div class="field span2">
+            <label>Trip title</label>
+            <input id="tripTitle" placeholder="Wisconsin Trip" />
+          </div>
+          <div class="field">
+            <label>Start date</label>
+            <input id="startDate" type="date" />
+          </div>
+          <div class="field">
+            <label>End date</label>
+            <input id="endDate" type="date" />
+          </div>
+          <div class="field span2">
+            <label>Destination / address</label>
+            <input id="destination" placeholder="Pewaukee, WI" />
+          </div>
+          <div class="field span2">
+            <label>Trip notes</label>
+            <textarea id="tripNotes" rows="2" placeholder="Important reminders, travel tips, hotel info..."></textarea>
+          </div>
+        </section>
+
+        <section class="summary-grid">
+          <div class="metric glass"><span>Total budget</span><strong id="totalBudget">$0</strong></div>
+          <div class="metric glass"><span>Planned stops</span><strong id="stopCount">0</strong></div>
+          <div class="metric glass"><span>Trip days</span><strong id="dayCount">0</strong></div>
+        </section>
+
+        <section class="event-composer glass">
+          <h2>Add itinerary item</h2>
+          <div class="composer-grid">
+            <input id="itemTitle" placeholder="Stop / event title" />
+            <input id="itemDate" type="date" />
+            <input id="itemTime" type="time" />
+            <input id="itemEndTime" type="time" />
+            <select id="itemType">
+              <option value="event">Event</option>
+              <option value="drive">Drive block</option>
+              <option value="food">Food</option>
+              <option value="hotel">Hotel</option>
+              <option value="gas">Gas stop</option>
+              <option value="todo">To-do</option>
+            </select>
+            <input id="itemBudget" type="number" min="0" step="0.01" placeholder="Budget $" />
+            <input id="itemLocation" class="wide" placeholder="Address / location" />
+            <textarea id="itemNotes" class="wide" rows="2" placeholder="Notes, confirmation numbers, tips..."></textarea>
+          </div>
+          <button id="addItemBtn">Add item</button>
+        </section>
+
+        <section class="timeline-controls">
+          <button id="expandAllBtn" class="ghost-btn">Expand all</button>
+          <button id="collapseAllBtn" class="ghost-btn">Collapse all</button>
+          <button id="exportBtn" class="ghost-btn">Export JSON</button>
+          <label class="import-label ghost-btn">Import JSON<input id="importInput" type="file" accept="application/json" /></label>
+        </section>
+
+        <section id="timeline" class="timeline"></section>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="tripDialog">
+    <form method="dialog" class="dialog-card">
+      <h2>Create trip</h2>
+      <label>Trip title<input id="dialogTripTitle" placeholder="New trip" /></label>
+      <label>Start date<input id="dialogStartDate" type="date" /></label>
+      <label>End date<input id="dialogEndDate" type="date" /></label>
+      <div class="dialog-actions">
+        <button value="cancel" class="ghost-btn">Cancel</button>
+        <button id="createTripConfirm" value="default">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="itemTemplate">
+    <article class="item-card" draggable="true">
+      <div class="item-main">
+        <div class="item-type"></div>
+        <div>
+          <h3></h3>
+          <p class="item-meta"></p>
+          <p class="item-notes"></p>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="edit ghost-btn">Edit</button>
+        <button class="delete danger ghost-btn">Delete</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="./app.js"></script>
+</body>
+</html>
