@@ -43,3 +43,21 @@ The Supabase URL and publishable key are already configured in `app.js`.
 5. Sends the copied link to the other user.
 6. The invited user opens the link and signs in.
 7. The app accepts the invite and adds that trip to their trip list.
+
+## v20260622 Adventure Suite
+
+Added cache-busted assets:
+- styles.css?v=20260622-adventure-suite-1
+- app.js?v=20260622-adventure-suite-1
+
+Added non-breaking feature layer:
+- Surprise Generator
+- Weather-aware suggestions
+- Toddler Mode
+- Restaurant Match profiles with customizable participant names
+- Photo Challenge Game with XP
+- Mood Check-In
+- Shared Memories Timeline
+- End-of-Trip Recap Generator
+
+The new feature data is stored in localStorage per trip/user/version so the existing Supabase schema, login, trip sharing, invite links, and itinerary item tables are not disrupted.

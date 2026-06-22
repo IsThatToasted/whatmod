@@ -16,7 +16,7 @@ const els = {
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
-  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn')
+  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks')
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
@@ -109,15 +109,8 @@ async function bootSignedIn() {
   await loadTrips();
 }
 function refreshAuthUI() {
+  updateGreeting();
   const signedIn = !!session?.user;
-  const meta = session?.user?.user_metadata || {};
-  const displayName = meta.full_name || meta.name || session?.user?.email?.split('@')[0] || 'Traveler';
-  if (els.userName) els.userName.textContent = displayName.split(' ')[0] || 'Traveler';
-  if (els.userAvatar) {
-    const avatar = meta.avatar_url || meta.picture || '';
-    els.userAvatar.src = avatar;
-    els.userAvatar.classList.toggle('hidden', !signedIn || !avatar);
-  }
   els.signedOut.classList.toggle('hidden', signedIn);
   els.appArea.classList.toggle('hidden', !signedIn);
   els.googleBtn.classList.toggle('hidden', signedIn);
@@ -230,14 +223,11 @@ function render() { renderTripSelect(); renderTripEditor(); renderSummary(); ren
 function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
   const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
-  if (els.detailsDestination) els.detailsDestination.textContent = t.destination || 'Add destination';
-  if (els.detailsStart) els.detailsStart.textContent = t.start_date ? new Date(`${t.start_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
-  if (els.detailsEnd) els.detailsEnd.textContent = t.end_date ? new Date(`${t.end_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
   const editable = canEdit();
   [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
   els.deleteTripBtn.disabled = !canDeleteTrip();
 }
-function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; els.totalBudget.textContent = money(items.reduce((sum, i) => sum + Number(i.budget || 0), 0)); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); if (els.heroDaysLeft) { const today = new Date(todayISO() + 'T12:00:00'); const start = t?.start_date ? new Date(t.start_date + 'T12:00:00') : today; const diff = Math.max(0, Math.ceil((start - today) / 86400000)); els.heroDaysLeft.textContent = days.length ? (diff || days.length) : 0; } els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; }
+function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; els.totalBudget.textContent = money(items.reduce((sum, i) => sum + Number(i.budget || 0), 0)); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; }
 function renderSharePanel() {
   const role = currentMembership()?.role || 'viewer';
   els.roleBadge.textContent = role === 'owner' ? 'Owner' : role === 'editor' ? 'Editor' : 'Viewer';
@@ -287,8 +277,7 @@ async function importJson(file) { if (!canEdit()) return; const parsed = JSON.pa
 
 els.googleBtn.addEventListener('click', loginGoogle); els.emailBtn.addEventListener('click', loginEmail); els.logoutBtn.addEventListener('click', logout);
 els.tripSelect.addEventListener('change', async () => { activeTripId = els.tripSelect.value; selectedDay = null; localStorage.setItem('activeTripId', activeTripId); await loadTripData(); });
-function openTripDialog() { els.dialogTripTitle.value = ''; els.dialogStartDate.value = todayISO(); els.dialogEndDate.value = addDays(todayISO(), 3); els.tripDialog.showModal(); }
-els.newTripBtn.addEventListener('click', openTripDialog); if (els.sidebarNewTripBtn) els.sidebarNewTripBtn.addEventListener('click', openTripDialog); if (els.viewItineraryBtn) els.viewItineraryBtn.addEventListener('click', () => document.getElementById('plannerTitle')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+els.newTripBtn.addEventListener('click', () => { els.dialogTripTitle.value = ''; els.dialogStartDate.value = todayISO(); els.dialogEndDate.value = addDays(todayISO(), 3); els.tripDialog.showModal(); });
 els.createTripConfirm.addEventListener('click', e => { e.preventDefault(); els.tripDialog.close(); createTrip({ title: els.dialogTripTitle.value, start_date: els.dialogStartDate.value, end_date: els.dialogEndDate.value }); });
 els.deleteTripBtn.addEventListener('click', deleteTrip); ['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => els[k].addEventListener('input', queueTripSave));
 els.addAnyItemBtn.addEventListener('click', () => openItemDialog(selectedDay)); els.saveItemBtn.addEventListener('click', saveItemFromDialog);
@@ -297,4 +286,134 @@ setupLocationAutocomplete(els.destination, els.destinationSuggestions, els.desti
 setupLocationAutocomplete(els.itemLocation, els.itemLocationSuggestions, els.itemLocationMapLinks);
 els.expandAllBtn.addEventListener('click', () => { document.body.classList.add('show-all-days'); renderTimeline(); }); els.collapseAllBtn.addEventListener('click', () => { document.body.classList.remove('show-all-days'); renderTimeline(); });
 els.exportBtn.addEventListener('click', exportJson); els.importInput.addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
+// --- Adventure Suite: cache-busted feature layer (local, non-breaking Supabase-safe storage) ---
+const ADVENTURE_VERSION = '20260622-adventure-suite-2';
+const restaurantOptions = [
+  { name: 'Waterfront brunch', tags: ['brunch','waterfront','casual','family friendly','coffee'], price: '$$' },
+  { name: 'Lakefront dinner', tags: ['romantic','waterfront','steak','seafood','fancy'], price: '$$$' },
+  { name: 'Ice cream walk', tags: ['dessert','casual','kid friendly','cheap','walk'], price: '$' },
+  { name: 'Cozy coffee date', tags: ['coffee','quiet','casual','dessert'], price: '$' },
+  { name: 'Italian date night', tags: ['italian','romantic','quiet','dinner'], price: '$$' },
+  { name: 'Burger + fries stop', tags: ['burgers','casual','kid friendly','cheap'], price: '$$' }
+];
+const baseChallenges = ['Selfie near water','Ice cream photo','Funny candid','Sunset picture','Local food pic','One cute photo together','Toddler day memory','Random hidden gem'];
+function adventureKey() { return `itinAdventure:${activeTripId || 'no-trip'}:${session?.user?.id || 'guest'}:${ADVENTURE_VERSION}`; }
+function defaultAdventureState() {
+  return { toddler: false, weather: 'sunny', profiles: { profileOneName:'', profileTwoName:'', profileOneLikes:'steak, burgers, coffee, waterfront, casual, dessert', profileTwoLikes:'brunch, Italian, dessert, quiet, family friendly, waterfront', profileOneAvoids:'', profileTwoAvoids:'', budget:'$$' }, moods: [], memories: [], challenges: baseChallenges.map((title,i)=>({id:`c${i}`,title,done:false})) };
+}
+function getAdventureState() { try { return { ...defaultAdventureState(), ...(JSON.parse(localStorage.getItem(adventureKey())) || {}) }; } catch { return defaultAdventureState(); } }
+function saveAdventureState(s) { localStorage.setItem(adventureKey(), JSON.stringify(s)); }
+function words(v) { return String(v || '').toLowerCase().split(/[,\n]/).map(x=>x.trim()).filter(Boolean); }
+function scoreRestaurant(r, p) {
+  const likes = [...words(p.profileOneLikes || p.brianLikes), ...words(p.profileTwoLikes || p.ashleyLikes)];
+  const avoids = [...words(p.profileOneAvoids || p.brianAvoids), ...words(p.profileTwoAvoids || p.ashleyAvoids)];
+  let score = 62;
+  r.tags.forEach(t => { if (likes.some(l => t.includes(l) || l.includes(t))) score += 8; if (avoids.some(a => t.includes(a) || a.includes(t))) score -= 18; });
+  if (r.price === p.budget) score += 8;
+  return Math.max(15, Math.min(99, score));
+}
+
+function displayNameFromSession() {
+  const meta = session?.user?.user_metadata || {};
+  return meta.full_name || meta.name || meta.preferred_username || session?.user?.email?.split('@')[0] || '';
+}
+function updateGreeting() {
+  const el = document.getElementById('greetingLine');
+  if (!el) return;
+  const firstName = String(displayNameFromSession()).trim().split(/\s+/)[0];
+  const t = currentTrip();
+  const destination = (t?.destination || '').split(',')[0].trim();
+  if (firstName && destination) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your ${destination} adventure?`;
+  else if (firstName) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your next adventure?`;
+  else el.textContent = 'Good morning! ☀️ Ready for your next adventure?';
+}
+function migrateProfiles(st) {
+  st.profiles = st.profiles || {};
+  if (!st.profiles.profileOneLikes && st.profiles.brianLikes) st.profiles.profileOneLikes = st.profiles.brianLikes;
+  if (!st.profiles.profileTwoLikes && st.profiles.ashleyLikes) st.profiles.profileTwoLikes = st.profiles.ashleyLikes;
+  if (!st.profiles.profileOneAvoids && st.profiles.brianAvoids) st.profiles.profileOneAvoids = st.profiles.brianAvoids;
+  if (!st.profiles.profileTwoAvoids && st.profiles.ashleyAvoids) st.profiles.profileTwoAvoids = st.profiles.ashleyAvoids;
+  if (!st.profiles.profileOneName) st.profiles.profileOneName = displayNameFromSession();
+}
+function updateProfileLabels(p={}) {
+  const one = p.profileOneName || 'Profile 1';
+  const two = p.profileTwoName || 'Profile 2';
+  [['profileOneLikesLabel', one], ['profileOneAvoidsLabel', one], ['profileTwoLikesLabel', two], ['profileTwoAvoidsLabel', two]].forEach(([id,txt]) => { const el=document.getElementById(id); if(el) el.textContent = txt; });
+}
+
+function renderAdventure() {
+  updateGreeting();
+  if (!document.getElementById('weatherSuggestions') || !activeTripId) return;
+  const s = getAdventureState(); migrateProfiles(s); updateProfileLabels(s.profiles);
+  const mood = document.getElementById('weatherMood'); const toddler = document.getElementById('toddlerToggle');
+  if (mood) mood.value = s.weather; if (toddler) toddler.checked = !!s.toddler;
+  renderWeatherIdeas(s); renderRestaurantMatches(s); renderMoods(s); renderChallenges(s); renderMemories(s);
+}
+function renderWeatherIdeas(s) {
+  const pool = {
+    sunny: ['Pewaukee Lake walk','Beach / splash time','Outdoor brunch','Sunset photo challenge'],
+    rainy: ['Cozy coffee date','Indoor lunch','Shopping stop','Movie / low-key reset'],
+    cold: ['Warm dessert stop','Scenic drive','Coffee + deep conversation','Indoor toddler play'],
+    hot: ['Ice cream break','Splash pad / beach','Early dinner','Evening lake walk']
+  };
+  let ideas = pool[s.weather] || pool.sunny;
+  if (s.toddler) ideas = ['Nap window reminder','Stroller-friendly walk','Playground stop','Diaper bag check', ...ideas.filter(x=>!x.toLowerCase().includes('bar'))];
+  document.getElementById('weatherSuggestions').innerHTML = ideas.map(x=>`<button class="chip-action" data-add="${escapeHtml(x)}">${escapeHtml(x)}</button>`).join('');
+  document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>openItemDialog(selectedDay, { title:b.dataset.add, item_type:s.toddler?'todo':'event', item_date:selectedDay, notes:s.toddler?'Toddler-friendly suggestion.':'Weather-aware suggestion.' }));
+}
+function renderRestaurantMatches(s) {
+  const list = restaurantOptions.map(r=>({ ...r, score:scoreRestaurant(r, s.profiles) })).sort((a,b)=>b.score-a.score).slice(0,4);
+  document.getElementById('restaurantMatches').innerHTML = list.map(r=>`<div class="match-row"><strong>${escapeHtml(r.name)}</strong><span>${r.score}% Match • ${r.price}</span><button class="ghost-btn tiny" data-food="${escapeHtml(r.name)}">Plan</button></div>`).join('');
+  document.querySelectorAll('[data-food]').forEach(b=>b.onclick=()=>openItemDialog(selectedDay,{title:b.dataset.food,item_type:'food',item_date:selectedDay,notes:'Added from restaurant match score.'}));
+}
+function renderMoods(s) { document.getElementById('moodList').innerHTML = s.moods.slice(-4).reverse().map(m=>`<div class="mini-row"><strong>${escapeHtml(m.rating)}</strong><span>${escapeHtml(m.title)} • ${fmtShortDate(m.date)}</span></div>`).join('') || '<p class="helper-text">No mood check-ins yet.</p>'; }
+function renderChallenges(s) {
+  const done = s.challenges.filter(c=>c.done).length; const xp = done * 120;
+  document.getElementById('challengeStats').innerHTML = `<strong>${xp} XP</strong><span>${done}/${s.challenges.length} complete</span>`;
+  document.getElementById('challengeList').innerHTML = s.challenges.map(c=>`<label class="challenge-row"><input type="checkbox" data-challenge="${c.id}" ${c.done?'checked':''}/> ${escapeHtml(c.title)}</label>`).join('');
+  document.querySelectorAll('[data-challenge]').forEach(cb=>cb.onchange=()=>{ const st=getAdventureState(); const ch=st.challenges.find(x=>x.id===cb.dataset.challenge); if(ch) ch.done=cb.checked; saveAdventureState(st); renderAdventure(); });
+}
+function renderMemories(s) { document.getElementById('memoryList').innerHTML = s.memories.slice(-5).reverse().map(m=>`<div class="memory-row"><strong>${escapeHtml(m.title)}</strong><span>${escapeHtml(m.rating)} • ${fmtShortDate(m.date)}</span><p>${escapeHtml(m.details || '')}</p></div>`).join('') || '<p class="helper-text">Add favorite moments as they happen.</p>'; }
+function openQuickDialog(type) {
+  const titleMap = { mood:'Add Mood Check-In', memory:'Add Shared Memory', challenge:'Add Photo Challenge' };
+  document.getElementById('quickDialogTitle').textContent = titleMap[type] || 'Add';
+  document.getElementById('quickFeatureType').value = type;
+  document.getElementById('quickTitle').value = type === 'mood' ? 'Today felt...' : '';
+  document.getElementById('quickDetails').value = '';
+  document.getElementById('quickDate').value = selectedDay || todayISO();
+  document.getElementById('quickFeatureDialog').showModal();
+}
+function saveQuickFeature(e) {
+  e.preventDefault(); const st=getAdventureState(); const type=document.getElementById('quickFeatureType').value;
+  const entry={ id:crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), title:document.getElementById('quickTitle').value.trim() || 'Untitled', details:document.getElementById('quickDetails').value.trim(), date:document.getElementById('quickDate').value || todayISO(), rating:document.getElementById('quickRating').value };
+  if (type === 'mood') st.moods.push(entry); else if (type === 'memory') st.memories.push(entry); else if (type === 'challenge') st.challenges.push({ id:entry.id, title:entry.title, done:false });
+  saveAdventureState(st); document.getElementById('quickFeatureDialog').close(); renderAdventure();
+}
+function openProfileDialog() { const s=getAdventureState(); migrateProfiles(s); ['profileOneName','profileTwoName','profileOneLikes','profileTwoLikes','profileOneAvoids','profileTwoAvoids'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=s.profiles[k]||''; }); updateProfileLabels(s.profiles); document.getElementById('budgetComfort').value=s.profiles.budget||'$$'; document.getElementById('profileDialog').showModal(); }
+function saveProfiles(e) { e.preventDefault(); const st=getAdventureState(); st.profiles={ profileOneName:profileOneName.value.trim(), profileTwoName:profileTwoName.value.trim(), profileOneLikes:profileOneLikes.value, profileTwoLikes:profileTwoLikes.value, profileOneAvoids:profileOneAvoids.value, profileTwoAvoids:profileTwoAvoids.value, budget:budgetComfort.value }; saveAdventureState(st); profileDialog.close(); renderAdventure(); updateGreeting(); }
+function spinSurprise() {
+  const st=getAdventureState(); const ideas=[...restaurantOptions.map(r=>r.name), ...items.map(i=>i.title), 'Pewaukee Lake walk','Take a cute selfie','Find dessert','Coffee and conversation','Sunset drive'].filter(Boolean);
+  const pick=ideas[Math.floor(Math.random()*ideas.length)] || 'Go make a memory';
+  document.getElementById('surpriseResult').textContent = `🎉 ${pick}`;
+}
+function generateRecap() {
+  const st=getAdventureState(); const t=currentTrip(); const days=t?dateRange(t.start_date,t.end_date).length:0; const done=st.challenges.filter(c=>c.done).length;
+  const fav=st.memories[st.memories.length-1]?.title || items[0]?.title || 'Your favorite moment is waiting to happen';
+  const text=`${(t?.title || 'PEWAUKEE 2026').toUpperCase()}\n\n${days} Days\n${items.length} Planned Activities\n${money(items.reduce((a,i)=>a+Number(i.budget||0),0))} Budgeted\n${st.memories.length} Shared Memories\n${st.moods.length} Mood Check-Ins\n${done}/${st.challenges.length} Photo Challenges Complete\nAdventure Score: ${done*120} XP\n\nTop Memory:\n${fav}\n\nBuilt for your shared adventure ✨`;
+  const out=document.getElementById('recapOutput'); out.textContent=text; out.classList.remove('hidden');
+}
+const originalRender = render;
+render = function(){ originalRender(); renderAdventure(); };
+document.getElementById('weatherMood')?.addEventListener('change', e=>{ const s=getAdventureState(); s.weather=e.target.value; saveAdventureState(s); renderAdventure(); });
+document.getElementById('toddlerToggle')?.addEventListener('change', e=>{ const s=getAdventureState(); s.toddler=e.target.checked; saveAdventureState(s); renderAdventure(); });
+document.getElementById('weatherRefreshBtn')?.addEventListener('click', renderAdventure);
+document.getElementById('surpriseBtn')?.addEventListener('click', spinSurprise);
+document.getElementById('profileBtn')?.addEventListener('click', openProfileDialog);
+document.getElementById('saveProfileBtn')?.addEventListener('click', saveProfiles);
+document.getElementById('moodBtn')?.addEventListener('click', ()=>openQuickDialog('mood'));
+document.getElementById('memoryBtn')?.addEventListener('click', ()=>openQuickDialog('memory'));
+document.getElementById('challengeAddBtn')?.addEventListener('click', ()=>openQuickDialog('challenge'));
+document.getElementById('saveQuickBtn')?.addEventListener('click', saveQuickFeature);
+document.getElementById('recapBtn')?.addEventListener('click', generateRecap);
+
 init();
