@@ -1,7 +1,9 @@
 const SUPABASE_URL = 'https://cuhbzgeqvgzshwwfkpdm.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo';
-const REDIRECT_TO = `${location.origin}${location.pathname}`;
-const APP_URL = `${location.origin}${location.pathname}`;
+const DEFAULT_APP_URL = 'https://whatmod.com/track/';
+function currentAppUrl() { return `${location.origin}${location.pathname}`; }
+const REDIRECT_TO = currentAppUrl();
+const APP_URL = currentAppUrl();
 
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -96,17 +98,62 @@ function setupLocationAutocomplete(input, suggestionBox, linksBox) {
 }
 
 
+let authBootInProgress = false;
+let authBootedUserId = null;
+
 async function init() {
   pendingInviteToken = inviteTokenFromUrl();
-  const { data } = await client.auth.getSession(); session = data.session;
-  client.auth.onAuthStateChange(async (_event, s) => { session = s; refreshAuthUI(); if (session) await bootSignedIn(); });
-  refreshAuthUI();
-  if (session) await bootSignedIn();
-  else if (pendingInviteToken) setStatus('Sign in to accept invite');
+
+  client.auth.onAuthStateChange((_event, s) => {
+    session = s;
+    // Supabase can finish OAuth/magic-link hydration a tick after the callback URL loads.
+    // Deferring prevents the signed-out landing card from getting stuck until a tab focus change.
+    setTimeout(() => syncAuthAndRender(`auth:${_event}`), 0);
+  });
+
+  await syncAuthAndRender('initial');
+  setTimeout(() => syncAuthAndRender('initial-recheck-250ms'), 250);
+  setTimeout(() => syncAuthAndRender('initial-recheck-1000ms'), 1000);
+
+  window.addEventListener('focus', () => syncAuthAndRender('window-focus'));
+  window.addEventListener('pageshow', () => syncAuthAndRender('pageshow'));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) syncAuthAndRender('visible'); });
 }
-async function bootSignedIn() {
-  if (pendingInviteToken) await acceptInvite(pendingInviteToken);
-  await loadTrips();
+
+async function syncAuthAndRender(reason = 'manual') {
+  try {
+    const { data, error } = await client.auth.getSession();
+    if (error) console.warn('Auth session refresh warning:', error);
+    const nextSession = data?.session || null;
+    const oldUserId = session?.user?.id || null;
+    const nextUserId = nextSession?.user?.id || null;
+    session = nextSession;
+    refreshAuthUI();
+
+    if (!session) {
+      if (pendingInviteToken) setStatus('Sign in to accept invite');
+      return;
+    }
+
+    const needsBoot = !trips.length || !activeTripId || authBootedUserId !== nextUserId || oldUserId !== nextUserId;
+    if (needsBoot) await bootSignedIn(reason);
+    else render();
+  } catch (err) {
+    console.error('Auth sync failed:', err);
+    refreshAuthUI();
+  }
+}
+
+async function bootSignedIn(reason = 'boot') {
+  if (authBootInProgress) return;
+  authBootInProgress = true;
+  try {
+    if (pendingInviteToken) await acceptInvite(pendingInviteToken);
+    await loadTrips();
+    authBootedUserId = session?.user?.id || null;
+  } finally {
+    authBootInProgress = false;
+  }
 }
 function refreshAuthUI() {
   updateGreeting();
@@ -121,8 +168,8 @@ function refreshAuthUI() {
     els.signedOut.querySelector('p').textContent = 'Sign in first, then the invite will be added to your account automatically.';
   }
 }
-async function loginGoogle() { await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.href.includes('?invite=') ? location.href : REDIRECT_TO } }); }
-async function loginEmail() { const email = els.emailInput.value.trim(); if (!email) return alert('Enter your email first.'); const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.includes('?invite=') ? location.href : REDIRECT_TO } }); if (error) return alert(error.message); alert('Magic link sent. Check your email.'); }
+async function loginGoogle() { const redirectTo = location.href.includes('?invite=') ? location.href : REDIRECT_TO; await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } }); }
+async function loginEmail() { const email = els.emailInput.value.trim(); if (!email) return alert('Enter your email first.'); const emailRedirectTo = location.href.includes('?invite=') ? location.href : REDIRECT_TO; const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo } }); if (error) return alert(error.message); alert('Magic link sent. Check your email.'); }
 async function logout() { await client.auth.signOut(); trips = []; items = []; members = []; activeTripId = null; render(); }
 function showDbError(error) { console.error(error); alert(`${error.message}\n\nRun the newest schema.sql in Supabase SQL Editor. This version needs the members, invites, and accept_itinerary_invite function.`); setStatus('Database setup needed'); }
 
@@ -313,7 +360,7 @@ setupLocationAutocomplete(els.itemLocation, els.itemLocationSuggestions, els.ite
 els.expandAllBtn.addEventListener('click', () => { document.body.classList.add('show-all-days'); renderTimeline(); }); els.collapseAllBtn.addEventListener('click', () => { document.body.classList.remove('show-all-days'); renderTimeline(); });
 els.exportBtn.addEventListener('click', exportJson); els.importInput.addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
 // --- Adventure Suite: cache-busted feature layer (local, non-breaking Supabase-safe storage) ---
-const ADVENTURE_VERSION = '20260622-auth-profile-v5';
+const ADVENTURE_VERSION = '20260622-auth-refresh-v6';
 const restaurantOptions = [
   { name: 'Waterfront brunch', tags: ['brunch','waterfront','casual','family friendly','coffee','cute casual'], price: '$$' },
   { name: 'Lakefront dinner', tags: ['romantic','waterfront','steak','seafood','fancy','date night'], price: '$$$' },
@@ -382,29 +429,15 @@ function displayNameFromSession() {
 function updateGreeting() {
   const el = document.getElementById('greetingLine');
   if (!el) return;
-  const firstName = String(myProfile()?.display_name || displayNameFromSession()).trim().split(/\s+/)[0];
+  const firstName = String(displayNameFromSession()).trim().split(/\s+/)[0];
   const t = currentTrip();
   const destination = (t?.destination || '').split(',')[0].trim();
   if (firstName && destination) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your ${destination} adventure?`;
   else if (firstName) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your next adventure?`;
   else el.textContent = 'Good morning! ☀️ Ready for your next adventure?';
 }
-function renderSharedProfileSummary() {
-  const box = document.getElementById('sharedProfileSummary');
-  if (!box) return;
-  const profiles = sharedProfiles();
-  if (!profiles.length) {
-    box.innerHTML = '<p class="helper-text">No shared traveler profiles yet. Save yours first.</p>';
-    return;
-  }
-  box.innerHTML = profiles.map(p => {
-    const mine = p.user_id === session?.user?.id;
-    const name = escapeHtml(p.display_name || (mine ? 'You' : 'Traveler'));
-    const likes = escapeHtml(p.likes || p.interests || 'No interests shared yet');
-    const avoids = escapeHtml(p.avoids || 'No avoids added');
-    return `<div class="traveler-profile-row"><strong>${mine ? '👤 ' : '👥 '}${name}${mine ? ' (you)' : ''}</strong><span>Budget: ${escapeHtml(p.budget || '$$')} • Vibe: ${escapeHtml(p.vibe || 'not set')}</span><small>Likes: ${likes}</small><small>Avoids: ${avoids}</small></div>`;
-  }).join('');
-}
+function migrateProfiles(st) { return st; }
+function updateProfileLabels(p={}) { }
 
 function renderAdventure() {
   updateGreeting();
@@ -454,39 +487,8 @@ function saveQuickFeature(e) {
   if (type === 'mood') st.moods.push(entry); else if (type === 'memory') st.memories.push(entry); else if (type === 'challenge') st.challenges.push({ id:entry.id, title:entry.title, done:false });
   saveAdventureState(st); document.getElementById('quickFeatureDialog').close(); renderAdventure();
 }
-function openProfileDialog() {
-  const p = myProfile() || defaultMyProfile();
-  const name = document.getElementById('myProfileName');
-  const likes = document.getElementById('myProfileLikes');
-  const avoids = document.getElementById('myProfileAvoids');
-  const interests = document.getElementById('myProfileInterests');
-  const budget = document.getElementById('budgetComfort');
-  const vibe = document.getElementById('profileVibe');
-  if (name) name.value = p.display_name || displayNameFromSession() || '';
-  if (likes) likes.value = p.likes || '';
-  if (avoids) avoids.value = p.avoids || '';
-  if (interests) interests.value = p.interests || '';
-  if (budget) budget.value = p.budget || '$$';
-  if (vibe) vibe.value = p.vibe || 'cute casual';
-  renderSharedProfileSummary();
-  document.getElementById('profileDialog')?.showModal();
-}
-async function saveProfiles(e) {
-  e.preventDefault();
-  const payload = {
-    display_name: document.getElementById('myProfileName')?.value.trim() || displayNameFromSession() || 'Traveler',
-    photo_url: userPhotoFromSession(),
-    likes: document.getElementById('myProfileLikes')?.value.trim() || '',
-    avoids: document.getElementById('myProfileAvoids')?.value.trim() || '',
-    interests: document.getElementById('myProfileInterests')?.value.trim() || '',
-    budget: document.getElementById('budgetComfort')?.value || '$$',
-    vibe: document.getElementById('profileVibe')?.value || 'cute casual'
-  };
-  await upsertMyTravelerProfile(payload);
-  document.getElementById('profileDialog')?.close();
-  renderAdventure();
-  updateGreeting();
-}
+function openProfileDialog() { const s=getAdventureState(); migrateProfiles(s); ['profileOneName','profileTwoName','profileOneLikes','profileTwoLikes','profileOneAvoids','profileTwoAvoids'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=s.profiles[k]||''; }); updateProfileLabels(s.profiles); document.getElementById('budgetComfort').value=s.profiles.budget||'$$'; const vibe=document.getElementById('profileVibe'); if(vibe) vibe.value=s.profiles.vibe||'cute casual'; document.getElementById('profileDialog').showModal(); }
+function saveProfiles(e) { e.preventDefault(); const st=getAdventureState(); st.profiles={ profileOneName:profileOneName.value.trim(), profileTwoName:profileTwoName.value.trim(), profileOneLikes:profileOneLikes.value, profileTwoLikes:profileTwoLikes.value, profileOneAvoids:profileOneAvoids.value, profileTwoAvoids:profileTwoAvoids.value, budget:budgetComfort.value, vibe:(document.getElementById('profileVibe')?.value||'cute casual') }; saveAdventureState(st); profileDialog.close(); renderAdventure(); updateGreeting(); }
 function spinSurprise() {
   const st=getAdventureState();
   const weatherPools = {
