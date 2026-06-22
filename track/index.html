@@ -4,16 +4,36 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=20260622-adventure-suite-2" />
+  <link rel="stylesheet" href="./styles.css?v=20260622-beautiful-v3" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">whatmod.com/track</p>
-        <h1>Itinerary<br>Tracker</h1>
-        <p class="subtitle" id="greetingLine">Good morning! ☀️ Ready for your next adventure?</p>
+    <header class="topbar sidebar-card">
+      <div class="brand-lockup">
+        <div class="brand-mark">⌁</div>
+        <div>
+          <h1>Itinerary<br>Tracker</h1>
+          <p class="eyebrow">shared adventure planner</p>
+        </div>
+      </div>
+      <nav class="side-nav" aria-label="Main navigation">
+        <a class="active" href="#">🏠 <span>Dashboard</span></a>
+        <a href="#">🧳 <span>Trips</span></a>
+        <a href="#">📅 <span>Calendar</span></a>
+        <a href="#">🗺️ <span>Map & Journey</span></a>
+        <a href="#">✨ <span>Surprise Me</span><em>New</em></a>
+        <a href="#">❤️ <span>Memories</span></a>
+        <a href="#">📸 <span>Photo Challenges</span></a>
+        <a href="#">😊 <span>Mood Check-Ins</span></a>
+        <a href="#">👥 <span>People</span></a>
+        <a href="#">⚙️ <span>Settings</span></a>
+      </nav>
+      <div class="sidebar-promo">
+        <div class="promo-art">🌴🧳</div>
+        <h3>Your next adventure is calling ✈️</h3>
+        <p>Plan, play, save memories, and recap the whole trip.</p>
+        <button id="newTripBtnSidebar" type="button">+ New Trip</button>
       </div>
       <div class="auth-card" id="authArea">
         <button id="googleBtn" class="ghost-btn">Continue with Google</button>
@@ -35,6 +55,27 @@
       </section>
 
       <section id="appArea" class="hidden">
+        <div class="dashboard-header">
+          <div>
+            <h2 id="greetingLine">Good morning! ☀️</h2>
+            <p class="subtitle">Ready for your next adventure?</p>
+          </div>
+          <div class="header-actions">
+            <label class="search-pill" aria-label="Search"><span>⌕</span><input type="search" placeholder="Search trips, activities, places..." /></label>
+            <button class="round-icon" type="button" aria-label="Notifications">🔔</button>
+            <button id="userAvatarBtn" class="user-chip" type="button" title="Edit profile preferences">
+              <span id="userAvatarInitials" class="avatar-initials">?</span>
+              <img id="userAvatarImg" alt="Profile photo" class="hidden" />
+              <span id="profileNameChip" class="profile-chip-name">Profile</span>
+              <span>⌄</span>
+            </button>
+          </div>
+        </div>
+        <div id="profileDropdown" class="profile-dropdown hidden">
+          <button id="profileMenuBtn" type="button">👤 My Profile<br><small>Food, interests & preferences</small></button>
+          <button id="profileMenuStyleBtn" type="button">🍽️ Restaurant Match<br><small>Likes, avoids & budget</small></button>
+          <button id="profileMenuLogoutBtn" type="button">🚪 Sign out</button>
+        </div>
         <div class="toolbar glass">
           <div>
             <label for="tripSelect">Trip</label>
@@ -46,6 +87,7 @@
         </div>
 
         <section class="trip-hero glass">
+          <div class="trip-cover" aria-hidden="true"></div>
           <div class="trip-title-block">
             <label>Trip title</label>
             <input id="tripTitle" placeholder="Wisconsin Trip" />
@@ -66,7 +108,8 @@
               <div id="destinationSuggestions" class="suggestions hidden"></div>
               <div id="destinationMapLinks" class="map-links hidden"></div>
           </div>
-          <div class="field">
+          <div class="days-left-card"><strong id="daysLeftHero">0</strong><span>Days left</span></div>
+          <div class="field trip-notes-field">
             <label>Trip notes</label>
             <textarea id="tripNotes" rows="2" placeholder="Hotel info, travel tips, confirmation numbers..."></textarea>
           </div>
@@ -76,6 +119,7 @@
           <div class="metric glass"><span>Total budget</span><strong id="totalBudget">$0</strong></div>
           <div class="metric glass"><span>Planned items</span><strong id="stopCount">0</strong></div>
           <div class="metric glass"><span>Trip days</span><strong id="dayCount">0</strong></div>
+          <div class="metric glass"><span>Travelers</span><strong id="travelerCount">1</strong></div>
         </section>
         <section class="share-panel glass">
           <div>
@@ -209,7 +253,7 @@
 
   <dialog id="profileDialog">
     <form method="dialog" class="dialog-card item-dialog-card">
-      <h2>Restaurant Profiles</h2>
+      <h2>My Profile & Restaurant Preferences</h2>
       <p class="helper-text">Customize food interests for match scores. These save locally per trip/user so the current Supabase setup stays safe.</p>
       <div class="profile-grid">
         <label>Profile 1 name<input id="profileOneName" placeholder="Your name" /></label>
@@ -218,6 +262,7 @@
         <label><span id="profileTwoLikesLabel">Profile 2</span> likes<textarea id="profileTwoLikes" rows="3" placeholder="brunch, Italian, dessert, quiet, family friendly"></textarea></label>
         <label><span id="profileOneAvoidsLabel">Profile 1</span> avoids<textarea id="profileOneAvoids" rows="2" placeholder="seafood, crowded"></textarea></label>
         <label><span id="profileTwoAvoidsLabel">Profile 2</span> avoids<textarea id="profileTwoAvoids" rows="2" placeholder="spicy, expensive"></textarea></label>
+        <label>Preferred vibe<select id="profileVibe"><option value="cute casual">Cute casual</option><option value="romantic">Romantic</option><option value="quiet">Quiet</option><option value="adventurous">Adventurous</option><option value="family friendly">Family friendly</option></select></label>
         <label>Budget comfort<select id="budgetComfort"><option value="$">$</option><option value="$$" selected>$$</option><option value="$$$">$$$</option><option value="$$$$">$$$$</option></select></label>
       </div>
       <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveProfileBtn" value="default">Save profiles</button></div>
@@ -256,6 +301,6 @@
     </article>
   </template>
 
-  <script src="./app.js?v=20260622-adventure-suite-1"></script>
+  <script src="./app.js?v=20260622-beautiful-v3"></script>
 </body>
 </html>
