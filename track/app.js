@@ -1,7 +1,7 @@
 const SUPABASE_URL = 'https://cuhbzgeqvgzshwwfkpdm.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo';
-const REDIRECT_TO = 'https://whatmod.com/track/';
-const APP_URL = 'https://whatmod.com/track/';
+const REDIRECT_TO = `${location.origin}${location.pathname}`;
+const APP_URL = `${location.origin}${location.pathname}`;
 
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -313,7 +313,7 @@ setupLocationAutocomplete(els.itemLocation, els.itemLocationSuggestions, els.ite
 els.expandAllBtn.addEventListener('click', () => { document.body.classList.add('show-all-days'); renderTimeline(); }); els.collapseAllBtn.addEventListener('click', () => { document.body.classList.remove('show-all-days'); renderTimeline(); });
 els.exportBtn.addEventListener('click', exportJson); els.importInput.addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
 // --- Adventure Suite: cache-busted feature layer (local, non-breaking Supabase-safe storage) ---
-const ADVENTURE_VERSION = '20260622-profile-v4';
+const ADVENTURE_VERSION = '20260622-auth-profile-v5';
 const restaurantOptions = [
   { name: 'Waterfront brunch', tags: ['brunch','waterfront','casual','family friendly','coffee','cute casual'], price: '$$' },
   { name: 'Lakefront dinner', tags: ['romantic','waterfront','steak','seafood','fancy','date night'], price: '$$$' },
@@ -382,15 +382,29 @@ function displayNameFromSession() {
 function updateGreeting() {
   const el = document.getElementById('greetingLine');
   if (!el) return;
-  const firstName = String(displayNameFromSession()).trim().split(/\s+/)[0];
+  const firstName = String(myProfile()?.display_name || displayNameFromSession()).trim().split(/\s+/)[0];
   const t = currentTrip();
   const destination = (t?.destination || '').split(',')[0].trim();
   if (firstName && destination) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your ${destination} adventure?`;
   else if (firstName) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your next adventure?`;
   else el.textContent = 'Good morning! ☀️ Ready for your next adventure?';
 }
-function migrateProfiles(st) { return st; }
-function updateProfileLabels(p={}) { }
+function renderSharedProfileSummary() {
+  const box = document.getElementById('sharedProfileSummary');
+  if (!box) return;
+  const profiles = sharedProfiles();
+  if (!profiles.length) {
+    box.innerHTML = '<p class="helper-text">No shared traveler profiles yet. Save yours first.</p>';
+    return;
+  }
+  box.innerHTML = profiles.map(p => {
+    const mine = p.user_id === session?.user?.id;
+    const name = escapeHtml(p.display_name || (mine ? 'You' : 'Traveler'));
+    const likes = escapeHtml(p.likes || p.interests || 'No interests shared yet');
+    const avoids = escapeHtml(p.avoids || 'No avoids added');
+    return `<div class="traveler-profile-row"><strong>${mine ? '👤 ' : '👥 '}${name}${mine ? ' (you)' : ''}</strong><span>Budget: ${escapeHtml(p.budget || '$$')} • Vibe: ${escapeHtml(p.vibe || 'not set')}</span><small>Likes: ${likes}</small><small>Avoids: ${avoids}</small></div>`;
+  }).join('');
+}
 
 function renderAdventure() {
   updateGreeting();
@@ -440,8 +454,39 @@ function saveQuickFeature(e) {
   if (type === 'mood') st.moods.push(entry); else if (type === 'memory') st.memories.push(entry); else if (type === 'challenge') st.challenges.push({ id:entry.id, title:entry.title, done:false });
   saveAdventureState(st); document.getElementById('quickFeatureDialog').close(); renderAdventure();
 }
-function openProfileDialog() { const s=getAdventureState(); migrateProfiles(s); ['profileOneName','profileTwoName','profileOneLikes','profileTwoLikes','profileOneAvoids','profileTwoAvoids'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=s.profiles[k]||''; }); updateProfileLabels(s.profiles); document.getElementById('budgetComfort').value=s.profiles.budget||'$$'; const vibe=document.getElementById('profileVibe'); if(vibe) vibe.value=s.profiles.vibe||'cute casual'; document.getElementById('profileDialog').showModal(); }
-function saveProfiles(e) { e.preventDefault(); const st=getAdventureState(); st.profiles={ profileOneName:profileOneName.value.trim(), profileTwoName:profileTwoName.value.trim(), profileOneLikes:profileOneLikes.value, profileTwoLikes:profileTwoLikes.value, profileOneAvoids:profileOneAvoids.value, profileTwoAvoids:profileTwoAvoids.value, budget:budgetComfort.value, vibe:(document.getElementById('profileVibe')?.value||'cute casual') }; saveAdventureState(st); profileDialog.close(); renderAdventure(); updateGreeting(); }
+function openProfileDialog() {
+  const p = myProfile() || defaultMyProfile();
+  const name = document.getElementById('myProfileName');
+  const likes = document.getElementById('myProfileLikes');
+  const avoids = document.getElementById('myProfileAvoids');
+  const interests = document.getElementById('myProfileInterests');
+  const budget = document.getElementById('budgetComfort');
+  const vibe = document.getElementById('profileVibe');
+  if (name) name.value = p.display_name || displayNameFromSession() || '';
+  if (likes) likes.value = p.likes || '';
+  if (avoids) avoids.value = p.avoids || '';
+  if (interests) interests.value = p.interests || '';
+  if (budget) budget.value = p.budget || '$$';
+  if (vibe) vibe.value = p.vibe || 'cute casual';
+  renderSharedProfileSummary();
+  document.getElementById('profileDialog')?.showModal();
+}
+async function saveProfiles(e) {
+  e.preventDefault();
+  const payload = {
+    display_name: document.getElementById('myProfileName')?.value.trim() || displayNameFromSession() || 'Traveler',
+    photo_url: userPhotoFromSession(),
+    likes: document.getElementById('myProfileLikes')?.value.trim() || '',
+    avoids: document.getElementById('myProfileAvoids')?.value.trim() || '',
+    interests: document.getElementById('myProfileInterests')?.value.trim() || '',
+    budget: document.getElementById('budgetComfort')?.value || '$$',
+    vibe: document.getElementById('profileVibe')?.value || 'cute casual'
+  };
+  await upsertMyTravelerProfile(payload);
+  document.getElementById('profileDialog')?.close();
+  renderAdventure();
+  updateGreeting();
+}
 function spinSurprise() {
   const st=getAdventureState();
   const weatherPools = {
