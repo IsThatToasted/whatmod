@@ -1,9 +1,7 @@
 const SUPABASE_URL = 'https://cuhbzgeqvgzshwwfkpdm.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo';
-const DEFAULT_APP_URL = 'https://whatmod.com/track/';
-function currentAppUrl() { return `${location.origin}${location.pathname}`; }
-const REDIRECT_TO = currentAppUrl();
-const APP_URL = currentAppUrl();
+const REDIRECT_TO = 'https://whatmod.com/track/';
+const APP_URL = 'https://whatmod.com/track/';
 
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -18,11 +16,11 @@ const els = {
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
-  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks')
+  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn')
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
-let session = null, trips = [], items = [], members = [], travelerProfiles = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null;
+let session = null, trips = [], items = [], members = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -98,66 +96,28 @@ function setupLocationAutocomplete(input, suggestionBox, linksBox) {
 }
 
 
-let authBootInProgress = false;
-let authBootedUserId = null;
-
 async function init() {
   pendingInviteToken = inviteTokenFromUrl();
-
-  client.auth.onAuthStateChange((_event, s) => {
-    session = s;
-    // Supabase can finish OAuth/magic-link hydration a tick after the callback URL loads.
-    // Deferring prevents the signed-out landing card from getting stuck until a tab focus change.
-    setTimeout(() => syncAuthAndRender(`auth:${_event}`), 0);
-  });
-
-  await syncAuthAndRender('initial');
-  setTimeout(() => syncAuthAndRender('initial-recheck-250ms'), 250);
-  setTimeout(() => syncAuthAndRender('initial-recheck-1000ms'), 1000);
-
-  window.addEventListener('focus', () => syncAuthAndRender('window-focus'));
-  window.addEventListener('pageshow', () => syncAuthAndRender('pageshow'));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) syncAuthAndRender('visible'); });
+  const { data } = await client.auth.getSession(); session = data.session;
+  client.auth.onAuthStateChange(async (_event, s) => { session = s; refreshAuthUI(); if (session) await bootSignedIn(); });
+  refreshAuthUI();
+  if (session) await bootSignedIn();
+  else if (pendingInviteToken) setStatus('Sign in to accept invite');
 }
-
-async function syncAuthAndRender(reason = 'manual') {
-  try {
-    const { data, error } = await client.auth.getSession();
-    if (error) console.warn('Auth session refresh warning:', error);
-    const nextSession = data?.session || null;
-    const oldUserId = session?.user?.id || null;
-    const nextUserId = nextSession?.user?.id || null;
-    session = nextSession;
-    refreshAuthUI();
-
-    if (!session) {
-      if (pendingInviteToken) setStatus('Sign in to accept invite');
-      return;
-    }
-
-    const needsBoot = !trips.length || !activeTripId || authBootedUserId !== nextUserId || oldUserId !== nextUserId;
-    if (needsBoot) await bootSignedIn(reason);
-    else render();
-  } catch (err) {
-    console.error('Auth sync failed:', err);
-    refreshAuthUI();
-  }
-}
-
-async function bootSignedIn(reason = 'boot') {
-  if (authBootInProgress) return;
-  authBootInProgress = true;
-  try {
-    if (pendingInviteToken) await acceptInvite(pendingInviteToken);
-    await loadTrips();
-    authBootedUserId = session?.user?.id || null;
-  } finally {
-    authBootInProgress = false;
-  }
+async function bootSignedIn() {
+  if (pendingInviteToken) await acceptInvite(pendingInviteToken);
+  await loadTrips();
 }
 function refreshAuthUI() {
-  updateGreeting();
   const signedIn = !!session?.user;
+  const meta = session?.user?.user_metadata || {};
+  const displayName = meta.full_name || meta.name || session?.user?.email?.split('@')[0] || 'Traveler';
+  if (els.userName) els.userName.textContent = displayName.split(' ')[0] || 'Traveler';
+  if (els.userAvatar) {
+    const avatar = meta.avatar_url || meta.picture || '';
+    els.userAvatar.src = avatar;
+    els.userAvatar.classList.toggle('hidden', !signedIn || !avatar);
+  }
   els.signedOut.classList.toggle('hidden', signedIn);
   els.appArea.classList.toggle('hidden', !signedIn);
   els.googleBtn.classList.toggle('hidden', signedIn);
@@ -168,8 +128,8 @@ function refreshAuthUI() {
     els.signedOut.querySelector('p').textContent = 'Sign in first, then the invite will be added to your account automatically.';
   }
 }
-async function loginGoogle() { const redirectTo = location.href.includes('?invite=') ? location.href : REDIRECT_TO; await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } }); }
-async function loginEmail() { const email = els.emailInput.value.trim(); if (!email) return alert('Enter your email first.'); const emailRedirectTo = location.href.includes('?invite=') ? location.href : REDIRECT_TO; const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo } }); if (error) return alert(error.message); alert('Magic link sent. Check your email.'); }
+async function loginGoogle() { await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.href.includes('?invite=') ? location.href : REDIRECT_TO } }); }
+async function loginEmail() { const email = els.emailInput.value.trim(); if (!email) return alert('Enter your email first.'); const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.includes('?invite=') ? location.href : REDIRECT_TO } }); if (error) return alert(error.message); alert('Magic link sent. Check your email.'); }
 async function logout() { await client.auth.signOut(); trips = []; items = []; members = []; activeTripId = null; render(); }
 function showDbError(error) { console.error(error); alert(`${error.message}\n\nRun the newest schema.sql in Supabase SQL Editor. This version needs the members, invites, and accept_itinerary_invite function.`); setStatus('Database setup needed'); }
 
@@ -194,7 +154,7 @@ async function loadTrips() {
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
 }
-async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadTravelerProfiles()]); setStatus('Ready'); render(); }
+async function loadTripData() { await Promise.all([loadItems(), loadMembers()]); setStatus('Ready'); render(); }
 async function loadItems() {
   if (!activeTripId) return;
   const { data, error } = await client.from('itinerary_items').select('*').eq('trip_id', activeTripId).order('item_date').order('start_time');
@@ -206,32 +166,6 @@ async function loadMembers() {
   const { data, error } = await client.from('itinerary_trip_members').select('*').eq('trip_id', activeTripId).order('created_at');
   if (error) return showDbError(error);
   members = data || [];
-}
-async function loadTravelerProfiles() {
-  travelerProfiles = [];
-  if (!activeTripId || !session?.user?.id) return;
-  try {
-    const { data, error } = await client.from('itinerary_user_profiles').select('*').eq('trip_id', activeTripId).order('updated_at', { ascending: false });
-    if (error) throw error;
-    travelerProfiles = data || [];
-  } catch (err) {
-    console.warn('Shared profile table unavailable; using local-only profile fallback.', err);
-    const local = getLocalUserProfile();
-    travelerProfiles = local ? [local] : [];
-  }
-}
-async function upsertMyTravelerProfile(profile) {
-  if (!activeTripId || !session?.user?.id) return;
-  const payload = { ...profile, trip_id: activeTripId, user_id: session.user.id, updated_at: new Date().toISOString() };
-  try {
-    const { data, error } = await client.from('itinerary_user_profiles').upsert(payload, { onConflict: 'trip_id,user_id' }).select().single();
-    if (error) throw error;
-    travelerProfiles = [data, ...travelerProfiles.filter(p => p.user_id !== session.user.id)];
-  } catch (err) {
-    console.warn('Could not save shared profile; saving local-only fallback.', err);
-    saveLocalUserProfile(payload);
-    travelerProfiles = [payload, ...travelerProfiles.filter(p => p.user_id !== session.user.id)];
-  }
 }
 async function createTrip(input) {
   const payload = { user_id: session.user.id, title: input.title || 'New trip', start_date: input.start_date || todayISO(), end_date: input.end_date || input.start_date || todayISO(), destination: '', notes: '' };
@@ -296,11 +230,14 @@ function render() { renderTripSelect(); renderTripEditor(); renderSummary(); ren
 function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
   const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
+  if (els.detailsDestination) els.detailsDestination.textContent = t.destination || 'Add destination';
+  if (els.detailsStart) els.detailsStart.textContent = t.start_date ? new Date(`${t.start_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  if (els.detailsEnd) els.detailsEnd.textContent = t.end_date ? new Date(`${t.end_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
   const editable = canEdit();
   [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
   els.deleteTripBtn.disabled = !canDeleteTrip();
 }
-function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; els.totalBudget.textContent = money(items.reduce((sum, i) => sum + Number(i.budget || 0), 0)); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; const leftEl=document.getElementById('daysLeftHero'); if(leftEl && t){ const today=todayISO(); const left=Math.max(0, dateRange(today, t.end_date).length); leftEl.textContent=left; } }
+function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; els.totalBudget.textContent = money(items.reduce((sum, i) => sum + Number(i.budget || 0), 0)); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); if (els.heroDaysLeft) { const today = new Date(todayISO() + 'T12:00:00'); const start = t?.start_date ? new Date(t.start_date + 'T12:00:00') : today; const diff = Math.max(0, Math.ceil((start - today) / 86400000)); els.heroDaysLeft.textContent = days.length ? (diff || days.length) : 0; } els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; }
 function renderSharePanel() {
   const role = currentMembership()?.role || 'viewer';
   els.roleBadge.textContent = role === 'owner' ? 'Owner' : role === 'editor' ? 'Editor' : 'Viewer';
@@ -350,7 +287,8 @@ async function importJson(file) { if (!canEdit()) return; const parsed = JSON.pa
 
 els.googleBtn.addEventListener('click', loginGoogle); els.emailBtn.addEventListener('click', loginEmail); els.logoutBtn.addEventListener('click', logout);
 els.tripSelect.addEventListener('change', async () => { activeTripId = els.tripSelect.value; selectedDay = null; localStorage.setItem('activeTripId', activeTripId); await loadTripData(); });
-els.newTripBtn.addEventListener('click', () => { els.dialogTripTitle.value = ''; els.dialogStartDate.value = todayISO(); els.dialogEndDate.value = addDays(todayISO(), 3); els.tripDialog.showModal(); });
+function openTripDialog() { els.dialogTripTitle.value = ''; els.dialogStartDate.value = todayISO(); els.dialogEndDate.value = addDays(todayISO(), 3); els.tripDialog.showModal(); }
+els.newTripBtn.addEventListener('click', openTripDialog); if (els.sidebarNewTripBtn) els.sidebarNewTripBtn.addEventListener('click', openTripDialog); if (els.viewItineraryBtn) els.viewItineraryBtn.addEventListener('click', () => document.getElementById('plannerTitle')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 els.createTripConfirm.addEventListener('click', e => { e.preventDefault(); els.tripDialog.close(); createTrip({ title: els.dialogTripTitle.value, start_date: els.dialogStartDate.value, end_date: els.dialogEndDate.value }); });
 els.deleteTripBtn.addEventListener('click', deleteTrip); ['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => els[k].addEventListener('input', queueTripSave));
 els.addAnyItemBtn.addEventListener('click', () => openItemDialog(selectedDay)); els.saveItemBtn.addEventListener('click', saveItemFromDialog);
@@ -359,204 +297,4 @@ setupLocationAutocomplete(els.destination, els.destinationSuggestions, els.desti
 setupLocationAutocomplete(els.itemLocation, els.itemLocationSuggestions, els.itemLocationMapLinks);
 els.expandAllBtn.addEventListener('click', () => { document.body.classList.add('show-all-days'); renderTimeline(); }); els.collapseAllBtn.addEventListener('click', () => { document.body.classList.remove('show-all-days'); renderTimeline(); });
 els.exportBtn.addEventListener('click', exportJson); els.importInput.addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
-// --- Adventure Suite: cache-busted feature layer (local, non-breaking Supabase-safe storage) ---
-const ADVENTURE_VERSION = '20260622-auth-refresh-v6';
-const restaurantOptions = [
-  { name: 'Waterfront brunch', tags: ['brunch','waterfront','casual','family friendly','coffee','cute casual'], price: '$$' },
-  { name: 'Lakefront dinner', tags: ['romantic','waterfront','steak','seafood','fancy','date night'], price: '$$$' },
-  { name: 'Ice cream walk', tags: ['dessert','casual','kid friendly','cheap','walk','cute casual'], price: '$' },
-  { name: 'Cozy coffee date', tags: ['coffee','quiet','casual','dessert','conversation'], price: '$' },
-  { name: 'Italian date night', tags: ['italian','romantic','quiet','dinner','pasta'], price: '$$' },
-  { name: 'Burger + fries stop', tags: ['burgers','casual','kid friendly','cheap'], price: '$$' },
-  { name: 'Breakfast at a local diner', tags: ['breakfast','brunch','coffee','casual','cheap','family friendly'], price: '$$' },
-  { name: 'Sushi or Asian dinner', tags: ['asian','sushi','dinner','adventurous','date night'], price: '$$' },
-  { name: 'Pizza and movie night', tags: ['pizza','casual','comfort','quiet','low key'], price: '$$' },
-  { name: 'Dessert-only date stop', tags: ['dessert','sweet','cute casual','cheap','romantic'], price: '$' },
-  { name: 'Outdoor patio lunch', tags: ['outdoor','patio','casual','waterfront','lunch'], price: '$$' },
-  { name: 'Family-friendly quick bite', tags: ['family friendly','kid friendly','quick','casual','toddler'], price: '$$' }
-];
-const baseChallenges = [
-  'Selfie near water','Ice cream photo','Funny candid','Sunset picture','Local food pic','One cute photo together','Toddler day memory','Random hidden gem',
-  'Coffee toast photo','Matching smiles photo','Lake view photo','Outfit check','A tiny souvenir photo','Best meal photo','Something purple','Sweetest moment of the day'
-];
-function adventureKey() { return `itinAdventure:${activeTripId || 'no-trip'}:${session?.user?.id || 'guest'}:${ADVENTURE_VERSION}`; }
-function defaultAdventureState() {
-  return { toddler: false, weather: 'sunny', moods: [], memories: [], challenges: baseChallenges.map((title,i)=>({id:`c${i}`,title,done:false})) };
-}
-function getAdventureState() { try { return { ...defaultAdventureState(), ...(JSON.parse(localStorage.getItem(adventureKey())) || {}) }; } catch { return defaultAdventureState(); } }
-function saveAdventureState(s) { localStorage.setItem(adventureKey(), JSON.stringify(s)); }
-function profileStorageKey() { return `itinUserProfile:${activeTripId || 'no-trip'}:${session?.user?.id || 'guest'}:${ADVENTURE_VERSION}`; }
-function getLocalUserProfile() { try { return JSON.parse(localStorage.getItem(profileStorageKey()) || 'null'); } catch { return null; } }
-function saveLocalUserProfile(p) { localStorage.setItem(profileStorageKey(), JSON.stringify(p)); }
-function defaultMyProfile() {
-  return { display_name: displayNameFromSession(), photo_url: userPhotoFromSession(), likes: '', avoids: '', budget: '$$', vibe: 'cute casual', interests: '' };
-}
-function myProfile() {
-  return travelerProfiles.find(p => p.user_id === session?.user?.id) || getLocalUserProfile() || defaultMyProfile();
-}
-function sharedProfiles() {
-  const byUser = new Map();
-  travelerProfiles.forEach(p => { if (p?.user_id) byUser.set(p.user_id, p); });
-  const mine = myProfile();
-  if (mine?.user_id || session?.user?.id) byUser.set(mine.user_id || session.user.id, { ...mine, user_id: mine.user_id || session.user.id });
-  return [...byUser.values()];
-}
-function combinedProfileForScoring() {
-  const profiles = sharedProfiles();
-  return {
-    likes: profiles.flatMap(p => words(`${p.likes || ''},${p.interests || ''}`)),
-    avoids: profiles.flatMap(p => words(p.avoids || '')),
-    budget: myProfile().budget || '$$',
-    vibe: profiles.map(p => p.vibe).filter(Boolean).join(', ')
-  };
-}
-function words(v) { return String(v || '').toLowerCase().split(/[,\n]/).map(x=>x.trim()).filter(Boolean); }
-function scoreRestaurant(r, _p) {
-  const p = combinedProfileForScoring();
-  const likes = p.likes || [];
-  const avoids = p.avoids || [];
-  let score = 62;
-  r.tags.forEach(t => { if (likes.some(l => t.includes(l) || l.includes(t))) score += 8; if (avoids.some(a => t.includes(a) || a.includes(t))) score -= 18; });
-  if (r.price === p.budget) score += 8;
-  if (p.vibe && r.tags.some(t => p.vibe.toLowerCase().includes(t) || t.includes(p.vibe.toLowerCase()))) score += 10;
-  return Math.max(15, Math.min(99, score));
-}
-
-function displayNameFromSession() {
-  const meta = session?.user?.user_metadata || {};
-  return meta.full_name || meta.name || meta.preferred_username || session?.user?.email?.split('@')[0] || '';
-}
-function updateGreeting() {
-  const el = document.getElementById('greetingLine');
-  if (!el) return;
-  const firstName = String(displayNameFromSession()).trim().split(/\s+/)[0];
-  const t = currentTrip();
-  const destination = (t?.destination || '').split(',')[0].trim();
-  if (firstName && destination) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your ${destination} adventure?`;
-  else if (firstName) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your next adventure?`;
-  else el.textContent = 'Good morning! ☀️ Ready for your next adventure?';
-}
-function migrateProfiles(st) { return st; }
-function updateProfileLabels(p={}) { }
-
-function renderAdventure() {
-  updateGreeting();
-  if (!document.getElementById('weatherSuggestions') || !activeTripId) return;
-  const s = getAdventureState(); renderSharedProfileSummary();
-  const mood = document.getElementById('weatherMood'); const toddler = document.getElementById('toddlerToggle');
-  if (mood) mood.value = s.weather; if (toddler) toddler.checked = !!s.toddler;
-  renderWeatherIdeas(s); renderRestaurantMatches(s); renderMoods(s); renderChallenges(s); renderMemories(s); updateProfilePreview();
-}
-function renderWeatherIdeas(s) {
-  const pool = {
-    sunny: ['Pewaukee Lake walk','Beach / splash time','Outdoor brunch','Sunset photo challenge','Patio lunch','Mini adventure walk','Golden hour photos','Lakefront picnic'],
-    rainy: ['Cozy coffee date','Indoor lunch','Shopping stop','Movie / low-key reset','Dessert cafe','Bookstore or boutique browse','Hotel reset + snacks','Board/card game break'],
-    cold: ['Warm dessert stop','Scenic drive','Coffee + deep conversation','Indoor toddler play','Soup or comfort food','Cute souvenir stop','Indoor photo challenge','Early cozy dinner'],
-    hot: ['Ice cream break','Splash pad / beach','Early dinner','Evening lake walk','Shaded park stop','Cold drinks + snack','Morning activity then nap','Sunset-only outing']
-  };
-  let ideas = [...(pool[s.weather] || pool.sunny)];
-  if (s.toddler) ideas = ['Nap window reminder','Stroller-friendly walk','Playground stop','Diaper bag check','Snack + water reset','Short activity under 60 minutes', ...ideas.filter(x=>!/(bar|brewery|late)/i.test(x))];
-  document.getElementById('weatherSuggestions').innerHTML = ideas.slice(0,10).map(x=>`<button class="chip-action" data-add="${escapeHtml(x)}">${escapeHtml(x)}</button>`).join('');
-  document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>openItemDialog(selectedDay, { title:b.dataset.add, item_type:s.toddler?'todo':'event', item_date:selectedDay, notes:s.toddler?'Toddler-friendly suggestion.':'Weather-aware suggestion.' }));
-}
-function renderRestaurantMatches(s) {
-  const list = restaurantOptions.map(r=>({ ...r, score:scoreRestaurant(r) })).sort((a,b)=>b.score-a.score).slice(0,4);
-  document.getElementById('restaurantMatches').innerHTML = list.map(r=>`<div class="match-row"><strong>${escapeHtml(r.name)}</strong><span>${r.score}% Match • ${r.price}</span><button class="ghost-btn tiny" data-food="${escapeHtml(r.name)}">Plan</button></div>`).join('');
-  document.querySelectorAll('[data-food]').forEach(b=>b.onclick=()=>openItemDialog(selectedDay,{title:b.dataset.food,item_type:'food',item_date:selectedDay,notes:'Added from restaurant match score.'}));
-}
-function renderMoods(s) { document.getElementById('moodList').innerHTML = s.moods.slice(-4).reverse().map(m=>`<div class="mini-row"><strong>${escapeHtml(m.rating)}</strong><span>${escapeHtml(m.title)} • ${fmtShortDate(m.date)}</span></div>`).join('') || '<p class="helper-text">No mood check-ins yet.</p>'; }
-function renderChallenges(s) {
-  const done = s.challenges.filter(c=>c.done).length; const xp = done * 120;
-  document.getElementById('challengeStats').innerHTML = `<strong>${xp} XP</strong><span>${done}/${s.challenges.length} complete</span>`;
-  document.getElementById('challengeList').innerHTML = s.challenges.map(c=>`<label class="challenge-row"><input type="checkbox" data-challenge="${c.id}" ${c.done?'checked':''}/> ${escapeHtml(c.title)}</label>`).join('');
-  document.querySelectorAll('[data-challenge]').forEach(cb=>cb.onchange=()=>{ const st=getAdventureState(); const ch=st.challenges.find(x=>x.id===cb.dataset.challenge); if(ch) ch.done=cb.checked; saveAdventureState(st); renderAdventure(); });
-}
-function renderMemories(s) { document.getElementById('memoryList').innerHTML = s.memories.slice(-5).reverse().map(m=>`<div class="memory-row"><strong>${escapeHtml(m.title)}</strong><span>${escapeHtml(m.rating)} • ${fmtShortDate(m.date)}</span><p>${escapeHtml(m.details || '')}</p></div>`).join('') || '<p class="helper-text">Add favorite moments as they happen.</p>'; }
-function openQuickDialog(type) {
-  const titleMap = { mood:'Add Mood Check-In', memory:'Add Shared Memory', challenge:'Add Photo Challenge' };
-  document.getElementById('quickDialogTitle').textContent = titleMap[type] || 'Add';
-  document.getElementById('quickFeatureType').value = type;
-  document.getElementById('quickTitle').value = type === 'mood' ? 'Today felt...' : '';
-  document.getElementById('quickDetails').value = '';
-  document.getElementById('quickDate').value = selectedDay || todayISO();
-  document.getElementById('quickFeatureDialog').showModal();
-}
-function saveQuickFeature(e) {
-  e.preventDefault(); const st=getAdventureState(); const type=document.getElementById('quickFeatureType').value;
-  const entry={ id:crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), title:document.getElementById('quickTitle').value.trim() || 'Untitled', details:document.getElementById('quickDetails').value.trim(), date:document.getElementById('quickDate').value || todayISO(), rating:document.getElementById('quickRating').value };
-  if (type === 'mood') st.moods.push(entry); else if (type === 'memory') st.memories.push(entry); else if (type === 'challenge') st.challenges.push({ id:entry.id, title:entry.title, done:false });
-  saveAdventureState(st); document.getElementById('quickFeatureDialog').close(); renderAdventure();
-}
-function openProfileDialog() { const s=getAdventureState(); migrateProfiles(s); ['profileOneName','profileTwoName','profileOneLikes','profileTwoLikes','profileOneAvoids','profileTwoAvoids'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=s.profiles[k]||''; }); updateProfileLabels(s.profiles); document.getElementById('budgetComfort').value=s.profiles.budget||'$$'; const vibe=document.getElementById('profileVibe'); if(vibe) vibe.value=s.profiles.vibe||'cute casual'; document.getElementById('profileDialog').showModal(); }
-function saveProfiles(e) { e.preventDefault(); const st=getAdventureState(); st.profiles={ profileOneName:profileOneName.value.trim(), profileTwoName:profileTwoName.value.trim(), profileOneLikes:profileOneLikes.value, profileTwoLikes:profileTwoLikes.value, profileOneAvoids:profileOneAvoids.value, profileTwoAvoids:profileTwoAvoids.value, budget:budgetComfort.value, vibe:(document.getElementById('profileVibe')?.value||'cute casual') }; saveAdventureState(st); profileDialog.close(); renderAdventure(); updateGreeting(); }
-function spinSurprise() {
-  const st=getAdventureState();
-  const weatherPools = {
-    sunny:['Walk by Pewaukee Lake','Find a lakefront bench','Take golden-hour photos','Grab ice cream and wander','Do a mini photo challenge','Pick a random park nearby'],
-    rainy:['Coffee and conversation','Dessert somewhere cozy','Drive to a cute shop','Movie or hotel snack reset','Indoor lunch roulette','Make a tiny memory note'],
-    cold:['Warm drinks stop','Scenic drive with music','Comfort food date','Indoor browsing stop','Early cozy dinner'],
-    hot:['Cold drink run','Splash pad or shaded park','Ice cream break','Sunset-only walk','Quick lunch somewhere cool']
-  };
-  const toddlerIdeas = ['Toddler-friendly playground stop','Snack + stroller walk','Nap-window reset','Find a splash pad','Short 45-minute outing','Diaper bag and water check','Simple picnic with shade'];
-  const dateIdeas = ['Ask one fun question each','Pick dessert before dinner','Take a cute selfie together','Find a random local shop','Choose the prettiest view nearby','Tiny souvenir hunt','Slow walk and no phones for 20 minutes'];
-  const foodIdeas = restaurantOptions.map(r=>r.name);
-  const plannedIdeas = items.map(i=>i.title).filter(Boolean);
-  let ideas = [...(weatherPools[st.weather] || weatherPools.sunny), ...dateIdeas, ...foodIdeas, ...plannedIdeas];
-  if (st.toddler) ideas = [...toddlerIdeas, ...ideas.filter(x=>!/(late|bar|brewery|cocktail)/i.test(x))];
-  ideas = [...new Set(ideas.filter(Boolean))];
-  const last = st.lastSurprise || '';
-  let pick = ideas[Math.floor(Math.random()*ideas.length)] || 'Go make a memory';
-  if (ideas.length > 1) while (pick === last) pick = ideas[Math.floor(Math.random()*ideas.length)];
-  st.lastSurprise = pick; saveAdventureState(st);
-  document.getElementById('surpriseResult').innerHTML = `<strong>🎉 ${escapeHtml(pick)}</strong><small>Based on your profile, trip plans, weather mode, and toddler setting.</small>`;
-}
-function generateRecap() {
-  const st=getAdventureState(); const t=currentTrip(); const days=t?dateRange(t.start_date,t.end_date).length:0; const done=st.challenges.filter(c=>c.done).length;
-  const fav=st.memories[st.memories.length-1]?.title || items[0]?.title || 'Your favorite moment is waiting to happen';
-  const text=`${(t?.title || 'PEWAUKEE 2026').toUpperCase()}\n\n${days} Days\n${items.length} Planned Activities\n${money(items.reduce((a,i)=>a+Number(i.budget||0),0))} Budgeted\n${st.memories.length} Shared Memories\n${st.moods.length} Mood Check-Ins\n${done}/${st.challenges.length} Photo Challenges Complete\nAdventure Score: ${done*120} XP\n\nTop Memory:\n${fav}\n\nBuilt for your shared adventure ✨`;
-  const out=document.getElementById('recapOutput'); out.textContent=text; out.classList.remove('hidden');
-}
-
-function userPhotoFromSession() { return session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture || ''; }
-function initialsFromName(name) { const clean=String(name||'').trim(); if(!clean) return '?'; return clean.split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||'').join(''); }
-function updateProfilePreview() {
-  const p = myProfile();
-  const name = p.display_name || displayNameFromSession() || 'Profile';
-  const img = document.getElementById('userAvatarImg');
-  const initials = document.getElementById('userAvatarInitials');
-  const label = document.getElementById('profileNameChip');
-  const photo = userPhotoFromSession();
-  if (label) label.textContent = String(name).trim().split(/\s+/)[0] || 'Profile';
-  if (initials) initials.textContent = initialsFromName(name);
-  if (img) {
-    if (photo) { img.src = photo; img.classList.remove('hidden'); initials?.classList.add('hidden'); }
-    else { img.removeAttribute('src'); img.classList.add('hidden'); initials?.classList.remove('hidden'); }
-  }
-  const tc = document.getElementById('travelerCount'); if (tc) tc.textContent = Math.max(1, members.length || 1);
-}
-function toggleProfileDropdown(force) {
-  const menu = document.getElementById('profileDropdown'); if (!menu) return;
-  menu.classList.toggle('hidden', typeof force === 'boolean' ? !force : !menu.classList.contains('hidden'));
-}
-
-const originalRender = render;
-render = function(){ originalRender(); renderAdventure(); };
-document.getElementById('weatherMood')?.addEventListener('change', e=>{ const s=getAdventureState(); s.weather=e.target.value; saveAdventureState(s); renderAdventure(); });
-document.getElementById('toddlerToggle')?.addEventListener('change', e=>{ const s=getAdventureState(); s.toddler=e.target.checked; saveAdventureState(s); renderAdventure(); });
-document.getElementById('weatherRefreshBtn')?.addEventListener('click', renderAdventure);
-document.getElementById('surpriseBtn')?.addEventListener('click', spinSurprise);
-document.getElementById('profileBtn')?.addEventListener('click', openProfileDialog);
-document.getElementById('userAvatarBtn')?.addEventListener('click', (e)=>{ e.stopPropagation(); toggleProfileDropdown(); });
-document.getElementById('profileMenuBtn')?.addEventListener('click', ()=>{ toggleProfileDropdown(false); openProfileDialog(); });
-document.getElementById('profileMenuStyleBtn')?.addEventListener('click', ()=>{ toggleProfileDropdown(false); openProfileDialog(); });
-document.getElementById('profileMenuLogoutBtn')?.addEventListener('click', logout);
-document.addEventListener('click', e=>{ const menu=document.getElementById('profileDropdown'); const btn=document.getElementById('userAvatarBtn'); if(menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) menu.classList.add('hidden'); });
-document.getElementById('newTripBtnSidebar')?.addEventListener('click', ()=>els.newTripBtn?.click());
-document.getElementById('saveProfileBtn')?.addEventListener('click', saveProfiles);
-document.getElementById('moodBtn')?.addEventListener('click', ()=>openQuickDialog('mood'));
-document.getElementById('memoryBtn')?.addEventListener('click', ()=>openQuickDialog('memory'));
-document.getElementById('challengeAddBtn')?.addEventListener('click', ()=>openQuickDialog('challenge'));
-document.getElementById('saveQuickBtn')?.addEventListener('click', saveQuickFeature);
-document.getElementById('recapBtn')?.addEventListener('click', generateRecap);
-
 init();

@@ -4,205 +4,175 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=20260622-auth-refresh-v6" />
+  <link rel="stylesheet" href="./styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar sidebar-card">
-      <div class="brand-lockup">
-        <div class="brand-mark">⌁</div>
-        <div>
-          <h1>Itinerary<br>Tracker</h1>
-          <p class="eyebrow">shared adventure planner</p>
-        </div>
-      </div>
+    <aside class="sidebar">
+      <a class="brand" href="#">
+        <span class="brand-mark">⌁</span>
+        <span>Itinerary<br><b>Tracker</b></span>
+      </a>
       <nav class="side-nav" aria-label="Main navigation">
-        <a class="active" href="#">🏠 <span>Dashboard</span></a>
-        <a href="#">🧳 <span>Trips</span></a>
-        <a href="#">📅 <span>Calendar</span></a>
-        <a href="#">🗺️ <span>Map & Journey</span></a>
-        <a href="#">✨ <span>Surprise Me</span><em>New</em></a>
-        <a href="#">❤️ <span>Memories</span></a>
-        <a href="#">📸 <span>Photo Challenges</span></a>
-        <a href="#">😊 <span>Mood Check-Ins</span></a>
-        <a href="#">👥 <span>People</span></a>
-        <a href="#">⚙️ <span>Settings</span></a>
+        <a class="active" href="#"><span>🏠</span>Dashboard</a>
+        <a href="#plannerTitle"><span>🧳</span>Trips</a>
+        <a href="#dayTabs"><span>📅</span>Calendar</a>
+        <a href="#totalBudget"><span>💳</span>Budget</a>
+        <a href="#collabList"><span>👥</span>People</a>
+        <a href="#"><span>⚙️</span>Settings</a>
       </nav>
-      <div class="sidebar-promo">
-        <div class="promo-art">🌴🧳</div>
-        <h3>Your next adventure is calling ✈️</h3>
-        <p>Plan, play, save memories, and recap the whole trip.</p>
-        <button id="newTripBtnSidebar" type="button">+ New Trip</button>
+      <div class="new-trip-card">
+        <div class="mini-illustration">☁️🌴<br>🧳</div>
+        <h3>Summer adventures await! ✈️</h3>
+        <p>Plan your next trip with friends.</p>
+        <button id="sidebarNewTripBtn" type="button">+ New Trip</button>
       </div>
-      <div class="auth-card" id="authArea">
-        <button id="googleBtn" class="ghost-btn">Continue with Google</button>
-        <div class="email-login">
-          <input id="emailInput" type="email" placeholder="Email for magic link" />
-          <button id="emailBtn">Send link</button>
-        </div>
-        <button id="logoutBtn" class="ghost-btn hidden">Log out</button>
-      </div>
-    </header>
+    </aside>
 
-    <main>
-      <section id="signedOut" class="hero-card">
-        <h2>Track trips, drives, events, stops, and budgets.</h2>
-        <p>Sign in to save your itinerary to Supabase and sync across devices.</p>
-        <div class="pill-row">
-          <span>Shared memories</span><span>Toddler day</span><span>Food match</span><span>Photo game</span>
+    <div class="main-wrap">
+      <header class="topbar">
+        <div>
+          <h1>Good morning, <span id="userName">Traveler</span>! ☀️</h1>
+          <p class="subtitle">Ready for your next adventure?</p>
         </div>
-      </section>
-
-      <section id="appArea" class="hidden">
-        <div class="dashboard-header">
-          <div>
-            <h2 id="greetingLine">Good morning! ☀️</h2>
-            <p class="subtitle">Ready for your next adventure?</p>
-          </div>
-          <div class="header-actions">
-            <label class="search-pill" aria-label="Search"><span>⌕</span><input type="search" placeholder="Search trips, activities, places..." /></label>
-            <button class="round-icon" type="button" aria-label="Notifications">🔔</button>
-            <button id="userAvatarBtn" class="user-chip" type="button" title="Edit profile preferences">
-              <span id="userAvatarInitials" class="avatar-initials">?</span>
-              <img id="userAvatarImg" alt="Profile photo" class="hidden" />
-              <span id="profileNameChip" class="profile-chip-name">Profile</span>
-              <span>⌄</span>
-            </button>
-          </div>
-        </div>
-        <div id="profileDropdown" class="profile-dropdown hidden">
-          <button id="profileMenuBtn" type="button">👤 My Profile<br><small>Food, interests & preferences</small></button>
-          <button id="profileMenuStyleBtn" type="button">🍽️ Restaurant Match<br><small>Likes, avoids & budget</small></button>
-          <button id="profileMenuLogoutBtn" type="button">🚪 Sign out</button>
-        </div>
-        <div class="toolbar glass">
-          <div>
-            <label for="tripSelect">Trip</label>
-            <select id="tripSelect"></select>
-          </div>
-          <button id="newTripBtn">+ New trip</button>
-          <button id="deleteTripBtn" class="danger ghost-btn">Delete trip</button>
-          <span id="roleBadge" class="role-badge">Owner</span><span id="saveStatus" class="save-status">Ready</span>
-        </div>
-
-        <section class="trip-hero glass">
-          <div class="trip-cover" aria-hidden="true"></div>
-          <div class="trip-title-block">
-            <label>Trip title</label>
-            <input id="tripTitle" placeholder="Wisconsin Trip" />
-          </div>
-          <div class="date-row">
-            <div class="field">
-              <label>Start date</label>
-              <input id="startDate" type="date" />
+        <div class="top-actions">
+          <div class="search-pill">🔎 <span>Search trips, activities...</span></div>
+          <button class="icon-btn" type="button" aria-label="Notifications">🔔</button>
+          <div class="auth-card" id="authArea">
+            <button id="googleBtn" class="ghost-btn">Continue with Google</button>
+            <div class="email-login">
+              <input id="emailInput" type="email" placeholder="Email for magic link" />
+              <button id="emailBtn">Send link</button>
             </div>
-            <div class="field">
-              <label>End date</label>
-              <input id="endDate" type="date" />
-            </div>
+            <img id="userAvatar" class="user-avatar hidden" alt="User avatar" />
+            <button id="logoutBtn" class="ghost-btn hidden">Log out</button>
           </div>
-          <div class="field">
-            <label>Destination / address</label>
-            <input id="destination" class="location-input" placeholder="Pewaukee, WI" autocomplete="off" />
-              <div id="destinationSuggestions" class="suggestions hidden"></div>
-              <div id="destinationMapLinks" class="map-links hidden"></div>
-          </div>
-          <div class="days-left-card"><strong id="daysLeftHero">0</strong><span>Days left</span></div>
-          <div class="field trip-notes-field">
-            <label>Trip notes</label>
-            <textarea id="tripNotes" rows="2" placeholder="Hotel info, travel tips, confirmation numbers..."></textarea>
+        </div>
+      </header>
+
+      <main>
+        <section id="signedOut" class="hero-card">
+          <h2>Track trips, drives, events, stops, and budgets.</h2>
+          <p>Sign in to save your itinerary to Supabase and sync across devices.</p>
+          <div class="pill-row">
+            <span>Auto day generator</span><span>Shared editing</span><span>Invite links</span><span>Budget total</span>
           </div>
         </section>
 
-        <section class="summary-grid">
-          <div class="metric glass"><span>Total budget</span><strong id="totalBudget">$0</strong></div>
-          <div class="metric glass"><span>Planned items</span><strong id="stopCount">0</strong></div>
-          <div class="metric glass"><span>Trip days</span><strong id="dayCount">0</strong></div>
-          <div class="metric glass"><span>Travelers</span><strong id="travelerCount">1</strong></div>
-        </section>
-        <section class="share-panel glass">
-          <div>
-            <p class="eyebrow">Shared trip</p>
-            <h2>Invite someone to edit this itinerary</h2>
-            <p class="helper-text">Anyone with the invite link must sign in first. Once accepted, they can see and edit this trip from their own account.</p>
-          </div>
-          <div class="share-actions">
-            <select id="inviteRole" aria-label="Invite role">
-              <option value="editor">Can edit</option>
-              <option value="viewer">View only</option>
-            </select>
-            <button id="createInviteBtn">Create invite link</button>
-          </div>
-          <div id="inviteOutput" class="invite-output hidden">
-            <input id="inviteLink" readonly />
-            <button id="copyInviteBtn" class="ghost-btn">Copy</button>
-          </div>
-          <div id="collabList" class="collab-list"></div>
-        </section>
+        <section id="appArea" class="hidden dashboard-grid">
+          <div class="content-column">
+            <section class="toolbar glass">
+              <div>
+                <label for="tripSelect">Trip</label>
+                <select id="tripSelect"></select>
+              </div>
+              <button id="newTripBtn">+ New trip</button>
+              <button id="deleteTripBtn" class="danger ghost-btn">Delete trip</button>
+              <span id="roleBadge" class="role-badge">Owner</span><span id="saveStatus" class="save-status">Ready</span>
+            </section>
 
+            <section class="trip-hero glass">
+              <div class="trip-photo"></div>
+              <div class="trip-copy">
+                <p class="eyebrow">Current trip</p>
+                <div class="trip-title-block">
+                  <label>Trip title</label>
+                  <input id="tripTitle" placeholder="Wisconsin Trip" />
+                </div>
+                <div class="date-row">
+                  <div class="field icon-field">
+                    <label>Start date</label>
+                    <input id="startDate" type="date" />
+                  </div>
+                  <div class="field icon-field">
+                    <label>End date</label>
+                    <input id="endDate" type="date" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Destination / address</label>
+                  <input id="destination" class="location-input" placeholder="Pewaukee, WI" autocomplete="off" />
+                  <div id="destinationSuggestions" class="suggestions hidden"></div>
+                  <div id="destinationMapLinks" class="map-links hidden"></div>
+                </div>
+              </div>
+              <div class="days-left-card"><strong id="heroDaysLeft">0</strong><span>Days left</span></div>
+              <button id="viewItineraryBtn" class="hero-button" type="button">View Itinerary</button>
+            </section>
 
+            <section class="summary-grid">
+              <div class="metric glass budget"><span>Total Budget</span><strong id="totalBudget">$0</strong><em>of planned spend</em></div>
+              <div class="metric glass items"><span>Planned Items</span><strong id="stopCount">0</strong><em>activities & stops</em></div>
+              <div class="metric glass days"><span>Trip Days</span><strong id="dayCount">0</strong><em>days planned</em></div>
+              <div class="metric glass people"><span>Travelers</span><strong id="travelerCount">1</strong><em>people</em></div>
+            </section>
 
-        <section class="adventure-grid">
-          <div class="feature-card glass weather-card">
-            <div class="feature-head"><div><p class="eyebrow">Smart ideas</p><h2>Weather-Aware Suggestions</h2></div><button id="weatherRefreshBtn" class="ghost-btn">Refresh</button></div>
-            <div class="weather-controls"><select id="weatherMood"><option value="sunny">☀️ Sunny / nice</option><option value="rainy">☔ Rainy</option><option value="cold">🧥 Cold</option><option value="hot">🔥 Hot</option></select><label class="toggle-line"><input id="toddlerToggle" type="checkbox" /> 👶 Toddler Mode</label></div>
-            <div id="weatherSuggestions" class="suggestion-chips"></div>
+            <section class="planner-panel glass">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Plan by day</p>
+                  <h2 id="plannerTitle">Your itinerary</h2>
+                </div>
+                <button id="addAnyItemBtn">+ Add item</button>
+              </div>
+              <div id="dayTabs" class="day-tabs"></div>
+              <section id="timeline" class="timeline"></section>
+            </section>
+
+            <section class="timeline-controls">
+              <button id="expandAllBtn" class="ghost-btn">Show all days</button>
+              <button id="collapseAllBtn" class="ghost-btn">Compact view</button>
+              <button id="exportBtn" class="ghost-btn">Export JSON</button>
+              <label class="import-label ghost-btn">Import JSON<input id="importInput" type="file" accept="application/json" /></label>
+            </section>
           </div>
-          <div class="feature-card glass surprise-card">
-            <p class="eyebrow">Decision helper</p><h2>🎲 Surprise Generator</h2>
-            <p class="helper-text">Spin when you cannot decide what to do next.</p>
-            <div id="surpriseResult" class="surprise-result">Tap spin for a cute plan.</div>
-            <button id="surpriseBtn">Spin Adventure</button>
-          </div>
-          <div class="feature-card glass profile-card">
-            <div class="feature-head"><div><p class="eyebrow">Profiles</p><h2>🍽 Restaurant Match</h2></div><button id="profileBtn" class="ghost-btn">Edit profiles</button></div>
-            <div id="restaurantMatches" class="match-list"></div>
-          </div>
+
+          <aside class="right-column">
+            <section class="share-panel glass">
+              <div class="share-illo">👫✨</div>
+              <div>
+                <h2>Invite & Collaborate</h2>
+                <p class="helper-text">Share this trip and collaborate with your travel buddies!</p>
+              </div>
+              <div class="share-actions">
+                <select id="inviteRole" aria-label="Invite role">
+                  <option value="editor">Can edit</option>
+                  <option value="viewer">View only</option>
+                </select>
+                <button id="createInviteBtn">Invite People</button>
+              </div>
+              <div id="inviteOutput" class="invite-output hidden">
+                <input id="inviteLink" readonly />
+                <button id="copyInviteBtn" class="ghost-btn">Copy</button>
+              </div>
+              <div id="collabList" class="collab-list"></div>
+            </section>
+
+            <section class="details-panel glass">
+              <div class="panel-head compact"><h2>Trip Details</h2><span class="edit-chip">✏️ Edit</span></div>
+              <dl>
+                <dt>Destination</dt><dd id="detailsDestination">—</dd>
+                <dt>Start Date</dt><dd id="detailsStart">—</dd>
+                <dt>End Date</dt><dd id="detailsEnd">—</dd>
+                <dt>Trip Type</dt><dd><span class="leisure-chip">Leisure</span></dd>
+                <dt>Notes</dt><dd><textarea id="tripNotes" rows="3" placeholder="Add notes..."></textarea></dd>
+              </dl>
+            </section>
+
+            <section class="packing-panel glass">
+              <div class="packing-head"><h2>Packing List</h2><span>4/10</span></div>
+              <div class="progress"><span></span></div>
+              <label><input type="checkbox" checked> Clothing</label>
+              <label><input type="checkbox" checked> Toiletries</label>
+              <label><input type="checkbox"> Chargers</label>
+              <label><input type="checkbox"> Swimwear</label>
+              <a href="#">View all items</a>
+            </section>
+          </aside>
         </section>
-
-        <section class="adventure-grid lower">
-          <div class="feature-card glass">
-            <div class="feature-head"><div><p class="eyebrow">Check in</p><h2>😊 Mood Check-In</h2></div><button id="moodBtn" class="ghost-btn">Add mood</button></div>
-            <div id="moodList" class="mini-list"></div>
-          </div>
-          <div class="feature-card glass">
-            <div class="feature-head"><div><p class="eyebrow">Game layer</p><h2>📸 Photo Challenge</h2></div><button id="challengeAddBtn" class="ghost-btn">Add challenge</button></div>
-            <div id="challengeStats" class="xp-card"></div>
-            <div id="challengeList" class="challenge-list"></div>
-          </div>
-          <div class="feature-card glass">
-            <div class="feature-head"><div><p class="eyebrow">Keepsake</p><h2>❤️ Shared Memories</h2></div><button id="memoryBtn" class="ghost-btn">Add memory</button></div>
-            <div id="memoryList" class="memory-list"></div>
-          </div>
-        </section>
-
-        <section class="recap-panel glass">
-          <div><p class="eyebrow">End of trip</p><h2>✨ Recap Generator</h2><p class="helper-text">Builds a cute recap from activities, moods, challenges, and memories.</p></div>
-          <button id="recapBtn">Generate Recap</button>
-          <pre id="recapOutput" class="recap-output hidden"></pre>
-        </section>
-
-        <section class="planner-panel glass">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Plan by day</p>
-              <h2 id="plannerTitle">Your itinerary</h2>
-            </div>
-            <button id="addAnyItemBtn">+ Add item</button>
-          </div>
-          <div id="dayTabs" class="day-tabs"></div>
-          <section id="timeline" class="timeline"></section>
-        </section>
-
-        <section class="timeline-controls">
-          <button id="expandAllBtn" class="ghost-btn">Show all days</button>
-          <button id="collapseAllBtn" class="ghost-btn">Compact view</button>
-          <button id="exportBtn" class="ghost-btn">Export JSON</button>
-          <label class="import-label ghost-btn">Import JSON<input id="importInput" type="file" accept="application/json" /></label>
-        </section>
-      </section>
-    </main>
+      </main>
+    </div>
   </div>
 
   <dialog id="tripDialog">
@@ -211,10 +181,7 @@
       <label>Trip title<input id="dialogTripTitle" placeholder="New trip" /></label>
       <label>Start date<input id="dialogStartDate" type="date" /></label>
       <label>End date<input id="dialogEndDate" type="date" /></label>
-      <div class="dialog-actions">
-        <button value="cancel" class="ghost-btn">Cancel</button>
-        <button id="createTripConfirm" value="default">Create</button>
-      </div>
+      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="createTripConfirm" value="default">Create</button></div>
     </form>
   </dialog>
 
@@ -225,16 +192,7 @@
       <label class="full">Title<input id="itemTitle" placeholder="Dinner, hotel check-in, drive block..." /></label>
       <div class="dialog-grid">
         <label>Date<input id="itemDate" type="date" /></label>
-        <label>Type
-          <select id="itemType">
-            <option value="event">Event</option>
-            <option value="drive">Drive block</option>
-            <option value="food">Food</option>
-            <option value="hotel">Hotel</option>
-            <option value="gas">Gas stop</option>
-            <option value="todo">To-do</option>
-          </select>
-        </label>
+        <label>Type<select id="itemType"><option value="event">Event</option><option value="drive">Drive block</option><option value="food">Food</option><option value="hotel">Hotel</option><option value="gas">Gas stop</option><option value="todo">To-do</option></select></label>
         <label>Start time<input id="itemTime" type="time" /></label>
         <label>End time<input id="itemEndTime" type="time" /></label>
         <label>Budget $<input id="itemBudget" type="number" min="0" step="0.01" placeholder="0" /></label>
@@ -243,66 +201,17 @@
         <div id="itemLocationMapLinks" class="map-links hidden"></div>
       </div>
       <label class="full">Notes<textarea id="itemNotes" rows="3" placeholder="Notes, confirmation numbers, tips..."></textarea></label>
-      <div class="dialog-actions">
-        <button value="cancel" class="ghost-btn">Cancel</button>
-        <button id="saveItemBtn" value="default">Save item</button>
-      </div>
-    </form>
-  </dialog>
-
-
-  <dialog id="profileDialog">
-    <form method="dialog" class="dialog-card item-dialog-card">
-      <h2>My Profile & Preferences</h2>
-      <p class="helper-text">Only you can edit your profile. Invited travelers edit their own profile when they sign in, and the app combines everyone’s shared preferences for matches and suggestions.</p>
-      <div class="profile-grid">
-        <label>Your display name<input id="myProfileName" placeholder="Your name" /></label>
-        <label>Budget comfort<select id="budgetComfort"><option value="$">$</option><option value="$$" selected>$$</option><option value="$$$">$$$</option><option value="$$$$">$$$$</option></select></label>
-        <label class="full">Foods / places you like<textarea id="myProfileLikes" rows="3" placeholder="steak, burgers, coffee, waterfront, casual, dessert"></textarea></label>
-        <label class="full">Avoids / dislikes<textarea id="myProfileAvoids" rows="2" placeholder="seafood, crowded, spicy, expensive"></textarea></label>
-        <label class="full">Trip interests<textarea id="myProfileInterests" rows="3" placeholder="lake walks, photos, cute shops, quiet time, toddler-friendly stops"></textarea></label>
-        <label>Preferred vibe<select id="profileVibe"><option value="cute casual">Cute casual</option><option value="romantic">Romantic</option><option value="quiet">Quiet</option><option value="adventurous">Adventurous</option><option value="family friendly">Family friendly</option></select></label>
-      </div>
-      <div class="profile-shared-box">
-        <h3>Shared traveler profiles</h3>
-        <div id="sharedProfileSummary"></div>
-      </div>
-      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveProfileBtn" value="default">Save my profile</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="quickFeatureDialog">
-    <form method="dialog" class="dialog-card item-dialog-card">
-      <h2 id="quickDialogTitle">Add</h2>
-      <input id="quickFeatureType" type="hidden" />
-      <label class="full">Title<input id="quickTitle" placeholder="Favorite moment, mood note, challenge..." /></label>
-      <label class="full">Details<textarea id="quickDetails" rows="3" placeholder="Add notes here..."></textarea></label>
-      <div class="dialog-grid">
-        <label>Date<input id="quickDate" type="date" /></label>
-        <label>Rating / Mood<select id="quickRating"><option value="😍 Amazing">😍 Amazing</option><option value="😊 Happy">😊 Happy</option><option value="😌 Relaxed">😌 Relaxed</option><option value="😴 Tired">😴 Tired</option><option value="😕 Stressed">😕 Stressed</option><option value="⭐ Favorite">⭐ Favorite</option></select></label>
-      </div>
-      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveQuickBtn" value="default">Save</button></div>
+      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveItemBtn" value="default">Save item</button></div>
     </form>
   </dialog>
 
   <template id="itemTemplate">
     <article class="item-card" draggable="true">
       <div class="time-chip"></div>
-      <div class="item-main">
-        <div class="item-type"></div>
-        <div>
-          <h3></h3>
-          <p class="item-meta"></p>
-          <p class="item-notes"></p>
-        </div>
-      </div>
-      <div class="item-actions">
-        <button class="edit ghost-btn">Edit</button>
-        <button class="delete danger ghost-btn">Delete</button>
-      </div>
+      <div class="item-main"><div class="item-type"></div><div><h3></h3><p class="item-meta"></p><p class="item-notes"></p></div></div>
+      <div class="item-actions"><button class="edit ghost-btn">Edit</button><button class="delete danger ghost-btn">Delete</button></div>
     </article>
   </template>
-
-  <script src="./app.js?v=20260622-auth-refresh-v6"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
