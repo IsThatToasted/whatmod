@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=20260622-beautiful-v3" />
+  <link rel="stylesheet" href="./styles.css?v=20260622-profile-v4" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -253,19 +253,21 @@
 
   <dialog id="profileDialog">
     <form method="dialog" class="dialog-card item-dialog-card">
-      <h2>My Profile & Restaurant Preferences</h2>
-      <p class="helper-text">Customize food interests for match scores. These save locally per trip/user so the current Supabase setup stays safe.</p>
+      <h2>My Profile & Preferences</h2>
+      <p class="helper-text">Only you can edit your profile. Invited travelers edit their own profile when they sign in, and the app combines everyone’s shared preferences for matches and suggestions.</p>
       <div class="profile-grid">
-        <label>Profile 1 name<input id="profileOneName" placeholder="Your name" /></label>
-        <label>Profile 2 name<input id="profileTwoName" placeholder="Travel partner" /></label>
-        <label><span id="profileOneLikesLabel">Profile 1</span> likes<textarea id="profileOneLikes" rows="3" placeholder="steak, burgers, coffee, waterfront, casual"></textarea></label>
-        <label><span id="profileTwoLikesLabel">Profile 2</span> likes<textarea id="profileTwoLikes" rows="3" placeholder="brunch, Italian, dessert, quiet, family friendly"></textarea></label>
-        <label><span id="profileOneAvoidsLabel">Profile 1</span> avoids<textarea id="profileOneAvoids" rows="2" placeholder="seafood, crowded"></textarea></label>
-        <label><span id="profileTwoAvoidsLabel">Profile 2</span> avoids<textarea id="profileTwoAvoids" rows="2" placeholder="spicy, expensive"></textarea></label>
-        <label>Preferred vibe<select id="profileVibe"><option value="cute casual">Cute casual</option><option value="romantic">Romantic</option><option value="quiet">Quiet</option><option value="adventurous">Adventurous</option><option value="family friendly">Family friendly</option></select></label>
+        <label>Your display name<input id="myProfileName" placeholder="Your name" /></label>
         <label>Budget comfort<select id="budgetComfort"><option value="$">$</option><option value="$$" selected>$$</option><option value="$$$">$$$</option><option value="$$$$">$$$$</option></select></label>
+        <label class="full">Foods / places you like<textarea id="myProfileLikes" rows="3" placeholder="steak, burgers, coffee, waterfront, casual, dessert"></textarea></label>
+        <label class="full">Avoids / dislikes<textarea id="myProfileAvoids" rows="2" placeholder="seafood, crowded, spicy, expensive"></textarea></label>
+        <label class="full">Trip interests<textarea id="myProfileInterests" rows="3" placeholder="lake walks, photos, cute shops, quiet time, toddler-friendly stops"></textarea></label>
+        <label>Preferred vibe<select id="profileVibe"><option value="cute casual">Cute casual</option><option value="romantic">Romantic</option><option value="quiet">Quiet</option><option value="adventurous">Adventurous</option><option value="family friendly">Family friendly</option></select></label>
       </div>
-      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveProfileBtn" value="default">Save profiles</button></div>
+      <div class="profile-shared-box">
+        <h3>Shared traveler profiles</h3>
+        <div id="sharedProfileSummary"></div>
+      </div>
+      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveProfileBtn" value="default">Save my profile</button></div>
     </form>
   </dialog>
 
@@ -301,6 +303,6 @@
     </article>
   </template>
 
-  <script src="./app.js?v=20260622-beautiful-v3"></script>
+  <script src="./app.js?v=20260622-profile-v4"></script>
 </body>
 </html>

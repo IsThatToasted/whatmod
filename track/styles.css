@@ -395,3 +395,12 @@ main { min-width: 0; }
   .profile-dropdown { right:0; top: 146px; width:min(320px, 100%); }
   .item-card { grid-template-columns:1fr; }
 }
+
+/* v4 profile ownership polish */
+.profile-shared-box{margin-top:16px;padding:16px;border-radius:22px;background:linear-gradient(135deg,rgba(124,92,255,.08),rgba(255,155,210,.10));border:1px solid rgba(124,92,255,.14)}
+.profile-shared-box h3{margin:0 0 10px;font-size:15px;color:#101a44}
+.shared-profile-chip{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px 14px;margin:8px 0;border-radius:18px;background:rgba(255,255,255,.82);border:1px solid rgba(124,92,255,.12);box-shadow:0 10px 24px rgba(34,27,95,.06)}
+.shared-profile-chip strong{color:#17154d;font-size:14px;white-space:nowrap}
+.shared-profile-chip span{font-size:13px;color:#57628e;text-align:right;line-height:1.35}
+.shared-profile-chip.mine{background:linear-gradient(135deg,rgba(184,242,230,.36),rgba(255,255,255,.9));border-color:rgba(25,195,125,.22)}
+.profile-grid .full{grid-column:1/-1}

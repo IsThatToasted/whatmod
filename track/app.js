@@ -20,7 +20,7 @@ const els = {
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
-let session = null, trips = [], items = [], members = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null;
+let session = null, trips = [], items = [], members = [], travelerProfiles = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -147,7 +147,7 @@ async function loadTrips() {
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
 }
-async function loadTripData() { await Promise.all([loadItems(), loadMembers()]); setStatus('Ready'); render(); }
+async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadTravelerProfiles()]); setStatus('Ready'); render(); }
 async function loadItems() {
   if (!activeTripId) return;
   const { data, error } = await client.from('itinerary_items').select('*').eq('trip_id', activeTripId).order('item_date').order('start_time');
@@ -159,6 +159,32 @@ async function loadMembers() {
   const { data, error } = await client.from('itinerary_trip_members').select('*').eq('trip_id', activeTripId).order('created_at');
   if (error) return showDbError(error);
   members = data || [];
+}
+async function loadTravelerProfiles() {
+  travelerProfiles = [];
+  if (!activeTripId || !session?.user?.id) return;
+  try {
+    const { data, error } = await client.from('itinerary_user_profiles').select('*').eq('trip_id', activeTripId).order('updated_at', { ascending: false });
+    if (error) throw error;
+    travelerProfiles = data || [];
+  } catch (err) {
+    console.warn('Shared profile table unavailable; using local-only profile fallback.', err);
+    const local = getLocalUserProfile();
+    travelerProfiles = local ? [local] : [];
+  }
+}
+async function upsertMyTravelerProfile(profile) {
+  if (!activeTripId || !session?.user?.id) return;
+  const payload = { ...profile, trip_id: activeTripId, user_id: session.user.id, updated_at: new Date().toISOString() };
+  try {
+    const { data, error } = await client.from('itinerary_user_profiles').upsert(payload, { onConflict: 'trip_id,user_id' }).select().single();
+    if (error) throw error;
+    travelerProfiles = [data, ...travelerProfiles.filter(p => p.user_id !== session.user.id)];
+  } catch (err) {
+    console.warn('Could not save shared profile; saving local-only fallback.', err);
+    saveLocalUserProfile(payload);
+    travelerProfiles = [payload, ...travelerProfiles.filter(p => p.user_id !== session.user.id)];
+  }
 }
 async function createTrip(input) {
   const payload = { user_id: session.user.id, title: input.title || 'New trip', start_date: input.start_date || todayISO(), end_date: input.end_date || input.start_date || todayISO(), destination: '', notes: '' };
@@ -287,7 +313,7 @@ setupLocationAutocomplete(els.itemLocation, els.itemLocationSuggestions, els.ite
 els.expandAllBtn.addEventListener('click', () => { document.body.classList.add('show-all-days'); renderTimeline(); }); els.collapseAllBtn.addEventListener('click', () => { document.body.classList.remove('show-all-days'); renderTimeline(); });
 els.exportBtn.addEventListener('click', exportJson); els.importInput.addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
 // --- Adventure Suite: cache-busted feature layer (local, non-breaking Supabase-safe storage) ---
-const ADVENTURE_VERSION = '20260622-beautiful-v3';
+const ADVENTURE_VERSION = '20260622-profile-v4';
 const restaurantOptions = [
   { name: 'Waterfront brunch', tags: ['brunch','waterfront','casual','family friendly','coffee','cute casual'], price: '$$' },
   { name: 'Lakefront dinner', tags: ['romantic','waterfront','steak','seafood','fancy','date night'], price: '$$$' },
@@ -308,18 +334,44 @@ const baseChallenges = [
 ];
 function adventureKey() { return `itinAdventure:${activeTripId || 'no-trip'}:${session?.user?.id || 'guest'}:${ADVENTURE_VERSION}`; }
 function defaultAdventureState() {
-  return { toddler: false, weather: 'sunny', profiles: { profileOneName:'', profileTwoName:'', profileOneLikes:'steak, burgers, coffee, waterfront, casual, dessert', profileTwoLikes:'brunch, Italian, dessert, quiet, family friendly, waterfront', profileOneAvoids:'', profileTwoAvoids:'', budget:'$$', vibe:'cute casual' }, moods: [], memories: [], challenges: baseChallenges.map((title,i)=>({id:`c${i}`,title,done:false})) };
+  return { toddler: false, weather: 'sunny', moods: [], memories: [], challenges: baseChallenges.map((title,i)=>({id:`c${i}`,title,done:false})) };
 }
 function getAdventureState() { try { return { ...defaultAdventureState(), ...(JSON.parse(localStorage.getItem(adventureKey())) || {}) }; } catch { return defaultAdventureState(); } }
 function saveAdventureState(s) { localStorage.setItem(adventureKey(), JSON.stringify(s)); }
+function profileStorageKey() { return `itinUserProfile:${activeTripId || 'no-trip'}:${session?.user?.id || 'guest'}:${ADVENTURE_VERSION}`; }
+function getLocalUserProfile() { try { return JSON.parse(localStorage.getItem(profileStorageKey()) || 'null'); } catch { return null; } }
+function saveLocalUserProfile(p) { localStorage.setItem(profileStorageKey(), JSON.stringify(p)); }
+function defaultMyProfile() {
+  return { display_name: displayNameFromSession(), photo_url: userPhotoFromSession(), likes: '', avoids: '', budget: '$$', vibe: 'cute casual', interests: '' };
+}
+function myProfile() {
+  return travelerProfiles.find(p => p.user_id === session?.user?.id) || getLocalUserProfile() || defaultMyProfile();
+}
+function sharedProfiles() {
+  const byUser = new Map();
+  travelerProfiles.forEach(p => { if (p?.user_id) byUser.set(p.user_id, p); });
+  const mine = myProfile();
+  if (mine?.user_id || session?.user?.id) byUser.set(mine.user_id || session.user.id, { ...mine, user_id: mine.user_id || session.user.id });
+  return [...byUser.values()];
+}
+function combinedProfileForScoring() {
+  const profiles = sharedProfiles();
+  return {
+    likes: profiles.flatMap(p => words(`${p.likes || ''},${p.interests || ''}`)),
+    avoids: profiles.flatMap(p => words(p.avoids || '')),
+    budget: myProfile().budget || '$$',
+    vibe: profiles.map(p => p.vibe).filter(Boolean).join(', ')
+  };
+}
 function words(v) { return String(v || '').toLowerCase().split(/[,\n]/).map(x=>x.trim()).filter(Boolean); }
-function scoreRestaurant(r, p) {
-  const likes = [...words(p.profileOneLikes || p.brianLikes), ...words(p.profileTwoLikes || p.ashleyLikes)];
-  const avoids = [...words(p.profileOneAvoids || p.brianAvoids), ...words(p.profileTwoAvoids || p.ashleyAvoids)];
+function scoreRestaurant(r, _p) {
+  const p = combinedProfileForScoring();
+  const likes = p.likes || [];
+  const avoids = p.avoids || [];
   let score = 62;
   r.tags.forEach(t => { if (likes.some(l => t.includes(l) || l.includes(t))) score += 8; if (avoids.some(a => t.includes(a) || a.includes(t))) score -= 18; });
   if (r.price === p.budget) score += 8;
-  if (p.vibe && r.tags.some(t => t.includes(String(p.vibe).toLowerCase()) || String(p.vibe).toLowerCase().includes(t))) score += 10;
+  if (p.vibe && r.tags.some(t => p.vibe.toLowerCase().includes(t) || t.includes(p.vibe.toLowerCase()))) score += 10;
   return Math.max(15, Math.min(99, score));
 }
 
@@ -337,27 +389,16 @@ function updateGreeting() {
   else if (firstName) el.textContent = `Good morning, ${firstName}! ☀️ Ready for your next adventure?`;
   else el.textContent = 'Good morning! ☀️ Ready for your next adventure?';
 }
-function migrateProfiles(st) {
-  st.profiles = st.profiles || {};
-  if (!st.profiles.profileOneLikes && st.profiles.brianLikes) st.profiles.profileOneLikes = st.profiles.brianLikes;
-  if (!st.profiles.profileTwoLikes && st.profiles.ashleyLikes) st.profiles.profileTwoLikes = st.profiles.ashleyLikes;
-  if (!st.profiles.profileOneAvoids && st.profiles.brianAvoids) st.profiles.profileOneAvoids = st.profiles.brianAvoids;
-  if (!st.profiles.profileTwoAvoids && st.profiles.ashleyAvoids) st.profiles.profileTwoAvoids = st.profiles.ashleyAvoids;
-  if (!st.profiles.profileOneName) st.profiles.profileOneName = displayNameFromSession();
-}
-function updateProfileLabels(p={}) {
-  const one = p.profileOneName || 'Profile 1';
-  const two = p.profileTwoName || 'Profile 2';
-  [['profileOneLikesLabel', one], ['profileOneAvoidsLabel', one], ['profileTwoLikesLabel', two], ['profileTwoAvoidsLabel', two]].forEach(([id,txt]) => { const el=document.getElementById(id); if(el) el.textContent = txt; });
-}
+function migrateProfiles(st) { return st; }
+function updateProfileLabels(p={}) { }
 
 function renderAdventure() {
   updateGreeting();
   if (!document.getElementById('weatherSuggestions') || !activeTripId) return;
-  const s = getAdventureState(); migrateProfiles(s); updateProfileLabels(s.profiles);
+  const s = getAdventureState(); renderSharedProfileSummary();
   const mood = document.getElementById('weatherMood'); const toddler = document.getElementById('toddlerToggle');
   if (mood) mood.value = s.weather; if (toddler) toddler.checked = !!s.toddler;
-  renderWeatherIdeas(s); renderRestaurantMatches(s); renderMoods(s); renderChallenges(s); renderMemories(s); updateProfilePreview(s);
+  renderWeatherIdeas(s); renderRestaurantMatches(s); renderMoods(s); renderChallenges(s); renderMemories(s); updateProfilePreview();
 }
 function renderWeatherIdeas(s) {
   const pool = {
@@ -372,7 +413,7 @@ function renderWeatherIdeas(s) {
   document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>openItemDialog(selectedDay, { title:b.dataset.add, item_type:s.toddler?'todo':'event', item_date:selectedDay, notes:s.toddler?'Toddler-friendly suggestion.':'Weather-aware suggestion.' }));
 }
 function renderRestaurantMatches(s) {
-  const list = restaurantOptions.map(r=>({ ...r, score:scoreRestaurant(r, s.profiles) })).sort((a,b)=>b.score-a.score).slice(0,4);
+  const list = restaurantOptions.map(r=>({ ...r, score:scoreRestaurant(r) })).sort((a,b)=>b.score-a.score).slice(0,4);
   document.getElementById('restaurantMatches').innerHTML = list.map(r=>`<div class="match-row"><strong>${escapeHtml(r.name)}</strong><span>${r.score}% Match • ${r.price}</span><button class="ghost-btn tiny" data-food="${escapeHtml(r.name)}">Plan</button></div>`).join('');
   document.querySelectorAll('[data-food]').forEach(b=>b.onclick=()=>openItemDialog(selectedDay,{title:b.dataset.food,item_type:'food',item_date:selectedDay,notes:'Added from restaurant match score.'}));
 }
@@ -431,8 +472,9 @@ function generateRecap() {
 
 function userPhotoFromSession() { return session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture || ''; }
 function initialsFromName(name) { const clean=String(name||'').trim(); if(!clean) return '?'; return clean.split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||'').join(''); }
-function updateProfilePreview(st=getAdventureState()) {
-  const name = st?.profiles?.profileOneName || displayNameFromSession() || 'Profile';
+function updateProfilePreview() {
+  const p = myProfile();
+  const name = p.display_name || displayNameFromSession() || 'Profile';
   const img = document.getElementById('userAvatarImg');
   const initials = document.getElementById('userAvatarInitials');
   const label = document.getElementById('profileNameChip');
