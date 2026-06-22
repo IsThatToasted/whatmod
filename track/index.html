@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=packing-user-v7" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -160,14 +160,16 @@
               </dl>
             </section>
 
-            <section class="packing-panel glass">
-              <div class="packing-head"><h2>Packing List</h2><span>4/10</span></div>
-              <div class="progress"><span></span></div>
-              <label><input type="checkbox" checked> Clothing</label>
-              <label><input type="checkbox" checked> Toiletries</label>
-              <label><input type="checkbox"> Chargers</label>
-              <label><input type="checkbox"> Swimwear</label>
-              <a href="#">View all items</a>
+            <section class="packing-panel glass" id="packingPanel">
+              <div class="packing-head"><h2>My Packing List</h2><span id="packingCount">0/0</span></div>
+              <p class="helper-text compact-help">Personal to each traveler. Editors can update their own list.</p>
+              <div class="progress"><span id="packingProgress"></span></div>
+              <div id="packingList" class="packing-list"></div>
+              <form id="packingForm" class="packing-form">
+                <input id="packingInput" type="text" placeholder="Add item..." maxlength="80" />
+                <button id="addPackingBtn" type="submit">Add</button>
+              </form>
+              <button id="resetPackingBtn" type="button" class="ghost-btn small-btn">Reset starter list</button>
             </section>
           </aside>
         </section>
@@ -212,6 +214,6 @@
       <div class="item-actions"><button class="edit ghost-btn">Edit</button><button class="delete danger ghost-btn">Delete</button></div>
     </article>
   </template>
-  <script src="./app.js"></script>
+  <script src="./app.js?v=packing-user-v7"></script>
 </body>
 </html>

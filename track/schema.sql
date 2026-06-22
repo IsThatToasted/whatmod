@@ -247,3 +247,37 @@ create index if not exists itinerary_trip_members_trip_id_idx on public.itinerar
 create index if not exists itinerary_trip_members_user_id_idx on public.itinerary_trip_members(user_id);
 create index if not exists itinerary_trip_invites_trip_id_idx on public.itinerary_trip_invites(trip_id);
 create index if not exists itinerary_trip_invites_token_idx on public.itinerary_trip_invites(token);
+
+
+-- Per-user packing lists. Each traveler has their own list for the same trip.
+create table if not exists public.itinerary_packing_items (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  label text not null,
+  packed boolean not null default false,
+  sort_order bigint not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.itinerary_packing_items enable row level security;
+
+drop policy if exists "Members can read own packing items" on public.itinerary_packing_items;
+drop policy if exists "Editors can insert own packing items" on public.itinerary_packing_items;
+drop policy if exists "Editors can update own packing items" on public.itinerary_packing_items;
+drop policy if exists "Editors can delete own packing items" on public.itinerary_packing_items;
+
+create policy "Members can read own packing items" on public.itinerary_packing_items
+for select using (auth.uid() = user_id and public.user_can_view_trip(trip_id));
+
+create policy "Editors can insert own packing items" on public.itinerary_packing_items
+for insert with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
+
+create policy "Editors can update own packing items" on public.itinerary_packing_items
+for update using (auth.uid() = user_id and public.user_can_edit_trip(trip_id)) with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
+
+create policy "Editors can delete own packing items" on public.itinerary_packing_items
+for delete using (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
+
+create index if not exists itinerary_packing_items_trip_user_idx on public.itinerary_packing_items(trip_id, user_id);

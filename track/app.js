@@ -16,11 +16,12 @@ const els = {
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
-  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn')
+  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'),
+  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn')
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
-let session = null, trips = [], items = [], members = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null;
+let session = null, trips = [], items = [], members = [], packingItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -35,6 +36,22 @@ function currentTrip() { return trips.find(t => t.id === activeTripId); }
 function currentMembership() { return members.find(m => m.trip_id === activeTripId && m.user_id === session?.user?.id); }
 function canEdit() { return ['owner', 'editor'].includes(currentMembership()?.role); }
 function canDeleteTrip() { return currentMembership()?.role === 'owner'; }
+
+const STARTER_PACKING_ITEMS = ['Clothing', 'Toiletries', 'Chargers', 'Medications', 'Swimwear', 'Comfort items', 'Snacks', 'Travel documents'];
+function packingStorageKey() { return `packing:${session?.user?.id || 'local'}:${activeTripId || 'no-trip'}`; }
+function savePackingFallback() {
+  try { localStorage.setItem(packingStorageKey(), JSON.stringify(packingItems)); } catch {}
+}
+function loadPackingFallback() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(packingStorageKey()) || 'null');
+    if (Array.isArray(saved)) return saved;
+  } catch {}
+  return STARTER_PACKING_ITEMS.map((label, idx) => ({ id: `local-${idx}-${Date.now()}`, label, packed: false, trip_id: activeTripId, user_id: session?.user?.id, sort_order: idx }));
+}
+function normalizePackingItem(row, idx = 0) {
+  return { id: row.id || `local-${idx}-${Date.now()}`, trip_id: row.trip_id || activeTripId, user_id: row.user_id || session?.user?.id, label: row.label || row.title || 'Packing item', packed: !!row.packed, sort_order: row.sort_order ?? idx, local_only: !!row.local_only };
+}
 function inviteTokenFromUrl() { return new URLSearchParams(location.search).get('invite'); }
 
 const locationCache = new Map();
@@ -154,7 +171,7 @@ async function loadTrips() {
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
 }
-async function loadTripData() { await Promise.all([loadItems(), loadMembers()]); setStatus('Ready'); render(); }
+async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems()]); setStatus('Ready'); render(); }
 async function loadItems() {
   if (!activeTripId) return;
   const { data, error } = await client.from('itinerary_items').select('*').eq('trip_id', activeTripId).order('item_date').order('start_time');
@@ -166,6 +183,38 @@ async function loadMembers() {
   const { data, error } = await client.from('itinerary_trip_members').select('*').eq('trip_id', activeTripId).order('created_at');
   if (error) return showDbError(error);
   members = data || [];
+}
+
+async function loadPackingItems() {
+  if (!activeTripId || !session?.user?.id) { packingItems = []; return; }
+  const { data, error } = await client
+    .from('itinerary_packing_items')
+    .select('*')
+    .eq('trip_id', activeTripId)
+    .eq('user_id', session.user.id)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.warn('Packing list table unavailable. Using local fallback until schema.sql is run.', error);
+    packingItems = loadPackingFallback();
+    setStatus('Packing list local only — run schema.sql for sync');
+    return;
+  }
+  packingItems = (data || []).map(normalizePackingItem);
+  if (!packingItems.length) await seedStarterPackingItems();
+}
+
+async function seedStarterPackingItems() {
+  if (!activeTripId || !session?.user?.id) return;
+  const rows = STARTER_PACKING_ITEMS.map((label, idx) => ({ trip_id: activeTripId, user_id: session.user.id, label, packed: false, sort_order: idx }));
+  const { data, error } = await client.from('itinerary_packing_items').insert(rows).select('*');
+  if (error) {
+    console.warn('Could not seed Supabase packing list. Using local starter list.', error);
+    packingItems = loadPackingFallback();
+    savePackingFallback();
+    return;
+  }
+  packingItems = (data || []).map(normalizePackingItem);
 }
 async function createTrip(input) {
   const payload = { user_id: session.user.id, title: input.title || 'New trip', start_date: input.start_date || todayISO(), end_date: input.end_date || input.start_date || todayISO(), destination: '', notes: '' };
@@ -226,7 +275,7 @@ async function createInviteLink() {
 }
 async function copyInviteLink() { if (!els.inviteLink.value) return; await navigator.clipboard.writeText(els.inviteLink.value); setStatus('Invite copied'); }
 
-function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); }
+function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); }
 function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
   const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
@@ -282,6 +331,81 @@ function renderItem(item) {
   if (canEdit()) { card.addEventListener('dragstart', () => { draggedId = item.id; card.classList.add('dragging'); }); card.addEventListener('dragend', () => card.classList.remove('dragging')); }
   return tpl;
 }
+
+function renderPackingList() {
+  if (!els.packingList) return;
+  const editable = canEdit();
+  const total = packingItems.length;
+  const done = packingItems.filter(i => i.packed).length;
+  if (els.packingCount) els.packingCount.textContent = `${done}/${total}`;
+  if (els.packingProgress) els.packingProgress.style.width = total ? `${Math.round((done / total) * 100)}%` : '0%';
+  if (els.packingInput) els.packingInput.disabled = !editable;
+  if (els.addPackingBtn) els.addPackingBtn.disabled = !editable;
+  if (els.resetPackingBtn) els.resetPackingBtn.disabled = !editable;
+  if (!total) {
+    els.packingList.innerHTML = `<div class="packing-empty">No packing items yet.${editable ? ' Add your first item below.' : ''}</div>`;
+    return;
+  }
+  els.packingList.innerHTML = packingItems
+    .slice()
+    .sort((a,b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map(item => `
+      <div class="packing-row ${item.packed ? 'done' : ''}" data-id="${escapeHtml(item.id)}">
+        <label>
+          <input type="checkbox" ${item.packed ? 'checked' : ''} ${editable ? '' : 'disabled'} />
+          <span class="packing-label" contenteditable="${editable ? 'true' : 'false'}" spellcheck="false">${escapeHtml(item.label)}</span>
+        </label>
+        <button type="button" class="packing-delete ghost-btn" ${editable ? '' : 'disabled'} title="Remove item">×</button>
+      </div>`).join('');
+}
+
+function packingIsLocalOnly(id) { return String(id || '').startsWith('local-'); }
+
+async function addPackingItem(label) {
+  const clean = (label || '').trim();
+  if (!clean || !activeTripId || !session?.user?.id || !canEdit()) return;
+  const payload = { trip_id: activeTripId, user_id: session.user.id, label: clean, packed: false, sort_order: Date.now() };
+  const { data, error } = await client.from('itinerary_packing_items').insert(payload).select('*').single();
+  if (error) {
+    const local = normalizePackingItem({ ...payload, id: `local-${Date.now()}`, local_only: true });
+    packingItems.push(local); savePackingFallback(); renderPackingList();
+    console.warn('Packing item saved locally because Supabase table is unavailable.', error);
+    return;
+  }
+  packingItems.push(normalizePackingItem(data)); renderPackingList();
+}
+
+async function updatePackingItem(id, patch) {
+  if (!canEdit()) return;
+  packingItems = packingItems.map(i => i.id === id ? { ...i, ...patch } : i);
+  renderPackingList();
+  if (packingIsLocalOnly(id)) { savePackingFallback(); return; }
+  const { error } = await client.from('itinerary_packing_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', session.user.id);
+  if (error) { console.warn('Packing update failed; keeping local UI value.', error); savePackingFallback(); }
+}
+
+async function deletePackingItem(id) {
+  if (!canEdit()) return;
+  packingItems = packingItems.filter(i => i.id !== id);
+  renderPackingList();
+  if (packingIsLocalOnly(id)) { savePackingFallback(); return; }
+  const { error } = await client.from('itinerary_packing_items').delete().eq('id', id).eq('user_id', session.user.id);
+  if (error) { console.warn('Packing delete failed.', error); }
+}
+
+async function resetPackingItems() {
+  if (!canEdit() || !activeTripId || !session?.user?.id) return;
+  if (!confirm('Reset your packing list to the starter list?')) return;
+  const { error } = await client.from('itinerary_packing_items').delete().eq('trip_id', activeTripId).eq('user_id', session.user.id);
+  if (error) {
+    packingItems = STARTER_PACKING_ITEMS.map((label, idx) => normalizePackingItem({ id: `local-${idx}-${Date.now()}`, label, sort_order: idx, local_only: true }));
+    savePackingFallback(); renderPackingList(); return;
+  }
+  packingItems = [];
+  await seedStarterPackingItems();
+  renderPackingList();
+}
+
 function exportJson() { const data = { trip: currentTrip(), items }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${currentTrip()?.title || 'trip'}-itinerary.json`; a.click(); URL.revokeObjectURL(a.href); }
 async function importJson(file) { if (!canEdit()) return; const parsed = JSON.parse(await file.text()); if (!parsed?.items?.length) return alert('No items found in JSON.'); const newItems = parsed.items.map(i => ({ user_id: session.user.id, trip_id: activeTripId, title: i.title, item_date: i.item_date, start_time: i.start_time, end_time: i.end_time, item_type: i.item_type || 'event', budget: Number(i.budget || 0), location: i.location || '', notes: i.notes || '', sort_order: i.sort_order || Date.now() })); const { error } = await client.from('itinerary_items').insert(newItems); if (error) return showDbError(error); await loadTripData(); }
 
@@ -297,4 +421,30 @@ setupLocationAutocomplete(els.destination, els.destinationSuggestions, els.desti
 setupLocationAutocomplete(els.itemLocation, els.itemLocationSuggestions, els.itemLocationMapLinks);
 els.expandAllBtn.addEventListener('click', () => { document.body.classList.add('show-all-days'); renderTimeline(); }); els.collapseAllBtn.addEventListener('click', () => { document.body.classList.remove('show-all-days'); renderTimeline(); });
 els.exportBtn.addEventListener('click', exportJson); els.importInput.addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
+
+if (els.packingForm) els.packingForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  await addPackingItem(els.packingInput.value);
+  els.packingInput.value = '';
+});
+if (els.packingList) els.packingList.addEventListener('change', e => {
+  const row = e.target.closest('.packing-row');
+  if (row && e.target.matches('input[type="checkbox"]')) updatePackingItem(row.dataset.id, { packed: e.target.checked });
+});
+if (els.packingList) els.packingList.addEventListener('click', e => {
+  const row = e.target.closest('.packing-row');
+  if (row && e.target.closest('.packing-delete')) deletePackingItem(row.dataset.id);
+});
+if (els.packingList) els.packingList.addEventListener('focusout', e => {
+  const label = e.target.closest('.packing-label');
+  const row = e.target.closest('.packing-row');
+  if (label && row) {
+    const clean = label.textContent.trim();
+    const item = packingItems.find(i => i.id === row.dataset.id);
+    if (!clean) return deletePackingItem(row.dataset.id);
+    if (item && item.label !== clean) updatePackingItem(row.dataset.id, { label: clean });
+  }
+});
+if (els.resetPackingBtn) els.resetPackingBtn.addEventListener('click', resetPackingItems);
+
 init();
