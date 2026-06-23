@@ -1,0 +1,62 @@
+[
+  {
+    "title": "WhatDash",
+    "slug": "whatdash",
+    "status": "Active Build",
+    "summary": "A live-selling analytics dashboard for Whatnot shows with sales tracking, bidder insights, session archives, and realtime stream tools.",
+    "details": "WhatDash is built around practical live-show analytics: sold tracking, bidder history, revenue summaries, giveaways separated from sales, and show-session archives. The goal is to give sellers the information they need without slowing down fast auctions.",
+    "tags": [
+      "Chrome Extension",
+      "Analytics",
+      "Whatnot"
+    ],
+    "image": "assets/project-whatdash.svg",
+    "featured": true,
+    "links": [
+      {
+        "label": "Case Study",
+        "href": "apps/whatdash/"
+      }
+    ]
+  },
+  {
+    "title": "Inventory Manager",
+    "slug": "inventory-manager",
+    "status": "Production Tool",
+    "summary": "A local Windows inventory workflow for catalog building, barcode labels, pricing, images, and GitHub Pages publishing.",
+    "details": "This app helps organize Whatnot purchases into searchable categories, calculate target sell prices, manage barcodes, build product catalogs, and publish static storefront files.",
+    "tags": [
+      "Python",
+      "Inventory",
+      "Catalog"
+    ],
+    "image": "assets/project-inventory.svg",
+    "featured": true,
+    "links": [
+      {
+        "label": "Case Study",
+        "href": "apps/inventory-manager/"
+      }
+    ]
+  },
+  {
+    "title": "Trip Planner Experiments",
+    "slug": "trip-planner",
+    "status": "Prototype",
+    "summary": "A shared itinerary planner with cute planning flows, draggable day blocks, drive segments, and trip memories.",
+    "details": "A collaborative trip-planning concept designed for shared adventures, toddler-friendly schedules, route planning, editable timelines, and recap memories.",
+    "tags": [
+      "Supabase",
+      "Travel",
+      "Planner"
+    ],
+    "image": "assets/project-trip.svg",
+    "featured": false,
+    "links": [
+      {
+        "label": "Case Study",
+        "href": "apps/trip-planner/"
+      }
+    ]
+  }
+]
