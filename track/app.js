@@ -21,7 +21,7 @@ const els = {
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
-let session = null, trips = [], items = [], members = [], packingItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null;
+let session = null, trips = [], items = [], members = [], packingItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -40,9 +40,10 @@ function canDeleteTrip() { return currentMembership()?.role === 'owner'; }
 
 const DAY_START_MIN = 4 * 60;
 const DAY_END_MIN = 24 * 60;
-const SLOT_HEIGHT = 40;
+const SLOT_HEIGHT = 62;
 const TIMELINE_TOP_PAD = 18;
-const TIMELINE_BOTTOM_PAD = 24;
+const TIMELINE_BOTTOM_PAD = 42;
+const TIMELINE_EVENT_GAP = 12;
 function getSnapMinutes() { return Number(els.snapMode?.value || localStorage.getItem('timelineSnapMinutes') || 30); }
 function minutesToY(mins) { return TIMELINE_TOP_PAD + ((mins - DAY_START_MIN) / 30) * SLOT_HEIGHT; }
 function yToMinutes(y) { return DAY_START_MIN + ((y - TIMELINE_TOP_PAD) / SLOT_HEIGHT) * 30; }
@@ -412,8 +413,11 @@ function renderItem(item, isTimed = false) {
   const start = itemStartMinutes(item), end = itemEndMinutes(item);
   if (isTimed) {
     card.classList.add('timeline-item');
-    card.style.top = `${minutesToY(start)}px`;
-    card.style.minHeight = `${Math.max(58, minutesToY(end) - minutesToY(start) - 6)}px`;
+    card.style.top = `${minutesToY(start) + (TIMELINE_EVENT_GAP / 2)}px`;
+    const naturalHeight = minutesToY(end) - minutesToY(start) - TIMELINE_EVENT_GAP;
+    card.style.minHeight = `${Math.max(44, naturalHeight)}px`;
+    card.style.height = `${Math.max(44, naturalHeight)}px`;
+    card.classList.toggle('compact-time-card', naturalHeight < 70);
   }
   const time = [fmtTime(item.start_time), fmtTime(item.end_time)].filter(Boolean).join(' - ');
   tpl.querySelector('.time-chip').textContent = time || 'Anytime';
@@ -473,10 +477,10 @@ function startTimelinePointer(e, item, card) {
       const bottom = timelineDrag.initialTop + timelineDrag.initialHeight;
       const top = clamp(y, 0, bottom - 40);
       card.style.top = `${top}px`;
-      card.style.minHeight = `${bottom - top}px`;
+      card.style.minHeight = `${bottom - top}px`; card.style.height = `${bottom - top}px`;
     } else if (timelineDrag.mode === 'resize-end') {
       const height = clamp(y - timelineDrag.initialTop, 40, timelineDrag.board.offsetHeight - timelineDrag.initialTop);
-      card.style.minHeight = `${height}px`;
+      card.style.minHeight = `${height}px`; card.style.height = `${height}px`;
     }
   };
   const onUp = async ev => {
@@ -493,11 +497,11 @@ function startTimelinePointer(e, item, card) {
       patch = { item_date: targetBoard.dataset.day, ...defaultTimedPatch(draggedItem, newStart) };
     } else if (timelineDrag.mode === 'resize-start') {
       const oldEnd = itemEndMinutes(draggedItem);
-      const newStart = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop))), DAY_START_MIN, oldEnd - 30);
+      const newStart = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop) - (TIMELINE_EVENT_GAP / 2))), DAY_START_MIN, oldEnd - 30);
       patch = { start_time: minutesToTime(newStart), end_time: minutesToTime(oldEnd), sort_order: newStart };
     } else {
       const oldStart = itemStartMinutes(draggedItem);
-      const newEnd = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop) + card.offsetHeight)), oldStart + 30, DAY_END_MIN);
+      const newEnd = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop) + card.offsetHeight + (TIMELINE_EVENT_GAP / 2))), oldStart + 30, DAY_END_MIN);
       patch = { start_time: minutesToTime(oldStart), end_time: minutesToTime(newEnd), sort_order: oldStart };
     }
     timelineDrag = null;
@@ -525,7 +529,8 @@ function renderPackingList() {
     .slice()
     .sort((a,b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map(item => `
-      <div class="packing-row ${item.packed ? 'done' : ''}" data-id="${escapeHtml(item.id)}">
+      <div class="packing-row ${item.packed ? 'done' : ''}" data-id="${escapeHtml(item.id)}" draggable="${editable ? 'true' : 'false'}">
+        <button type="button" class="packing-drag ghost-btn" ${editable ? '' : 'disabled'} title="Drag to reorder">⋮⋮</button>
         <label>
           <input type="checkbox" ${item.packed ? 'checked' : ''} ${editable ? '' : 'disabled'} />
           <span class="packing-label" contenteditable="${editable ? 'true' : 'false'}" spellcheck="false">${escapeHtml(item.label)}</span>
@@ -581,6 +586,22 @@ async function resetPackingItems() {
   renderPackingList();
 }
 
+async function reorderPackingItems(dragId, targetId) {
+  if (!canEdit() || !dragId || !targetId || dragId === targetId) return;
+  const ordered = packingItems.slice().sort((a,b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const from = ordered.findIndex(i => i.id === dragId);
+  const to = ordered.findIndex(i => i.id === targetId);
+  if (from < 0 || to < 0) return;
+  const [moved] = ordered.splice(from, 1);
+  ordered.splice(to, 0, moved);
+  const updates = ordered.map((item, idx) => ({ ...item, sort_order: idx * 100 }));
+  packingItems = updates;
+  renderPackingList();
+  savePackingFallback();
+  const remote = updates.filter(i => !packingIsLocalOnly(i.id));
+  await Promise.all(remote.map(i => client.from('itinerary_packing_items').update({ sort_order: i.sort_order, updated_at: new Date().toISOString() }).eq('id', i.id).eq('user_id', session.user.id)));
+}
+
 function exportJson() { const data = { trip: currentTrip(), items }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${currentTrip()?.title || 'trip'}-itinerary.json`; a.click(); URL.revokeObjectURL(a.href); }
 async function importJson(file) { if (!canEdit()) return; const parsed = JSON.parse(await file.text()); if (!parsed?.items?.length) return alert('No items found in JSON.'); const newItems = parsed.items.map(i => ({ user_id: session.user.id, trip_id: activeTripId, title: i.title, item_date: i.item_date, start_time: i.start_time, end_time: i.end_time, item_type: i.item_type || 'event', budget: Number(i.budget || 0), location: i.location || '', notes: i.notes || '', sort_order: i.sort_order || Date.now() })); const { error } = await client.from('itinerary_items').insert(newItems); if (error) return showDbError(error); await loadTripData(); }
 
@@ -620,6 +641,38 @@ if (els.packingList) els.packingList.addEventListener('focusout', e => {
     if (item && item.label !== clean) updatePackingItem(row.dataset.id, { label: clean });
   }
 });
+
+if (els.packingList) els.packingList.addEventListener('dragstart', e => {
+  const row = e.target.closest('.packing-row');
+  if (!row || !canEdit()) return;
+  packingDragId = row.dataset.id;
+  row.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', packingDragId);
+});
+if (els.packingList) els.packingList.addEventListener('dragover', e => {
+  const row = e.target.closest('.packing-row');
+  if (!row || !packingDragId || row.dataset.id === packingDragId) return;
+  e.preventDefault();
+  row.classList.add('drag-over');
+});
+if (els.packingList) els.packingList.addEventListener('dragleave', e => {
+  e.target.closest('.packing-row')?.classList.remove('drag-over');
+});
+if (els.packingList) els.packingList.addEventListener('drop', async e => {
+  const row = e.target.closest('.packing-row');
+  e.preventDefault();
+  els.packingList.querySelectorAll('.packing-row').forEach(r => r.classList.remove('drag-over','dragging'));
+  if (!row || !packingDragId) return;
+  const sourceId = packingDragId;
+  packingDragId = null;
+  await reorderPackingItems(sourceId, row.dataset.id);
+});
+if (els.packingList) els.packingList.addEventListener('dragend', () => {
+  packingDragId = null;
+  els.packingList.querySelectorAll('.packing-row').forEach(r => r.classList.remove('drag-over','dragging'));
+});
+
 if (els.resetPackingBtn) els.resetPackingBtn.addEventListener('click', resetPackingItems);
 if (els.snapMode) { els.snapMode.value = localStorage.getItem('timelineSnapMinutes') || '30'; els.snapMode.addEventListener('change', () => { localStorage.setItem('timelineSnapMinutes', els.snapMode.value); renderTimeline(); }); }
 if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUndo) await lastUndo(); });
