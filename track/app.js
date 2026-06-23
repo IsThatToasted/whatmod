@@ -32,6 +32,24 @@ function fmtDate(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefi
 function fmtShortDate(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
 function fmtTime(t) { if (!t) return ''; const [h, m] = t.split(':').map(Number); const d = new Date(); d.setHours(h, m || 0, 0, 0); return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
 function escapeHtml(str) { return String(str || '').replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
+
+function shortLocationLabel(location) {
+  let value = String(location || '').replace(/\s+/g, ' ').trim();
+  if (!value) return '';
+  value = value
+    .replace(/,?\s*United States(?: of America)?\.?$/i, '')
+    .replace(/,?\s*USA\.?$/i, '')
+    .replace(/\s+\d{5}(?:-\d{4})?/g, '')
+    .replace(/,\s*,/g, ',')
+    .replace(/\s+,/g, ',')
+    .replace(/,\s*$/g, '')
+    .trim();
+  const parts = value.split(',').map(part => part.trim()).filter(Boolean);
+  if (parts.length >= 3) value = `${parts[0]}, ${parts[1]}`;
+  const max = 48;
+  if (value.length > max) value = value.slice(0, max - 1).trimEnd() + '…';
+  return value;
+}
 function currentTrip() { return trips.find(t => t.id === activeTripId); }
 function currentMembership() { return members.find(m => m.trip_id === activeTripId && m.user_id === session?.user?.id); }
 function canEdit() { return ['owner', 'editor'].includes(currentMembership()?.role); }
@@ -418,6 +436,8 @@ function renderItem(item, isTimed = false) {
     card.style.minHeight = `${Math.max(44, naturalHeight)}px`;
     card.style.height = `${Math.max(44, naturalHeight)}px`;
     card.classList.toggle('compact-time-card', naturalHeight < 70);
+    card.classList.toggle('roomy-time-card', naturalHeight >= 110);
+    card.classList.toggle('very-roomy-time-card', naturalHeight >= 170);
   }
   const time = [fmtTime(item.start_time), fmtTime(item.end_time)].filter(Boolean).join(' - ');
   tpl.querySelector('.time-chip').textContent = time || 'Anytime';
@@ -425,7 +445,8 @@ function renderItem(item, isTimed = false) {
   tpl.querySelector('h3').textContent = item.title;
   const meta = tpl.querySelector('.item-meta');
   const parts = [Number(item.budget || 0) ? money(item.budget) : '', item.item_type].filter(Boolean);
-  meta.innerHTML = `${item.location ? `<a class="location-link" target="_blank" rel="noopener" href="${mapsUrl(item.location, 'google')}">📍 ${escapeHtml(item.location)}</a>${parts.length ? ' • ' : ''}` : ''}${escapeHtml(parts.join(' • '))}`;
+  const locLabel = shortLocationLabel(item.location);
+  meta.innerHTML = `${item.location ? `<a class="location-link" target="_blank" rel="noopener" title="${escapeHtml(item.location)}" href="${mapsUrl(item.location, 'google')}">📍 ${escapeHtml(locLabel)}</a>${parts.length ? ' • ' : ''}` : ''}${escapeHtml(parts.join(' • '))}`;
   tpl.querySelector('.item-notes').textContent = item.notes || '';
   const overlap = findOverlap(item);
   const warning = tpl.querySelector('.overlap-warning');

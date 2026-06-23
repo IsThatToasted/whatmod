@@ -87,3 +87,22 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
 .resize-start{top:1px}.resize-end{bottom:1px}
 .resize-handle:before{height:3px;opacity:.7}
 @media(max-width:760px){.item-card.timeline-item.compact-time-card{grid-template-columns:1fr;min-height:68px}.item-card.timeline-item.compact-time-card .item-actions{flex-wrap:wrap}.item-card.timeline-item.compact-time-card .item-main h3,.item-card.timeline-item.compact-time-card .item-meta{white-space:normal}}
+
+/* v12: content-aware timeline padding + shorter address display */
+.item-card.timeline-item .item-meta{display:block;color:#647095;line-height:1.2;white-space:nowrap}
+.item-card.timeline-item .location-link{display:inline-block;max-width:min(44ch, 72%);overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;white-space:nowrap;color:#6748f6;font-weight:900;text-decoration:none}
+.item-card.timeline-item .location-link:hover{text-decoration:underline}
+.item-card.timeline-item:not(.compact-time-card){padding-top:12px;padding-bottom:12px}
+.item-card.timeline-item:not(.compact-time-card) .item-main{align-items:center}
+.item-card.timeline-item:not(.compact-time-card) .item-main h3{line-height:1.16;white-space:nowrap}
+.item-card.timeline-item:not(.compact-time-card) .item-notes{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;line-height:1.2;white-space:normal}
+.item-card.timeline-item.roomy-time-card{padding-top:14px;padding-bottom:14px}
+.item-card.timeline-item.roomy-time-card .item-main{align-items:flex-start;padding-top:2px}
+.item-card.timeline-item.very-roomy-time-card{align-items:start;padding-top:18px;padding-bottom:18px}
+.item-card.timeline-item.very-roomy-time-card .time-chip{margin-top:0}
+.item-card.timeline-item.very-roomy-time-card .item-actions{padding-top:4px}
+.item-card.timeline-item.compact-time-card .location-link{max-width:28ch}
+.item-card.timeline-item.compact-time-card .item-meta{line-height:1.05}
+.item-card.timeline-item.compact-time-card .item-notes{display:none!important}
+@media(max-width:900px){.item-card.timeline-item .location-link{max-width:34ch}.item-card.timeline-item.compact-time-card .location-link{max-width:22ch}}
+@media(max-width:760px){.item-card.timeline-item .location-link{max-width:100%}.item-card.timeline-item:not(.compact-time-card) .item-main h3{white-space:normal}.item-card.timeline-item .item-meta{white-space:normal}}
