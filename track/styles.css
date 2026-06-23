@@ -462,3 +462,113 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
     align-self:start !important;
   }
 }
+
+/* v17: long-card readability polish
+   Long events keep title + actions at the top, while allowing the full title to display.
+   Normal cards keep a compact single-row layout with consistent action columns. */
+.item-card.timeline-item{
+  grid-template-columns:86px minmax(260px, 1fr) 220px !important;
+  column-gap:12px !important;
+}
+.item-card.timeline-item .item-actions{
+  width:220px !important;
+  min-width:220px !important;
+  grid-template-columns:48px 48px 58px 58px !important;
+  gap:4px !important;
+  align-self:center !important;
+}
+.item-card.timeline-item .item-actions button,
+.item-card.timeline-item.compact-time-card .item-actions button{
+  width:auto !important;
+  min-width:0 !important;
+  max-width:none !important;
+  height:40px !important;
+  min-height:40px !important;
+}
+.item-card.timeline-item .item-actions .shift{font-size:.78rem !important;}
+.item-card.timeline-item .item-actions .edit,
+.item-card.timeline-item .item-actions .delete{font-size:.75rem !important;}
+
+/* Large/long blocks: top-row layout, full readable title, details underneath. */
+.item-card.timeline-item.very-roomy-time-card{
+  align-items:start !important;
+  align-content:start !important;
+  padding:18px 14px !important;
+}
+.item-card.timeline-item.very-roomy-time-card .time-chip,
+.item-card.timeline-item.very-roomy-time-card .item-main,
+.item-card.timeline-item.very-roomy-time-card .item-actions{
+  align-self:start !important;
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+}
+.item-card.timeline-item.very-roomy-time-card .item-main{
+  align-items:start !important;
+  padding-top:0 !important;
+}
+.item-card.timeline-item.very-roomy-time-card .item-main > div{
+  min-width:0 !important;
+  width:100% !important;
+}
+.item-card.timeline-item.very-roomy-time-card .item-main h3{
+  display:block !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  line-height:1.18 !important;
+  font-size:1.02rem !important;
+  margin:0 0 6px !important;
+  max-width:100% !important;
+  word-break:normal !important;
+  overflow-wrap:break-word !important;
+}
+.item-card.timeline-item.very-roomy-time-card .item-meta{
+  display:block !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  max-width:100% !important;
+}
+
+/* Normal/short cards: keep title on one clean line, with more room than v16. */
+.item-card.timeline-item:not(.very-roomy-time-card) .item-main h3{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+.item-card.timeline-item.compact-time-card{
+  grid-template-columns:86px minmax(260px, 1fr) 220px !important;
+}
+
+@media(max-width:1180px){
+  .item-card.timeline-item,
+  .item-card.timeline-item.compact-time-card{
+    grid-template-columns:80px minmax(220px,1fr) 200px !important;
+    column-gap:10px !important;
+  }
+  .item-card.timeline-item .item-actions{
+    width:200px !important;
+    min-width:200px !important;
+    grid-template-columns:44px 44px 54px 54px !important;
+    gap:3px !important;
+  }
+  .item-card.timeline-item .item-actions button,
+  .item-card.timeline-item.compact-time-card .item-actions button{
+    height:38px !important;
+    min-height:38px !important;
+  }
+}
+@media(max-width:760px){
+  .item-card.timeline-item,
+  .item-card.timeline-item.compact-time-card{
+    grid-template-columns:1fr !important;
+  }
+  .item-card.timeline-item .item-actions{
+    width:100% !important;
+    min-width:0 !important;
+    grid-template-columns:repeat(4, minmax(48px,1fr)) !important;
+  }
+  .item-card.timeline-item.very-roomy-time-card .item-main h3{
+    white-space:normal !important;
+  }
+}
