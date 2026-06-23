@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=packing-user-v7" />
+  <link rel="stylesheet" href="./styles.css?v=timeline-drag-v8" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -114,7 +114,15 @@
                   <p class="eyebrow">Plan by day</p>
                   <h2 id="plannerTitle">Your itinerary</h2>
                 </div>
-                <button id="addAnyItemBtn">+ Add item</button>
+                <div class="planner-actions">
+                  <label class="snap-control">Snap
+                    <select id="snapMode">
+                      <option value="30">Half hour</option>
+                      <option value="60">Hourly</option>
+                    </select>
+                  </label>
+                  <button id="addAnyItemBtn">+ Add item</button>
+                </div>
               </div>
               <div id="dayTabs" class="day-tabs"></div>
               <section id="timeline" class="timeline"></section>
@@ -209,11 +217,14 @@
 
   <template id="itemTemplate">
     <article class="item-card" draggable="true">
+      <button class="resize-handle resize-start" type="button" aria-label="Adjust start time"></button>
       <div class="time-chip"></div>
-      <div class="item-main"><div class="item-type"></div><div><h3></h3><p class="item-meta"></p><p class="item-notes"></p></div></div>
-      <div class="item-actions"><button class="edit ghost-btn">Edit</button><button class="delete danger ghost-btn">Delete</button></div>
+      <div class="item-main"><div class="item-type"></div><div><h3></h3><p class="item-meta"></p><p class="item-notes"></p><p class="overlap-warning hidden"></p></div></div>
+      <div class="item-actions"><button class="shift earlier ghost-btn" type="button">-30</button><button class="shift later ghost-btn" type="button">+30</button><button class="edit ghost-btn" type="button">Edit</button><button class="delete danger ghost-btn" type="button">Delete</button></div>
+      <button class="resize-handle resize-end" type="button" aria-label="Adjust end time"></button>
     </article>
   </template>
-  <script src="./app.js?v=packing-user-v7"></script>
+  <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
+  <script src="./app.js?v=timeline-drag-v8"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 const SUPABASE_URL = 'https://cuhbzgeqvgzshwwfkpdm.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo';
-const REDIRECT_TO = 'https://whatmod.com/track/';
-const APP_URL = 'https://whatmod.com/track/';
+const REDIRECT_TO = location.origin.includes('localhost') || location.protocol === 'file:' ? location.href : 'https://whatmod.com/track/';
+const APP_URL = location.origin.includes('localhost') ? location.href.split('?')[0] : 'https://whatmod.com/track/';
 
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
@@ -17,11 +17,11 @@ const els = {
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'),
-  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn')
+  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'), snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
-let session = null, trips = [], items = [], members = [], packingItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null;
+let session = null, trips = [], items = [], members = [], packingItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -36,6 +36,57 @@ function currentTrip() { return trips.find(t => t.id === activeTripId); }
 function currentMembership() { return members.find(m => m.trip_id === activeTripId && m.user_id === session?.user?.id); }
 function canEdit() { return ['owner', 'editor'].includes(currentMembership()?.role); }
 function canDeleteTrip() { return currentMembership()?.role === 'owner'; }
+
+
+const DAY_START_MIN = 6 * 60;
+const DAY_END_MIN = 24 * 60;
+const SLOT_HEIGHT = 40;
+function getSnapMinutes() { return Number(els.snapMode?.value || localStorage.getItem('timelineSnapMinutes') || 30); }
+function minutesToY(mins) { return ((mins - DAY_START_MIN) / 30) * SLOT_HEIGHT; }
+function yToMinutes(y) { return DAY_START_MIN + (y / SLOT_HEIGHT) * 30; }
+function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+function snapMinutes(mins) { const snap = getSnapMinutes(); return Math.round(mins / snap) * snap; }
+function timeToMinutes(t) { if (!t) return null; const [h, m] = String(t).split(':').map(Number); if (Number.isNaN(h)) return null; return h * 60 + (m || 0); }
+function minutesToTime(mins) { mins = clamp(Math.round(mins), 0, 23 * 60 + 59); const h = Math.floor(mins / 60); const m = mins % 60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
+function itemStartMinutes(item) { return timeToMinutes(item.start_time) ?? DAY_START_MIN; }
+function itemEndMinutes(item) {
+  const start = itemStartMinutes(item);
+  const end = timeToMinutes(item.end_time);
+  return end && end > start ? end : start + 60;
+}
+function itemDuration(item) { return Math.max(30, itemEndMinutes(item) - itemStartMinutes(item)); }
+function defaultTimedPatch(item, newStart) {
+  const duration = itemDuration(item);
+  const start = clamp(snapMinutes(newStart), 0, DAY_END_MIN - 30);
+  const end = clamp(start + duration, 30, DAY_END_MIN);
+  return { start_time: minutesToTime(start), end_time: minutesToTime(end), sort_order: start };
+}
+function findOverlap(item, patch = {}) {
+  const start = timeToMinutes(patch.start_time ?? item.start_time);
+  const end = timeToMinutes(patch.end_time ?? item.end_time);
+  const day = patch.item_date ?? item.item_date;
+  if (start === null || end === null || end <= start) return null;
+  return items.find(other => other.id !== item.id && other.item_date === day && timeToMinutes(other.start_time) !== null && timeToMinutes(other.end_time) !== null && start < timeToMinutes(other.end_time) && end > timeToMinutes(other.start_time));
+}
+function showUndoToast(text, undoAction) {
+  lastUndo = undoAction;
+  if (!els.undoToast) return;
+  els.undoToastText.textContent = text;
+  els.undoToast.classList.remove('hidden');
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => els.undoToast?.classList.add('hidden'), 7000);
+}
+async function updateItemWithUndo(id, patch, label = 'Event updated') {
+  const prev = items.find(i => i.id === id);
+  if (!prev) return;
+  const previousPatch = { item_date: prev.item_date, start_time: prev.start_time, end_time: prev.end_time, sort_order: prev.sort_order };
+  await updateItem(id, patch);
+  showUndoToast(`${label}${patch.start_time ? ` to ${fmtTime(patch.start_time)}` : ''}`, async () => {
+    await updateItem(id, previousPatch);
+    els.undoToast?.classList.add('hidden');
+  });
+}
+function isInteractiveTarget(target) { return !!target.closest('button,input,textarea,select,a,[contenteditable="true"]'); }
 
 const STARTER_PACKING_ITEMS = ['Clothing', 'Toiletries', 'Chargers', 'Medications', 'Swimwear', 'Comfort items', 'Snacks', 'Travel documents'];
 function packingStorageKey() { return `packing:${session?.user?.id || 'local'}:${activeTripId || 'no-trip'}`; }
@@ -306,30 +357,152 @@ function renderTimeline() {
   els.timeline.innerHTML = '';
   visibleDays.forEach(day => {
     const dayItems = items.filter(i => i.item_date === day).sort((a,b) => `${a.start_time || '99:99'}-${a.sort_order}`.localeCompare(`${b.start_time || '99:99'}-${b.sort_order}`));
+    const timedItems = dayItems.filter(i => timeToMinutes(i.start_time) !== null);
+    const anytimeItems = dayItems.filter(i => timeToMinutes(i.start_time) === null);
     const card = document.createElement('section'); card.className = 'day-card glass'; card.dataset.date = day;
-    card.innerHTML = `<div class="day-header"><div><p>Day ${days.indexOf(day) + 1}</p><strong>${fmtDate(day)}</strong></div><span>${dayItems.length} planned</span></div><div class="day-body"></div><button class="quick-add ghost-btn">+ Add to this day</button>`;
-    const body = card.querySelector('.day-body');
-    if (!dayItems.length) body.innerHTML = `<div class="empty-day"><strong>No plans yet</strong><p>Add a stop, drive block, hotel, food idea, or reminder for this day.</p></div>`;
-    dayItems.forEach(item => body.appendChild(renderItem(item)));
+    card.innerHTML = `<div class="day-header"><div><p>Day ${days.indexOf(day) + 1}</p><strong>${fmtDate(day)}</strong></div><span>${dayItems.length} planned</span></div><div class="timeline-board" data-day="${day}"></div><div class="anytime-list"></div><button class="quick-add ghost-btn">+ Add to this day</button>`;
+    const board = card.querySelector('.timeline-board');
+    const anytime = card.querySelector('.anytime-list');
+    const totalRows = (DAY_END_MIN - DAY_START_MIN) / 30;
+    board.style.height = `${totalRows * SLOT_HEIGHT}px`;
+    for (let mins = DAY_START_MIN; mins < DAY_END_MIN; mins += 30) {
+      const row = document.createElement('div');
+      row.className = `time-row ${mins % 60 === 0 ? 'hour' : 'half'}`;
+      row.style.top = `${minutesToY(mins)}px`;
+      row.innerHTML = mins % 60 === 0 ? `<span>${fmtTime(minutesToTime(mins))}</span>` : '<span></span>';
+      board.appendChild(row);
+    }
+    if (!timedItems.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-day timeline-empty';
+      empty.innerHTML = '<strong>No timed plans yet</strong><p>Drag cards onto the timeline or add a start time.</p>';
+      board.appendChild(empty);
+    }
+    timedItems.forEach(item => board.appendChild(renderItem(item, true)));
+    if (anytimeItems.length) {
+      anytime.innerHTML = '<h3>Anytime / Unscheduled</h3>';
+      anytimeItems.forEach(item => anytime.appendChild(renderItem(item, false)));
+    } else if (!dayItems.length) {
+      anytime.innerHTML = `<div class="empty-day"><strong>No plans yet</strong><p>Add a stop, drive block, hotel, food idea, or reminder for this day.</p></div>`;
+    }
     const quick = card.querySelector('.quick-add'); quick.disabled = !canEdit(); quick.addEventListener('click', () => openItemDialog(day));
     if (canEdit()) {
-      body.addEventListener('dragover', e => { e.preventDefault(); body.classList.add('drag-over'); }); body.addEventListener('dragleave', () => body.classList.remove('drag-over'));
-      body.addEventListener('drop', async e => { e.preventDefault(); body.classList.remove('drag-over'); if (draggedId) await updateItem(draggedId, { item_date: day, sort_order: Date.now() }); draggedId = null; });
+      board.addEventListener('dragover', e => { e.preventDefault(); board.classList.add('drag-over'); });
+      board.addEventListener('dragleave', () => board.classList.remove('drag-over'));
+      board.addEventListener('drop', async e => {
+        e.preventDefault(); board.classList.remove('drag-over');
+        if (!draggedId) return;
+        const dragged = items.find(i => i.id === draggedId); if (!dragged) return;
+        const rect = board.getBoundingClientRect();
+        const newStart = yToMinutes(e.clientY - rect.top);
+        await updateItemWithUndo(draggedId, { item_date: day, ...defaultTimedPatch(dragged, newStart) }, 'Event moved');
+        draggedId = null;
+      });
     }
     els.timeline.appendChild(card);
   });
 }
-function renderItem(item) {
-  const tpl = document.getElementById('itemTemplate').content.cloneNode(true); const card = tpl.querySelector('.item-card'); card.dataset.id = item.id; card.draggable = canEdit();
+function renderItem(item, isTimed = false) {
+  const tpl = document.getElementById('itemTemplate').content.cloneNode(true);
+  const card = tpl.querySelector('.item-card');
+  card.dataset.id = item.id;
+  card.draggable = canEdit();
+  const start = itemStartMinutes(item), end = itemEndMinutes(item);
+  if (isTimed) {
+    card.classList.add('timeline-item');
+    card.style.top = `${minutesToY(start)}px`;
+    card.style.minHeight = `${Math.max(58, minutesToY(end) - minutesToY(start) - 6)}px`;
+  }
   const time = [fmtTime(item.start_time), fmtTime(item.end_time)].filter(Boolean).join(' - ');
-  tpl.querySelector('.time-chip').textContent = time || 'Anytime'; tpl.querySelector('.item-type').textContent = typeIcon[item.item_type] || '📌'; tpl.querySelector('h3').textContent = item.title;
+  tpl.querySelector('.time-chip').textContent = time || 'Anytime';
+  tpl.querySelector('.item-type').textContent = typeIcon[item.item_type] || '📌';
+  tpl.querySelector('h3').textContent = item.title;
   const meta = tpl.querySelector('.item-meta');
   const parts = [Number(item.budget || 0) ? money(item.budget) : '', item.item_type].filter(Boolean);
-  meta.innerHTML = `${item.location ? `<a class="location-link" target="_blank" rel="noopener" href="${mapsUrl(item.location, 'google')}">📍 ${escapeHtml(item.location)}</a>${parts.length ? ' • ' : ''}` : ''}${escapeHtml(parts.join(' • '))}`; tpl.querySelector('.item-notes').textContent = item.notes || '';
-  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); editBtn.disabled = delBtn.disabled = !canEdit();
-  editBtn.addEventListener('click', () => openItemDialog(item.item_date, item)); delBtn.addEventListener('click', () => deleteItem(item.id));
-  if (canEdit()) { card.addEventListener('dragstart', () => { draggedId = item.id; card.classList.add('dragging'); }); card.addEventListener('dragend', () => card.classList.remove('dragging')); }
+  meta.innerHTML = `${item.location ? `<a class="location-link" target="_blank" rel="noopener" href="${mapsUrl(item.location, 'google')}">📍 ${escapeHtml(item.location)}</a>${parts.length ? ' • ' : ''}` : ''}${escapeHtml(parts.join(' • '))}`;
+  tpl.querySelector('.item-notes').textContent = item.notes || '';
+  const overlap = findOverlap(item);
+  const warning = tpl.querySelector('.overlap-warning');
+  if (overlap) { card.classList.add('has-overlap'); warning.classList.remove('hidden'); warning.textContent = `⚠ Overlaps with ${overlap.title}`; }
+  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later');
+  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit();
+  editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
+  delBtn.addEventListener('click', () => deleteItem(item.id));
+  earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
+  laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
+  if (canEdit()) {
+    card.addEventListener('dragstart', () => { draggedId = item.id; card.classList.add('dragging'); });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    card.addEventListener('pointerdown', e => startTimelinePointer(e, item, card));
+  }
   return tpl;
+}
+
+async function shiftItemBy(id, delta) {
+  const item = items.find(i => i.id === id); if (!item || !canEdit()) return;
+  const start = timeToMinutes(item.start_time) ?? DAY_START_MIN;
+  const end = timeToMinutes(item.end_time) ?? start + 60;
+  const duration = Math.max(30, end - start);
+  let newStart = clamp(start + delta, 0, DAY_END_MIN - duration);
+  const patch = { start_time: minutesToTime(newStart), end_time: minutesToTime(newStart + duration), sort_order: newStart };
+  await updateItemWithUndo(id, patch, delta > 0 ? 'Event moved later' : 'Event moved earlier');
+}
+
+function startTimelinePointer(e, item, card) {
+  const resizeStart = e.target.closest('.resize-start');
+  const resizeEnd = e.target.closest('.resize-end');
+  if (!canEdit() || (!resizeStart && !resizeEnd && isInteractiveTarget(e.target))) return;
+  const board = card.closest('.timeline-board'); if (!board) return;
+  e.preventDefault();
+  card.setPointerCapture?.(e.pointerId);
+  const rect = board.getBoundingClientRect();
+  const initialTop = parseFloat(card.style.top || '0');
+  const initialHeight = card.offsetHeight;
+  const offset = e.clientY - card.getBoundingClientRect().top;
+  timelineDrag = { id: item.id, mode: resizeStart ? 'resize-start' : resizeEnd ? 'resize-end' : 'move', board, rect, initialTop, initialHeight, offset, day: board.dataset.day, item };
+  card.classList.add('timeline-moving');
+  const onMove = ev => {
+    if (!timelineDrag) return;
+    const y = ev.clientY - timelineDrag.rect.top;
+    if (timelineDrag.mode === 'move') {
+      const top = clamp(y - timelineDrag.offset, 0, timelineDrag.board.offsetHeight - 40);
+      card.style.top = `${top}px`;
+    } else if (timelineDrag.mode === 'resize-start') {
+      const bottom = timelineDrag.initialTop + timelineDrag.initialHeight;
+      const top = clamp(y, 0, bottom - 40);
+      card.style.top = `${top}px`;
+      card.style.minHeight = `${bottom - top}px`;
+    } else if (timelineDrag.mode === 'resize-end') {
+      const height = clamp(y - timelineDrag.initialTop, 40, timelineDrag.board.offsetHeight - timelineDrag.initialTop);
+      card.style.minHeight = `${height}px`;
+    }
+  };
+  const onUp = async ev => {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    card.classList.remove('timeline-moving');
+    if (!timelineDrag) return;
+    const targetBoard = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.timeline-board') || timelineDrag.board;
+    const targetRect = targetBoard.getBoundingClientRect();
+    const draggedItem = items.find(i => i.id === timelineDrag.id); if (!draggedItem) { timelineDrag = null; return; }
+    let patch = {};
+    if (timelineDrag.mode === 'move') {
+      const newStart = yToMinutes(ev.clientY - targetRect.top - timelineDrag.offset);
+      patch = { item_date: targetBoard.dataset.day, ...defaultTimedPatch(draggedItem, newStart) };
+    } else if (timelineDrag.mode === 'resize-start') {
+      const oldEnd = itemEndMinutes(draggedItem);
+      const newStart = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop))), 0, oldEnd - 30);
+      patch = { start_time: minutesToTime(newStart), end_time: minutesToTime(oldEnd), sort_order: newStart };
+    } else {
+      const oldStart = itemStartMinutes(draggedItem);
+      const newEnd = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop) + card.offsetHeight)), oldStart + 30, DAY_END_MIN);
+      patch = { start_time: minutesToTime(oldStart), end_time: minutesToTime(newEnd), sort_order: oldStart };
+    }
+    timelineDrag = null;
+    await updateItemWithUndo(draggedItem.id, patch, patch.end_time && patch.start_time ? 'Event time updated' : 'Event moved');
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
 }
 
 function renderPackingList() {
@@ -446,5 +619,7 @@ if (els.packingList) els.packingList.addEventListener('focusout', e => {
   }
 });
 if (els.resetPackingBtn) els.resetPackingBtn.addEventListener('click', resetPackingItems);
+if (els.snapMode) { els.snapMode.value = localStorage.getItem('timelineSnapMinutes') || '30'; els.snapMode.addEventListener('change', () => { localStorage.setItem('timelineSnapMinutes', els.snapMode.value); renderTimeline(); }); }
+if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUndo) await lastUndo(); });
 
 init();
