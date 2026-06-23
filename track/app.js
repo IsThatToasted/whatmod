@@ -38,12 +38,14 @@ function canEdit() { return ['owner', 'editor'].includes(currentMembership()?.ro
 function canDeleteTrip() { return currentMembership()?.role === 'owner'; }
 
 
-const DAY_START_MIN = 6 * 60;
+const DAY_START_MIN = 4 * 60;
 const DAY_END_MIN = 24 * 60;
 const SLOT_HEIGHT = 40;
+const TIMELINE_TOP_PAD = 18;
+const TIMELINE_BOTTOM_PAD = 24;
 function getSnapMinutes() { return Number(els.snapMode?.value || localStorage.getItem('timelineSnapMinutes') || 30); }
-function minutesToY(mins) { return ((mins - DAY_START_MIN) / 30) * SLOT_HEIGHT; }
-function yToMinutes(y) { return DAY_START_MIN + (y / SLOT_HEIGHT) * 30; }
+function minutesToY(mins) { return TIMELINE_TOP_PAD + ((mins - DAY_START_MIN) / 30) * SLOT_HEIGHT; }
+function yToMinutes(y) { return DAY_START_MIN + ((y - TIMELINE_TOP_PAD) / SLOT_HEIGHT) * 30; }
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 function snapMinutes(mins) { const snap = getSnapMinutes(); return Math.round(mins / snap) * snap; }
 function timeToMinutes(t) { if (!t) return null; const [h, m] = String(t).split(':').map(Number); if (Number.isNaN(h)) return null; return h * 60 + (m || 0); }
@@ -364,7 +366,7 @@ function renderTimeline() {
     const board = card.querySelector('.timeline-board');
     const anytime = card.querySelector('.anytime-list');
     const totalRows = (DAY_END_MIN - DAY_START_MIN) / 30;
-    board.style.height = `${totalRows * SLOT_HEIGHT}px`;
+    board.style.height = `${TIMELINE_TOP_PAD + (totalRows * SLOT_HEIGHT) + TIMELINE_BOTTOM_PAD}px`;
     for (let mins = DAY_START_MIN; mins < DAY_END_MIN; mins += 30) {
       const row = document.createElement('div');
       row.className = `time-row ${mins % 60 === 0 ? 'hour' : 'half'}`;
@@ -465,7 +467,7 @@ function startTimelinePointer(e, item, card) {
     if (!timelineDrag) return;
     const y = ev.clientY - timelineDrag.rect.top;
     if (timelineDrag.mode === 'move') {
-      const top = clamp(y - timelineDrag.offset, 0, timelineDrag.board.offsetHeight - 40);
+      const top = clamp(y - timelineDrag.offset, TIMELINE_TOP_PAD, timelineDrag.board.offsetHeight - TIMELINE_BOTTOM_PAD - 40);
       card.style.top = `${top}px`;
     } else if (timelineDrag.mode === 'resize-start') {
       const bottom = timelineDrag.initialTop + timelineDrag.initialHeight;
@@ -491,7 +493,7 @@ function startTimelinePointer(e, item, card) {
       patch = { item_date: targetBoard.dataset.day, ...defaultTimedPatch(draggedItem, newStart) };
     } else if (timelineDrag.mode === 'resize-start') {
       const oldEnd = itemEndMinutes(draggedItem);
-      const newStart = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop))), 0, oldEnd - 30);
+      const newStart = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop))), DAY_START_MIN, oldEnd - 30);
       patch = { start_time: minutesToTime(newStart), end_time: minutesToTime(oldEnd), sort_order: newStart };
     } else {
       const oldStart = itemStartMinutes(draggedItem);

@@ -50,3 +50,8 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
 .anytime-list{display:grid;gap:0;margin:0 16px 12px}.anytime-list>h3{margin:8px 4px;color:#5d6890;font-size:.85rem;text-transform:uppercase;letter-spacing:.07em}.anytime-list .item-card{border:1px solid #edf0fb;border-radius:18px;margin-bottom:8px;box-shadow:0 8px 22px rgba(18,33,74,.05)}
 .undo-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:200;display:flex;align-items:center;gap:14px;background:#101936;color:#fff;border:1px solid rgba(255,255,255,.16);box-shadow:0 18px 45px rgba(16,25,54,.25);border-radius:999px;padding:10px 12px 10px 18px;font-weight:850}.undo-toast button{padding:.55rem .9rem;border-radius:999px;background:#fff;color:#6f43f5;box-shadow:none}
 @media(max-width:760px){.planner-actions{width:100%;justify-content:stretch}.snap-control{flex:1}.timeline-board{margin:0 8px 12px}.item-card.timeline-item{left:68px;right:8px;grid-template-columns:1fr;gap:8px}.time-row span{left:6px}.timeline-empty{left:68px;right:8px}.item-actions{flex-wrap:wrap}.undo-toast{left:10px;right:10px;transform:none;justify-content:space-between;border-radius:20px}}
+
+/* v9: expanded full-day timeline visibility */
+.timeline-board{min-height:420px;overflow:visible}
+.day-card{overflow:visible}
+.item-card.timeline-item{scroll-margin-top:120px}
