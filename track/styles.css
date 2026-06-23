@@ -413,3 +413,52 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
     max-width:none !important;
   }
 }
+
+/* v16: expanded long-event layout
+   Compact/normal cards stay centered. Very long cards top-align details and bottom-align actions. */
+.item-card.timeline-item.very-roomy-time-card{
+  align-items:stretch !important;
+  align-content:stretch !important;
+  padding:18px 14px 18px 14px !important;
+}
+.item-card.timeline-item.very-roomy-time-card .time-chip{
+  align-self:start !important;
+  margin-top:0 !important;
+}
+.item-card.timeline-item.very-roomy-time-card .item-main{
+  align-self:start !important;
+  align-items:start !important;
+  padding-top:2px !important;
+}
+.item-card.timeline-item.very-roomy-time-card .item-main h3{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  line-height:1.18 !important;
+  margin:0 0 5px !important;
+  max-width:100% !important;
+}
+.item-card.timeline-item.very-roomy-time-card .item-meta{
+  max-width:100% !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+.item-card.timeline-item.very-roomy-time-card .item-actions{
+  align-self:end !important;
+  margin-bottom:0 !important;
+}
+.item-card.timeline-item.very-roomy-time-card .resize-start{top:5px}
+.item-card.timeline-item.very-roomy-time-card .resize-end{bottom:5px}
+
+/* Medium-length cards get a subtle top bias without becoming stretched/awkward. */
+.item-card.timeline-item.roomy-time-card:not(.very-roomy-time-card){
+  align-items:center !important;
+  align-content:center !important;
+}
+
+@media(max-width:760px){
+  .item-card.timeline-item.very-roomy-time-card .item-actions{
+    align-self:start !important;
+  }
+}
