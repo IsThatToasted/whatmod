@@ -24,7 +24,7 @@
   "sections": {
     "projects": {
       "enabled": true,
-      "eyebrow": "Showcase",
+      "eyebrow": "",
       "title": "Project showcase",
       "text": "Software, experiments, and small business tools organized in simple editable content files.",
       "buttonLabel": "Work with me",
@@ -32,7 +32,7 @@
     },
     "features": {
       "enabled": true,
-      "eyebrow": "What I build",
+      "eyebrow": "",
       "title": "Tiny workflows",
       "text": "Simple software that removes repeated work without becoming overcomplicated.",
       "cards": [
@@ -71,20 +71,20 @@
     },
     "about": {
       "enabled": true,
-      "eyebrow": "About",
-      "title": "Builder notes",
+      "eyebrow": "",
+      "title": "About Me",
       "text": "I build lightweight tools that solve real workflow problems: Chrome extensions, local desktop utilities, static catalogs, planning apps, and automation helpers.",
       "bullets": [
         "Chrome extensions and browser tools",
         "Local desktop workflows and catalog builders",
-        "Static sites that publish cleanly to GitHub Pages",
-        "Cute UI, practical features, low maintenance"
+        "Static sites that publish cleanly Anywhere",
+        "Modern UI, practical features, low maintenance"
       ]
     },
     "contact": {
       "enabled": true,
-      "eyebrow": "Links",
-      "title": "Contact / links",
+      "eyebrow": "",
+      "title": "Contact / Github",
       "text": "Want to see the code, catalog, or newest experiments?",
       "buttons": [
         {

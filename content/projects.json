@@ -23,7 +23,7 @@
     "title": "Inventory Manager",
     "slug": "inventory-manager",
     "status": "Production Tool",
-    "summary": "A local Windows inventory workflow for catalog building, barcode labels, pricing, images, and GitHub Pages publishing.",
+    "summary": "A local Windows inventory workflow for catalog building, barcode labels, pricing, images, and Static Web Page publishing.",
     "details": "This app helps organize Whatnot purchases into searchable categories, calculate target sell prices, manage barcodes, build product catalogs, and publish static storefront files.",
     "tags": [
       "Python",
