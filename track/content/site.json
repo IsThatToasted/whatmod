@@ -1,0 +1,107 @@
+{
+  "brand": "WhatMod",
+  "logoMark": "✦",
+  "tagline": "Cute tools for serious workflows.",
+  "headline": "Software, automations, and tiny apps built to make live selling easier.",
+  "subheadline": "A simple showcase for WhatMod, WhatDash, inventory tools, trip planners, and the experiments I build along the way.",
+  "heroBadge": "✨ Built by Brian Chambers",
+  "heroNote": "Built tiny for big ideas",
+  "avatar": "assets/mascot.svg",
+  "primaryCta": {
+    "label": "View Projects",
+    "href": "#projects"
+  },
+  "secondaryCta": {
+    "label": "About Brian",
+    "href": "#about"
+  },
+  "theme": {
+    "accent": "#ff7ab6",
+    "accent2": "#7c5cff",
+    "background": "#fff7fb",
+    "ink": "#24182f"
+  },
+  "sections": {
+    "projects": {
+      "enabled": true,
+      "eyebrow": "Showcase",
+      "title": "Project showcase",
+      "text": "Software, experiments, and small business tools organized in simple editable content files.",
+      "buttonLabel": "Work with me",
+      "buttonHref": "#contact"
+    },
+    "features": {
+      "enabled": true,
+      "eyebrow": "What I build",
+      "title": "Tiny workflows",
+      "text": "Simple software that removes repeated work without becoming overcomplicated.",
+      "cards": [
+        {
+          "title": "Live selling tools",
+          "text": "Dashboards, browser tools, chat helpers, barcode flows, and inventory systems."
+        },
+        {
+          "title": "Static sites",
+          "text": "GitHub Pages-ready catalogs, landing pages, and lightweight app showcases."
+        },
+        {
+          "title": "Tiny workflows",
+          "text": "Simple software that removes repeated work without becoming overcomplicated."
+        }
+      ]
+    },
+    "stats": {
+      "enabled": true,
+      "items": [
+        {
+          "value": "10+ ",
+          "label": "apps and experiments"
+        },
+        {
+          "value": "Static ",
+          "label": "GitHub Pages friendly"
+        },
+        {
+          "value": "Local ",
+          "label": "simple builder workflow"
+        }
+      ],
+      "value": "Local ",
+      "label": "simple builder workflow"
+    },
+    "about": {
+      "enabled": true,
+      "eyebrow": "About",
+      "title": "Builder notes",
+      "text": "I build lightweight tools that solve real workflow problems: Chrome extensions, local desktop utilities, static catalogs, planning apps, and automation helpers.",
+      "bullets": [
+        "Chrome extensions and browser tools",
+        "Local desktop workflows and catalog builders",
+        "Static sites that publish cleanly to GitHub Pages",
+        "Cute UI, practical features, low maintenance"
+      ]
+    },
+    "contact": {
+      "enabled": true,
+      "eyebrow": "Links",
+      "title": "Contact / links",
+      "text": "Want to see the code, catalog, or newest experiments?",
+      "buttons": [
+        {
+          "label": "GitHub",
+          "href": "https://github.com/IsThatToasted",
+          "style": "primary"
+        },
+        {
+          "label": "Featured project",
+          "href": "https://github.com/IsThatToasted/whatmod",
+          "style": "ghost"
+        }
+      ],
+      "label": "Featured project",
+      "href": "https://github.com/IsThatToasted/whatmod",
+      "style": "ghost"
+    }
+  },
+  "footer": "Solving Annoying Problems One App at a Time"
+}
