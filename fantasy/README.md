@@ -2,6 +2,39 @@
 
 Static local prototype for `whatmod.com/fantasy` with Supabase Auth, Google login, local fallback, profile sync, and Vault ratings.
 
+
+## Fixing OAuth redirect location
+
+The login return URL is controlled in `config.js`:
+
+```js
+AUTH_REDIRECT_URL: 'https://whatmod.com/fantasy/'
+```
+
+For local testing, temporarily change it to the local URL you are actually using, for example:
+
+```js
+AUTH_REDIRECT_URL: 'http://localhost:8080/'
+```
+
+Whatever value you use must also be added in Supabase under **Authentication → URL Configuration → Redirect URLs**.
+
+Recommended production values:
+
+```txt
+Site URL: https://whatmod.com/fantasy/
+Redirect URLs:
+https://whatmod.com/fantasy/
+https://whatmod.com/fantasy
+http://localhost:8080/
+http://localhost:8080
+http://127.0.0.1:5500/
+http://127.0.0.1:5500
+```
+
+If Supabase sends you to `http://localhost:3000/#access_token=...`, it usually means your Supabase **Site URL** is still set to `http://localhost:3000`, or the app requested a redirect URL that is not allow-listed.
+
+
 ## Run locally
 
 Because Google OAuth redirects do not work reliably from `file://`, run a tiny local server:

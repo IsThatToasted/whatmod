@@ -114,9 +114,13 @@ async function loadRemoteProfile(){
 }
 
 function authRedirectUrl(){
+  // IMPORTANT: This must exactly match one of the Redirect URLs in Supabase Auth.
+  // Set CONFIG.AUTH_REDIRECT_URL in config.js for production or local testing.
+  if(CONFIG.AUTH_REDIRECT_URL){
+    return CONFIG.AUTH_REDIRECT_URL;
+  }
   const basePath = CONFIG.APP_BASE_PATH || '/';
   const origin = window.location.origin;
-  // For hosted GitHub/static paths, redirect back to the app folder. For local file://, use current href.
   if(location.protocol === 'file:') return window.location.href;
   return origin + (basePath === '/' ? '/' : basePath.replace(/\/$/,'') + '/');
 }
