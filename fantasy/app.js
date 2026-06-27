@@ -135,6 +135,7 @@ async function signOut(){
   await supa.auth.signOut();
   authUser=null;
   updateAuthUi();
+  closeApp();
   setSync('local only — signed out');
   showToast('Signed out. Local data is still saved on this device.');
 }
@@ -142,9 +143,28 @@ async function signOut(){
 function updateAuthUi(){
   const name = authUser?.user_metadata?.full_name || authUser?.email || 'signed in';
   const authEl=$('#authStatus'); if(authEl) authEl.textContent = authUser ? name : 'not signed in';
+  const gateAuth=$('#gateAuthStatus'); if(gateAuth) gateAuth.textContent = authUser ? `Signed in as ${name}` : 'Not signed in';
   const login=$('#googleLogin'); if(login) login.classList.toggle('hidden', !!authUser);
   const signout=$('#signOut'); if(signout) signout.classList.toggle('hidden', !authUser);
+  updateGateUi();
 }
+
+function updateGateUi(){
+  const ageConfirm=$('#ageConfirm');
+  const gateLogin=$('#googleGate');
+  const gateEnter=$('#enterApp');
+  const gateSignOut=$('#gateSignOut');
+  const confirmed = !!ageConfirm?.checked || !!state.ageOk;
+  if(ageConfirm) ageConfirm.checked = confirmed;
+  if(gateLogin){
+    gateLogin.disabled = !confirmed || !!authUser;
+    gateLogin.classList.toggle('hidden', !!authUser);
+  }
+  if(gateEnter) gateEnter.classList.toggle('hidden', !(confirmed && !!authUser));
+  if(gateSignOut) gateSignOut.classList.toggle('hidden', !authUser);
+}
+
+function canEnter(){ return !!state.ageOk && !!authUser; }
 
 async function initAuth(){
   if(!supa){ updateAuthUi(); return; }
@@ -169,9 +189,10 @@ function hydrateProfileForm(){
 }
 
 async function init(){
-  $('#enterApp').onclick=()=>{state.ageOk=true; save(); openApp();};
-  $('#googleGate').onclick=async()=>{state.ageOk=true; save(); await signInWithGoogle();};
-  if(state.ageOk) openApp();
+  $('#ageConfirm').onchange=e=>{state.ageOk=!!e.target.checked; save(); updateGateUi();};
+  $('#enterApp').onclick=()=>{ if(canEnter()) openApp(); else showToast('Please confirm 18+ and sign in with Google first.'); };
+  $('#googleGate').onclick=async()=>{ if(!state.ageOk){showToast('Please confirm you are 18+ first.'); return;} await signInWithGoogle(); };
+  $('#gateSignOut').onclick=signOut;
   $$('.tab').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));
   $('#profileShortcut').onclick=()=>showScreen('profile');
   $('#filterOpen').onclick=()=>$('#filters').classList.remove('hidden');
@@ -185,9 +206,10 @@ async function init(){
   $('#syncNow').onclick=()=>syncToSupabase(true);
   ['displayName','headline','city','radius','lookingFor','bio'].forEach(id=>{const el=$('#'+id); el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();};});
   $('#searchCards').oninput=renderVault; $('#categoryFilter').onchange=renderVault;
-  populateCats(); updateAvatar(); renderStack(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); await initAuth(); syncToSupabase(false);
+  populateCats(); updateAvatar(); renderStack(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); await initAuth(); updateGateUi(); if(canEnter()) openApp(); syncToSupabase(false);
 }
 function openApp(){ $('#ageGate').classList.add('hidden'); $('#app').classList.remove('hidden'); }
+function closeApp(){ $('#app').classList.add('hidden'); $('#ageGate').classList.remove('hidden'); }
 function showScreen(id){ $$('.screen').forEach(s=>s.classList.toggle('active-screen',s.id===id)); $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.screen===id)); }
 function updateAvatar(){ $('.profile-avatar').textContent=(state.profile.displayName||'V').trim()[0]?.toUpperCase()||'V'; }
 function orderedPeople(){ let arr=[...people]; if(mode==='nearby') arr.sort((a,b)=>a.distance-b.distance); if(mode==='compatible') arr.sort((a,b)=>b.score-a.score); if(mode==='new') arr.reverse(); return arr.filter(p=>!state.passed.includes(p.name)); }

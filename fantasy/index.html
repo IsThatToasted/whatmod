@@ -15,9 +15,15 @@
       <div class="app-icon">🔐</div>
       <h1>Fantasy Vault</h1>
       <p>A sex-positive dating prototype for consenting adults to discover chemistry, compatible desires, curiosities, and boundaries.</p>
-      <div class="gate-warning">18+ only. Supabase sync is enabled when configured; local fallback remains on.</div>
-      <button id="enterApp" class="primary full">I am 18+ — Enter</button>
-      <button id="googleGate" class="google full">Continue with Google</button>
+      <div class="gate-warning">18+ only. Login is required before entering Fantasy Vault.</div>
+      <label class="age-check">
+        <input id="ageConfirm" type="checkbox" />
+        <span>I confirm I am 18 or older and want to enter an adults-only dating app.</span>
+      </label>
+      <div id="gateAuthStatus" class="gate-status">Not signed in</div>
+      <button id="googleGate" class="google full" disabled>Continue with Google</button>
+      <button id="enterApp" class="primary full hidden">Enter Fantasy Vault</button>
+      <button id="gateSignOut" class="ghost full hidden">Use a different Google account</button>
       <p class="tiny-note">Google login requires the Supabase + Google Cloud OAuth setup in the README.</p>
     </div>
   </div>

@@ -98,3 +98,12 @@ https://gqkkdocvfstbsekxyrbo.supabase.co/auth/v1/callback
 - The publishable Supabase key is safe to expose in frontend code, but the Google Client Secret is not. Only paste the Client Secret inside Supabase, never inside `config.js`.
 - Keep the app in Google OAuth testing mode while prototyping. Add your Gmail as a test user if Google asks for it.
 - Before real launch, add age verification, moderation, report/block tools, and stricter profile visibility rules.
+
+## Login + 18+ landing flow
+
+The landing screen now requires both steps before the app opens:
+
+1. User confirms they are 18+.
+2. User signs in with Google through Supabase Auth.
+
+After Google redirects back to the app, Fantasy Vault automatically opens only when a valid Supabase session exists. Signing out returns the user to the landing/auth screen.
