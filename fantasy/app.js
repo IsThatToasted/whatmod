@@ -114,22 +114,20 @@ async function loadRemoteProfile(){
 }
 
 function authRedirectUrl(){
-  // IMPORTANT: This must exactly match one of the Redirect URLs in Supabase Auth.
-  // Set CONFIG.AUTH_REDIRECT_URL in config.js for production or local testing.
-  if(CONFIG.AUTH_REDIRECT_URL){
-    return CONFIG.AUTH_REDIRECT_URL;
-  }
-  const basePath = CONFIG.APP_BASE_PATH || '/';
-  const origin = window.location.origin;
-  if(location.protocol === 'file:') return window.location.href;
-  return origin + (basePath === '/' ? '/' : basePath.replace(/\/$/,'') + '/');
+  // Always return to the exact page the user is currently on.
+  // This prevents a stale config.js or Supabase Site URL from sending hosted builds to localhost.
+  if(location.protocol === 'file:') return window.location.href.split('#')[0];
+  const cleanPath = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
+  return window.location.origin + cleanPath;
 }
 
 async function signInWithGoogle(){
   if(!supa){ showToast('Supabase is not available. Check config.js.'); return; }
+  const redirectTo = authRedirectUrl();
+  console.log('[Fantasy Vault] Google OAuth redirectTo:', redirectTo);
   const {error}=await supa.auth.signInWithOAuth({
     provider:'google',
-    options:{ redirectTo: authRedirectUrl(), queryParams:{ prompt:'select_account' } }
+    options:{ redirectTo, queryParams:{ prompt:'select_account' } }
   });
   if(error){ console.warn(error); showToast('Google login failed to start.'); }
 }

@@ -1,3 +1,23 @@
+
+## OAuth redirect fix
+
+This build no longer uses a hardcoded `AUTH_REDIRECT_URL`. The Google login button now sends Supabase back to the exact page currently loaded in the browser.
+
+For GitHub Pages at `https://whatmod.com/fantasy/`, Supabase must include these redirect URLs:
+
+```txt
+https://whatmod.com/fantasy/
+https://whatmod.com/fantasy
+```
+
+If you still land on `http://localhost:3000/#access_token=...`, the hosted site is almost certainly still serving an older cached `app.js` or `config.js`. Re-upload/commit all files from this zip, then hard refresh the browser with Ctrl+F5. You can also open DevTools Console and check for:
+
+```txt
+[Fantasy Vault] Google OAuth redirectTo: https://whatmod.com/fantasy/
+```
+
+If it says localhost, the live site is not running this patched build.
+
 # Fantasy Vault — Mobile Dating Prototype + Google Login
 
 Static local prototype for `whatmod.com/fantasy` with Supabase Auth, Google login, local fallback, profile sync, and Vault ratings.
