@@ -3,9 +3,13 @@ const KEY = 'fantasyVaultDatingV3';
 const supa = (() => {
   try {
     if (!CONFIG.USE_SUPABASE || !window.supabase || !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_PUBLISHABLE_KEY) return null;
-    return window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY);
+    return window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_PUBLISHABLE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
   } catch { return null; }
 })();
+let authUser = null;
+let bootingRemote = false;
 
 const people = [
   {name:'Maya', age:29, distance:4, score:94, vibe:'Playful, open-minded, loves late-night chemistry', gradient:['#ff3f91','#8b5cff'], initial:'M', tags:['Night owl','Adventurous','Verified'], mutual:['🎭 Role-play themes','🗣️ Direct talk','🔒 Private photos']},
@@ -68,18 +72,105 @@ function save(){state.updatedAt=new Date().toISOString(); localStorage.setItem(K
 let syncTimer=null; function debounceSync(){clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncToSupabase(false),700);}
 
 async function syncToSupabase(show=true){
+  if(bootingRemote) return;
   if(!supa){setSync('local fallback'); if(show) showToast('Supabase unavailable; saved locally.'); return;}
+  if(!authUser){setSync('local only — sign in to sync'); if(show) showToast('Sign in with Google before syncing.'); return;}
   try{
-    const payload={user_key:state.userId, profile:state.profile, ratings:state.ratings, liked:state.liked, passed:state.passed, updated_at:new Date().toISOString()};
-    const {error}=await supa.from('fv_profiles').upsert(payload,{onConflict:'user_key'});
+    const payload={
+      user_id: authUser.id,
+      user_key: authUser.id,
+      email: authUser.email || null,
+      profile:state.profile,
+      ratings:state.ratings,
+      liked:state.liked,
+      passed:state.passed,
+      updated_at:new Date().toISOString()
+    };
+    const {error}=await supa.from('fv_profiles').upsert(payload,{onConflict:'user_id'});
     if(error) throw error;
     setSync('synced to Supabase'); if(show) showToast('Synced to Supabase.');
-  }catch(err){setSync('local fallback — schema needed'); if(show) showToast('Saved locally. Add the Supabase schema to enable sync.'); console.warn(err);}
+  }catch(err){setSync('local fallback — check schema/RLS'); if(show) showToast('Saved locally. Check Supabase schema/Auth setup.'); console.warn(err);}
 }
+
+async function loadRemoteProfile(){
+  if(!supa || !authUser) return;
+  bootingRemote = true;
+  try{
+    const {data,error}=await supa.from('fv_profiles').select('*').eq('user_id',authUser.id).maybeSingle();
+    if(error) throw error;
+    if(data){
+      state = {...state, profile:{...state.profile,...(data.profile||{})}, ratings:data.ratings||{}, liked:data.liked||[], passed:data.passed||[], userId:authUser.id};
+      localStorage.setItem(KEY, JSON.stringify(state));
+      hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack();
+      setSync('loaded from Supabase');
+    }else{
+      state.userId = authUser.id;
+      bootingRemote = false;
+      await syncToSupabase(false);
+      bootingRemote = true;
+    }
+  }catch(err){ console.warn(err); setSync('local fallback — could not load cloud profile'); }
+  finally{ bootingRemote = false; }
+}
+
+function authRedirectUrl(){
+  const basePath = CONFIG.APP_BASE_PATH || '/';
+  const origin = window.location.origin;
+  // For hosted GitHub/static paths, redirect back to the app folder. For local file://, use current href.
+  if(location.protocol === 'file:') return window.location.href;
+  return origin + (basePath === '/' ? '/' : basePath.replace(/\/$/,'') + '/');
+}
+
+async function signInWithGoogle(){
+  if(!supa){ showToast('Supabase is not available. Check config.js.'); return; }
+  const {error}=await supa.auth.signInWithOAuth({
+    provider:'google',
+    options:{ redirectTo: authRedirectUrl(), queryParams:{ prompt:'select_account' } }
+  });
+  if(error){ console.warn(error); showToast('Google login failed to start.'); }
+}
+
+async function signOut(){
+  if(!supa) return;
+  await supa.auth.signOut();
+  authUser=null;
+  updateAuthUi();
+  setSync('local only — signed out');
+  showToast('Signed out. Local data is still saved on this device.');
+}
+
+function updateAuthUi(){
+  const name = authUser?.user_metadata?.full_name || authUser?.email || 'signed in';
+  const authEl=$('#authStatus'); if(authEl) authEl.textContent = authUser ? name : 'not signed in';
+  const login=$('#googleLogin'); if(login) login.classList.toggle('hidden', !!authUser);
+  const signout=$('#signOut'); if(signout) signout.classList.toggle('hidden', !authUser);
+}
+
+async function initAuth(){
+  if(!supa){ updateAuthUi(); return; }
+  const {data}=await supa.auth.getSession();
+  authUser=data?.session?.user || null;
+  updateAuthUi();
+  if(authUser) await loadRemoteProfile();
+  supa.auth.onAuthStateChange(async (event, session)=>{
+    authUser=session?.user || null;
+    updateAuthUi();
+    if(event === 'SIGNED_IN' && authUser){ state.userId=authUser.id; await loadRemoteProfile(); save(); showToast('Google login connected.'); }
+    if(event === 'SIGNED_OUT'){ setSync('local only — signed out'); }
+  });
+}
+
 function setSync(text){const el=$('#syncStatus'); if(el) el.textContent=text;}
 
-function init(){
+
+function hydrateProfileForm(){
+  ['displayName','headline','city','radius','lookingFor','bio'].forEach(id=>{const el=$('#'+id); if(el) el.value=state.profile[id]||'';});
+  updateAvatar();
+}
+
+async function init(){
   $('#enterApp').onclick=()=>{state.ageOk=true; save(); openApp();};
+  $('#googleGate').onclick=async()=>{state.ageOk=true; save(); await signInWithGoogle();};
   if(state.ageOk) openApp();
   $$('.tab').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));
   $('#profileShortcut').onclick=()=>showScreen('profile');
@@ -89,10 +180,12 @@ function init(){
   $('#passBtn').onclick=()=>act('pass'); $('#likeBtn').onclick=()=>act('like'); $('#vaultBtn').onclick=()=>{showToast('Mutual Vault details unlock after a match.'); showScreen('vault');};
   $('#resetDemo').onclick=()=>{localStorage.removeItem(KEY); location.reload();};
   $('#exportData').onclick=()=>$('#exportBox').textContent=JSON.stringify(state,null,2);
+  $('#googleLogin').onclick=signInWithGoogle;
+  $('#signOut').onclick=signOut;
   $('#syncNow').onclick=()=>syncToSupabase(true);
   ['displayName','headline','city','radius','lookingFor','bio'].forEach(id=>{const el=$('#'+id); el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();};});
   $('#searchCards').oninput=renderVault; $('#categoryFilter').onchange=renderVault;
-  populateCats(); updateAvatar(); renderStack(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); syncToSupabase(false);
+  populateCats(); updateAvatar(); renderStack(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); await initAuth(); syncToSupabase(false);
 }
 function openApp(){ $('#ageGate').classList.add('hidden'); $('#app').classList.remove('hidden'); }
 function showScreen(id){ $$('.screen').forEach(s=>s.classList.toggle('active-screen',s.id===id)); $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.screen===id)); }

@@ -17,6 +17,8 @@
       <p>A sex-positive dating prototype for consenting adults to discover chemistry, compatible desires, curiosities, and boundaries.</p>
       <div class="gate-warning">18+ only. Supabase sync is enabled when configured; local fallback remains on.</div>
       <button id="enterApp" class="primary full">I am 18+ — Enter</button>
+      <button id="googleGate" class="google full">Continue with Google</button>
+      <p class="tiny-note">Google login requires the Supabase + Google Cloud OAuth setup in the README.</p>
     </div>
   </div>
 
@@ -68,7 +70,10 @@
 
       <section id="profile" class="screen">
         <div class="profile-hero"><div class="profile-banner"></div><div class="profile-avatar">B</div></div>
-        <div class="sync-card" id="syncCard">Sync: <b id="syncStatus">local fallback</b></div>
+        <div class="sync-card" id="syncCard">
+          <div>Login: <b id="authStatus">not signed in</b></div>
+          <div>Sync: <b id="syncStatus">local fallback</b></div>
+        </div>
         <div class="edit-card">
           <label>Name<input id="displayName" value="Brian" /></label>
           <label>Headline<input id="headline" placeholder="Chemistry-first, sex-positive, playful" /></label>
@@ -77,6 +82,8 @@
           <label>Looking for<select id="lookingFor"><option>Dating</option><option selected>Intimate connection</option><option>Friends with chemistry</option><option>Long-term partner</option><option>Exploring</option></select></label>
           <label>Bio<textarea id="bio" placeholder="Write a tasteful dating intro..."></textarea></label>
         </div>
+        <button id="googleLogin" class="google full">Continue with Google</button>
+        <button id="signOut" class="ghost full hidden">Sign out</button>
         <button id="syncNow" class="primary full">Sync to Supabase</button>
         <button id="exportData" class="ghost full">Export local data</button>
         <button id="resetDemo" class="danger full">Reset demo</button>
