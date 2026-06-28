@@ -43,3 +43,11 @@ The Supabase URL and publishable key are already configured in `app.js`.
 5. Sends the copied link to the other user.
 6. The invited user opens the link and signs in.
 7. The app accepts the invite and adds that trip to their trip list.
+
+### v18 Rain Plan update
+Run `schema.sql` again in Supabase to add the optional `rain_plan` field to itinerary items. The app will still load without it, but rain plans will only sync between users after the schema update is applied.
+
+Rain Plan behavior:
+- Tap the `☔ Rain` button on any itinerary card to flip it.
+- On mobile, long-press a card to flip to the rain plan view.
+- Use `Edit rain plan` or the normal item editor to add/update the rainy-day backup.

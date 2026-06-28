@@ -281,3 +281,7 @@ create policy "Editors can delete own packing items" on public.itinerary_packing
 for delete using (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
 
 create index if not exists itinerary_packing_items_trip_user_idx on public.itinerary_packing_items(trip_id, user_id);
+
+-- v18 Rain Plan support for itinerary item card flip.
+alter table public.itinerary_items
+  add column if not exists rain_plan text default '';

@@ -12,7 +12,7 @@ const els = {
   tripTitle: document.getElementById('tripTitle'), startDate: document.getElementById('startDate'), endDate: document.getElementById('endDate'), destination: document.getElementById('destination'), tripNotes: document.getElementById('tripNotes'),
   totalBudget: document.getElementById('totalBudget'), stopCount: document.getElementById('stopCount'), dayCount: document.getElementById('dayCount'), plannerTitle: document.getElementById('plannerTitle'), dayTabs: document.getElementById('dayTabs'), timeline: document.getElementById('timeline'),
   addAnyItemBtn: document.getElementById('addAnyItemBtn'), itemDialog: document.getElementById('itemDialog'), itemDialogTitle: document.getElementById('itemDialogTitle'), editingItemId: document.getElementById('editingItemId'),
-  itemTitle: document.getElementById('itemTitle'), itemDate: document.getElementById('itemDate'), itemTime: document.getElementById('itemTime'), itemEndTime: document.getElementById('itemEndTime'), itemType: document.getElementById('itemType'), itemBudget: document.getElementById('itemBudget'), itemLocation: document.getElementById('itemLocation'), itemNotes: document.getElementById('itemNotes'), saveItemBtn: document.getElementById('saveItemBtn'),
+  itemTitle: document.getElementById('itemTitle'), itemDate: document.getElementById('itemDate'), itemTime: document.getElementById('itemTime'), itemEndTime: document.getElementById('itemEndTime'), itemType: document.getElementById('itemType'), itemBudget: document.getElementById('itemBudget'), itemLocation: document.getElementById('itemLocation'), itemNotes: document.getElementById('itemNotes'), itemRainPlan: document.getElementById('itemRainPlan'), saveItemBtn: document.getElementById('saveItemBtn'),
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
@@ -32,6 +32,7 @@ function fmtDate(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefi
 function fmtShortDate(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
 function fmtTime(t) { if (!t) return ''; const [h, m] = t.split(':').map(Number); const d = new Date(); d.setHours(h, m || 0, 0, 0); return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
 function escapeHtml(str) { return String(str || '').replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
+function isMissingRainPlanColumn(error) { return /rain_plan|schema cache|column/i.test(String(error?.message || '')); }
 
 function shortLocationLabel(location) {
   let value = String(location || '').replace(/\s+/g, ' ').trim();
@@ -316,19 +317,35 @@ function openItemDialog(date, item = null) {
   if (!canEdit()) return alert('This invite is view-only. Ask the owner for an edit invite.');
   els.itemDialogTitle.textContent = item ? 'Edit itinerary item' : 'Add itinerary item';
   els.editingItemId.value = item?.id || ''; els.itemTitle.value = item?.title || ''; els.itemDate.value = item?.item_date || date || selectedDay || currentTrip()?.start_date || todayISO();
-  els.itemTime.value = item?.start_time || ''; els.itemEndTime.value = item?.end_time || ''; els.itemType.value = item?.item_type || 'event'; els.itemBudget.value = item?.budget || ''; els.itemLocation.value = item?.location || ''; els.itemNotes.value = item?.notes || '';
+  els.itemTime.value = item?.start_time || ''; els.itemEndTime.value = item?.end_time || ''; els.itemType.value = item?.item_type || 'event'; els.itemBudget.value = item?.budget || ''; els.itemLocation.value = item?.location || ''; els.itemNotes.value = item?.notes || ''; if (els.itemRainPlan) els.itemRainPlan.value = item?.rain_plan || '';
   renderMapLinks(els.itemLocationMapLinks, els.itemLocation.value);
   els.itemDialog.showModal(); setTimeout(() => els.itemTitle.focus(), 50);
 }
 async function saveItemFromDialog(e) {
   e.preventDefault(); if (!activeTripId || !canEdit()) return;
   const title = els.itemTitle.value.trim(); if (!title) return alert('Add a title first.');
-  const payload = { title, item_date: els.itemDate.value || currentTrip()?.start_date || todayISO(), start_time: els.itemTime.value || null, end_time: els.itemEndTime.value || null, item_type: els.itemType.value, budget: Number(els.itemBudget.value || 0), location: els.itemLocation.value.trim(), notes: els.itemNotes.value.trim(), sort_order: Date.now(), updated_at: new Date().toISOString() };
+  const payload = { title, item_date: els.itemDate.value || currentTrip()?.start_date || todayISO(), start_time: els.itemTime.value || null, end_time: els.itemEndTime.value || null, item_type: els.itemType.value, budget: Number(els.itemBudget.value || 0), location: els.itemLocation.value.trim(), notes: els.itemNotes.value.trim(), rain_plan: els.itemRainPlan?.value.trim() || '', sort_order: Date.now(), updated_at: new Date().toISOString() };
   const id = els.editingItemId.value;
   if (id) {
-    const { data, error } = await client.from('itinerary_items').update(payload).eq('id', id).select().single(); if (error) return showDbError(error); items = items.map(i => i.id === id ? data : i);
+    let { data, error } = await client.from('itinerary_items').update(payload).eq('id', id).select().single();
+    if (error && isMissingRainPlanColumn(error)) {
+      const { rain_plan, ...safePayload } = payload;
+      ({ data, error } = await client.from('itinerary_items').update(safePayload).eq('id', id).select().single());
+      if (!error) setStatus('Saved without rain sync — run schema.sql to enable Rain Plan');
+    }
+    if (error) return showDbError(error);
+    if (data && !('rain_plan' in data)) data.rain_plan = payload.rain_plan;
+    items = items.map(i => i.id === id ? data : i);
   } else {
-    const { data, error } = await client.from('itinerary_items').insert({ ...payload, user_id: session.user.id, trip_id: activeTripId }).select().single(); if (error) return showDbError(error); items.push(data);
+    let { data, error } = await client.from('itinerary_items').insert({ ...payload, user_id: session.user.id, trip_id: activeTripId }).select().single();
+    if (error && isMissingRainPlanColumn(error)) {
+      const { rain_plan, ...safePayload } = payload;
+      ({ data, error } = await client.from('itinerary_items').insert({ ...safePayload, user_id: session.user.id, trip_id: activeTripId }).select().single());
+      if (!error) setStatus('Saved without rain sync — run schema.sql to enable Rain Plan');
+    }
+    if (error) return showDbError(error);
+    if (data && !('rain_plan' in data)) data.rain_plan = payload.rain_plan;
+    items.push(data);
   }
   selectedDay = payload.item_date; els.itemDialog.close(); render();
 }
@@ -451,9 +468,16 @@ function renderItem(item, isTimed = false) {
   const overlap = findOverlap(item);
   const warning = tpl.querySelector('.overlap-warning');
   if (overlap) { card.classList.add('has-overlap'); warning.classList.remove('hidden'); warning.textContent = `⚠ Overlaps with ${overlap.title}`; }
-  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later');
-  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit();
+  const rainText = tpl.querySelector('.rain-plan-text');
+  if (rainText) rainText.textContent = item.rain_plan || 'No rain backup added yet. Tap Edit rain plan to add an indoor option, alternate time, or weather note.';
+  if (item.rain_plan) card.classList.add('has-rain-plan');
+  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain');
+  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit(); if (editRainBtn) editRainBtn.disabled = !canEdit();
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
+  rainBtn?.addEventListener('click', () => card.classList.toggle('rain-flipped'));
+  rainClose?.addEventListener('click', () => card.classList.remove('rain-flipped'));
+  editRainBtn?.addEventListener('click', () => openItemDialog(item.item_date, item));
+  attachRainLongPress(card);
   delBtn.addEventListener('click', () => deleteItem(item.id));
   earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
   laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
@@ -463,6 +487,28 @@ function renderItem(item, isTimed = false) {
     card.addEventListener('pointerdown', e => startTimelinePointer(e, item, card));
   }
   return tpl;
+}
+
+function attachRainLongPress(card) {
+  let timer = null;
+  let startX = 0, startY = 0;
+  const clear = () => { if (timer) clearTimeout(timer); timer = null; };
+  card.addEventListener('touchstart', e => {
+    if (isInteractiveTarget(e.target)) return;
+    const t = e.touches?.[0]; if (!t) return;
+    startX = t.clientX; startY = t.clientY;
+    timer = setTimeout(() => {
+      card.classList.toggle('rain-flipped');
+      if (navigator.vibrate) navigator.vibrate(18);
+    }, 560);
+  }, { passive: true });
+  card.addEventListener('touchmove', e => {
+    const t = e.touches?.[0];
+    if (!t) return clear();
+    if (Math.abs(t.clientX - startX) > 14 || Math.abs(t.clientY - startY) > 14) clear();
+  }, { passive: true });
+  card.addEventListener('touchend', clear, { passive: true });
+  card.addEventListener('touchcancel', clear, { passive: true });
 }
 
 async function shiftItemBy(id, delta) {

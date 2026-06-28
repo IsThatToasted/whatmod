@@ -211,20 +211,28 @@
         <div id="itemLocationMapLinks" class="map-links hidden"></div>
       </div>
       <label class="full">Notes<textarea id="itemNotes" rows="3" placeholder="Notes, confirmation numbers, tips..."></textarea></label>
+      <label class="full rain-plan-field">Rain Plan ☔<textarea id="itemRainPlan" rows="3" placeholder="Indoor backup, alternate time, rainy-day notes..."></textarea></label>
       <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveItemBtn" value="default">Save item</button></div>
     </form>
   </dialog>
 
   <template id="itemTemplate">
     <article class="item-card" draggable="true">
-      <button class="resize-handle resize-start" type="button" aria-label="Adjust start time"></button>
-      <div class="time-chip"></div>
-      <div class="item-main"><div class="item-type"></div><div><h3></h3><p class="item-meta"></p><p class="item-notes"></p><p class="overlap-warning hidden"></p></div></div>
-      <div class="item-actions"><button class="shift earlier ghost-btn" type="button">-30</button><button class="shift later ghost-btn" type="button">+30</button><button class="edit ghost-btn" type="button">Edit</button><button class="delete danger ghost-btn" type="button">Delete</button></div>
-      <button class="resize-handle resize-end" type="button" aria-label="Adjust end time"></button>
+      <div class="card-face card-front">
+        <button class="resize-handle resize-start" type="button" aria-label="Adjust start time"></button>
+        <div class="time-chip"></div>
+        <div class="item-main"><div class="item-type"></div><div><h3></h3><p class="item-meta"></p><p class="item-notes"></p><p class="overlap-warning hidden"></p></div></div>
+        <div class="item-actions"><button class="shift earlier ghost-btn" type="button">-30</button><button class="shift later ghost-btn" type="button">+30</button><button class="rain-toggle ghost-btn" type="button">☔ Rain</button><button class="edit ghost-btn" type="button">Edit</button><button class="delete danger ghost-btn" type="button">Delete</button></div>
+        <button class="resize-handle resize-end" type="button" aria-label="Adjust end time"></button>
+      </div>
+      <div class="card-face rain-back">
+        <div class="rain-back-head"><span>☔ Rain Plan</span><button class="rain-close ghost-btn" type="button">Back</button></div>
+        <p class="rain-plan-text"></p>
+        <div class="rain-back-actions"><button class="edit-rain ghost-btn" type="button">Edit rain plan</button></div>
+      </div>
     </article>
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
-  <script src="./app.js?v=17"></script>
+  <script src="./app.js?v=18"></script>
 </body>
 </html>

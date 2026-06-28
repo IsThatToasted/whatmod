@@ -572,3 +572,27 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
     white-space:normal !important;
   }
 }
+
+/* v18: Rain Plan card flip. Long-press cards on mobile or tap the Rain button. */
+.rain-plan-field textarea{background:linear-gradient(180deg,#fff,#f8fbff)}
+.item-card{position:relative;perspective:1200px;touch-action:manipulation}
+.item-card .card-front{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:18px;align-items:center;width:100%}
+.item-card.timeline-item .card-front{grid-template-columns:76px minmax(0,1fr) auto;gap:18px;align-items:center;min-height:100%}
+.item-card.compact-time-card .card-front{grid-template-columns:86px minmax(0,1fr) auto;gap:12px}
+.item-card .rain-back{display:none;min-height:100%;padding:4px 2px;flex-direction:column;gap:10px;justify-content:center}
+.item-card.rain-flipped .card-front{display:none!important}
+.item-card.rain-flipped .rain-back{display:flex}
+.item-card.rain-flipped{background:linear-gradient(135deg,#f0fbff,#fff6fb 58%,#f7f1ff);border-color:#cbdfff;box-shadow:0 16px 38px rgba(80,115,220,.13)}
+.rain-back-head{display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:950;color:#17224c}
+.rain-back-head span{display:inline-flex;align-items:center;gap:8px;padding:.35rem .75rem;border-radius:999px;background:rgba(255,255,255,.72);border:1px solid #e6ecff}
+.rain-plan-text{margin:0;color:#4e5a82;font-weight:750;line-height:1.35;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.rain-back-actions{display:flex;justify-content:flex-end;gap:8px}
+.rain-toggle{background:#eef8ff!important;color:#3569d6!important;border-color:#d8e8ff!important}
+.item-card.has-rain-plan .rain-toggle{background:#eafcf6!important;color:#078e61!important;border-color:#c8f2df!important}
+.item-card.has-rain-plan:after{content:'☔';position:absolute;top:8px;right:8px;font-size:.85rem;opacity:.76;pointer-events:none}
+.item-card.rain-flipped:after{display:none}
+@media(max-width:760px){
+  .item-card .card-front,.item-card.timeline-item .card-front,.item-card.compact-time-card .card-front{grid-template-columns:1fr;gap:8px}
+  .rain-back-actions{justify-content:flex-start;flex-wrap:wrap}
+  .rain-plan-text{-webkit-line-clamp:6}
+}
