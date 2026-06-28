@@ -183,28 +183,68 @@ function updateGateUi(){
   const gateLogin=$('#googleGate');
   const gateEnter=$('#enterApp');
   const gateSignOut=$('#gateSignOut');
+  const gateReset=$('#gateResetLocal');
   const confirmed = !!ageConfirm?.checked || !!state.ageOk;
   if(ageConfirm) ageConfirm.checked = confirmed;
+
+  // Safe login gate:
+  // - Signed out: require the 18+ checkbox before starting Google OAuth.
+  // - Signed in: never trap the user on the gate; show Enter + Sign out.
   if(gateLogin){
     gateLogin.disabled = !confirmed || !!authUser;
     gateLogin.classList.toggle('hidden', !!authUser);
   }
-  if(gateEnter) gateEnter.classList.toggle('hidden', !(confirmed && !!authUser));
-  if(gateSignOut) gateSignOut.classList.toggle('hidden', !authUser);
+  if(gateEnter){
+    gateEnter.classList.toggle('hidden', !authUser);
+  }
+  if(gateSignOut){
+    gateSignOut.classList.toggle('hidden', !authUser);
+  }
+  if(gateReset){
+    gateReset.classList.remove('hidden');
+  }
 }
 
-function canEnter(){ return !!state.ageOk && !!authUser; }
+function canEnter(){ return !!authUser; }
+
+function resetLocalAppData(){
+  localStorage.removeItem(KEY);
+  localStorage.removeItem('fvDeviceId');
+  state = load();
+  hydrateProfileForm();
+  renderVault();
+  renderVaultStats();
+  renderMatches();
+  renderChats();
+  renderStack();
+  updateAuthUi();
+  closeApp();
+  showToast('Local app data reset. Your Google login was not deleted.');
+}
 
 async function initAuth(){
   if(!supa){ updateAuthUi(); return; }
   const {data}=await supa.auth.getSession();
   authUser=data?.session?.user || null;
   updateAuthUi();
-  if(authUser) await loadRemoteProfile();
+  if(authUser){
+    state.ageOk = true;
+    state.userId = authUser.id;
+    localStorage.setItem(KEY, JSON.stringify(state));
+    await loadRemoteProfile();
+    openApp();
+  }
   supa.auth.onAuthStateChange(async (event, session)=>{
     authUser=session?.user || null;
     updateAuthUi();
-    if(event === 'SIGNED_IN' && authUser){ state.userId=authUser.id; await loadRemoteProfile(); save(); showToast('Google login connected.'); }
+    if(event === 'SIGNED_IN' && authUser){
+      state.ageOk = true;
+      state.userId = authUser.id;
+      await loadRemoteProfile();
+      save();
+      openApp();
+      showToast('Google login connected.');
+    }
     if(event === 'SIGNED_OUT'){ setSync('local only — signed out'); }
   });
 }
@@ -219,9 +259,10 @@ function hydrateProfileForm(){
 
 async function init(){
   $('#ageConfirm').onchange=e=>{state.ageOk=!!e.target.checked; save(); updateGateUi();};
-  $('#enterApp').onclick=()=>{ if(canEnter()) openApp(); else showToast('Please confirm 18+ and sign in with Google first.'); };
+  $('#enterApp').onclick=()=>{ if(canEnter()) openApp(); else showToast('Please sign in with Google first.'); };
   $('#googleGate').onclick=async()=>{ if(!state.ageOk){showToast('Please confirm you are 18+ first.'); return;} await signInWithGoogle(); };
   $('#gateSignOut').onclick=signOut;
+  const gateReset = $('#gateResetLocal'); if(gateReset) gateReset.onclick=resetLocalAppData;
   $$('.tab').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));
   $('#profileShortcut').onclick=()=>showScreen('profile');
   $('#filterOpen').onclick=()=>$('#filters').classList.remove('hidden');

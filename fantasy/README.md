@@ -35,3 +35,8 @@ Do not add `whatmod.com/fantasy` as a Google redirect URI for Supabase OAuth. Go
 - The app normalizes redirects to `https://whatmod.com/fantasy/`.
 - A safety rescue moves any old `localhost:3000/#access_token=...` callback back to the live app.
 - The app uses Supabase `detectSessionInUrl: true` to process the token hash after redirect.
+
+
+## Safe auth flow patch
+
+This build prevents a signed-in Supabase user from being trapped behind the 18+ landing screen. If Google/Supabase reports an active session, the app automatically marks the local gate as passed, shows Enter Fantasy Vault, shows Sign out, and can auto-enter. The landing screen also has Reset local app data for clearing broken localStorage without deleting the Supabase account.
