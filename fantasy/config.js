@@ -7,5 +7,5 @@ window.FV_CONFIG = {
   SUPABASE_URL: 'https://gqkkdocvfstbsekxyrbo.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_b00bWXNlvZo_Wprb8UwjSA_q5Pl8Cyi',
   USE_SUPABASE: true,
-  LOCAL_FALLBACK: true
+  LOCAL_FALLBACK: false
 };
