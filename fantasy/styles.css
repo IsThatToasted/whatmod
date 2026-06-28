@@ -25,3 +25,95 @@
 #filterOpen{font-size:18px}
 .empty-state h3{margin:0 0 8px;color:#fff;letter-spacing:-.03em}.empty-state p{margin:0;line-height:1.45}.person-photo.has-profile-photo{background-size:cover!important;background-position:center!important}.real-face{background-size:cover;background-position:center}.profile-nav-button .nav-avatar.has-photo,.profile-tab-icon.has-photo{border-radius:999px;overflow:hidden}.profile-tab-icon.has-photo{width:24px;height:24px;border:1px solid rgba(255,255,255,.22)}.nav-avatar.has-photo{width:34px;height:34px;border-radius:999px}.photo-card{transition:transform .16s ease,border-color .16s ease}.photo-card:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2)}.admin-list-item,.vcard,.match-card,.chat-row{transition:transform .16s ease,border-color .16s ease}.admin-list-item:hover,.vcard:hover,.match-card:hover,.chat-row:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2)}
 @media(max-width:520px){.gate-card{max-height:calc(100dvh - 24px);overflow:auto}.photo-card{grid-template-columns:1fr}.upload-pill{width:100%;text-align:center}.admin-grid{grid-template-columns:1fr}.admin-actions{grid-template-columns:1fr}}
+
+/* Header avatar alignment patch - production safe
+   Keeps all existing features; only normalizes the top header geometry. */
+.app-top{
+  display:grid!important;
+  grid-template-columns:52px minmax(0,1fr) 52px!important;
+  align-items:center!important;
+  justify-content:initial!important;
+  column-gap:0!important;
+  padding:calc(8px + env(safe-area-inset-top)) 16px 10px!important;
+}
+.app-top > .profile-nav-button{
+  grid-column:1!important;
+  justify-self:center!important;
+  align-self:center!important;
+}
+.app-top > .logo-lockup{
+  grid-column:2!important;
+  justify-self:center!important;
+  align-self:center!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+.app-top > #filterOpen{
+  grid-column:3!important;
+  justify-self:center!important;
+  align-self:center!important;
+}
+.profile-nav-button,
+#filterOpen{
+  width:44px!important;
+  height:44px!important;
+  min-width:44px!important;
+  min-height:44px!important;
+  max-width:44px!important;
+  max-height:44px!important;
+  margin:0!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+  flex:0 0 44px!important;
+  display:grid!important;
+  place-items:center!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  line-height:1!important;
+}
+.profile-nav-button{
+  border-radius:999px!important;
+  overflow:hidden!important;
+}
+#filterOpen{
+  border-radius:15px!important;
+}
+.profile-nav-button .nav-avatar,
+.profile-nav-button .nav-avatar.has-photo{
+  width:100%!important;
+  height:100%!important;
+  min-width:100%!important;
+  min-height:100%!important;
+  border-radius:999px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0!important;
+  padding:0!important;
+  background-size:cover!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+  overflow:hidden!important;
+}
+.logo-lockup{
+  white-space:nowrap!important;
+}
+.logo-lockup .tiny-icon{
+  flex:0 0 auto!important;
+}
+@media(max-width:520px){
+  .app-top{
+    grid-template-columns:50px minmax(0,1fr) 50px!important;
+    padding-left:14px!important;
+    padding-right:14px!important;
+  }
+  .profile-nav-button,
+  #filterOpen{
+    width:42px!important;
+    height:42px!important;
+    min-width:42px!important;
+    min-height:42px!important;
+    max-width:42px!important;
+    max-height:42px!important;
+    flex-basis:42px!important;
+  }
+}

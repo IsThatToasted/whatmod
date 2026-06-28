@@ -32,3 +32,8 @@ Make sure Supabase Auth uses:
 The Admin tab only appears when the signed-in Google account email is:
 
 `ra1nonit1@gmail.com`
+
+
+## Header alignment patch
+
+This build preserves existing functionality and only normalizes the top header layout so the profile-photo shortcut, centered title, and filter button line up consistently on mobile and desktop.
