@@ -32,7 +32,10 @@
   <main id="app" class="phone-shell hidden">
     <section class="phone glass">
       <header class="app-top">
-        <button class="round ghost-mini profile-nav-button" id="profileShortcut" title="Open profile"><span class="nav-avatar" id="topProfileAvatar">👤</span></button>
+        <div class="top-left-cluster">
+          <button class="round ghost-mini profile-nav-button" id="profileShortcut" title="Open profile"><span class="nav-avatar" id="topProfileAvatar">👤</span></button>
+          <button class="coin-pill" id="coinShortcut" title="Glow Coin balance" aria-label="Glow Coin balance"><span>🪙</span><b id="headerGlowCoins">0</b></button>
+        </div>
         <div class="logo-lockup"><div class="tiny-icon">🌅</div><span>Afterglow</span></div>
         <div class="top-actions"><button class="round ghost-mini daily-gift-button" id="dailyGift" title="Daily Glow Coin gift" aria-label="Daily Glow Coin gift">🎁</button>
         <button class="round ghost-mini" id="filterOpen" title="Discovery filters" aria-label="Discovery filters">🎚️</button></div>
@@ -74,6 +77,21 @@
       <section id="chat" class="screen">
         <div class="screen-title"><h2>Messages</h2><p>Conversation starters based on mutual chemistry.</p></div>
         <div id="chatList" class="chat-list"></div>
+      </section>
+
+
+      <section id="shop" class="screen">
+        <div class="screen-title shop-title">
+          <h2>Glow Shop</h2>
+          <p>Spend earned Glow Coins on cosmetic unlocks. No paid items yet.</p>
+        </div>
+        <div class="shop-wallet-card">
+          <div><span class="wallet-kicker">Balance</span><strong><span id="shopGlowCoins">0</span> Glow Coins</strong><small id="shopInventoryCount">0 owned unlocks</small></div>
+          <button id="shopDailyShortcut" class="gift-small">🎁 Daily Gift</button>
+        </div>
+        <div class="shop-categories" id="shopCategoryTabs"></div>
+        <div id="shopFeatured" class="shop-featured"></div>
+        <div id="shopGrid" class="shop-grid"></div>
       </section>
 
       <section id="profile" class="screen">
@@ -139,7 +157,14 @@
                 <label>Category<select id="adminCardCat"></select></label>
                 <label>Description<textarea id="adminCardDesc" placeholder="Short, tasteful explanation users will see..."></textarea></label>
                 <label>Prompt type<select id="adminCardMode"><option value="global">Use global answer set</option><option value="yesno">Yes / No</option><option value="custom">Custom choices for this prompt</option><option value="text">Short written answer</option><option value="textarea">Long written answer</option></select></label>
-                <label>Custom answers JSON<textarea id="adminCardAnswers" placeholder='{"yes":"✅ Yes","no":"🙅 No"}'></textarea></label>
+                <div class="admin-custom-answer-builder" id="adminCustomAnswerBuilder">
+                  <div class="builder-head">
+                    <div><b>Custom answers</b><span>Use fields instead of JSON. These choices only apply when prompt type is Custom choices.</span></div>
+                    <button id="adminAddCustomAnswer" type="button" class="ghost-mini">+ Add answer</button>
+                  </div>
+                  <div id="adminCustomAnswerRows" class="custom-answer-rows"></div>
+                  <textarea id="adminCardAnswers" class="hidden" aria-hidden="true"></textarea>
+                </div>
                 <label class="admin-check"><input id="adminCardProfileVisible" type="checkbox" /> Show this answer on matched profiles when appropriate</label>
                 <div class="admin-grid">
                   <button id="adminCardNew" type="button" class="ghost full">New Card</button>
@@ -247,6 +272,7 @@
         <button class="tab" data-screen="chat"><span>💬</span>Chat</button>
         <button class="tab hidden" id="adminTab" data-screen="admin"><span>🛠️</span>Admin</button>
         <button class="tab profile-tab" data-screen="profile"><span class="profile-tab-icon" id="bottomProfileAvatar">👤</span>Profile</button>
+        <button class="tab" data-screen="shop"><span>🛍️</span>Shop</button>
       </nav>
     </section>
   </main>

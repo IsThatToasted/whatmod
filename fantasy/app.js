@@ -136,7 +136,7 @@ async function syncToSupabase(show=true){
     const payload={
       user_id: authUser.id,
       email: authUser.email || null,
-      profile:{...state.profile, rewards:state.rewards},
+      profile:{...state.profile, rewards:state.rewards, inventory:state.inventory},
       ratings:state.ratings,
       liked:state.liked,
       passed:state.passed,
@@ -940,6 +940,8 @@ function bindAdminStudio(){
   const cardDup=$('#adminCardDuplicate'); if(cardDup) cardDup.onclick=duplicateAdminCard;
   const cardDelete=$('#adminCardDelete'); if(cardDelete) cardDelete.onclick=deleteAdminCard;
   const cardForm=$('#adminCardForm'); if(cardForm) cardForm.onsubmit=e=>{e.preventDefault(); saveAdminCard();};
+  const cardMode=$('#adminCardMode'); if(cardMode) cardMode.onchange=()=>renderAdminCustomAnswerRows();
+  const addCustom=$('#adminAddCustomAnswer'); if(addCustom) addCustom.onclick=addAdminCustomAnswerRow;
 
   const catNew=$('#adminCategoryNew'); if(catNew) catNew.onclick=()=>selectAdminCategory(null);
   const catDelete=$('#adminCategoryDelete'); if(catDelete) catDelete.onclick=deleteAdminCategory;
@@ -1686,6 +1688,76 @@ function renderAdmin(){
 }
 window.addEventListener('resize', ()=>renderAdmin());
 
+
+function normalizeAdminCustomAnswerKey(value){
+  return adminSlug(value || '').replace(/-/g,'_');
+}
+function defaultCustomAnswerRows(){
+  return [{key:'yes', label:'✅ Yes'}, {key:'no', label:'🙅 No'}];
+}
+function adminAnswersToRows(answers){
+  if(answers && typeof answers === 'object' && !Array.isArray(answers)){
+    return Object.entries(answers).map(([key,label])=>({key:String(key), label:String(label)}));
+  }
+  return defaultCustomAnswerRows();
+}
+function renderAdminCustomAnswerRows(answers){
+  const wrap=$('#adminCustomAnswerRows');
+  if(!wrap) return;
+  const mode=$('#adminCardMode')?.value || 'global';
+  const rows=adminAnswersToRows(answers).filter(r=>r.key || r.label);
+  const active = mode === 'custom';
+  const builder=$('#adminCustomAnswerBuilder');
+  if(builder) builder.classList.toggle('custom-disabled', !active);
+  if(!active){
+    wrap.innerHTML='<div class="custom-answer-empty">Custom answer fields are available when Prompt type is set to <b>Custom choices for this prompt</b>. Global, Yes/No, and written prompts do not need custom choices.</div>';
+    syncAdminCustomAnswersHidden();
+    return;
+  }
+  wrap.innerHTML = (rows.length ? rows : defaultCustomAnswerRows()).map((row,i)=>`<div class="custom-answer-row" data-row="${i}">
+    <input class="custom-answer-key" placeholder="answer_key" value="${adminEscape(row.key)}" />
+    <input class="custom-answer-label" placeholder="Emoji + label, e.g. 😏 Intrigued" value="${adminEscape(row.label)}" />
+    <button type="button" class="danger remove-custom-answer" title="Remove answer">×</button>
+  </div>`).join('');
+  wrap.querySelectorAll('input').forEach(inp=>inp.oninput=syncAdminCustomAnswersHidden);
+  wrap.querySelectorAll('.remove-custom-answer').forEach(btn=>btn.onclick=()=>{ btn.closest('.custom-answer-row')?.remove(); syncAdminCustomAnswersHidden(); if(!wrap.querySelector('.custom-answer-row')) renderAdminCustomAnswerRows({}); });
+  syncAdminCustomAnswersHidden();
+}
+function getAdminCustomAnswersFromRows(){
+  const rows=[...document.querySelectorAll('#adminCustomAnswerRows .custom-answer-row')];
+  const out={};
+  for(const row of rows){
+    const rawKey=row.querySelector('.custom-answer-key')?.value || '';
+    const label=(row.querySelector('.custom-answer-label')?.value || '').trim();
+    const key=normalizeAdminCustomAnswerKey(rawKey || label);
+    if(key && label) out[key]=label;
+  }
+  return out;
+}
+function syncAdminCustomAnswersHidden(){
+  const hidden=$('#adminCardAnswers');
+  if(!hidden) return;
+  const mode=$('#adminCardMode')?.value || 'global';
+  hidden.value = mode === 'custom' ? JSON.stringify(getAdminCustomAnswersFromRows(), null, 2) : '';
+}
+function addAdminCustomAnswerRow(){
+  const wrap=$('#adminCustomAnswerRows');
+  if(!wrap) return;
+  if(($('#adminCardMode')?.value || 'global') !== 'custom'){
+    const mode=$('#adminCardMode'); if(mode){ mode.value='custom'; renderAdminCustomAnswerRows({}); }
+  }
+  const row=document.createElement('div');
+  row.className='custom-answer-row';
+  row.innerHTML=`<input class="custom-answer-key" placeholder="answer_key" />
+    <input class="custom-answer-label" placeholder="Emoji + label, e.g. 🔥 Very interested" />
+    <button type="button" class="danger remove-custom-answer" title="Remove answer">×</button>`;
+  wrap.appendChild(row);
+  row.querySelectorAll('input').forEach(inp=>inp.oninput=syncAdminCustomAnswersHidden);
+  row.querySelector('.remove-custom-answer').onclick=()=>{ row.remove(); syncAdminCustomAnswersHidden(); };
+  row.querySelector('.custom-answer-label')?.focus();
+  syncAdminCustomAnswersHidden();
+}
+
 function selectAdminCard(id){
   adminSelectedCardId = id;
   const card = vaultCards.find(c=>c.id===id) || {id:'', title:'', cat:Object.keys(categoryMeta)[0]||'', desc:'', answerMode:'global', answers:null, profileVisible:false};
@@ -1696,6 +1768,7 @@ function selectAdminCard(id){
   $('#adminCardDesc').value = card.desc || '';
   const mode=$('#adminCardMode'); if(mode) mode.value=card.answerMode || card.mode || 'global';
   const answers=$('#adminCardAnswers'); if(answers) answers.value=card.answers ? JSON.stringify(card.answers, null, 2) : '';
+  renderAdminCustomAnswerRows(card.answers || null);
   const visible=$('#adminCardProfileVisible'); if(visible) visible.checked=!!card.profileVisible;
   const title=$('#adminCardFormTitle'); if(title) title.textContent = id ? 'Edit Vault Prompt' : 'Add New Vault Prompt';
   renderAdminCards();
@@ -1705,10 +1778,12 @@ function saveAdminCard(){
   const id = adminSlug($('#adminCardId').value || $('#adminCardTitle').value);
   const mode = $('#adminCardMode')?.value || 'global';
   let answers = null;
-  const raw = ($('#adminCardAnswers')?.value || '').trim();
-  if(raw){ try{ answers=JSON.parse(raw); }catch{ return showToast('Custom answers must be valid JSON.'); } }
+  if(mode === 'custom'){
+    answers = getAdminCustomAnswersFromRows();
+    if(!Object.keys(answers).length) return showToast('Add at least one custom answer.');
+  }
   const card = {id, title:($('#adminCardTitle').value||'Untitled prompt').trim(), cat:$('#adminCardCat').value, desc:($('#adminCardDesc').value||'').trim(), answerMode:mode, profileVisible:!!$('#adminCardProfileVisible')?.checked};
-  if(answers && typeof answers === 'object') card.answers = answers;
+  if(mode === 'custom' && answers && typeof answers === 'object') card.answers = answers;
   const oldIndex = vaultCards.findIndex(c=>c.id===adminSelectedCardId || c.id===id);
   if(oldIndex >= 0) vaultCards[oldIndex] = card; else vaultCards.push(card);
   adminSelectedCardId = id;
@@ -1780,3 +1855,129 @@ function init(){
 }
 
 init();
+
+/* =========================================================
+   Afterglow patch: Glow Shop, wallet header, and cosmetic inventory
+   Additive only. Uses profile JSON for now so no destructive schema changes.
+   ========================================================= */
+const SHOP_ITEMS = [
+  {id:'frame-neon',cat:'Profile',icon:'💖',title:'Neon Profile Ring',desc:'Adds a hot pink glow around your profile photo.',price:35,type:'avatarFrame',value:'frame-neon',featured:true},
+  {id:'frame-gold',cat:'Profile',icon:'🌟',title:'Gold Profile Ring',desc:'A warm golden ring for a premium-looking profile.',price:45,type:'avatarFrame',value:'frame-gold'},
+  {id:'frame-rainbow',cat:'Profile',icon:'🌈',title:'Rainbow Profile Ring',desc:'A colorful ring for playful, expressive profiles.',price:65,type:'avatarFrame',value:'frame-rainbow'},
+  {id:'theme-midnight',cat:'Themes',icon:'🌙',title:'Midnight Banner',desc:'Unlocks a deep midnight profile banner.',price:25,type:'profileTheme',value:'theme-midnight'},
+  {id:'theme-rose-gold',cat:'Themes',icon:'🌹',title:'Rose Gold Banner',desc:'A soft rose-gold gradient for your profile.',price:30,type:'profileTheme',value:'theme-rose-gold',featured:true},
+  {id:'theme-cyber',cat:'Themes',icon:'⚡',title:'Cyber Glow Banner',desc:'Electric blue and violet banner energy.',price:40,type:'profileTheme',value:'theme-cyber'},
+  {id:'theme-velvet',cat:'Themes',icon:'🖤',title:'Dark Velvet Banner',desc:'A moody, intimate velvet profile vibe.',price:40,type:'profileTheme',value:'theme-velvet'},
+  {id:'badge-early',cat:'Badges',icon:'🏆',title:'Early Glower Badge',desc:'A placeholder profile badge for early users.',price:50,type:'badge',value:'early-glower'},
+  {id:'badge-streak',cat:'Badges',icon:'🔥',title:'Streak Keeper Badge',desc:'Show off that you keep coming back.',price:75,type:'badge',value:'streak-keeper'},
+  {id:'chat-hearts',cat:'Chat',icon:'💕',title:'Heart Reaction Pack',desc:'Placeholder chat reaction pack for future message effects.',price:20,type:'chatPack',value:'chat-hearts'},
+  {id:'chat-fire',cat:'Chat',icon:'🔥',title:'Fire Reaction Pack',desc:'Placeholder spicy reaction pack for matched chats.',price:20,type:'chatPack',value:'chat-fire'},
+  {id:'vault-spark',cat:'Vault',icon:'✨',title:'Spark Vault Cards',desc:'Placeholder cosmetic style for Vault cards.',price:30,type:'vaultStyle',value:'vault-spark'},
+  {id:'vault-gold',cat:'Vault',icon:'🔐',title:'Gold Vault Accent',desc:'Placeholder premium accent for Vault compatibility cards.',price:45,type:'vaultStyle',value:'vault-gold'},
+  {id:'sticker-flirt',cat:'Stickers',icon:'😏',title:'Flirty Sticker Pack',desc:'Placeholder sticker pack for future chat media.',price:25,type:'stickerPack',value:'flirty'},
+  {id:'sticker-soft',cat:'Stickers',icon:'🥰',title:'Soft Romance Stickers',desc:'Placeholder sticker pack for warm, sweet chats.',price:25,type:'stickerPack',value:'soft-romance'}
+];
+let activeShopCategory = 'Featured';
+function ensureEconomy(){
+  const r=ensureRewards();
+  if(!state.inventory || typeof state.inventory !== 'object') state.inventory = {owned:[], equipped:{}};
+  if(!Array.isArray(state.inventory.owned)) state.inventory.owned=[];
+  if(!state.inventory.equipped || typeof state.inventory.equipped !== 'object') state.inventory.equipped={};
+  if(!state.profile) state.profile={};
+  state.profile.rewards = r;
+  state.profile.inventory = state.inventory;
+  return {rewards:r, inventory:state.inventory};
+}
+function ownedItemIds(){ return new Set((ensureEconomy().inventory.owned||[])); }
+function isShopOwned(id){ return ownedItemIds().has(id); }
+function isShopEquipped(item){ const inv=ensureEconomy().inventory; return inv.equipped?.[item.type] === item.value; }
+function shopCategories(){ return ['Featured', ...Array.from(new Set(SHOP_ITEMS.map(i=>i.cat)))]; }
+function syncEconomyFromProfile(){
+  if(state.profile?.rewards && typeof state.profile.rewards === 'object') state.rewards = {...(state.rewards||{}), ...state.profile.rewards};
+  if(state.profile?.inventory && typeof state.profile.inventory === 'object') state.inventory = {...(state.inventory||{}), ...state.profile.inventory};
+  ensureEconomy();
+}
+function updateGlowCoinDisplays(){
+  const {rewards, inventory}=ensureEconomy();
+  ['headerGlowCoins','shopGlowCoins','glowCoinBalance'].forEach(id=>{ const el=$('#'+id); if(el) el.textContent=Number(rewards.glowCoins||0); });
+  const count=$('#shopInventoryCount'); if(count) count.textContent=`${(inventory.owned||[]).length} owned unlock${(inventory.owned||[]).length===1?'':'s'}`;
+}
+
+function renderShop(){
+  ensureEconomy(); updateGlowCoinDisplays();
+  const cats=$('#shopCategoryTabs');
+  if(cats){ cats.innerHTML=shopCategories().map(c=>`<button class="shop-cat ${activeShopCategory===c?'active':''}" data-shop-cat="${escapeHtml(c)}">${c==='Featured'?'⭐':categoryEmojiForShop(c)} ${escapeHtml(c)}</button>`).join(''); cats.querySelectorAll('[data-shop-cat]').forEach(btn=>btn.onclick=()=>{activeShopCategory=btn.dataset.shopCat; renderShop();}); }
+  const featured=SHOP_ITEMS.find(i=>i.featured && !isShopOwned(i.id)) || SHOP_ITEMS.find(i=>i.featured) || SHOP_ITEMS[0];
+  const hero=$('#shopFeatured');
+  if(hero && featured){
+    hero.innerHTML=`<article class="shop-hero-item"><div class="shop-icon">${featured.icon}</div><h3>${escapeHtml(featured.title)}</h3><p>${escapeHtml(featured.desc)}</p><div class="shop-meta"><span class="price-badge">🪙 ${featured.price}</span>${shopButtonHtml(featured)}</div></article>`;
+    hero.querySelector('[data-buy-item]')?.addEventListener('click', e=>buyShopItem(e.currentTarget.dataset.buyItem));
+    hero.querySelector('[data-equip-item]')?.addEventListener('click', e=>equipShopItem(e.currentTarget.dataset.equipItem));
+  }
+  const items=SHOP_ITEMS.filter(i=>activeShopCategory==='Featured'? i.featured || !isShopOwned(i.id) : i.cat===activeShopCategory);
+  const grid=$('#shopGrid');
+  if(grid){
+    grid.innerHTML=items.map(item=>`<article class="shop-card ${isShopOwned(item.id)?'owned':''} ${isShopEquipped(item)?'equipped':''}"><div class="shop-icon">${item.icon}</div><div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.desc)}</p><div class="shop-meta"><span class="price-badge">🪙 ${item.price}</span>${isShopOwned(item.id)?'<span class="owned-badge">Owned</span>':''}${isShopEquipped(item)?'<span class="equipped-badge">Equipped</span>':''}${shopButtonHtml(item)}</div></div></article>`).join('') || '<div class="empty-state"><h3>No shop items yet</h3><p>More earned unlocks will appear here soon.</p></div>';
+    grid.querySelectorAll('[data-buy-item]').forEach(btn=>btn.onclick=e=>buyShopItem(e.currentTarget.dataset.buyItem));
+    grid.querySelectorAll('[data-equip-item]').forEach(btn=>btn.onclick=e=>equipShopItem(e.currentTarget.dataset.equipItem));
+  }
+}
+function categoryEmojiForShop(cat){ return ({Profile:'🎨',Themes:'🌈',Badges:'🏆',Chat:'💬',Vault:'🔐',Stickers:'😏'})[cat] || '✨'; }
+function shopButtonHtml(item){
+  if(isShopOwned(item.id)){
+    if(['avatarFrame','profileTheme'].includes(item.type)) return `<button class="shop-action equip" data-equip-item="${escapeHtml(item.id)}">${isShopEquipped(item)?'Equipped':'Equip'}</button>`;
+    return '<button class="shop-action" disabled>Unlocked</button>';
+  }
+  const bal=ensureRewards().glowCoins||0;
+  return `<button class="shop-action" data-buy-item="${escapeHtml(item.id)}" ${bal<item.price?'disabled':''}>Unlock</button>`;
+}
+async function buyShopItem(id){
+  const item=SHOP_ITEMS.find(i=>i.id===id); if(!item) return;
+  const {rewards, inventory}=ensureEconomy();
+  if(isShopOwned(id)) return equipShopItem(id);
+  if((rewards.glowCoins||0) < item.price) return showToast('Not enough Glow Coins yet. Claim daily gifts to earn more.');
+  rewards.glowCoins -= item.price;
+  inventory.owned.push(id);
+  if(['avatarFrame','profileTheme'].includes(item.type)) inventory.equipped[item.type]=item.value;
+  state.profile.rewards=rewards; state.profile.inventory=inventory;
+  updateAvatar(); save(); renderShop();
+  await syncToSupabase(false);
+  showToast(`Unlocked ${item.title}.`);
+}
+async function equipShopItem(id){
+  const item=SHOP_ITEMS.find(i=>i.id===id); if(!item) return;
+  const {inventory}=ensureEconomy();
+  if(!isShopOwned(id)) return buyShopItem(id);
+  if(['avatarFrame','profileTheme'].includes(item.type)) inventory.equipped[item.type]=item.value;
+  state.profile.inventory=inventory;
+  updateAvatar(); save(); renderShop();
+  await syncToSupabase(false);
+  showToast(`${item.title} equipped.`);
+}
+function applyCosmetics(){
+  const inv=ensureEconomy().inventory;
+  document.body.classList.remove('theme-midnight','theme-rose-gold','theme-cyber','theme-velvet');
+  if(inv.equipped?.profileTheme) document.body.classList.add(inv.equipped.profileTheme);
+  const frame=inv.equipped?.avatarFrame || '';
+  ['.profile-avatar','#topProfileAvatar','#bottomProfileAvatar'].forEach(sel=>{
+    document.querySelectorAll(sel).forEach(el=>{
+      el.classList.remove('frame-neon','frame-gold','frame-rainbow');
+      if(frame) el.classList.add(frame);
+    });
+  });
+}
+// wrap existing functions without removing them
+const _agOriginalUpdateAvatar = updateAvatar;
+updateAvatar = function(){ _agOriginalUpdateAvatar(); syncEconomyFromProfile(); applyCosmetics(); updateGlowCoinDisplays(); };
+const _agOriginalRenderDailyGift = renderDailyGift;
+renderDailyGift = function(){ _agOriginalRenderDailyGift(); updateGlowCoinDisplays(); };
+const _agOriginalClaimDailyGift = claimDailyGift;
+claimDailyGift = async function(){ await _agOriginalClaimDailyGift(); ensureEconomy(); renderShop(); updateGlowCoinDisplays(); };
+const _agOriginalShowScreen = showScreen;
+showScreen = function(id){ _agOriginalShowScreen(id); if(id==='shop') renderShop(); };
+// late-bind shop controls after the original init has run
+setTimeout(()=>{
+  ensureEconomy(); updateGlowCoinDisplays(); renderShop(); applyCosmetics();
+  $('#coinShortcut')?.addEventListener('click', openDailyGift);
+  $('#shopDailyShortcut')?.addEventListener('click', openDailyGift);
+}, 0);
