@@ -117,3 +117,28 @@
     flex-basis:42px!important;
   }
 }
+
+/* Live directory + match-flow polish */
+.liked-you-badge{
+  position:absolute;
+  z-index:2;
+  left:16px;
+  top:58px;
+  background:linear-gradient(135deg,rgba(255,63,145,.94),rgba(139,92,255,.94));
+  color:#fff;
+  padding:9px 12px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:12px;
+  box-shadow:0 12px 26px rgba(0,0,0,.28);
+}
+.match-section{display:grid;gap:10px;margin-bottom:16px}
+.match-section>h3{margin:4px 2px 0;font-size:15px;color:#fff;letter-spacing:-.02em}
+.match-card.incoming-like{align-items:center}
+.match-action{width:auto;min-width:94px;padding:11px 12px;border-radius:16px;font-size:12px;white-space:nowrap;margin-left:auto}
+.match-card .score-badge{white-space:nowrap}
+@media (max-width:390px){
+  .match-card{gap:10px;padding:12px}
+  .match-action{min-width:86px;padding:10px 9px;font-size:11px}
+  .mini-avatar{width:48px;height:48px;border-radius:17px}
+}
