@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Fantasy Vault</title>
+  <title>Afterglow</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -12,17 +12,17 @@
 <body>
   <div id="ageGate" class="age-gate">
     <div class="gate-card glass">
-      <div class="app-icon">🔐</div>
-      <h1>Fantasy Vault</h1>
+      <div class="app-icon">🌅</div>
+      <h1>Afterglow</h1>
       <p>A sex-positive dating app for consenting adults to discover chemistry, compatible desires, curiosities, and boundaries.</p>
-      <div class="gate-warning">18+ only. Login is required before entering Fantasy Vault.</div>
+      <div class="gate-warning">18+ only. Login is required before entering Afterglow.</div>
       <label class="age-check">
         <input id="ageConfirm" type="checkbox" />
         <span>I confirm I am 18 or older and want to enter an adults-only dating app.</span>
       </label>
       <div id="gateAuthStatus" class="gate-status">Not signed in</div>
       <button id="googleGate" class="google full" disabled>Continue with Google</button>
-      <button id="enterApp" class="primary full hidden">Enter Fantasy Vault</button>
+      <button id="enterApp" class="primary full hidden">Enter Afterglow</button>
       <button id="gateSignOut" class="ghost full hidden">Use a different Google account</button>
       <button id="gateResetLocal" class="danger full">Reset local app data</button>
       <p class="tiny-note">Google login requires the Supabase + Google Cloud OAuth setup in the README.</p>
@@ -33,8 +33,9 @@
     <section class="phone glass">
       <header class="app-top">
         <button class="round ghost-mini profile-nav-button" id="profileShortcut" title="Open profile"><span class="nav-avatar" id="topProfileAvatar">👤</span></button>
-        <div class="logo-lockup"><div class="tiny-icon">🔐</div><span>Fantasy Vault</span></div>
-        <button class="round ghost-mini" id="filterOpen" title="Discovery filters" aria-label="Discovery filters">🎚️</button>
+        <div class="logo-lockup"><div class="tiny-icon">🌅</div><span>Afterglow</span></div>
+        <div class="top-actions"><button class="round ghost-mini daily-gift-button" id="dailyGift" title="Daily Glow Coin gift" aria-label="Daily Glow Coin gift">🎁</button>
+        <button class="round ghost-mini" id="filterOpen" title="Discovery filters" aria-label="Discovery filters">🎚️</button></div>
       </header>
 
       <section id="discover" class="screen active-screen">
@@ -57,7 +58,7 @@
       </section>
 
       <section id="vault" class="screen">
-        <div class="screen-title"><h2>Fantasy Vault 🔐</h2><p>Answer playful cards to shape your dating compatibility.</p></div>
+        <div class="screen-title"><h2>Glow Vault 🔐</h2><p>Answer playful cards and prompts to shape your Afterglow compatibility.</p></div>
         <div class="vault-stats">
           <div><strong id="vaultPct">0%</strong><span>complete</span></div>
           <div><strong id="ratedCount">0</strong><span>answered</span></div>
@@ -104,7 +105,7 @@
       <section id="admin" class="screen admin-screen">
         <div class="screen-title">
           <h2>Admin Studio 🛠️</h2>
-          <p>Build Fantasy Vault from forms instead of JSON. Owner-only saves for <b>ra1nonit1@gmail.com</b>.</p>
+          <p>Build Afterglow from forms instead of JSON. Owner-only saves for <b>ra1nonit1@gmail.com</b>.</p>
         </div>
         <div id="adminLock" class="admin-lock hidden">Admin access is restricted to the owner account.</div>
         <div id="adminPanel" class="admin-panel hidden">
@@ -113,7 +114,7 @@
             <div class="admin-actions"><button id="adminReload" class="ghost full">Reload</button><button id="adminSeed" class="primary full">Seed Defaults</button></div>
           </div>
           <div class="admin-stats">
-            <div><b id="adminCardCount">0</b><span>Vault cards</span></div>
+            <div><b id="adminCardCount">0</b><span>Vault prompts</span></div>
             <div><b id="adminCategoryCount">0</b><span>Categories</span></div>
             <div><b id="adminAnswerCount">0</b><span>Answer choices</span></div>
             <div><b id="adminLastSaved">Not saved yet</b><span>Status</span></div>
@@ -128,7 +129,7 @@
           <div id="adminPaneCards" class="admin-pane active">
             <div class="admin-two-col">
               <div class="admin-list-card">
-                <div class="admin-list-head"><h3>Vault Cards</h3><input id="adminCardSearch" placeholder="Search Vault cards..." /></div>
+                <div class="admin-list-head"><h3>Vault Prompts</h3><input id="adminCardSearch" placeholder="Search Vault prompts..." /></div>
                 <div id="adminCardList" class="admin-list"></div>
               </div>
               <form id="adminCardForm" class="edit-card admin-form">
@@ -137,6 +138,9 @@
                 <label>Title<input id="adminCardTitle" placeholder="Praise and encouragement" /></label>
                 <label>Category<select id="adminCardCat"></select></label>
                 <label>Description<textarea id="adminCardDesc" placeholder="Short, tasteful explanation users will see..."></textarea></label>
+                <label>Prompt type<select id="adminCardMode"><option value="global">Use global answer set</option><option value="yesno">Yes / No</option><option value="custom">Custom choices for this prompt</option><option value="text">Short written answer</option><option value="textarea">Long written answer</option></select></label>
+                <label>Custom answers JSON<textarea id="adminCardAnswers" placeholder='{"yes":"✅ Yes","no":"🙅 No"}'></textarea></label>
+                <label class="admin-check"><input id="adminCardProfileVisible" type="checkbox" /> Show this answer on matched profiles when appropriate</label>
                 <div class="admin-grid">
                   <button id="adminCardNew" type="button" class="ghost full">New Card</button>
                   <button id="adminCardSave" type="submit" class="primary full">Save Card</button>
@@ -211,6 +215,18 @@
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section id="dailyModal" class="modal hidden">
+        <div class="modal-card glass daily-modal-card">
+          <div class="modal-head"><h3>Daily Glow Gift</h3><button id="closeDailyGift" class="round ghost-mini">×</button></div>
+          <div class="daily-present">🎁</div>
+          <h2 id="dailyGiftTitle">Claim your Glow Coins</h2>
+          <p id="dailyGiftText">Come back daily to build your streak and unlock more Glow Coins.</p>
+          <div class="glow-balance"><b id="glowCoinBalance">0</b><span>Glow Coins</span></div>
+          <div class="daily-streak-row" id="dailyStreakRow"></div>
+          <button id="claimDailyGift" class="primary full">Claim gift</button>
         </div>
       </section>
 

@@ -10,7 +10,7 @@
 })();
 
 const CONFIG = window.FV_CONFIG || {};
-const KEY = 'fantasyVaultDatingV3';
+const KEY = 'afterglowDatingV1';
 const supa = (() => {
   try {
     if (!CONFIG.USE_SUPABASE || !window.supabase || !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_PUBLISHABLE_KEY) return null;
@@ -99,7 +99,7 @@ function defaultProfileForAuth(user){
     avatarUrl: meta.avatar_url || meta.picture || ''
   };
 }
-function base(user=null){return {ageOk:false, userId: user?.id || getDeviceId(), profile: defaultProfileForAuth(user), ratings:{}, liked:[], passed:[], updatedAt:new Date().toISOString()};}
+function base(user=null){return {ageOk:false, userId: user?.id || getDeviceId(), profile: defaultProfileForAuth(user), ratings:{}, liked:[], passed:[], rewards:{glowCoins:0, streak:0, lastClaimDate:'', claimedToday:false}, updatedAt:new Date().toISOString()};}
 function getDeviceId(){let id=localStorage.getItem('fvDeviceId'); if(!id){id='local-'+crypto.randomUUID(); localStorage.setItem('fvDeviceId',id);} return id;}
 function userStorageKey(user=authUser){ return user?.id ? `${KEY}:${user.id}` : KEY; }
 function load(user=null){try{return {...base(user), ...(JSON.parse(localStorage.getItem(userStorageKey(user)))||{})}}catch{return base(user)}}
@@ -136,7 +136,7 @@ async function syncToSupabase(show=true){
     const payload={
       user_id: authUser.id,
       email: authUser.email || null,
-      profile:state.profile,
+      profile:{...state.profile, rewards:state.rewards},
       ratings:state.ratings,
       liked:state.liked,
       passed:state.passed,
@@ -155,7 +155,7 @@ async function loadRemoteProfile(){
     const {data,error}=await supa.from('fv_profiles').select('*').eq('user_id',authUser.id).maybeSingle();
     if(error) throw error;
     if(data){
-      state = {...state, profile: repairProfileForAuth({...state.profile,...(data.profile||{})}, authUser), ratings:data.ratings||{}, liked:data.liked||[], passed:data.passed||[], userId:authUser.id};
+      state = {...state, profile: repairProfileForAuth({...state.profile,...(data.profile||{})}, authUser), rewards:(data.profile||{}).rewards || state.rewards || {glowCoins:0,streak:0,lastClaimDate:'',claimedToday:false}, ratings:data.ratings||{}, liked:data.liked||[], passed:data.passed||[], userId:authUser.id};
       localStorage.setItem(userStorageKey(), JSON.stringify(state));
       hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack();
       setSync('loaded from Supabase');
@@ -310,7 +310,7 @@ function profileRowToPerson(row){
     distance: Number(profile.distance || 999),
     distanceLabel: city ? `📍 ${city}` : '📍 Nearby',
     score: comp.score,
-    vibe: profile.headline || profile.bio || 'Building their Fantasy Vault profile.',
+    vibe: profile.headline || profile.bio || 'Building their Afterglow profile.',
     gradient: deterministicGradient(row.user_id || displayName),
     initial,
     avatarUrl: profile.avatarUrl || '',
@@ -393,7 +393,7 @@ function authRedirectUrl(){
 async function signInWithGoogle(){
   if(!supa){ showToast('Supabase is not available. Check config.js.'); return; }
   const redirectTo = authRedirectUrl();
-  console.log('[Fantasy Vault] OAuth redirectTo:', redirectTo);
+  console.log('[Afterglow] OAuth redirectTo:', redirectTo);
   const {error}=await supa.auth.signInWithOAuth({
     provider:'google',
     options:{
@@ -1162,7 +1162,7 @@ function profileRowToPerson(row){
     distance: Number(profile.distance || 999),
     distanceLabel: city ? `📍 ${city}` : '📍 Nearby',
     score: comp.score,
-    vibe: profile.headline || profile.bio || 'Building their Fantasy Vault profile.',
+    vibe: profile.headline || profile.bio || 'Building their Afterglow profile.',
     gradient: deterministicGradient(row.user_id || displayName),
     initial,
     avatarUrl: profile.avatarUrl || '',
@@ -1260,7 +1260,7 @@ function openMemberProfile(key){
       <div class="member-avatar-large" style="${avatarStyle}">${p.avatarUrl?'':escapeHtml(p.initial)}</div>
       <div class="member-hero-text">
         <div class="member-name-row"><h2>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h2><span class="online-pill">Verified</span></div>
-        <p>${escapeHtml(p.vibe||'Building their Fantasy Vault profile.')}</p>
+        <p>${escapeHtml(p.vibe||'Building their Afterglow profile.')}</p>
         <div class="hero-meta-row">
           ${p.profile?.sex ? `<span>${escapeHtml(p.profile.sex)}</span>` : ''}
           ${p.distanceLabel ? `<span>${escapeHtml(p.distanceLabel)}</span>` : ''}
@@ -1503,6 +1503,280 @@ async function sendPrivatePhotos(files){
     renderChatMessages(); renderChats();
     showToast(`Private photo${uploaded.length>1?'s':''} sent. Expires in ${expiryKey==='default'?'72h':$('#chatExpiry')?.selectedOptions?.[0]?.textContent || '72h'}.`);
   }catch(err){ console.warn('Private photo send failed', err); showToast('Photo failed. Run updated SQL and create the private chat bucket.'); }
+}
+
+
+/* =========================================================
+   Afterglow patch: Daily Glow Coins, dynamic Vault prompts,
+   and desktop-only Admin Studio. Additive / non-destructive.
+   ========================================================= */
+
+const DAILY_GLOW_REWARDS = [5,10,15,15,20,20,50];
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+function yesterdayKey(){ const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
+function ensureRewards(){
+  if(!state.rewards || typeof state.rewards !== 'object') state.rewards = {glowCoins:0, streak:0, lastClaimDate:'', claimedToday:false};
+  state.rewards.glowCoins = Number(state.rewards.glowCoins || 0);
+  state.rewards.streak = Number(state.rewards.streak || 0);
+  state.rewards.lastClaimDate = state.rewards.lastClaimDate || '';
+  state.rewards.claimedToday = state.rewards.lastClaimDate === todayKey();
+  return state.rewards;
+}
+function nextDailyReward(){
+  const r=ensureRewards();
+  const continuing = r.lastClaimDate === yesterdayKey() || r.lastClaimDate === todayKey();
+  const nextStreak = r.claimedToday ? r.streak : (continuing ? r.streak + 1 : 1);
+  return DAILY_GLOW_REWARDS[Math.min(Math.max(nextStreak,1),7)-1];
+}
+function renderDailyGift(){
+  const r=ensureRewards();
+  const bal=$('#glowCoinBalance'); if(bal) bal.textContent=r.glowCoins;
+  const btn=$('#claimDailyGift'); if(btn){ btn.disabled=!!r.claimedToday; btn.textContent=r.claimedToday?'Claimed today':'Claim gift'; }
+  const title=$('#dailyGiftTitle'); if(title) title.textContent = r.claimedToday ? 'Gift claimed ✨' : `Claim ${nextDailyReward()} Glow Coins`;
+  const text=$('#dailyGiftText'); if(text) text.textContent = r.claimedToday ? `You are on a ${r.streak || 1}-day streak. Come back tomorrow to keep your glow.` : 'Daily logins earn Glow Coins. Keep your streak alive for a 50 coin day-seven reward.';
+  const row=$('#dailyStreakRow');
+  if(row){ row.innerHTML=DAILY_GLOW_REWARDS.map((n,i)=>`<span class="streak-dot ${(r.streak||0)>i?'done':''} ${(r.streak||0)===i+1?'current':''}"><b>${i+1}</b><small>${n}</small></span>`).join(''); }
+  const gift=$('#dailyGift'); if(gift){ gift.classList.toggle('claimable', !r.claimedToday); gift.title=`Glow Coins: ${r.glowCoins}`; }
+}
+async function claimDailyGift(){
+  const r=ensureRewards();
+  if(r.claimedToday){ showToast('Daily gift already claimed.'); return; }
+  const last=r.lastClaimDate;
+  const continuing = last === yesterdayKey();
+  r.streak = continuing ? Math.min((r.streak||0)+1, 7) : 1;
+  const reward=DAILY_GLOW_REWARDS[Math.min(r.streak,7)-1];
+  r.glowCoins += reward;
+  r.lastClaimDate = todayKey();
+  r.claimedToday = true;
+  state.profile.rewards = r;
+  save();
+  renderDailyGift();
+  await syncToSupabase(false);
+  showToast(`You earned ${reward} Glow Coins.`);
+}
+function openDailyGift(){ renderDailyGift(); $('#dailyModal')?.classList.remove('hidden'); }
+function closeDailyGift(){ $('#dailyModal')?.classList.add('hidden'); }
+
+function ratingKey(v){ return (typeof v === 'object' && v) ? (v.key ?? v.value ?? '') : v; }
+function ratingText(v){ return (typeof v === 'object' && v) ? (v.text ?? v.value ?? v.key ?? '') : v; }
+function cardAnswerOptions(card){
+  const mode=card?.answerMode || card?.mode || 'global';
+  if(mode === 'yesno') return {yes:'✅ Yes', no:'🙅 No'};
+  if(mode === 'custom' && card?.answers && typeof card.answers === 'object') return card.answers;
+  return labels;
+}
+function isTextPrompt(card){ const m=card?.answerMode || card?.mode; return m === 'text' || m === 'textarea'; }
+function isPositiveAnswer(key){ return ['love','enjoy','curious','yes'].includes(String(key)); }
+function isLimitAnswer(key){ return ['limit','no','never','hard_limit'].includes(String(key)); }
+function answerLabel(card, val){
+  const key=ratingKey(val);
+  if(isTextPrompt(card)) return ratingText(val) ? '✍️ Written' : 'Unanswered';
+  const opts=cardAnswerOptions(card);
+  return opts[key] || labels[key] || key || 'Unanswered';
+}
+function publicTextAnswerHtml(card, val){
+  if(!isTextPrompt(card) || !card.profileVisible) return '';
+  const text=String(ratingText(val)||'').trim();
+  if(!text) return '';
+  return `<div class="written-answer-card"><span>${escapeHtml((categoryMeta[card.cat]||{}).emoji || '✨')} ${escapeHtml(card.title)}</span><p>${escapeHtml(text)}</p></div>`;
+}
+
+function compatibilityForRatings(otherRatings={}){
+  const mine=state.ratings||{};
+  const shared=[];
+  let positive=0, conflicts=0, compared=0;
+  Object.entries(otherRatings||{}).forEach(([id, val])=>{
+    const my=mine[id];
+    if(!my) return;
+    const card=vaultCards.find(c=>c.id===id);
+    if(!card || isTextPrompt(card)) return;
+    const myKey=ratingKey(my), theirKey=ratingKey(val);
+    if(!myKey || !theirKey) return;
+    compared++;
+    const meta=categoryMeta[card.cat]||{};
+    const label=`${meta.emoji||'✨'} ${card.title}`;
+    const myPositive=isPositiveAnswer(myKey), theirPositive=isPositiveAnswer(theirKey);
+    if(myPositive && theirPositive){ positive++; shared.push(label); }
+    if((isLimitAnswer(myKey) && theirPositive) || (isLimitAnswer(theirKey) && myPositive)) conflicts++;
+  });
+  let score = compared ? Math.round(62 + (positive / Math.max(compared,1)) * 35 - conflicts * 10) : 70;
+  score = Math.max(0, Math.min(99, score));
+  return {score, shared: shared.slice(0,4), conflicts};
+}
+
+function compareVaultWithPerson(p){
+  const mine=state.ratings||{};
+  const theirs=p?.ratings||{};
+  const shared=[], curious=[], different=[], limits=[], written=[];
+  Object.entries(theirs).forEach(([id,their])=>{
+    const my=mine[id];
+    const card=vaultCards.find(c=>c.id===id);
+    if(!card) return;
+    if(isTextPrompt(card)){
+      const html=publicTextAnswerHtml(card, their);
+      if(html) written.push({html});
+      return;
+    }
+    if(!my) return;
+    const meta=categoryMeta[card.cat]||{};
+    const myKey=ratingKey(my), theirKey=ratingKey(their);
+    const row={id,title:card.title,cat:card.cat,emoji:meta.emoji||'✨',mine:myKey,theirs:theirKey,mineLabel:answerLabel(card,my),theirLabel:answerLabel(card,their)};
+    const myPositive=isPositiveAnswer(myKey), theirPositive=isPositiveAnswer(theirKey);
+    const bothCurious=myKey==='curious' && theirKey==='curious';
+    if(myPositive && theirPositive) shared.push(row);
+    else if(bothCurious || (myPositive && theirPositive)) curious.push(row);
+    else if(isLimitAnswer(myKey) || isLimitAnswer(theirKey)) limits.push(row);
+    else different.push(row);
+  });
+  return {shared,curious,different,limits,written};
+}
+
+function topVaultHtml(p){
+  const ratings=p?.ratings||{};
+  const priority=['love','enjoy','curious','yes'];
+  const rows=[];
+  for(const want of priority){
+    Object.entries(ratings).forEach(([id,val])=>{
+      const card=vaultCards.find(c=>c.id===id);
+      if(!card || isTextPrompt(card) || rows.length>=8) return;
+      if(ratingKey(val)!==want) return;
+      const meta=categoryMeta[card.cat]||{};
+      rows.push({title:card.title, cat:card.cat, emoji:meta.emoji||'✨', label:answerLabel(card,val)});
+    });
+  }
+  if(!rows.length) return '<div class="profile-empty-mini">They have not shared many Vault answers yet.</div>';
+  return rows.map(r=>`<div class="interest-tile"><span>${escapeHtml(r.emoji)}</span><b>${escapeHtml(r.title)}</b><small>${escapeHtml(r.label)}</small></div>`).join('');
+}
+
+function renderVault(){
+  const searchEl=$('#searchCards'), catEl=$('#categoryFilter');
+  const q=(searchEl?.value||'').toLowerCase(); const cat=catEl?.value||'all';
+  const list=vaultCards.filter(c=>(cat==='all'||c.cat===cat)&&(!q||`${c.title} ${c.desc} ${c.cat}`.toLowerCase().includes(q)));
+  const cardsEl=$('#cards'); if(!cardsEl) return;
+  cardsEl.innerHTML=list.map(card=>{
+    const cur=state.ratings[card.id]; const meta=categoryMeta[card.cat]||{emoji:'✨', theme:'theme-fantasy'};
+    let control='';
+    if(isTextPrompt(card)){
+      const multiline=(card.answerMode||card.mode)==='textarea';
+      const val=escapeHtml(String(ratingText(cur)||''));
+      control = multiline ? `<textarea class="vault-written-answer" data-id="${adminEscape(card.id)}" placeholder="Write your answer...">${val}</textarea>` : `<input class="vault-written-answer" data-id="${adminEscape(card.id)}" value="${val}" placeholder="Write your answer..." />`;
+    }else{
+      const opts=cardAnswerOptions(card);
+      const key=ratingKey(cur);
+      control = `<div class="answers">${Object.entries(opts).map(([k,v])=>`<button class="answer-btn ${key===k?'selected':''}" data-id="${adminEscape(card.id)}" data-answer="${adminEscape(k)}">${adminEscape(v)}</button>`).join('')}</div>`;
+    }
+    return `<article class="vcard ${meta.theme}"><div class="vcard-top"><span class="cat-badge">${meta.emoji||'✨'} ${adminEscape(card.cat)}</span><span class="rating-badge">${cur?adminEscape(answerLabel(card,cur)):'❔ Unanswered'}</span></div><h3>${adminEscape(card.title)}</h3><p>${adminEscape(card.desc||'')}</p>${control}</article>`;
+  }).join('') || '<div class="empty-state"><h3>No Vault prompts yet</h3><p>The admin can add prompts from Admin Studio.</p></div>';
+  $$('.answer-btn').forEach(b=>b.onclick=()=>{state.ratings[b.dataset.id]=b.dataset.answer; save(); renderVault(); if(directoryLoaded) loadPeopleDirectory({preserveIndex:true, quiet:true});});
+  $$('.vault-written-answer').forEach(el=>el.onchange=()=>{state.ratings[el.dataset.id]={type:'text', value:el.value.trim()}; save(); renderVaultStats(); if(directoryLoaded) loadPeopleDirectory({preserveIndex:true, quiet:true});});
+}
+function renderVaultStats(){ const vals=Object.values(state.ratings||{}).filter(v=>String(ratingText(v)||ratingKey(v)||'').trim()); $('#ratedCount').textContent=vals.length; $('#limitCount').textContent=vals.filter(v=>isLimitAnswer(ratingKey(v))).length; $('#vaultPct').textContent=(vaultCards.length?Math.round(vals.length/vaultCards.length*100):0)+'%'; }
+
+function isDesktopAdminViewport(){ return window.matchMedia('(min-width: 900px) and (pointer: fine)').matches; }
+function renderAdmin(){
+  const admin = isAdmin();
+  const desktop = isDesktopAdminViewport();
+  const allowed = admin && desktop;
+  const tab = $('#adminTab'); if(tab) tab.classList.toggle('hidden', !allowed);
+  const nav=$('.bottom-nav'); if(nav) nav.classList.toggle('admin-on', allowed);
+  const lock = $('#adminLock'); if(lock) lock.classList.toggle('hidden', allowed || !admin);
+  const panel = $('#adminPanel'); if(panel) panel.classList.toggle('hidden', !allowed);
+  if(admin && !desktop && $('#admin')?.classList.contains('active-screen')) showScreen('profile');
+  if(allowed){ bindAdminStudio(); renderAdminWorkspace(); }
+}
+window.addEventListener('resize', ()=>renderAdmin());
+
+function selectAdminCard(id){
+  adminSelectedCardId = id;
+  const card = vaultCards.find(c=>c.id===id) || {id:'', title:'', cat:Object.keys(categoryMeta)[0]||'', desc:'', answerMode:'global', answers:null, profileVisible:false};
+  $('#adminCardId').value = card.id || '';
+  $('#adminCardTitle').value = card.title || '';
+  populateAdminCardCategorySelect();
+  $('#adminCardCat').value = card.cat || Object.keys(categoryMeta)[0] || '';
+  $('#adminCardDesc').value = card.desc || '';
+  const mode=$('#adminCardMode'); if(mode) mode.value=card.answerMode || card.mode || 'global';
+  const answers=$('#adminCardAnswers'); if(answers) answers.value=card.answers ? JSON.stringify(card.answers, null, 2) : '';
+  const visible=$('#adminCardProfileVisible'); if(visible) visible.checked=!!card.profileVisible;
+  const title=$('#adminCardFormTitle'); if(title) title.textContent = id ? 'Edit Vault Prompt' : 'Add New Vault Prompt';
+  renderAdminCards();
+}
+function saveAdminCard(){
+  if(!isAdmin()) return showToast('Admin access is restricted.');
+  const id = adminSlug($('#adminCardId').value || $('#adminCardTitle').value);
+  const mode = $('#adminCardMode')?.value || 'global';
+  let answers = null;
+  const raw = ($('#adminCardAnswers')?.value || '').trim();
+  if(raw){ try{ answers=JSON.parse(raw); }catch{ return showToast('Custom answers must be valid JSON.'); } }
+  const card = {id, title:($('#adminCardTitle').value||'Untitled prompt').trim(), cat:$('#adminCardCat').value, desc:($('#adminCardDesc').value||'').trim(), answerMode:mode, profileVisible:!!$('#adminCardProfileVisible')?.checked};
+  if(answers && typeof answers === 'object') card.answers = answers;
+  const oldIndex = vaultCards.findIndex(c=>c.id===adminSelectedCardId || c.id===id);
+  if(oldIndex >= 0) vaultCards[oldIndex] = card; else vaultCards.push(card);
+  adminSelectedCardId = id;
+  applyAdminConfig(adminConfigObject(), true);
+  renderAdminWorkspace();
+  saveAdminConfig(false);
+}
+function duplicateAdminCard(){
+  const card = vaultCards.find(c=>c.id===adminSelectedCardId);
+  if(!card) return showToast('Choose a prompt to duplicate.');
+  const copy = {...card, id:adminSlug(card.id+' copy'), title:card.title+' Copy'};
+  vaultCards.push(copy); adminSelectedCardId=copy.id; selectAdminCard(copy.id); renderAdminWorkspace(); showToast('Prompt duplicated. Click Save Prompt or Save All to publish.');
+}
+
+function renderAdminCards(){
+  const list=$('#adminCardList'); if(!list) return;
+  const q=($('#adminCardSearch')?.value||'').toLowerCase();
+  const cards=vaultCards.filter(c=>!q || `${c.id} ${c.title} ${c.cat} ${c.desc}`.toLowerCase().includes(q));
+  list.innerHTML = cards.map(c=>{
+    const meta=categoryMeta[c.cat]||{emoji:'✨'};
+    const mode=c.answerMode||c.mode||'global';
+    return `<button class="admin-list-item ${c.id===adminSelectedCardId?'selected':''}" type="button" data-card-id="${adminEscape(c.id)}">
+      <span class="admin-list-emoji">${adminEscape(meta.emoji||'✨')}</span><span><b>${adminEscape(c.title)}</b><small>${adminEscape(c.cat)} • ${adminEscape(mode)} • ${adminEscape(c.id)}</small></span>
+    </button>`;
+  }).join('') || '<div class="admin-empty">No prompts found.</div>';
+  list.querySelectorAll('[data-card-id]').forEach(b=>b.onclick=()=>selectAdminCard(b.dataset.cardId));
+}
+
+function profileWrittenAnswersHtml(p){
+  const ratings=p?.ratings||{};
+  const rows=[];
+  Object.entries(ratings).forEach(([id,val])=>{
+    const card=vaultCards.find(c=>c.id===id);
+    const html=card ? publicTextAnswerHtml(card,val) : '';
+    if(html) rows.push(html);
+  });
+  return rows.length ? rows.slice(0,6).join('') : '<div class="profile-empty-mini">No written profile prompts shared yet.</div>';
+}
+
+function init(){
+  $('#ageConfirm').onchange=e=>{state.ageOk=!!e.target.checked; save(); updateGateUi();};
+  $('#enterApp').onclick=()=>{ if(canEnter()) openApp(); else showToast('Please sign in with Google first.'); };
+  $('#googleGate').onclick=async()=>{ if(!state.ageOk){showToast('Please confirm you are 18+ first.'); return;} await signInWithGoogle(); };
+  $('#gateSignOut').onclick=signOut;
+  const gateReset = $('#gateResetLocal'); if(gateReset) gateReset.onclick=resetLocalAppData;
+  $$('.tab').forEach(b=>b.onclick=()=>showScreen(b.dataset.screen));
+  $('#profileShortcut').onclick=()=>showScreen('profile');
+  $('#filterOpen').onclick=()=>$('#filters').classList.remove('hidden');
+  $('#closeFilters').onclick=$('#applyFilters').onclick=()=>$('#filters').classList.add('hidden');
+  $('#dailyGift')?.addEventListener('click', openDailyGift);
+  $('#closeDailyGift')?.addEventListener('click', closeDailyGift);
+  $('#claimDailyGift')?.addEventListener('click', claimDailyGift);
+  $$('.pill').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; $$('.pill').forEach(x=>x.classList.toggle('active',x===b)); index=0; renderStack();});
+  $('#passBtn').onclick=()=>act('pass'); $('#likeBtn').onclick=()=>act('like'); $('#vaultBtn').onclick=()=>{showToast('Mutual Vault details unlock after a match.'); showScreen('vault');};
+  const exportData=$('#exportData'); if(exportData) exportData.onclick=()=>{const box=$('#exportBox'); if(box) box.textContent=JSON.stringify(state,null,2);};
+  $('#googleLogin').onclick=signInWithGoogle;
+  $('#signOut').onclick=signOut;
+  const syncNow=$('#syncNow'); if(syncNow) syncNow.onclick=()=>syncToSupabase(true);
+  const saveProfileBtn=$('#saveProfile'); if(saveProfileBtn) saveProfileBtn.onclick=saveProfileManually;
+  const avatarUpload=$('#avatarUpload'); if(avatarUpload) avatarUpload.onchange=e=>handleAvatarUpload(e.target.files?.[0]);
+  const removeAvatar=$('#removeAvatar'); if(removeAvatar) removeAvatar.onclick=()=>{state.profile.avatarUrl=''; updateAvatar(); save(); showToast('Photo removed.');};
+  const adminSeed=$('#adminSeed'); if(adminSeed) adminSeed.onclick=()=>saveAdminConfig(true);
+  const adminReload=$('#adminReload'); if(adminReload) adminReload.onclick=()=>loadAdminConfig();
+  const adminSave=$('#adminSave'); if(adminSave) adminSave.onclick=()=>saveAdminConfig(false);
+  const adminResetDefaults=$('#adminResetDefaults'); if(adminResetDefaults) adminResetDefaults.onclick=resetAdminEditorsToDefaults;
+  ['displayName','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); if(el){ el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();}; }});
+  $('#searchCards').oninput=renderVault; $('#categoryFilter').onchange=renderVault;
+  ensureRewards(); renderDailyGift(); applyAdminConfig(currentAdminConfig(), false); populateCats(); updateAvatar(); renderStack(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); initAuth().then(()=>{ ensureRewards(); renderDailyGift(); updateGateUi(); if(canEnter()) openApp(); syncToSupabase(false); });
 }
 
 init();

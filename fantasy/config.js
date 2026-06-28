@@ -2,7 +2,7 @@
 // Permanent hosted URL: https://whatmod.com/fantasy/
 // Keep OAuth redirects pointed here. No localhost values belong in production.
 window.FV_CONFIG = {
-  APP_NAME: 'Fantasy Vault',
+  APP_NAME: 'Afterglow',
   APP_BASE_PATH: '/fantasy',
   APP_URL: 'https://whatmod.com/fantasy/',
   AUTH_REDIRECT_URL: 'https://whatmod.com/fantasy/',
