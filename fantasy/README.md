@@ -21,3 +21,9 @@ Run or confirm the included `supabase-schema.sql`. The directory policy must all
 - Adds Unmatch controls on matched users.
 - Moves users out of Nearby after either side likes.
 - Adds lightweight per-session chat; messages stay in sessionStorage and are not saved to Supabase.
+
+
+## Chat send hotfix
+- Rebound chat modal handlers every time the modal opens.
+- Added explicit Send button click handling plus Enter-to-send.
+- Hardened the send function so it only sends inside mutual matches and keeps focus in the input.

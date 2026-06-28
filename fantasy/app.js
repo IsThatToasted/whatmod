@@ -708,17 +708,63 @@ function chatPreview(p){
   if(last) return last.from==='me' ? `You: ${last.text}` : last.text;
   return p.mutual[0] && !p.mutual[0].startsWith('Vault overlap') ? `You both connect on ${p.mutual[0]}. Tap to start chatting.` : 'You matched. Tap to start a session chat.';
 }
+function bindChatModalHandlers(){
+  const closeBtn = $('#closeChat');
+  const clearBtn = $('#chatClear');
+  const compose = $('#chatCompose');
+  const input = $('#chatInput');
+  const sendBtn = $('#chatSend');
+
+  if(closeBtn && !closeBtn.dataset.bound){
+    closeBtn.dataset.bound='1';
+    closeBtn.addEventListener('click', closeChatModal);
+  }
+  if(clearBtn && !clearBtn.dataset.bound){
+    clearBtn.dataset.bound='1';
+    clearBtn.addEventListener('click', ()=>{
+      if(activeChatKey){
+        clearSessionChat(activeChatKey);
+        renderChatMessages();
+        renderChats();
+        showToast('Session chat cleared.');
+      }
+    });
+  }
+  if(compose && !compose.dataset.bound){
+    compose.dataset.bound='1';
+    compose.addEventListener('submit', e=>{
+      e.preventDefault();
+      sendChatMessage();
+    });
+  }
+  if(sendBtn && !sendBtn.dataset.bound){
+    sendBtn.dataset.bound='1';
+    sendBtn.addEventListener('click', e=>{
+      e.preventDefault();
+      sendChatMessage();
+    });
+  }
+  if(input && !input.dataset.bound){
+    input.dataset.bound='1';
+    input.addEventListener('keydown', e=>{
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+  }
+}
+
 function ensureChatModal(){
   let modal=$('#chatModal');
-  if(modal) return modal;
-  modal=document.createElement('div');
-  modal.id='chatModal';
-  modal.className='chat-modal hidden';
-  modal.innerHTML=`<div class="chat-sheet glass"><div class="chat-head"><button class="ghost-mini round" id="closeChat">←</button><div class="chat-person" id="chatPerson"></div><button class="danger mini-danger" id="chatClear">Clear</button></div><div class="session-note">Session chat only — messages are not saved to Supabase.</div><div class="chat-messages" id="chatMessages"></div><form class="chat-compose" id="chatCompose"><input id="chatInput" maxlength="500" placeholder="Write a message…" autocomplete="off"><button class="primary" type="submit">Send</button></form></div>`;
-  $('.phone').appendChild(modal);
-  $('#closeChat').onclick=closeChatModal;
-  $('#chatClear').onclick=()=>{ if(activeChatKey){ clearSessionChat(activeChatKey); renderChatMessages(); renderChats(); showToast('Session chat cleared.'); } };
-  $('#chatCompose').onsubmit=e=>{ e.preventDefault(); sendChatMessage(); };
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='chatModal';
+    modal.className='chat-modal hidden';
+    modal.innerHTML=`<div class="chat-sheet glass"><div class="chat-head"><button class="ghost-mini round" id="closeChat" type="button" aria-label="Close chat">←</button><div class="chat-person" id="chatPerson"></div><button class="danger mini-danger" id="chatClear" type="button">Clear</button></div><div class="session-note">Session chat only — messages are not saved to Supabase.</div><div class="chat-messages" id="chatMessages"></div><form class="chat-compose" id="chatCompose"><input id="chatInput" maxlength="500" placeholder="Write a message…" autocomplete="off" inputmode="text"><button class="primary" id="chatSend" type="submit">Send</button></form></div>`;
+    $('.phone').appendChild(modal);
+  }
+  bindChatModalHandlers();
   return modal;
 }
 function openChat(key){
@@ -741,16 +787,20 @@ function renderChatMessages(){
   const box=$('#chatMessages'); if(box) box.scrollTop=box.scrollHeight;
 }
 function sendChatMessage(){
-  if(!activeChatKey) return;
+  if(!activeChatKey){ showToast('Open a matched chat first.'); return; }
   const input=$('#chatInput');
-  const text=(input?.value||'').trim();
-  if(!text) return;
+  if(!input){ showToast('Chat input was not ready. Reopen the chat.'); return; }
+  const text=(input.value||'').trim();
+  if(!text){ input.focus(); return; }
+  const p=people.find(x=>personKey(x)===String(activeChatKey));
+  if(!p || !isMutual(p)){ showToast('Chats open after you both like each other.'); return; }
   const msgs=getSessionChat(activeChatKey);
   msgs.push({from:'me', text, at:new Date().toISOString()});
   setSessionChat(activeChatKey, msgs);
   input.value='';
   renderChatMessages();
   renderChats();
+  input.focus();
 }
 function escapeHtml(v){ return String(v ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
 
