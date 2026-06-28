@@ -26,7 +26,12 @@ let people = [];
 let directoryLoaded = false;
 let directoryRefreshTimer = null;
 let lastDirectoryFingerprint = '';
-const DIRECTORY_REFRESH_MS = 15000;
+const DIRECTORY_REFRESH_MS = 8000;
+const CHAT_REFRESH_MS = 3000;
+const MESSAGE_RETENTION_HOURS = 72;
+let activeChatKey = null;
+let chatRefreshTimer = null;
+let chatCache = {};
 
 const DEFAULT_CATEGORY_META = {
   'Anticipation': {emoji:'⏳', theme:'theme-adventure'},
@@ -355,11 +360,11 @@ function stopDirectoryAutoRefresh(){
 }
 
 window.addEventListener('focus', ()=>{
-  if(authUser) loadPeopleDirectory({preserveIndex:true, quiet:true});
+  if(authUser){ loadPeopleDirectory({preserveIndex:true, quiet:true}); if(activeChatKey){ loadChatMessages(activeChatKey, true).then(()=>{renderChatMessages(); renderChats();}); } }
 });
 
 document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && authUser) loadPeopleDirectory({preserveIndex:true, quiet:true});
+  if(!document.hidden && authUser){ loadPeopleDirectory({preserveIndex:true, quiet:true}); if(activeChatKey){ loadChatMessages(activeChatKey, true).then(()=>{renderChatMessages(); renderChats();}); } }
 });
 
 function normalizeUrl(url){
@@ -402,6 +407,7 @@ async function signOut(){
   if(!supa) return;
   await supa.auth.signOut();
   stopDirectoryAutoRefresh();
+  stopChatAutoRefresh();
   authUser=null;
   updateAuthUi();
   closeApp();
@@ -632,12 +638,15 @@ function ignoreLike(key){
   showToast(`${p.name} moved out of Liked You.`);
 }
 
-function unmatch(key){
+async function unmatch(key){
   const p=people.find(x=>personKey(x)===String(key));
   const label=p?.name || 'this person';
-  state.liked=(state.liked||[]).map(String).filter(k=>k!==String(key));
-  clearSessionChat(String(key));
-  if(activeChatKey===String(key)) closeChatModal();
+  const k=String(key);
+  state.liked=(state.liked||[]).map(String).filter(x=>x!==k);
+  if(!passedKeys().includes(k)) state.passed.push(k);
+  if(activeChatKey===k) closeChatModal();
+  chatCache[k]=[];
+  await deleteConversationMessages(k);
   save();
   renderStack();
   renderMatches();
@@ -646,17 +655,19 @@ function unmatch(key){
   showToast(`Unmatched ${label}.`);
 }
 
-function resetConnections(){
+async function resetConnections(){
+  const matchedKeys = mutualMatches().map(personKey);
   state.liked=[];
   state.passed=[];
-  Object.keys(sessionStorage).forEach(k=>{ if(k.startsWith(SESSION_CHAT_PREFIX)) sessionStorage.removeItem(k); });
+  chatCache={};
   closeChatModal();
+  for(const key of matchedKeys){ await deleteConversationMessages(key); }
   save();
   renderStack();
   renderMatches();
   renderChats();
   syncToSupabase(false);
-  showToast('Likes, passes, matches, and session chats reset for this account.');
+  showToast('Likes, passes, matches, and test chats reset for this account.');
 }
 
 function showToast(msg){ const old=$('.toast'); if(old)old.remove(); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; $('.phone').appendChild(t); setTimeout(()=>t.remove(),2100); }
@@ -694,19 +705,69 @@ function renderMatches(){
 }
 function renderChats(){
   const matched=mutualMatches();
+  if(supa && authUser){ matched.forEach(p=>{ const k=personKey(p); if(!chatCache[k]) loadChatMessages(k, true).then(()=>renderChats()); }); }
   $('#chatList').innerHTML= matched.length ? matched.map(p=>`<article class="chat-row" data-key="${personKey(p)}">${miniAvatarMarkup(p)}<div><h3>${p.name}</h3><p>${chatPreview(p)}</p></div></article>`).join('') : '<div class="empty-state"><h3>No conversations yet</h3><p>Chats appear only after both people like each other.</p></div>';
   $$('.chat-row').forEach(row=>row.onclick=()=>openChat(row.dataset.key));
 }
 
-function chatStorageKey(key){ return `${SESSION_CHAT_PREFIX}${authUser?.id || state.userId || 'local'}:${key}`; }
-function getSessionChat(key){ try{return JSON.parse(sessionStorage.getItem(chatStorageKey(key))||'[]')}catch{return []} }
-function setSessionChat(key, messages){ sessionStorage.setItem(chatStorageKey(key), JSON.stringify(messages.slice(-80))); }
-function clearSessionChat(key){ sessionStorage.removeItem(chatStorageKey(key)); }
+function conversationIdFor(key){
+  const ids=[String(authUser?.id || state.userId || 'local'), String(key)].sort();
+  return ids.join('__');
+}
+function getCachedChat(key){ return chatCache[String(key)] || []; }
+function setCachedChat(key, messages){ chatCache[String(key)] = (messages || []).slice(-120); }
+async function cleanupExpiredMessages(){
+  if(!supa || !authUser) return;
+  try{ await supa.from('fv_messages').delete().lt('expires_at', new Date().toISOString()); }catch(err){ console.warn('Expired message cleanup failed', err); }
+}
+async function loadChatMessages(key, quiet=true){
+  if(!supa || !authUser || !key){ setCachedChat(key, []); return []; }
+  await cleanupExpiredMessages();
+  try{
+    const me=authUser.id;
+    const other=String(key);
+    const {data,error}=await supa
+      .from('fv_messages')
+      .select('id,sender_id,recipient_id,body,created_at,expires_at')
+      .or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at',{ascending:true})
+      .limit(120);
+    if(error) throw error;
+    const mapped=(data||[]).map(m=>({
+      id:m.id,
+      from:m.sender_id===me?'me':'them',
+      text:m.body,
+      at:m.created_at
+    }));
+    const before=JSON.stringify(getCachedChat(key));
+    setCachedChat(key, mapped);
+    if(!quiet && before !== JSON.stringify(mapped)) renderChats();
+    return mapped;
+  }catch(err){ console.warn('Could not load chat messages', err); if(!quiet) showToast('Could not load messages. Check message schema/RLS.'); return getCachedChat(key); }
+}
+async function deleteConversationMessages(key){
+  if(!supa || !authUser || !key) return;
+  try{
+    const me=authUser.id;
+    const other=String(key);
+    await supa.from('fv_messages')
+      .delete()
+      .or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`);
+  }catch(err){ console.warn('Could not clear conversation messages', err); }
+}
+async function clearChat(key){
+  await deleteConversationMessages(key);
+  setCachedChat(key, []);
+  renderChatMessages();
+  renderChats();
+  showToast('Chat cleared.');
+}
 function chatPreview(p){
-  const msgs=getSessionChat(personKey(p));
+  const msgs=getCachedChat(personKey(p));
   const last=msgs[msgs.length-1];
   if(last) return last.from==='me' ? `You: ${last.text}` : last.text;
-  return p.mutual[0] && !p.mutual[0].startsWith('Vault overlap') ? `You both connect on ${p.mutual[0]}. Tap to start chatting.` : 'You matched. Tap to start a session chat.';
+  return p.mutual[0] && !p.mutual[0].startsWith('Vault overlap') ? `You both connect on ${p.mutual[0]}. Tap to start chatting.` : 'You matched. Tap to start chatting.';
 }
 function bindChatModalHandlers(){
   const closeBtn = $('#closeChat');
@@ -723,10 +784,7 @@ function bindChatModalHandlers(){
     clearBtn.dataset.bound='1';
     clearBtn.addEventListener('click', ()=>{
       if(activeChatKey){
-        clearSessionChat(activeChatKey);
-        renderChatMessages();
-        renderChats();
-        showToast('Session chat cleared.');
+        clearChat(activeChatKey);
       }
     });
   }
@@ -761,32 +819,34 @@ function ensureChatModal(){
     modal=document.createElement('div');
     modal.id='chatModal';
     modal.className='chat-modal hidden';
-    modal.innerHTML=`<div class="chat-sheet glass"><div class="chat-head"><button class="ghost-mini round" id="closeChat" type="button" aria-label="Close chat">←</button><div class="chat-person" id="chatPerson"></div><button class="danger mini-danger" id="chatClear" type="button">Clear</button></div><div class="session-note">Session chat only — messages are not saved to Supabase.</div><div class="chat-messages" id="chatMessages"></div><form class="chat-compose" id="chatCompose"><input id="chatInput" maxlength="500" placeholder="Write a message…" autocomplete="off" inputmode="text"><button class="primary" id="chatSend" type="submit">Send</button></form></div>`;
+    modal.innerHTML=`<div class="chat-sheet glass"><div class="chat-head"><button class="ghost-mini round" id="closeChat" type="button" aria-label="Close chat">←</button><div class="chat-person" id="chatPerson"></div><button class="danger mini-danger" id="chatClear" type="button">Clear</button></div><div class="session-note">Messages are saved for 72 hours, then expire automatically.</div><div class="chat-messages" id="chatMessages"></div><form class="chat-compose" id="chatCompose"><input id="chatInput" maxlength="500" placeholder="Write a message…" autocomplete="off" inputmode="text"><button class="primary" id="chatSend" type="submit">Send</button></form></div>`;
     $('.phone').appendChild(modal);
   }
   bindChatModalHandlers();
   return modal;
 }
-function openChat(key){
+async function openChat(key){
   const p=people.find(x=>personKey(x)===String(key));
   if(!p || !isMutual(p)){ showToast('Chats open after you both like each other.'); return; }
   activeChatKey=String(key);
   const modal=ensureChatModal();
   $('#chatPerson').innerHTML=`${miniAvatarMarkup(p)}<div><h3>${p.name}</h3><p>${p.distanceLabel || 'Matched'}</p></div>`;
   modal.classList.remove('hidden');
+  await loadChatMessages(activeChatKey, false);
   renderChatMessages();
+  startChatAutoRefresh();
   setTimeout(()=>$('#chatInput')?.focus(),80);
 }
-function closeChatModal(){ const modal=$('#chatModal'); if(modal) modal.classList.add('hidden'); activeChatKey=null; }
+function closeChatModal(){ const modal=$('#chatModal'); if(modal) modal.classList.add('hidden'); stopChatAutoRefresh(); activeChatKey=null; }
 function renderChatMessages(){
   if(!activeChatKey) return;
   const p=people.find(x=>personKey(x)===String(activeChatKey));
-  const msgs=getSessionChat(activeChatKey);
+  const msgs=getCachedChat(activeChatKey);
   const starter=p?.mutual?.[0] && !p.mutual[0].startsWith('Vault overlap') ? `You matched with ${p.name}. Shared signal: ${p.mutual[0]}.` : `You matched with ${p?.name || 'this person'}.`;
   $('#chatMessages').innerHTML = `<div class="chat-bubble system">${starter}</div>` + msgs.map(m=>`<div class="chat-bubble ${m.from==='me'?'mine':'theirs'}">${escapeHtml(m.text)}<span>${new Date(m.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span></div>`).join('');
   const box=$('#chatMessages'); if(box) box.scrollTop=box.scrollHeight;
 }
-function sendChatMessage(){
+async function sendChatMessage(){
   if(!activeChatKey){ showToast('Open a matched chat first.'); return; }
   const input=$('#chatInput');
   if(!input){ showToast('Chat input was not ready. Reopen the chat.'); return; }
@@ -794,13 +854,41 @@ function sendChatMessage(){
   if(!text){ input.focus(); return; }
   const p=people.find(x=>personKey(x)===String(activeChatKey));
   if(!p || !isMutual(p)){ showToast('Chats open after you both like each other.'); return; }
-  const msgs=getSessionChat(activeChatKey);
-  msgs.push({from:'me', text, at:new Date().toISOString()});
-  setSessionChat(activeChatKey, msgs);
-  input.value='';
-  renderChatMessages();
-  renderChats();
-  input.focus();
+  if(!supa || !authUser){ showToast('Sign in is required to send messages.'); return; }
+  const sendBtn=$('#chatSend');
+  if(sendBtn) sendBtn.disabled = true;
+  try{
+    const expiresAt = new Date(Date.now() + MESSAGE_RETENTION_HOURS*60*60*1000).toISOString();
+    const payload={
+      sender_id: authUser.id,
+      recipient_id: String(activeChatKey),
+      conversation_id: conversationIdFor(activeChatKey),
+      body: text,
+      expires_at: expiresAt
+    };
+    const {error}=await supa.from('fv_messages').insert(payload);
+    if(error) throw error;
+    input.value='';
+    await loadChatMessages(activeChatKey, true);
+    renderChatMessages();
+    renderChats();
+    input.focus();
+  }catch(err){ console.warn('Message send failed', err); showToast('Message failed. Run the updated message SQL schema.'); }
+  finally{ if(sendBtn) sendBtn.disabled = false; }
+}
+function startChatAutoRefresh(){
+  stopChatAutoRefresh();
+  if(!supa || !authUser || !activeChatKey) return;
+  chatRefreshTimer=setInterval(async()=>{
+    if(document.hidden || !activeChatKey) return;
+    await loadChatMessages(activeChatKey, true);
+    renderChatMessages();
+    renderChats();
+  }, CHAT_REFRESH_MS);
+}
+function stopChatAutoRefresh(){
+  if(chatRefreshTimer) clearInterval(chatRefreshTimer);
+  chatRefreshTimer=null;
 }
 function escapeHtml(v){ return String(v ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
 

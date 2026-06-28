@@ -135,3 +135,57 @@ using (
   bucket_id = 'fv-profile-photos'
   and (storage.foldername(name))[1] = auth.uid()::text
 );
+
+-- Lightweight match messaging. Messages are visible only to the sender/recipient
+-- and are treated as expired after 72 hours. The app also deletes expired rows
+-- during normal use so storage stays small without needing a paid scheduled job.
+create table if not exists public.fv_messages (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id text not null,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  recipient_id uuid not null references auth.users(id) on delete cascade,
+  body text not null check (char_length(body) between 1 and 500),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '72 hours')
+);
+
+alter table public.fv_messages add column if not exists conversation_id text;
+alter table public.fv_messages add column if not exists sender_id uuid references auth.users(id) on delete cascade;
+alter table public.fv_messages add column if not exists recipient_id uuid references auth.users(id) on delete cascade;
+alter table public.fv_messages add column if not exists body text;
+alter table public.fv_messages add column if not exists created_at timestamptz not null default now();
+alter table public.fv_messages add column if not exists expires_at timestamptz not null default (now() + interval '72 hours');
+
+alter table public.fv_messages enable row level security;
+
+drop policy if exists "Users can read their Fantasy Vault messages" on public.fv_messages;
+drop policy if exists "Users can send Fantasy Vault messages" on public.fv_messages;
+drop policy if exists "Users can delete their Fantasy Vault messages" on public.fv_messages;
+
+create policy "Users can read their Fantasy Vault messages"
+on public.fv_messages for select
+to authenticated
+using (
+  expires_at > now()
+  and (auth.uid() = sender_id or auth.uid() = recipient_id)
+);
+
+create policy "Users can send Fantasy Vault messages"
+on public.fv_messages for insert
+to authenticated
+with check (
+  auth.uid() = sender_id
+  and sender_id <> recipient_id
+  and body is not null
+  and char_length(body) between 1 and 500
+  and expires_at <= now() + interval '72 hours 5 minutes'
+);
+
+create policy "Users can delete their Fantasy Vault messages"
+on public.fv_messages for delete
+to authenticated
+using (auth.uid() = sender_id or auth.uid() = recipient_id);
+
+create index if not exists fv_messages_conversation_created_idx on public.fv_messages(conversation_id, created_at);
+create index if not exists fv_messages_sender_recipient_idx on public.fv_messages(sender_id, recipient_id, created_at);
+create index if not exists fv_messages_expires_idx on public.fv_messages(expires_at);

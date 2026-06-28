@@ -1,29 +1,17 @@
-# Fantasy Vault — Live Directory + Mutual Match Fix
+# Fantasy Vault — 72 Hour Messages Build
 
-Upload the contents of this folder directly into `https://whatmod.com/fantasy/`.
+Upload the contents of this zip directly into `/fantasy/`.
 
-This build keeps existing features and adds:
+## What changed
+- Replaced broken per-session chat with Supabase-backed messaging.
+- Messages are stored in `fv_messages` and expire after 72 hours.
+- The app cleans expired messages during normal use.
+- Chat refreshes every few seconds while open.
+- Chat previews refresh for matched users.
+- Reset/unmatch clears the current user's test chat rows.
+- Directory/profile refresh now runs every 8 seconds while the tab is active.
 
-- Automatic profile refresh every 15 seconds while the app is open.
-- Refresh on browser focus / tab return.
-- Incoming likes now appear in Matches as “Liked you”.
-- User can tap “Like back” to create a mutual match.
-- Chat only appears after both people like each other.
-- Save Profile remains the visible profile save action.
+## Required Supabase step
+Run the included `supabase-schema.sql` in the Supabase SQL Editor so the new `fv_messages` table and RLS policies exist.
 
-## Supabase requirement
-
-Run or confirm the included `supabase-schema.sql`. The directory policy must allow authenticated users to read profile rows, including `liked`, so incoming likes can be detected.
-
-
-## This build
-- Adds Reset likes & matches for testing.
-- Adds Unmatch controls on matched users.
-- Moves users out of Nearby after either side likes.
-- Adds lightweight per-session chat; messages stay in sessionStorage and are not saved to Supabase.
-
-
-## Chat send hotfix
-- Rebound chat modal handlers every time the modal opens.
-- Added explicit Send button click handling plus Enter-to-send.
-- Hardened the send function so it only sends inside mutual matches and keeps focus in the input.
+No existing profile, vault, admin, photo, or matching features were removed.
