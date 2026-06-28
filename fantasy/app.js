@@ -1981,3 +1981,112 @@ setTimeout(()=>{
   $('#coinShortcut')?.addEventListener('click', openDailyGift);
   $('#shopDailyShortcut')?.addEventListener('click', openDailyGift);
 }, 0);
+
+
+/* =========================================================
+   Afterglow admin wallet patch
+   - Centers daily gift icon via CSS above
+   - Adds owner-only Glow Coin adjustment controls for users
+   - Additive only; existing wallet/shop functions remain intact
+   ========================================================= */
+let adminUsers = [];
+let adminSelectedUserId = null;
+
+function adminUserName(row){
+  const p=row?.profile||{};
+  return p.displayName || p.name || row?.email || 'Member';
+}
+function adminUserCoins(row){
+  const rewards=(row?.profile||{}).rewards || {};
+  return Number(rewards.glowCoins || 0);
+}
+function renderAdminUsers(){
+  const list=$('#adminUserList');
+  if(!list) return;
+  const q=($('#adminUserSearch')?.value||'').toLowerCase().trim();
+  const rows=(adminUsers||[]).filter(row=>{
+    const text=`${adminUserName(row)} ${row.email||''} ${row.user_id||''}`.toLowerCase();
+    return !q || text.includes(q);
+  });
+  list.innerHTML=rows.map(row=>{
+    const name=adminEscape(adminUserName(row));
+    const email=adminEscape(row.email||'No email');
+    const coins=adminUserCoins(row);
+    return `<button class="admin-list-item ${row.user_id===adminSelectedUserId?'selected':''}" type="button" data-admin-user-id="${adminEscape(row.user_id)}">
+      <span class="admin-list-emoji">🪙</span>
+      <span><b>${name}</b><small>${email}</small></span>
+      <span class="admin-coin-badge">${coins}</span>
+    </button>`;
+  }).join('') || '<div class="admin-empty">No users found yet.</div>';
+  list.querySelectorAll('[data-admin-user-id]').forEach(btn=>btn.onclick=()=>selectAdminUser(btn.dataset.adminUserId));
+  renderAdminSelectedUser();
+}
+function renderAdminSelectedUser(){
+  const box=$('#adminSelectedUserCard');
+  if(!box) return;
+  const row=(adminUsers||[]).find(r=>r.user_id===adminSelectedUserId);
+  if(!row){ box.className='admin-selected-user empty'; box.textContent='Select a user to edit their Glow Coin balance.'; return; }
+  box.className='admin-selected-user';
+  box.innerHTML=`<b>${adminEscape(adminUserName(row))}</b><span>${adminEscape(row.email||'No email')}</span><div class="admin-user-meta"><small>User ID: ${adminEscape(String(row.user_id||'').slice(0,8))}…</small></div><strong>${adminUserCoins(row)} Glow Coins</strong>`;
+}
+function selectAdminUser(userId){
+  adminSelectedUserId=userId;
+  renderAdminUsers();
+}
+async function loadAdminUsers(){
+  if(!isAdmin()) return;
+  if(!supa || !authUser){ showToast('Supabase unavailable.'); return; }
+  try{
+    const {data,error}=await supa.from('fv_profiles').select('id,user_id,email,profile,updated_at').order('updated_at',{ascending:false}).limit(250);
+    if(error) throw error;
+    adminUsers=data||[];
+    if(adminSelectedUserId && !adminUsers.some(r=>r.user_id===adminSelectedUserId)) adminSelectedUserId=null;
+    renderAdminUsers();
+  }catch(err){ console.warn('Admin users load failed',err); showToast('Could not load users. Run the updated SQL admin wallet policy.'); }
+}
+async function adjustAdminUserCoins({setExact=false}={}){
+  if(!isAdmin()) return showToast('Admin access is restricted.');
+  const row=(adminUsers||[]).find(r=>r.user_id===adminSelectedUserId);
+  if(!row) return showToast('Select a user first.');
+  const amount=Number($('#adminCoinAmount')?.value || 0);
+  if(!Number.isFinite(amount)) return showToast('Enter a valid coin amount.');
+  const profile={...(row.profile||{})};
+  const rewards={...(profile.rewards||{})};
+  const current=Number(rewards.glowCoins||0);
+  rewards.glowCoins=Math.max(0, Math.round(setExact ? amount : current + amount));
+  rewards.adminLastAdjustment={
+    by:authUser.email,
+    amount:setExact ? rewards.glowCoins-current : amount,
+    mode:setExact?'set':'adjust',
+    reason:($('#adminCoinReason')?.value||'').trim(),
+    at:new Date().toISOString()
+  };
+  profile.rewards=rewards;
+  try{
+    const {error}=await supa.from('fv_profiles').update({profile,updated_at:new Date().toISOString()}).eq('user_id',row.user_id);
+    if(error) throw error;
+    row.profile=profile;
+    if(row.user_id===authUser.id){ state.rewards=rewards; state.profile.rewards=rewards; save(); updateGlowCoinDisplays(); renderDailyGift(); renderShop(); }
+    $('#adminCoinAmount').value='';
+    renderAdminUsers();
+    showToast(`${adminUserName(row)} now has ${rewards.glowCoins} Glow Coins.`);
+  }catch(err){ console.warn('Admin coin update failed',err); showToast('Coin update failed. Run updated SQL admin wallet policy.'); }
+}
+function bindAdminWalletTools(){
+  const reload=$('#adminUsersReload'); if(reload && !reload.dataset.bound){ reload.dataset.bound='1'; reload.onclick=loadAdminUsers; }
+  const search=$('#adminUserSearch'); if(search && !search.dataset.bound){ search.dataset.bound='1'; search.oninput=renderAdminUsers; }
+  const form=$('#adminCoinForm'); if(form && !form.dataset.bound){ form.dataset.bound='1'; form.onsubmit=e=>{e.preventDefault(); adjustAdminUserCoins({setExact:false});}; }
+  const setBtn=$('#adminSetCoins'); if(setBtn && !setBtn.dataset.bound){ setBtn.dataset.bound='1'; setBtn.onclick=()=>adjustAdminUserCoins({setExact:true}); }
+}
+
+const _walletPatchBindAdminStudio = bindAdminStudio;
+bindAdminStudio = function(){
+  _walletPatchBindAdminStudio();
+  bindAdminWalletTools();
+};
+const _walletPatchRenderAdminWorkspace = renderAdminWorkspace;
+renderAdminWorkspace = function(){
+  _walletPatchRenderAdminWorkspace();
+  bindAdminWalletTools();
+  if(isAdmin()) loadAdminUsers();
+};

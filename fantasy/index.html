@@ -141,6 +141,7 @@
             <button class="admin-tab active" data-admin-pane="cards">🎭 Cards</button>
             <button class="admin-tab" data-admin-pane="categories">🌈 Categories</button>
             <button class="admin-tab" data-admin-pane="answers">✅ Answers</button>
+            <button class="admin-tab" data-admin-pane="users">🪙 Users</button>
             <button class="admin-tab" data-admin-pane="tools">🧰 Tools</button>
           </div>
 
@@ -222,6 +223,31 @@
                   <button id="adminAnswerSave" type="submit" class="primary full">Save Answer</button>
                   <button id="adminAnswerDelete" type="button" class="danger full">Delete Answer</button>
                 </div>
+              </form>
+            </div>
+          </div>
+
+
+          <div id="adminPaneUsers" class="admin-pane">
+            <div class="admin-two-col">
+              <div class="admin-list-card">
+                <div class="admin-list-head">
+                  <h3>User Wallets</h3>
+                  <button id="adminUsersReload" class="ghost-mini" type="button">Reload</button>
+                </div>
+                <input id="adminUserSearch" class="admin-search-full" placeholder="Search users by name or email..." />
+                <div id="adminUserList" class="admin-list admin-user-list"></div>
+              </div>
+              <form id="adminCoinForm" class="edit-card admin-form">
+                <h3>Adjust Glow Coins</h3>
+                <div id="adminSelectedUserCard" class="admin-selected-user empty">Select a user to edit their Glow Coin balance.</div>
+                <label>Coins to add or subtract<input id="adminCoinAmount" type="number" step="1" placeholder="Example: 25 or -10" /></label>
+                <label>Admin note<input id="adminCoinReason" placeholder="Reason, event, bonus, correction..." /></label>
+                <div class="admin-grid">
+                  <button id="adminAddCoins" type="submit" class="primary full">Add / Subtract Coins</button>
+                  <button id="adminSetCoins" type="button" class="ghost full">Set Exact Balance</button>
+                </div>
+                <p class="tiny-note">This updates the selected user's profile rewards in Supabase. Existing shop/inventory features are unchanged.</p>
               </form>
             </div>
           </div>

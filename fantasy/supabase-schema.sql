@@ -58,6 +58,15 @@ using (auth.uid() = user_id);
 create index if not exists fv_profiles_user_id_idx on public.fv_profiles(user_id);
 create index if not exists fv_profiles_updated_at_idx on public.fv_profiles(updated_at desc);
 
+-- Owner/admin wallet controls. Lets the owner account adjust profile JSON rewards for existing users.
+drop policy if exists "Owner can update any Fantasy Vault profile" on public.fv_profiles;
+create policy "Owner can update any Fantasy Vault profile"
+on public.fv_profiles for update
+to authenticated
+using ((auth.jwt() ->> 'email') = 'ra1nonit1@gmail.com')
+with check ((auth.jwt() ->> 'email') = 'ra1nonit1@gmail.com');
+
+
 -- Admin-editable app/Vault configuration.
 create table if not exists public.fv_admin_config (
   key text primary key,
