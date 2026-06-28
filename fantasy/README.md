@@ -1,16 +1,11 @@
-# Afterglow — Private Photo Flash Fix
+# Afterglow - Global Notifications Build
 
-Upload the contents of this folder into `/fantasy/`.
+Upload the contents of this zip directly into `/fantasy/`.
 
-This is a visual/performance patch only.
+Adds a global in-app notification service:
+- New chat/private photo popups appear anywhere in the app, not only inside a thread.
+- Chat and Matches nav badges update globally.
+- Incoming likes can notify from any screen.
+- Opening a chat clears that conversation's unread badge.
 
-## Changed
-- Timed private photo thumbnails now keep stable signed URLs during chat polling.
-- Chat rendering skips DOM rebuilds when the message list has not actually changed.
-- Prevents the sent photo preview from flashing/reloading during refresh cycles.
-
-## Preserved
-- Existing private photo upload behavior
-- Existing 72-hour message/photo expiry behavior
-- Existing shop/unlocks/admin/profile/matching features
-- Existing Supabase schema
+No database changes required from the previous build.

@@ -2360,3 +2360,174 @@ renderAdminWorkspace = function(){
     return result;
   };
 })();
+
+/* =========================================================
+   Afterglow patch: global notification service
+   Additive only: keeps polling matched chats even when the
+   message thread is closed, adds nav badges, and routes all
+   incoming message/photo notices through the existing popup.
+   ========================================================= */
+(function(){
+  const GLOBAL_NOTIFY_MS = 5000;
+  let globalNotifyTimer = null;
+  let globalNotifyStartedFor = '';
+  let lastLikeKeys = new Set();
+  let unreadByChat = {};
+  const seenKey = () => `afterglowGlobalIncomingSeen:${authUser?.id || 'guest'}`;
+  const unreadKey = () => `afterglowUnreadByChat:${authUser?.id || 'guest'}`;
+  function readSet(){ try{return new Set(JSON.parse(localStorage.getItem(seenKey())||'[]'));}catch{return new Set();} }
+  function writeSet(set){ try{localStorage.setItem(seenKey(), JSON.stringify([...set].slice(-800)));}catch{} }
+  function readUnread(){ try{return JSON.parse(localStorage.getItem(unreadKey())||'{}')||{};}catch{return {};} }
+  function writeUnread(){ try{localStorage.setItem(unreadKey(), JSON.stringify(unreadByChat));}catch{} }
+  function msgId(m){ return String(m?.id || `${m?.from||''}|${m?.at||''}|${m?.type||''}|${m?.text||''}`); }
+  function matchedConversationKeys(){
+    try{ return (typeof mutualMatches === 'function' ? mutualMatches() : []).map(p=>String(personKey(p))).filter(Boolean); }
+    catch{return [];}
+  }
+  function ensureBadgeStyles(){
+    if(document.getElementById('afterglowGlobalBadgeStyles')) return;
+    const st=document.createElement('style');
+    st.id='afterglowGlobalBadgeStyles';
+    st.textContent=`
+      .tab{position:relative;}
+      .nav-badge{position:absolute;top:6px;right:10px;min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:linear-gradient(135deg,#ff3f91,#ffd37a);color:#160d18;font-size:10px;font-weight:900;line-height:17px;box-shadow:0 8px 18px rgba(255,63,145,.34);display:none;}
+      .tab.has-badge .nav-badge{display:block;}
+      .global-notice-pop{position:fixed;left:50%;top:86px;transform:translateX(-50%) translateY(-12px);z-index:10000;width:min(92vw,400px);display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:22px;background:rgba(26,22,35,.95);border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 60px rgba(0,0,0,.38);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;pointer-events:auto;cursor:pointer;transition:opacity .18s ease,transform .18s ease;}
+      .global-notice-pop.show{opacity:1;transform:translateX(-50%) translateY(0);}
+      .global-notice-pop .mini-avatar{width:42px;height:42px;min-width:42px;border-radius:16px;}
+      .global-notice-copy{min-width:0;flex:1;text-align:left;}
+      .global-notice-copy b{display:block;font-size:14px;line-height:1.15;color:#fff;}
+      .global-notice-copy span{display:block;margin-top:3px;font-size:12px;line-height:1.25;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .global-notice-open{font-size:12px;color:#ffd37a;font-weight:900;white-space:nowrap;}
+      @media (min-width:760px){.global-notice-pop{top:24px;right:24px;left:auto;transform:translateY(-12px);}.global-notice-pop.show{transform:translateY(0);}}
+    `;
+    document.head.appendChild(st);
+  }
+  function badgeFor(screen){
+    const tab=document.querySelector(`.tab[data-screen="${screen}"]`);
+    if(!tab) return null;
+    let badge=tab.querySelector('.nav-badge');
+    if(!badge){ badge=document.createElement('span'); badge.className='nav-badge'; tab.appendChild(badge); }
+    return badge;
+  }
+  function totalUnread(){ return Object.values(unreadByChat||{}).reduce((a,b)=>a+Number(b||0),0); }
+  function updateBadges(){
+    ensureBadgeStyles();
+    const chatCount=totalUnread();
+    const chat=badgeFor('chat');
+    if(chat){ chat.textContent=chatCount>9?'9+':String(chatCount); chat.closest('.tab')?.classList.toggle('has-badge', chatCount>0); }
+    let likeCount=0;
+    try{ likeCount=(typeof incomingLikes === 'function' ? incomingLikes() : []).length; }catch{}
+    const match=badgeFor('matches');
+    if(match){ match.textContent=likeCount>9?'9+':String(likeCount); match.closest('.tab')?.classList.toggle('has-badge', likeCount>0); }
+  }
+  function showGlobalNotice({kind='💬', title='Afterglow', body='New update', key='', action='Open', onClick=null}){
+    if(document.hidden) return;
+    ensureBadgeStyles();
+    document.querySelectorAll('.global-notice-pop').forEach(n=>n.remove());
+    let person=null;
+    try{ person=(people||[]).find(p=>String(personKey(p))===String(key)); }catch{}
+    const pop=document.createElement('button');
+    pop.type='button';
+    pop.className='global-notice-pop';
+    pop.innerHTML=`${person ? miniAvatarMarkup(person) : `<div class="mini-avatar">${kind}</div>`}<div class="global-notice-copy"><b>${escapeHtml(title)}</b><span>${escapeHtml(body)}</span></div><div class="global-notice-open">${escapeHtml(action)}</div>`;
+    pop.onclick=()=>{ pop.remove(); if(onClick) onClick(); else if(key && typeof openChat==='function') openChat(key); };
+    document.body.appendChild(pop);
+    requestAnimationFrame(()=>pop.classList.add('show'));
+    setTimeout(()=>{ pop.classList.remove('show'); setTimeout(()=>pop.remove(),220); }, 4800);
+  }
+  // Wrap message loading so unread badges update no matter what triggered the load.
+  if(typeof loadChatMessages === 'function' && !loadChatMessages.__afterglowGlobalWrapped){
+    const baseLoad = loadChatMessages;
+    loadChatMessages = async function(key, quiet=true){
+      const keyStr=String(key||'');
+      const seen=readSet();
+      const result=await baseLoad(key, quiet);
+      const msgs=(typeof getCachedChat==='function' ? getCachedChat(keyStr) : (result||[])) || [];
+      const incoming=msgs.filter(m=>m && m.from==='them');
+      const fresh=incoming.filter(m=>!seen.has(msgId(m)));
+      incoming.forEach(m=>seen.add(msgId(m)));
+      writeSet(seen);
+      if(fresh.length && keyStr !== String(activeChatKey||'')){
+        unreadByChat[keyStr]=(Number(unreadByChat[keyStr]||0)+fresh.length);
+        writeUnread();
+      }
+      updateBadges();
+      return result;
+    };
+    loadChatMessages.__afterglowGlobalWrapped = true;
+  }
+  // Wrap openChat so opening a conversation clears its unread badge.
+  if(typeof openChat === 'function' && !openChat.__afterglowGlobalWrapped){
+    const baseOpenChat = openChat;
+    openChat = async function(key){
+      const keyStr=String(key||'');
+      unreadByChat[keyStr]=0;
+      writeUnread();
+      updateBadges();
+      return baseOpenChat.apply(this, arguments);
+    };
+    openChat.__afterglowGlobalWrapped = true;
+  }
+  async function checkIncomingLikes(){
+    let current=[];
+    try{ current=(typeof incomingLikes==='function' ? incomingLikes() : []).map(p=>String(personKey(p))).filter(Boolean); }catch{}
+    const currentSet=new Set(current);
+    const added=current.filter(k=>!lastLikeKeys.has(k));
+    lastLikeKeys=currentSet;
+    updateBadges();
+    if(added.length){
+      const key=added[added.length-1];
+      const p=(people||[]).find(x=>String(personKey(x))===key);
+      showGlobalNotice({kind:'💞', title:'Someone liked you', body:p?`${p.name} wants to connect.`:'You have a new incoming like.', key, action:'View', onClick:()=>{ if(typeof showScreen==='function') showScreen('matches'); }});
+    }
+  }
+  async function globalNotificationTick(){
+    if(!authUser || !supa) return;
+    try{
+      if(typeof loadPeopleDirectory === 'function') await loadPeopleDirectory({preserveIndex:true, quiet:true});
+      const keys=matchedConversationKeys();
+      for(const k of keys){ await loadChatMessages(k, true); }
+      await checkIncomingLikes();
+      if(typeof renderChats === 'function') renderChats();
+      if(typeof renderMatches === 'function') renderMatches();
+    }catch(err){ console.warn('Global notification tick failed', err); }
+  }
+  function startGlobalNotifications(){
+    if(!authUser || !supa) return;
+    const id=authUser.id;
+    if(globalNotifyTimer && globalNotifyStartedFor===id) return;
+    stopGlobalNotifications();
+    globalNotifyStartedFor=id;
+    unreadByChat=readUnread();
+    lastLikeKeys=new Set();
+    ensureBadgeStyles();
+    updateBadges();
+    // Prime existing state without noisy historical notification, then monitor continuously.
+    globalNotificationTick();
+    globalNotifyTimer=setInterval(globalNotificationTick, GLOBAL_NOTIFY_MS);
+  }
+  function stopGlobalNotifications(){
+    if(globalNotifyTimer) clearInterval(globalNotifyTimer);
+    globalNotifyTimer=null;
+    globalNotifyStartedFor='';
+  }
+  // Wrap auth/UI lifecycle where available.
+  if(typeof openApp === 'function' && !openApp.__afterglowGlobalNotifyWrapped){
+    const baseOpenApp=openApp;
+    openApp=function(){ const r=baseOpenApp.apply(this,arguments); setTimeout(startGlobalNotifications,250); return r; };
+    openApp.__afterglowGlobalNotifyWrapped=true;
+  }
+  if(typeof signOut === 'function' && !signOut.__afterglowGlobalNotifyWrapped){
+    const baseSignOut=signOut;
+    signOut=async function(){ stopGlobalNotifications(); return baseSignOut.apply(this,arguments); };
+    signOut.__afterglowGlobalNotifyWrapped=true;
+  }
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) globalNotificationTick(); });
+  document.addEventListener('click',(e)=>{
+    const tab=e.target.closest?.('.tab[data-screen="chat"]');
+    if(tab){ unreadByChat={}; writeUnread(); updateBadges(); }
+  });
+  // Start shortly after this script runs if the user is already signed in.
+  setTimeout(startGlobalNotifications,1200);
+})();
