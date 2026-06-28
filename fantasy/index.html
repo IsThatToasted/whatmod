@@ -32,7 +32,7 @@
   <main id="app" class="phone-shell hidden">
     <section class="phone glass">
       <header class="app-top">
-        <button class="round ghost-mini" id="profileShortcut">☰</button>
+        <button class="round ghost-mini profile-nav-button" id="profileShortcut" title="Open profile"><span class="nav-avatar" id="topProfileAvatar">👤</span></button>
         <div class="logo-lockup"><div class="tiny-icon">🔐</div><span>Fantasy Vault</span></div>
         <button class="round ghost-mini" id="filterOpen">⚙</button>
       </header>
@@ -107,23 +107,115 @@
 
 
       <section id="admin" class="screen admin-screen">
-        <div class="screen-title"><h2>Admin Studio 🛠️</h2><p>Build and tune Fantasy Vault content. Only <b>ra1nonit1@gmail.com</b> can save changes.</p></div>
+        <div class="screen-title">
+          <h2>Admin Studio 🛠️</h2>
+          <p>Build Fantasy Vault from forms instead of JSON. Owner-only saves for <b>ra1nonit1@gmail.com</b>.</p>
+        </div>
         <div id="adminLock" class="admin-lock hidden">Admin access is restricted to the owner account.</div>
         <div id="adminPanel" class="admin-panel hidden">
-          <div class="admin-grid">
-            <button id="adminSeed" class="primary full">Seed / Repair Default Vault Config</button>
-            <button id="adminReload" class="ghost full">Reload From Supabase</button>
+          <div class="admin-hero glass">
+            <div><span class="admin-kicker">Live content controls</span><h3>Vault Builder</h3><p>Add categories, fantasy cards, and answer choices. Changes save to Supabase and immediately refresh the public Vault.</p></div>
+            <div class="admin-actions"><button id="adminReload" class="ghost full">Reload</button><button id="adminSeed" class="primary full">Seed Defaults</button></div>
           </div>
-          <div class="edit-card admin-editor">
-            <label>Answer options JSON<textarea id="adminLabels" spellcheck="false"></textarea></label>
-            <label>Category metadata JSON<textarea id="adminCategories" spellcheck="false"></textarea></label>
-            <label>Vault cards JSON<textarea id="adminCards" spellcheck="false"></textarea></label>
+          <div class="admin-stats">
+            <div><b id="adminCardCount">0</b><span>Vault cards</span></div>
+            <div><b id="adminCategoryCount">0</b><span>Categories</span></div>
+            <div><b id="adminAnswerCount">0</b><span>Answer choices</span></div>
+            <div><b id="adminLastSaved">Not saved yet</b><span>Status</span></div>
           </div>
-          <div class="admin-grid">
-            <button id="adminSave" class="primary full">Save Admin Config</button>
-            <button id="adminResetDefaults" class="danger full">Reset Editor To App Defaults</button>
+          <div class="admin-tabs">
+            <button class="admin-tab active" data-admin-pane="cards">🎭 Cards</button>
+            <button class="admin-tab" data-admin-pane="categories">🌈 Categories</button>
+            <button class="admin-tab" data-admin-pane="answers">✅ Answers</button>
+            <button class="admin-tab" data-admin-pane="tools">🧰 Tools</button>
           </div>
-          <p class="tiny-note">Tip: categories use the existing theme classes like theme-romance, theme-fantasy, theme-power, theme-boundaries, etc.</p>
+
+          <div id="adminPaneCards" class="admin-pane active">
+            <div class="admin-two-col">
+              <div class="admin-list-card">
+                <div class="admin-list-head"><h3>Vault Cards</h3><input id="adminCardSearch" placeholder="Search cards..." /></div>
+                <div id="adminCardList" class="admin-list"></div>
+              </div>
+              <form id="adminCardForm" class="edit-card admin-form">
+                <h3 id="adminCardFormTitle">Add / Edit Card</h3>
+                <label>Card ID<input id="adminCardId" placeholder="example: praise" /></label>
+                <label>Title<input id="adminCardTitle" placeholder="Praise and encouragement" /></label>
+                <label>Category<select id="adminCardCat"></select></label>
+                <label>Description<textarea id="adminCardDesc" placeholder="Short, tasteful explanation users will see..."></textarea></label>
+                <div class="admin-grid">
+                  <button id="adminCardNew" type="button" class="ghost full">New Card</button>
+                  <button id="adminCardSave" type="submit" class="primary full">Save Card</button>
+                  <button id="adminCardDuplicate" type="button" class="ghost full">Duplicate</button>
+                  <button id="adminCardDelete" type="button" class="danger full">Delete</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="adminPaneCategories" class="admin-pane">
+            <div class="admin-two-col">
+              <div class="admin-list-card">
+                <div class="admin-list-head"><h3>Categories</h3><button id="adminCategoryNew" class="ghost-mini" type="button">+ New</button></div>
+                <div id="adminCategoryList" class="admin-list"></div>
+              </div>
+              <form id="adminCategoryForm" class="edit-card admin-form">
+                <h3>Add / Edit Category</h3>
+                <label>Category Name<input id="adminCategoryName" placeholder="Romance" /></label>
+                <label>Emoji<input id="adminCategoryEmoji" placeholder="🌹" maxlength="4" /></label>
+                <label>Color Theme<select id="adminCategoryTheme">
+                  <option value="theme-romance">Romance / coral</option>
+                  <option value="theme-fantasy">Fantasy / purple</option>
+                  <option value="theme-power">Power / red</option>
+                  <option value="theme-sensory">Sensory / pink</option>
+                  <option value="theme-communication">Communication / blue</option>
+                  <option value="theme-adventure">Adventure / gold</option>
+                  <option value="theme-privacy">Privacy / indigo</option>
+                  <option value="theme-lifestyle">Lifestyle / violet</option>
+                  <option value="theme-drive">Drive / flame</option>
+                  <option value="theme-care">Care / soft</option>
+                  <option value="theme-boundaries">Boundaries / warning</option>
+                </select></label>
+                <div class="admin-grid">
+                  <button id="adminCategorySave" type="submit" class="primary full">Save Category</button>
+                  <button id="adminCategoryDelete" type="button" class="danger full">Delete Category</button>
+                </div>
+                <p class="tiny-note">Deleting a category does not delete cards automatically; reassign or delete those cards first.</p>
+              </form>
+            </div>
+          </div>
+
+          <div id="adminPaneAnswers" class="admin-pane">
+            <div class="admin-two-col">
+              <div class="admin-list-card">
+                <div class="admin-list-head"><h3>Answer Choices</h3><button id="adminAnswerNew" class="ghost-mini" type="button">+ New</button></div>
+                <div id="adminAnswerList" class="admin-list"></div>
+              </div>
+              <form id="adminAnswerForm" class="edit-card admin-form">
+                <h3>Add / Edit Answer</h3>
+                <label>Answer Key<input id="adminAnswerKey" placeholder="love" /></label>
+                <label>Label<input id="adminAnswerLabel" placeholder="😍 Love" /></label>
+                <div class="admin-grid">
+                  <button id="adminAnswerSave" type="submit" class="primary full">Save Answer</button>
+                  <button id="adminAnswerDelete" type="button" class="danger full">Delete Answer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="adminPaneTools" class="admin-pane">
+            <div class="admin-two-col">
+              <div class="edit-card admin-form">
+                <h3>Bulk Tools</h3>
+                <button id="adminExportJson" class="ghost full" type="button">Export Config JSON</button>
+                <button id="adminImportJson" class="ghost full" type="button">Import Config From Box</button>
+                <button id="adminResetDefaults" class="danger full" type="button">Load App Defaults Into Editor</button>
+                <button id="adminSaveAll" class="primary full" type="button">Save All To Supabase</button>
+              </div>
+              <div class="edit-card admin-editor">
+                <label>Config JSON<textarea id="adminJsonBox" spellcheck="false" placeholder="Export or paste full config here..."></textarea></label>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -143,7 +235,7 @@
         <button class="tab" data-screen="vault"><span>🔐</span>Vault</button>
         <button class="tab" data-screen="chat"><span>💬</span>Chat</button>
         <button class="tab hidden" id="adminTab" data-screen="admin"><span>🛠️</span>Admin</button>
-        <button class="tab" data-screen="profile"><span>👤</span>Profile</button>
+        <button class="tab profile-tab" data-screen="profile"><span class="profile-tab-icon" id="bottomProfileAvatar">👤</span>Profile</button>
       </nav>
     </section>
   </main>

@@ -1,55 +1,30 @@
-# Fantasy Vault — Profile Photos + Admin Studio
+# Fantasy Vault — Real Admin Dashboard Build
 
-Upload the **contents** of this folder directly into `https://whatmod.com/fantasy/`.
+Upload the contents of this folder directly into `whatmod.com/fantasy/`.
 
 ## What changed
 
-- Kept the current mobile dating-app UI direction.
-- Added user profile photo upload/change/remove.
-- Photos save locally first, then sync to Supabase Storage when configured.
-- Added owner-only Admin Studio tab.
-- Admin Studio is visible only when signed in as `ra1nonit1@gmail.com`.
-- Admin can edit:
-  - Vault answer options
-  - Vault categories, emojis, and color themes
-  - Vault cards/questions
-- Admin config is stored in `fv_admin_config` and loaded by signed-in users.
+- Expanded Admin Studio for `ra1nonit1@gmail.com` only.
+- Form-based Vault card creation/editing/deleting.
+- Form-based category creation/editing/deleting.
+- Form-based answer choice creation/editing/deleting.
+- Bulk JSON import/export is still available under Tools, but no longer required for normal editing.
+- Changes save to Supabase `fv_admin_config` and refresh the public Vault immediately.
+- Profile avatar/nav avatar support remains included.
 
-## Required Supabase setup
+## Required Supabase pieces
 
-Run `supabase-schema.sql` in Supabase SQL Editor.
+Run `supabase-schema.sql` if you have not already.
 
-It creates/repairs:
+Make sure Supabase Auth URL Configuration uses:
 
-- `fv_profiles`
-- `fv_admin_config`
-- `fv-profile-photos` storage bucket
-- RLS policies for users and admin-only config editing
+- Site URL: `https://whatmod.com/fantasy/`
+- Redirect URLs:
+  - `https://whatmod.com/fantasy/`
+  - `https://whatmod.com/fantasy`
 
-## Admin workflow
+## Admin access
 
-1. Sign in using Google as `ra1nonit1@gmail.com`.
-2. The Admin tab appears in the bottom navigation.
-3. Click **Seed / Repair Default Vault Config** the first time.
-4. Edit JSON for answer options, categories, or cards.
-5. Click **Save Admin Config**.
+The Admin tab only appears when the signed-in Google account email is:
 
-## OAuth reminder
-
-Google OAuth client redirect URI should stay:
-
-```txt
-https://gqkkdocvfstbsekxyrbo.supabase.co/auth/v1/callback
-```
-
-Supabase **Authentication → URL Configuration** should use:
-
-```txt
-Site URL:
-https://whatmod.com/fantasy/
-
-Redirect URLs:
-https://whatmod.com/fantasy/
-https://whatmod.com/fantasy
-https://whatmod.com/fantasy/**
-```
+`ra1nonit1@gmail.com`

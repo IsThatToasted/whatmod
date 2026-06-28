@@ -395,19 +395,29 @@ function openApp(){ $('#ageGate').classList.add('hidden'); $('#app').classList.r
 function closeApp(){ $('#app').classList.add('hidden'); $('#ageGate').classList.remove('hidden'); }
 function showScreen(id){ $$('.screen').forEach(s=>s.classList.toggle('active-screen',s.id===id)); $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.screen===id)); }
 function updateAvatar(){
-  const el=$('.profile-avatar'); if(!el) return;
+  const initial=(state.profile.displayName||'V').trim()[0]?.toUpperCase()||'V';
   const url=state.profile.avatarUrl;
-  if(url){
-    el.textContent='';
-    el.style.backgroundImage=`url("${url}")`;
-    el.style.backgroundSize='cover';
-    el.style.backgroundPosition='center';
-    el.classList.add('has-photo');
-  }else{
-    el.style.backgroundImage='';
-    el.classList.remove('has-photo');
-    el.textContent=(state.profile.displayName||'V').trim()[0]?.toUpperCase()||'V';
-  }
+
+  const profileHero=$('.profile-avatar');
+  const navAvatars=[$('#topProfileAvatar'), $('#bottomProfileAvatar')].filter(Boolean);
+
+  const applyAvatar=(el, fallbackText)=>{
+    if(!el) return;
+    if(url){
+      el.textContent='';
+      el.style.backgroundImage=`url("${url}")`;
+      el.style.backgroundSize='cover';
+      el.style.backgroundPosition='center';
+      el.classList.add('has-photo');
+    }else{
+      el.style.backgroundImage='';
+      el.classList.remove('has-photo');
+      el.textContent=fallbackText;
+    }
+  };
+
+  applyAvatar(profileHero, initial);
+  navAvatars.forEach(el=>applyAvatar(el, el.id === 'bottomProfileAvatar' ? '👤' : initial));
 }
 function orderedPeople(){ let arr=[...people]; if(mode==='nearby') arr.sort((a,b)=>a.distance-b.distance); if(mode==='compatible') arr.sort((a,b)=>b.score-a.score); if(mode==='new') arr.reverse(); return arr.filter(p=>!state.passed.includes(p.name)); }
 function renderStack(){
@@ -430,4 +440,251 @@ function renderVault(){
 function renderVaultStats(){ const vals=Object.values(state.ratings); $('#ratedCount').textContent=vals.length; $('#limitCount').textContent=vals.filter(v=>v==='limit').length; $('#vaultPct').textContent=(vaultCards.length?Math.round(vals.length/vaultCards.length*100):0)+'%'; }
 function renderMatches(){ const liked=people.filter(p=>state.liked.includes(p.name)); $('#matchesList').innerHTML=(liked.length?liked:people.slice(0,3)).map(p=>`<article class="match-card"><div class="mini-avatar" style="background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})">${p.initial}</div><div><h3>${p.name}, ${p.age}</h3><p>${p.distance} miles away • ${p.mutual[0]} + more</p></div><span class="score-badge">${p.score}%</span></article>`).join(''); }
 function renderChats(){ const liked=people.filter(p=>state.liked.includes(p.name)); const rows=(liked.length?liked:people.slice(0,3)); $('#chatList').innerHTML=rows.map(p=>`<article class="chat-row"><div class="mini-avatar" style="background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})">${p.initial}</div><div><h3>${p.name}</h3><p>You both marked ${p.mutual[0]} as compatible. Try asking what makes it exciting.</p></div></article>`).join(''); }
+
+// Real Admin Studio overrides: form-based Vault/category/answer management.
+let adminSelectedCardId = null;
+let adminSelectedCategory = null;
+let adminSelectedAnswerKey = null;
+let adminStudioBound = false;
+
+function adminEscape(v){ return String(v ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
+function adminSlug(v){ return String(v||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,64) || `card-${Date.now()}`; }
+function adminConfigObject(){ return {labels, categories:categoryMeta, cards:vaultCards}; }
+function currentAdminConfig(){ return adminConfigObject(); }
+
+function fillAdminEditors(cfg=currentAdminConfig()){
+  const box = $('#adminJsonBox');
+  if(box) box.value = JSON.stringify(cfg, null, 2);
+}
+
+function parseAdminEditors(){
+  const box = $('#adminJsonBox');
+  if(box && box.value.trim()) return JSON.parse(box.value);
+  return adminConfigObject();
+}
+
+function resetAdminEditorsToDefaults(){
+  const cfg = {labels:structuredClone(DEFAULT_LABELS), categories:structuredClone(DEFAULT_CATEGORY_META), cards:structuredClone(DEFAULT_VAULT_CARDS)};
+  applyAdminConfig(cfg, true);
+  localStorage.setItem('fvAdminConfigCache', JSON.stringify(cfg));
+  fillAdminEditors(cfg);
+  adminSelectedCardId = null;
+  adminSelectedCategory = null;
+  adminSelectedAnswerKey = null;
+  renderAdminWorkspace();
+  showToast('Defaults loaded into editor. Click Save All to publish.');
+}
+
+function bindAdminStudio(){
+  if(adminStudioBound) return;
+  adminStudioBound = true;
+  $$('.admin-tab').forEach(btn=>btn.onclick=()=>{
+    $$('.admin-tab').forEach(b=>b.classList.toggle('active', b===btn));
+    $$('.admin-pane').forEach(p=>p.classList.toggle('active', p.id === `adminPane${btn.dataset.adminPane[0].toUpperCase()+btn.dataset.adminPane.slice(1)}`));
+  });
+  const cardSearch=$('#adminCardSearch'); if(cardSearch) cardSearch.oninput=renderAdminCards;
+  const cardNew=$('#adminCardNew'); if(cardNew) cardNew.onclick=()=>selectAdminCard(null);
+  const cardDup=$('#adminCardDuplicate'); if(cardDup) cardDup.onclick=duplicateAdminCard;
+  const cardDelete=$('#adminCardDelete'); if(cardDelete) cardDelete.onclick=deleteAdminCard;
+  const cardForm=$('#adminCardForm'); if(cardForm) cardForm.onsubmit=e=>{e.preventDefault(); saveAdminCard();};
+
+  const catNew=$('#adminCategoryNew'); if(catNew) catNew.onclick=()=>selectAdminCategory(null);
+  const catDelete=$('#adminCategoryDelete'); if(catDelete) catDelete.onclick=deleteAdminCategory;
+  const catForm=$('#adminCategoryForm'); if(catForm) catForm.onsubmit=e=>{e.preventDefault(); saveAdminCategory();};
+
+  const ansNew=$('#adminAnswerNew'); if(ansNew) ansNew.onclick=()=>selectAdminAnswer(null);
+  const ansDelete=$('#adminAnswerDelete'); if(ansDelete) ansDelete.onclick=deleteAdminAnswer;
+  const ansForm=$('#adminAnswerForm'); if(ansForm) ansForm.onsubmit=e=>{e.preventDefault(); saveAdminAnswer();};
+
+  const exportBtn=$('#adminExportJson'); if(exportBtn) exportBtn.onclick=()=>{ fillAdminEditors(); showToast('Config exported to JSON box.'); };
+  const importBtn=$('#adminImportJson'); if(importBtn) importBtn.onclick=()=>importAdminJson();
+  const saveAll=$('#adminSaveAll'); if(saveAll) saveAll.onclick=()=>saveAdminConfig(false);
+}
+
+function renderAdmin(){
+  const admin = isAdmin();
+  const tab = $('#adminTab'); if(tab) tab.classList.toggle('hidden', !admin);
+  const nav=$('.bottom-nav'); if(nav) nav.classList.toggle('admin-on', admin);
+  const lock = $('#adminLock'); if(lock) lock.classList.toggle('hidden', admin);
+  const panel = $('#adminPanel'); if(panel) panel.classList.toggle('hidden', !admin);
+  if(admin){ bindAdminStudio(); renderAdminWorkspace(); }
+}
+
+function renderAdminWorkspace(){
+  renderAdminStats();
+  renderAdminCategories();
+  renderAdminCards();
+  renderAdminAnswers();
+  populateAdminCardCategorySelect();
+  fillAdminEditors();
+}
+
+function renderAdminStats(){
+  const c1=$('#adminCardCount'), c2=$('#adminCategoryCount'), c3=$('#adminAnswerCount'), c4=$('#adminLastSaved');
+  if(c1) c1.textContent = vaultCards.length;
+  if(c2) c2.textContent = Object.keys(categoryMeta).length;
+  if(c3) c3.textContent = Object.keys(labels).length;
+  if(c4) c4.textContent = 'Ready';
+}
+
+function populateAdminCardCategorySelect(){
+  const sel=$('#adminCardCat'); if(!sel) return;
+  const selected = sel.value || adminSelectedCategory || '';
+  sel.innerHTML = Object.entries(categoryMeta).map(([name,meta])=>`<option value="${adminEscape(name)}">${adminEscape(meta?.emoji||'✨')} ${adminEscape(name)}</option>`).join('');
+  if(selected && [...sel.options].some(o=>o.value===selected)) sel.value = selected;
+}
+
+function renderAdminCards(){
+  const list=$('#adminCardList'); if(!list) return;
+  const q=($('#adminCardSearch')?.value||'').toLowerCase();
+  const cards=vaultCards.filter(c=>!q || `${c.id} ${c.title} ${c.cat} ${c.desc}`.toLowerCase().includes(q));
+  list.innerHTML = cards.map(c=>{
+    const meta=categoryMeta[c.cat]||{emoji:'✨'};
+    return `<button class="admin-list-item ${c.id===adminSelectedCardId?'selected':''}" type="button" data-card-id="${adminEscape(c.id)}">
+      <span class="admin-list-emoji">${adminEscape(meta.emoji||'✨')}</span><span><b>${adminEscape(c.title)}</b><small>${adminEscape(c.cat)} • ${adminEscape(c.id)}</small></span>
+    </button>`;
+  }).join('') || '<div class="admin-empty">No cards found.</div>';
+  list.querySelectorAll('[data-card-id]').forEach(b=>b.onclick=()=>selectAdminCard(b.dataset.cardId));
+}
+
+function selectAdminCard(id){
+  adminSelectedCardId = id;
+  const card = vaultCards.find(c=>c.id===id) || {id:'', title:'', cat:Object.keys(categoryMeta)[0]||'', desc:''};
+  $('#adminCardId').value = card.id || '';
+  $('#adminCardTitle').value = card.title || '';
+  populateAdminCardCategorySelect();
+  $('#adminCardCat').value = card.cat || Object.keys(categoryMeta)[0] || '';
+  $('#adminCardDesc').value = card.desc || '';
+  const title=$('#adminCardFormTitle'); if(title) title.textContent = id ? 'Edit Vault Card' : 'Add New Vault Card';
+  renderAdminCards();
+}
+
+function saveAdminCard(){
+  if(!isAdmin()) return showToast('Admin access is restricted.');
+  const id = adminSlug($('#adminCardId').value || $('#adminCardTitle').value);
+  const card = {id, title:($('#adminCardTitle').value||'Untitled card').trim(), cat:$('#adminCardCat').value, desc:($('#adminCardDesc').value||'').trim()};
+  const oldIndex = vaultCards.findIndex(c=>c.id===adminSelectedCardId || c.id===id);
+  if(oldIndex >= 0) vaultCards[oldIndex] = card; else vaultCards.push(card);
+  adminSelectedCardId = id;
+  applyAdminConfig(adminConfigObject(), true);
+  renderAdminWorkspace();
+  saveAdminConfig(false);
+}
+
+function duplicateAdminCard(){
+  const card = vaultCards.find(c=>c.id===adminSelectedCardId);
+  if(!card) return showToast('Choose a card to duplicate.');
+  const copy = {...card, id:adminSlug(card.id+' copy'), title:card.title+' Copy'};
+  vaultCards.push(copy); adminSelectedCardId=copy.id; selectAdminCard(copy.id); renderAdminWorkspace(); showToast('Card duplicated. Click Save Card or Save All to publish.');
+}
+
+function deleteAdminCard(){
+  if(!adminSelectedCardId) return showToast('Choose a card to delete.');
+  if(!confirm('Delete this Vault card? Existing user ratings for this card key may remain in their profile data.')) return;
+  vaultCards = vaultCards.filter(c=>c.id!==adminSelectedCardId);
+  adminSelectedCardId=null; selectAdminCard(null); applyAdminConfig(adminConfigObject(), true); renderAdminWorkspace(); saveAdminConfig(false);
+}
+
+function renderAdminCategories(){
+  const list=$('#adminCategoryList'); if(!list) return;
+  list.innerHTML = Object.entries(categoryMeta).map(([name,meta])=>`<button class="admin-list-item ${name===adminSelectedCategory?'selected':''}" type="button" data-cat-name="${adminEscape(name)}">
+    <span class="admin-list-emoji">${adminEscape(meta?.emoji||'✨')}</span><span><b>${adminEscape(name)}</b><small>${adminEscape(meta?.theme||'theme-fantasy')} • ${vaultCards.filter(c=>c.cat===name).length} cards</small></span>
+  </button>`).join('') || '<div class="admin-empty">No categories yet.</div>';
+  list.querySelectorAll('[data-cat-name]').forEach(b=>b.onclick=()=>selectAdminCategory(b.dataset.catName));
+}
+
+function selectAdminCategory(name){
+  adminSelectedCategory = name;
+  const meta = name ? categoryMeta[name] : {emoji:'✨', theme:'theme-fantasy'};
+  $('#adminCategoryName').value = name || '';
+  $('#adminCategoryEmoji').value = meta?.emoji || '✨';
+  $('#adminCategoryTheme').value = meta?.theme || 'theme-fantasy';
+  renderAdminCategories();
+}
+
+function saveAdminCategory(){
+  if(!isAdmin()) return showToast('Admin access is restricted.');
+  const newName = ($('#adminCategoryName').value||'').trim();
+  if(!newName) return showToast('Category name is required.');
+  const oldName = adminSelectedCategory;
+  if(oldName && oldName !== newName){
+    vaultCards = vaultCards.map(c=>c.cat===oldName ? {...c, cat:newName} : c);
+    delete categoryMeta[oldName];
+  }
+  categoryMeta[newName] = {emoji:($('#adminCategoryEmoji').value||'✨').trim(), theme:$('#adminCategoryTheme').value||'theme-fantasy'};
+  adminSelectedCategory = newName;
+  applyAdminConfig(adminConfigObject(), true); renderAdminWorkspace(); saveAdminConfig(false);
+}
+
+function deleteAdminCategory(){
+  if(!adminSelectedCategory) return showToast('Choose a category to delete.');
+  const used = vaultCards.filter(c=>c.cat===adminSelectedCategory).length;
+  if(used) return showToast(`Move or delete ${used} cards before deleting this category.`);
+  if(!confirm('Delete this category?')) return;
+  delete categoryMeta[adminSelectedCategory]; adminSelectedCategory=null; selectAdminCategory(null); applyAdminConfig(adminConfigObject(), true); renderAdminWorkspace(); saveAdminConfig(false);
+}
+
+function renderAdminAnswers(){
+  const list=$('#adminAnswerList'); if(!list) return;
+  list.innerHTML = Object.entries(labels).map(([key,label])=>`<button class="admin-list-item ${key===adminSelectedAnswerKey?'selected':''}" type="button" data-answer-key="${adminEscape(key)}">
+    <span class="admin-list-emoji">${adminEscape(label.split(' ')[0]||'✅')}</span><span><b>${adminEscape(label)}</b><small>${adminEscape(key)}</small></span>
+  </button>`).join('') || '<div class="admin-empty">No answers yet.</div>';
+  list.querySelectorAll('[data-answer-key]').forEach(b=>b.onclick=()=>selectAdminAnswer(b.dataset.answerKey));
+}
+
+function selectAdminAnswer(key){
+  adminSelectedAnswerKey = key;
+  $('#adminAnswerKey').value = key || '';
+  $('#adminAnswerLabel').value = key ? labels[key] : '';
+  renderAdminAnswers();
+}
+
+function saveAdminAnswer(){
+  if(!isAdmin()) return showToast('Admin access is restricted.');
+  const key = adminSlug($('#adminAnswerKey').value || $('#adminAnswerLabel').value).replace(/-/g,'_');
+  const label = ($('#adminAnswerLabel').value||'✅ New Answer').trim();
+  if(adminSelectedAnswerKey && adminSelectedAnswerKey !== key) delete labels[adminSelectedAnswerKey];
+  labels[key] = label; adminSelectedAnswerKey = key;
+  applyAdminConfig(adminConfigObject(), true); renderAdminWorkspace(); saveAdminConfig(false);
+}
+
+function deleteAdminAnswer(){
+  if(!adminSelectedAnswerKey) return showToast('Choose an answer to delete.');
+  if(Object.keys(labels).length <= 2) return showToast('Keep at least two answer choices.');
+  if(!confirm('Delete this answer choice?')) return;
+  delete labels[adminSelectedAnswerKey]; adminSelectedAnswerKey=null; selectAdminAnswer(null); applyAdminConfig(adminConfigObject(), true); renderAdminWorkspace(); saveAdminConfig(false);
+}
+
+function importAdminJson(){
+  try{
+    const cfg = JSON.parse($('#adminJsonBox').value || '{}');
+    if(!cfg.labels || !cfg.categories || !Array.isArray(cfg.cards)) throw new Error('Expected labels, categories, and cards.');
+    applyAdminConfig(cfg, true);
+    localStorage.setItem('fvAdminConfigCache', JSON.stringify(cfg));
+    renderAdminWorkspace();
+    showToast('Imported into editor. Click Save All to publish.');
+  }catch(err){ console.warn(err); showToast('Invalid config JSON.'); }
+}
+
+async function saveAdminConfig(seedDefaults=false){
+  if(!isAdmin()){ showToast('Admin access is restricted.'); return; }
+  if(!supa){ showToast('Supabase unavailable.'); return; }
+  try{
+    const cfg = seedDefaults ? {labels:structuredClone(DEFAULT_LABELS), categories:structuredClone(DEFAULT_CATEGORY_META), cards:structuredClone(DEFAULT_VAULT_CARDS)} : adminConfigObject();
+    if(!cfg.labels || !cfg.categories || !Array.isArray(cfg.cards)) throw new Error('Invalid admin config.');
+    const rows = [
+      {key:'labels', value:cfg.labels, updated_by:authUser.email, updated_at:new Date().toISOString()},
+      {key:'categories', value:cfg.categories, updated_by:authUser.email, updated_at:new Date().toISOString()},
+      {key:'cards', value:cfg.cards, updated_by:authUser.email, updated_at:new Date().toISOString()}
+    ];
+    const {error}=await supa.from('fv_admin_config').upsert(rows,{onConflict:'key'});
+    if(error) throw error;
+    applyAdminConfig(cfg, true);
+    localStorage.setItem('fvAdminConfigCache', JSON.stringify(cfg));
+    const saved=$('#adminLastSaved'); if(saved) saved.textContent = 'Saved now';
+    renderAdminWorkspace();
+    showToast(seedDefaults ? 'Default Vault config seeded.' : 'Admin changes saved.');
+  }catch(err){ console.warn(err); showToast('Admin save failed. Check schema/RLS.'); }
+}
+
 init();
