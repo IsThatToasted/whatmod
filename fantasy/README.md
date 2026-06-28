@@ -1,32 +1,16 @@
-# Afterglow — Glow Shop Build
+# Afterglow — Private Photo Flash Fix
 
-Upload the contents of this folder directly into `/fantasy/`.
+Upload the contents of this folder into `/fantasy/`.
 
-This build preserves the current app and adds:
-- Header Glow Coin balance next to the profile photo
-- Earned-only Glow Shop tab on the far right of the nav
-- Placeholder cosmetic shop items redeemable with Glow Coins
-- Profile frames and banner themes that can be unlocked/equipped now
-- Inventory saved inside the existing profile JSON so no destructive schema migration is required
-- Existing Daily Gift / Glow Coin streak stays intact
+This is a visual/performance patch only.
 
-No paid features are included. Everything is earned with Glow Coins.
+## Changed
+- Timed private photo thumbnails now keep stable signed URLs during chat polling.
+- Chat rendering skips DOM rebuilds when the message list has not actually changed.
+- Prevents the sent photo preview from flashing/reloading during refresh cycles.
 
-
-## Patch notes: centered gift + admin wallet tools
-
-- The daily gift/present icon is now centered in the top action button.
-- Admin Studio now includes a **Users** tab for owner-only Glow Coin adjustments.
-- Run `supabase-schema.sql` again so the owner account can update user wallet balances safely through RLS.
-
-
-## Unlock Audit Patch
-
-This build makes every visible Glow Shop unlock either functional or clearly part of the owned collection:
-
-- Profile frames and banner themes can be equipped.
-- Owned frames/themes appear in **My Unlocks** with a color customizer.
-- Heart/fire reaction packs add quick reactions inside matched chats.
-- Sticker packs add quick sticker-style messages inside matched chats.
-- Badges/Vault cosmetics appear in the user inventory instead of pretending to be unavailable.
-- Existing wallet, shop, daily gift, matching, chat, admin, and Supabase behavior is preserved.
+## Preserved
+- Existing private photo upload behavior
+- Existing 72-hour message/photo expiry behavior
+- Existing shop/unlocks/admin/profile/matching features
+- Existing Supabase schema

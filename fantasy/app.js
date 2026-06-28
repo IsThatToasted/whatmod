@@ -1352,6 +1352,22 @@ async function cleanupExpiredMessages(){
   try{ await supa.from('fv_messages').delete().lt('expires_at', new Date(Date.now()-60000).toISOString()); }catch(err){ console.warn('Expired message cleanup failed', err); }
 }
 
+
+// Stable private media rendering: cache signed URLs and skip rebuilding
+// unchanged chat DOM so timed photo thumbnails do not flash on refresh.
+const signedMediaUrlCache = new Map();
+
+function stableChatSignature(msgs){
+  try{
+    return JSON.stringify((msgs||[]).map(m=>({
+      id:m.id, from:m.from, text:m.text, type:m.type, at:m.at, expiresAt:m.expiresAt,
+      media:(m.media||[]).map(x=>({path:x.path, expires_at:x.expires_at, size:x.size, type:x.type}))
+    })));
+  }catch{
+    return String(Date.now());
+  }
+}
+
 async function signedMediaItems(media=[]){
   if(!supa || !Array.isArray(media)) return [];
   const now=Date.now();
@@ -1359,11 +1375,19 @@ async function signedMediaItems(media=[]){
   for(const item of media){
     if(item?.expires_at && new Date(item.expires_at).getTime() <= now) continue;
     if(!item?.path) continue;
+    const cacheKey = `${item.path}|${item.expires_at || ''}`;
+    const cached = signedMediaUrlCache.get(cacheKey);
+    if(cached?.signedUrl && cached.validUntil > now + 60000){
+      out.push({...item, signedUrl:cached.signedUrl});
+      continue;
+    }
     try{
-      const expiresIn=Math.max(60, Math.min(3600, Math.floor(((new Date(item.expires_at||Date.now()+3600000)).getTime()-now)/1000)));
+      const expiresIn=Math.max(300, Math.min(3600, Math.floor(((new Date(item.expires_at||Date.now()+3600000)).getTime()-now)/1000)));
       const {data,error}=await supa.storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(item.path, expiresIn);
       if(error) throw error;
-      out.push({...item, signedUrl:data.signedUrl});
+      const signedUrl=data.signedUrl;
+      signedMediaUrlCache.set(cacheKey, {signedUrl, validUntil: now + expiresIn*1000});
+      out.push({...item, signedUrl});
     }catch(err){ console.warn('Could not sign media URL', err); }
   }
   return out;
@@ -1445,11 +1469,19 @@ function timeUntil(value){
 
 function renderChatMessages(){
   if(!activeChatKey) return;
+  const box=$('#chatMessages');
+  if(!box) return;
   const p=people.find(x=>personKey(x)===String(activeChatKey));
   const msgs=getCachedChat(activeChatKey);
   const starter=p?.mutual?.[0] && !p.mutual[0].startsWith('Vault overlap') ? `You matched with ${p.name}. Shared signal: ${p.mutual[0]}.` : `You matched with ${p?.name || 'this person'}.`;
-  $('#chatMessages').innerHTML = `<div class="chat-bubble system">${escapeHtml(starter)}</div>` + msgs.map(m=>`<div class="chat-bubble ${m.from==='me'?'mine':'theirs'} ${m.type==='photo'?'photo-message':''}">${m.type==='photo'?mediaHtml(m):''}${m.text?`<div>${escapeHtml(m.text)}</div>`:''}<span>${new Date(m.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} • expires ${timeUntil(m.expiresAt)}</span></div>`).join('');
-  const box=$('#chatMessages'); if(box) box.scrollTop=box.scrollHeight;
+  const signature = `${activeChatKey}|${starter}|${stableChatSignature(msgs)}`;
+  if(box.dataset.renderSignature === signature){
+    return;
+  }
+  const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
+  box.dataset.renderSignature = signature;
+  box.innerHTML = `<div class="chat-bubble system">${escapeHtml(starter)}</div>` + msgs.map(m=>`<div class="chat-bubble ${m.from==='me'?'mine':'theirs'} ${m.type==='photo'?'photo-message':''}">${m.type==='photo'?mediaHtml(m):''}${m.text?`<div>${escapeHtml(m.text)}</div>`:''}<span>${new Date(m.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} • expires ${timeUntil(m.expiresAt)}</span></div>`).join('');
+  if(wasNearBottom || !box.dataset.userScrolled) box.scrollTop=box.scrollHeight;
 }
 
 async function sendChatMessage(){
@@ -2246,4 +2278,85 @@ renderAdminWorkspace = function(){
   if(_unlockPatchUpdateAvatar){ updateAvatar = function(){ _unlockPatchUpdateAvatar(); applyCosmetics(); updateGlowCoinDisplays(); renderMyUnlocks(); }; }
   refreshShopItemCopy();
   setTimeout(()=>{ try{ ensureEconomy(); applyCosmetics(); renderShop(); renderMyUnlocks(); }catch(e){ console.warn('Unlock patch init skipped', e); } }, 800);
+})();
+
+/* =========================================================
+   Afterglow patch: incoming chat popups
+   Additive only: detects new incoming messages during refresh
+   and shows a small in-app notification without changing storage.
+   ========================================================= */
+(function(){
+  if(typeof loadChatMessages !== 'function') return;
+  const baseLoadChatMessages = loadChatMessages;
+  const primedKeys = new Set();
+  const seenStorageKey = () => `afterglowSeenIncoming:${authUser?.id || 'guest'}`;
+  function readSeenIncoming(){
+    try{ return new Set(JSON.parse(localStorage.getItem(seenStorageKey()) || '[]')); }
+    catch{ return new Set(); }
+  }
+  function writeSeenIncoming(ids){
+    try{ localStorage.setItem(seenStorageKey(), JSON.stringify([...ids].slice(-500))); }catch{}
+  }
+  function messageFingerprint(m){
+    return String(m?.id || `${m?.from || ''}|${m?.at || ''}|${m?.type || ''}|${m?.text || ''}`);
+  }
+  function incomingPreview(m){
+    if(m?.type === 'photo') return 'sent you a private photo';
+    const txt = String(m?.text || 'sent you a message').trim();
+    return txt.length > 86 ? txt.slice(0,83) + '…' : txt;
+  }
+  function ensureChatNotifyStyles(){
+    if(document.getElementById('afterglowChatNotifyStyles')) return;
+    const style=document.createElement('style');
+    style.id='afterglowChatNotifyStyles';
+    style.textContent=`
+      .chat-notify-pop{position:fixed;left:50%;top:86px;transform:translateX(-50%) translateY(-12px);z-index:9999;width:min(92vw,390px);display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:22px;background:rgba(26,22,35,.94);border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 60px rgba(0,0,0,.38);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;pointer-events:auto;cursor:pointer;transition:opacity .18s ease,transform .18s ease;}
+      .chat-notify-pop.show{opacity:1;transform:translateX(-50%) translateY(0);}
+      .chat-notify-pop .mini-avatar{width:42px;height:42px;min-width:42px;border-radius:16px;}
+      .chat-notify-copy{min-width:0;flex:1;text-align:left;}
+      .chat-notify-copy b{display:block;font-size:14px;line-height:1.15;color:#fff;}
+      .chat-notify-copy span{display:block;margin-top:3px;font-size:12px;line-height:1.25;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .chat-notify-open{font-size:12px;color:#ffd37a;font-weight:800;white-space:nowrap;}
+      @media (min-width:760px){.chat-notify-pop{top:24px;right:24px;left:auto;transform:translateY(-12px);}.chat-notify-pop.show{transform:translateY(0);}}
+    `;
+    document.head.appendChild(style);
+  }
+  function showIncomingChatPopup(key, msg){
+    if(!msg || msg.from !== 'them' || document.hidden) return;
+    const person = (typeof people !== 'undefined' ? people : []).find(p=>String(personKey(p))===String(key));
+    const name = person?.name || 'New message';
+    ensureChatNotifyStyles();
+    document.querySelectorAll('.chat-notify-pop').forEach(n=>n.remove());
+    const pop=document.createElement('button');
+    pop.type='button';
+    pop.className='chat-notify-pop';
+    pop.innerHTML=`${person ? miniAvatarMarkup(person) : '<div class="mini-avatar">💬</div>'}<div class="chat-notify-copy"><b>${escapeHtml(name)}</b><span>${escapeHtml(incomingPreview(msg))}</span></div><div class="chat-notify-open">Open</div>`;
+    pop.onclick=()=>{ pop.remove(); if(typeof openChat === 'function') openChat(key); };
+    document.body.appendChild(pop);
+    requestAnimationFrame(()=>pop.classList.add('show'));
+    setTimeout(()=>{ pop.classList.remove('show'); setTimeout(()=>pop.remove(),220); }, 4200);
+  }
+  loadChatMessages = async function(key, quiet=true){
+    const keyStr=String(key || '');
+    const seen=readSeenIncoming();
+    const wasPrimed=primedKeys.has(keyStr);
+    const result=await baseLoadChatMessages(key, quiet);
+    const msgs=(typeof getCachedChat === 'function' ? getCachedChat(key) : (result || [])) || [];
+    const incoming=msgs.filter(m=>m && m.from === 'them');
+    if(!wasPrimed){
+      incoming.forEach(m=>seen.add(messageFingerprint(m)));
+      primedKeys.add(keyStr);
+      writeSeenIncoming(seen);
+      return result;
+    }
+    const fresh=incoming.filter(m=>!seen.has(messageFingerprint(m)));
+    incoming.forEach(m=>seen.add(messageFingerprint(m)));
+    writeSeenIncoming(seen);
+    if(fresh.length){
+      const latest=fresh[fresh.length-1];
+      showIncomingChatPopup(keyStr, latest);
+      try{ if(typeof renderChats === 'function') renderChats(); }catch{}
+    }
+    return result;
+  };
 })();
