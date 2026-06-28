@@ -1,162 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Fantasy Vault — Dating Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="ageGate" class="age-gate">
+    <div class="gate-card glass">
+      <div class="app-icon">🔐</div>
+      <h1>Fantasy Vault</h1>
+      <p>A sex-positive dating prototype for consenting adults to discover chemistry, compatible desires, curiosities, and boundaries.</p>
+      <div class="gate-warning">18+ only. Login is required before entering Fantasy Vault.</div>
+      <label class="age-check">
+        <input id="ageConfirm" type="checkbox" />
+        <span>I confirm I am 18 or older and want to enter an adults-only dating app.</span>
+      </label>
+      <div id="gateAuthStatus" class="gate-status">Not signed in</div>
+      <button id="googleGate" class="google full" disabled>Continue with Google</button>
+      <button id="enterApp" class="primary full hidden">Enter Fantasy Vault</button>
+      <button id="gateSignOut" class="ghost full hidden">Use a different Google account</button>
+      <p class="tiny-note">Google login requires the Supabase + Google Cloud OAuth setup in the README.</p>
+    </div>
+  </div>
 
-## OAuth redirect fix
+  <main id="app" class="phone-shell hidden">
+    <section class="phone glass">
+      <header class="app-top">
+        <button class="round ghost-mini" id="profileShortcut">☰</button>
+        <div class="logo-lockup"><div class="tiny-icon">🔐</div><span>Fantasy Vault</span></div>
+        <button class="round ghost-mini" id="filterOpen">⚙</button>
+      </header>
 
-This build no longer uses a hardcoded `AUTH_REDIRECT_URL`. The Google login button now sends Supabase back to the exact page currently loaded in the browser.
+      <section id="discover" class="screen active-screen">
+        <div class="discover-tabs">
+          <button class="pill active" data-mode="nearby">📍 Nearby</button>
+          <button class="pill" data-mode="compatible">💘 Chemistry</button>
+          <button class="pill" data-mode="new">✨ New</button>
+        </div>
+        <div id="cardStack" class="card-stack"></div>
+        <div class="swipe-actions">
+          <button id="passBtn" class="action pass" aria-label="Pass">✕</button>
+          <button id="vaultBtn" class="action vault" aria-label="Open vault preview">🔐</button>
+          <button id="likeBtn" class="action like" aria-label="Like">♥</button>
+        </div>
+      </section>
 
-For GitHub Pages at `https://whatmod.com/fantasy/`, Supabase must include these redirect URLs:
+      <section id="matches" class="screen">
+        <div class="screen-title"><h2>Matches</h2><p>People who share chemistry with your Vault.</p></div>
+        <div id="matchesList" class="match-list"></div>
+      </section>
 
-```txt
-https://whatmod.com/fantasy/
-https://whatmod.com/fantasy
-```
+      <section id="vault" class="screen">
+        <div class="screen-title"><h2>Fantasy Vault 🔐</h2><p>Answer playful cards to shape your dating compatibility.</p></div>
+        <div class="vault-stats">
+          <div><strong id="vaultPct">0%</strong><span>complete</span></div>
+          <div><strong id="ratedCount">0</strong><span>answered</span></div>
+          <div><strong id="limitCount">0</strong><span>limits</span></div>
+        </div>
+        <div class="vault-toolbar">
+          <input id="searchCards" placeholder="Search fantasies, interests, boundaries..." />
+          <select id="categoryFilter"><option value="all">All</option></select>
+        </div>
+        <div id="cards" class="vault-cards"></div>
+      </section>
 
-If you still land on `http://localhost:3000/#access_token=...`, the hosted site is almost certainly still serving an older cached `app.js` or `config.js`. Re-upload/commit all files from this zip, then hard refresh the browser with Ctrl+F5. You can also open DevTools Console and check for:
+      <section id="chat" class="screen">
+        <div class="screen-title"><h2>Messages</h2><p>Conversation starters based on mutual chemistry.</p></div>
+        <div id="chatList" class="chat-list"></div>
+      </section>
 
-```txt
-[Fantasy Vault] Google OAuth redirectTo: https://whatmod.com/fantasy/
-```
+      <section id="profile" class="screen">
+        <div class="profile-hero"><div class="profile-banner"></div><div class="profile-avatar">B</div></div>
+        <div class="sync-card" id="syncCard">
+          <div>Login: <b id="authStatus">not signed in</b></div>
+          <div>Sync: <b id="syncStatus">local fallback</b></div>
+        </div>
+        <div class="edit-card">
+          <label>Name<input id="displayName" value="Brian" /></label>
+          <label>Headline<input id="headline" placeholder="Chemistry-first, sex-positive, playful" /></label>
+          <label>City / Area<input id="city" placeholder="York, PA" /></label>
+          <label>Distance radius<select id="radius"><option>10 miles</option><option selected>25 miles</option><option>50 miles</option><option>100 miles</option></select></label>
+          <label>Looking for<select id="lookingFor"><option>Dating</option><option selected>Intimate connection</option><option>Friends with chemistry</option><option>Long-term partner</option><option>Exploring</option></select></label>
+          <label>Bio<textarea id="bio" placeholder="Write a tasteful dating intro..."></textarea></label>
+        </div>
+        <button id="googleLogin" class="google full">Continue with Google</button>
+        <button id="signOut" class="ghost full hidden">Sign out</button>
+        <button id="syncNow" class="primary full">Sync to Supabase</button>
+        <button id="exportData" class="ghost full">Export local data</button>
+        <button id="resetDemo" class="danger full">Reset demo</button>
+        <pre id="exportBox"></pre>
+      </section>
 
-If it says localhost, the live site is not running this patched build.
+      <section id="filters" class="modal hidden">
+        <div class="modal-card glass">
+          <div class="modal-head"><h3>Discovery filters</h3><button id="closeFilters" class="round ghost-mini">×</button></div>
+          <label>Show me<select><option>Everyone</option><option>Women</option><option>Men</option><option>Non-binary people</option></select></label>
+          <label>Distance<select><option>10 miles</option><option selected>25 miles</option><option>50 miles</option><option>100 miles</option></select></label>
+          <label>Minimum chemistry<select><option>Any</option><option selected>70%+</option><option>80%+</option><option>90%+</option></select></label>
+          <button id="applyFilters" class="primary full">Apply</button>
+        </div>
+      </section>
 
-# Fantasy Vault — Mobile Dating Prototype + Google Login
-
-Static local prototype for `whatmod.com/fantasy` with Supabase Auth, Google login, local fallback, profile sync, and Vault ratings.
-
-
-## Fixing OAuth redirect location
-
-The login return URL is controlled in `config.js`:
-
-```js
-AUTH_REDIRECT_URL: 'https://whatmod.com/fantasy/'
-```
-
-For local testing, temporarily change it to the local URL you are actually using, for example:
-
-```js
-AUTH_REDIRECT_URL: 'http://localhost:8080/'
-```
-
-Whatever value you use must also be added in Supabase under **Authentication → URL Configuration → Redirect URLs**.
-
-Recommended production values:
-
-```txt
-Site URL: https://whatmod.com/fantasy/
-Redirect URLs:
-https://whatmod.com/fantasy/
-https://whatmod.com/fantasy
-http://localhost:8080/
-http://localhost:8080
-http://127.0.0.1:5500/
-http://127.0.0.1:5500
-```
-
-If Supabase sends you to `http://localhost:3000/#access_token=...`, it usually means your Supabase **Site URL** is still set to `http://localhost:3000`, or the app requested a redirect URL that is not allow-listed.
-
-
-## Run locally
-
-Because Google OAuth redirects do not work reliably from `file://`, run a tiny local server:
-
-```bash
-python -m http.server 8080
-```
-
-Open:
-
-```text
-http://localhost:8080
-```
-
-## App config
-
-Edit `config.js` when the app moves:
-
-```js
-APP_BASE_PATH: '/fantasy'
-```
-
-For `https://whatmod.com/fantasy`, keep `/fantasy`.
-For a root domain later, change it to `/`.
-
-## Supabase setup
-
-Project URL already configured:
-
-```text
-https://gqkkdocvfstbsekxyrbo.supabase.co
-```
-
-1. In Supabase, open **SQL Editor**.
-2. Run `supabase-schema.sql`.
-3. Go to **Authentication → Providers → Google**.
-4. Leave that page open because it shows your Supabase callback URL:
-
-```text
-https://gqkkdocvfstbsekxyrbo.supabase.co/auth/v1/callback
-```
-
-5. Paste your Google OAuth Client ID and Client Secret there after creating them in Google Cloud.
-6. Go to **Authentication → URL Configuration**.
-7. Set **Site URL** to:
-
-```text
-https://whatmod.com/fantasy
-```
-
-8. Add these **Redirect URLs**:
-
-```text
-https://whatmod.com/fantasy/
-https://whatmod.com/fantasy
-http://localhost:8080/
-http://localhost:8080
-```
-
-## Google Cloud setup
-
-1. Go to Google Cloud Console.
-2. Create/select a project.
-3. Open **APIs & Services → OAuth consent screen**.
-4. Choose **External** unless this is only for a Google Workspace organization.
-5. Fill in app name, user support email, developer contact email.
-6. Add authorized domain:
-
-```text
-whatmod.com
-```
-
-7. Save, then open **APIs & Services → Credentials**.
-8. Click **Create Credentials → OAuth client ID**.
-9. Application type: **Web application**.
-10. Authorized JavaScript origins:
-
-```text
-https://whatmod.com
-http://localhost:8080
-```
-
-11. Authorized redirect URIs:
-
-```text
-https://gqkkdocvfstbsekxyrbo.supabase.co/auth/v1/callback
-```
-
-12. Copy the **Client ID** and **Client Secret** into Supabase **Authentication → Providers → Google**.
-13. Enable the Google provider.
-
-## Important notes
-
-- The publishable Supabase key is safe to expose in frontend code, but the Google Client Secret is not. Only paste the Client Secret inside Supabase, never inside `config.js`.
-- Keep the app in Google OAuth testing mode while prototyping. Add your Gmail as a test user if Google asks for it.
-- Before real launch, add age verification, moderation, report/block tools, and stricter profile visibility rules.
-
-## Login + 18+ landing flow
-
-The landing screen now requires both steps before the app opens:
-
-1. User confirms they are 18+.
-2. User signs in with Google through Supabase Auth.
-
-After Google redirects back to the app, Fantasy Vault automatically opens only when a valid Supabase session exists. Signing out returns the user to the landing/auth screen.
+      <nav class="bottom-nav">
+        <button class="tab active" data-screen="discover"><span>🧭</span>Discover</button>
+        <button class="tab" data-screen="matches"><span>💞</span>Matches</button>
+        <button class="tab" data-screen="vault"><span>🔐</span>Vault</button>
+        <button class="tab" data-screen="chat"><span>💬</span>Chat</button>
+        <button class="tab" data-screen="profile"><span>👤</span>Profile</button>
+      </nav>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
