@@ -1,18 +1,13 @@
-# Fantasy Vault — user profile + private media update
+# Fantasy Vault — Discover Action Button Placement Patch
 
-Upload the contents of this zip directly into `/fantasy/`.
+Upload the contents of this folder directly into `/fantasy/`.
 
-Run `supabase-schema.sql` in Supabase SQL Editor before testing private photos.
+This update is intentionally additive and preserves the current feature set.
 
-## Added
-- Matched user profile viewer with photo, bio, compatibility stats, shared likes, curiosities, and differences.
-- Profile buttons in Matches and Chats.
-- 72-hour chat persistence patched to avoid early cleanup during normal reads.
-- Private photo / album sharing in matched chats.
-- Photo expiry options: 72 hours default, 30 minutes, 24 hours, or 48 hours.
-- Private media stored in a non-public Supabase Storage bucket with signed URLs.
+Changes:
+- Keeps the Discover screen from vertically scrolling.
+- Keeps Pass / Vault / Like buttons visible above the bottom navigation.
+- Compresses the Discover profile card responsively on shorter mobile screens.
+- Does not remove or rewrite matching, chat, Vault, admin, photo upload, private media, or Supabase behavior.
 
-## Notes
-- Existing features were preserved.
-- Messages and photo message records remain queryable only by sender/recipient through RLS.
-- Expired rows are filtered out automatically and pruned during app use.
+No SQL changes are required for this patch.
