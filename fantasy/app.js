@@ -580,7 +580,12 @@ function orderedPeople(){
   if(mode==='compatible') arr.sort((a,b)=>b.score-a.score);
   if(mode==='new') arr.reverse();
   const passed=passedKeys();
-  return arr.filter(p=>!passed.includes(personKey(p)) && !passed.includes(p.name) && !isMutual(p));
+  // Discovery should only show fresh profiles. Anyone you liked, passed, matched,
+  // or who already liked you moves out of Nearby and into Matches/Liked You.
+  return arr.filter(p=>{
+    const key=personKey(p);
+    return !passed.includes(key) && !passed.includes(p.name) && !iLike(p) && !p.likesMe && !isMutual(p);
+  });
 }
 function renderPersonAvatar(p, className='fake-face'){
   if(p.avatarUrl) return `<div class="${className} real-face" style="background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}')"></div>`;
@@ -608,11 +613,52 @@ function acceptLike(key){
   if(!p) return;
   if(!likedKeys().includes(personKey(p))) state.liked.push(personKey(p));
   save();
+  renderStack();
   renderMatches();
   renderChats();
   syncToSupabase(false);
   showToast(`It's a match with ${p.name}!`);
 }
+
+function ignoreLike(key){
+  const p=people.find(x=>personKey(x)===String(key));
+  if(!p) return;
+  if(!passedKeys().includes(personKey(p))) state.passed.push(personKey(p));
+  save();
+  renderStack();
+  renderMatches();
+  renderChats();
+  syncToSupabase(false);
+  showToast(`${p.name} moved out of Liked You.`);
+}
+
+function unmatch(key){
+  const p=people.find(x=>personKey(x)===String(key));
+  const label=p?.name || 'this person';
+  state.liked=(state.liked||[]).map(String).filter(k=>k!==String(key));
+  clearSessionChat(String(key));
+  if(activeChatKey===String(key)) closeChatModal();
+  save();
+  renderStack();
+  renderMatches();
+  renderChats();
+  syncToSupabase(false);
+  showToast(`Unmatched ${label}.`);
+}
+
+function resetConnections(){
+  state.liked=[];
+  state.passed=[];
+  Object.keys(sessionStorage).forEach(k=>{ if(k.startsWith(SESSION_CHAT_PREFIX)) sessionStorage.removeItem(k); });
+  closeChatModal();
+  save();
+  renderStack();
+  renderMatches();
+  renderChats();
+  syncToSupabase(false);
+  showToast('Likes, passes, matches, and session chats reset for this account.');
+}
+
 function showToast(msg){ const old=$('.toast'); if(old)old.remove(); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; $('.phone').appendChild(t); setTimeout(()=>t.remove(),2100); }
 function populateCats(){ const cats=[...new Set(vaultCards.map(c=>c.cat))].sort(); $('#categoryFilter').innerHTML='<option value="all">🌈 All</option>'+cats.map(c=>`<option value="${c}">${categoryMeta[c]?.emoji||'✨'} ${c}</option>`).join(''); }
 function renderVault(){
@@ -629,20 +675,84 @@ function miniAvatarMarkup(p){
 function renderMatches(){
   const incoming=incomingLikes();
   const matched=mutualMatches();
-  let html='';
+  let html='<div class="match-tools"><button class="ghost small-control" id="resetConnections">Reset likes & matches</button></div>';
   if(incoming.length){
-    html += `<div class="match-section"><h3>Liked you</h3>${incoming.map(p=>`<article class="match-card incoming-like">${miniAvatarMarkup(p)}<div><h3>${p.name}${p.age?`, ${p.age}`:''}</h3><p>${p.distanceLabel || 'Nearby'} • ${p.mutual[0] || 'Vault compatibility'}</p></div><button class="primary match-action accept-like" data-key="${personKey(p)}">Like back</button></article>`).join('')}</div>`;
+    html += `<div class="match-section"><h3>Liked you</h3>${incoming.map(p=>`<article class="match-card incoming-like">${miniAvatarMarkup(p)}<div><h3>${p.name}${p.age?`, ${p.age}`:''}</h3><p>${p.distanceLabel || 'Nearby'} • ${p.mutual[0] || 'Vault compatibility'}</p></div><div class="match-actions"><button class="primary match-action accept-like" data-key="${personKey(p)}">Like back</button><button class="ghost match-action ignore-like" data-key="${personKey(p)}">Ignore</button></div></article>`).join('')}</div>`;
   }
   if(matched.length){
-    html += `<div class="match-section"><h3>Matches</h3>${matched.map(p=>`<article class="match-card">${miniAvatarMarkup(p)}<div><h3>${p.name}${p.age?`, ${p.age}`:''}</h3><p>${p.distanceLabel || 'Nearby'} • ${p.mutual[0] || 'Vault compatibility'}</p></div><span class="score-badge">${p.score}%</span></article>`).join('')}</div>`;
+    html += `<div class="match-section"><h3>Matches</h3>${matched.map(p=>`<article class="match-card">${miniAvatarMarkup(p)}<div><h3>${p.name}${p.age?`, ${p.age}`:''}</h3><p>${p.distanceLabel || 'Nearby'} • ${p.mutual[0] || 'Vault compatibility'}</p></div><div class="match-actions"><span class="score-badge">${p.score}%</span><button class="ghost match-action open-chat" data-key="${personKey(p)}">Chat</button><button class="danger match-action unmatch" data-key="${personKey(p)}">Unmatch</button></div></article>`).join('')}</div>`;
   }
-  $('#matchesList').innerHTML = html || '<div class="empty-state"><h3>No matches yet</h3><p>When someone likes you, they will appear here. Like them back to open a chat.</p></div>';
+  if(!incoming.length && !matched.length){
+    html += '<div class="empty-state"><h3>No matches yet</h3><p>When someone likes you, they will appear here. Like them back to open a chat.</p></div>';
+  }
+  $('#matchesList').innerHTML = html;
+  $('#resetConnections')?.addEventListener('click', resetConnections);
   $$('.accept-like').forEach(btn=>btn.onclick=()=>acceptLike(btn.dataset.key));
+  $$('.ignore-like').forEach(btn=>btn.onclick=()=>ignoreLike(btn.dataset.key));
+  $$('.unmatch').forEach(btn=>btn.onclick=()=>unmatch(btn.dataset.key));
+  $$('.open-chat').forEach(btn=>btn.onclick=()=>openChat(btn.dataset.key));
 }
 function renderChats(){
   const matched=mutualMatches();
-  $('#chatList').innerHTML= matched.length ? matched.map(p=>`<article class="chat-row">${miniAvatarMarkup(p)}<div><h3>${p.name}</h3><p>${p.mutual[0] && !p.mutual[0].startsWith('Vault overlap') ? `You both connect on ${p.mutual[0]}.` : 'You matched. Answer more Vault cards to unlock better conversation starters.'}</p></div></article>`).join('') : '<div class="empty-state"><h3>No conversations yet</h3><p>Chats appear only after both people like each other.</p></div>';
+  $('#chatList').innerHTML= matched.length ? matched.map(p=>`<article class="chat-row" data-key="${personKey(p)}">${miniAvatarMarkup(p)}<div><h3>${p.name}</h3><p>${chatPreview(p)}</p></div></article>`).join('') : '<div class="empty-state"><h3>No conversations yet</h3><p>Chats appear only after both people like each other.</p></div>';
+  $$('.chat-row').forEach(row=>row.onclick=()=>openChat(row.dataset.key));
 }
+
+function chatStorageKey(key){ return `${SESSION_CHAT_PREFIX}${authUser?.id || state.userId || 'local'}:${key}`; }
+function getSessionChat(key){ try{return JSON.parse(sessionStorage.getItem(chatStorageKey(key))||'[]')}catch{return []} }
+function setSessionChat(key, messages){ sessionStorage.setItem(chatStorageKey(key), JSON.stringify(messages.slice(-80))); }
+function clearSessionChat(key){ sessionStorage.removeItem(chatStorageKey(key)); }
+function chatPreview(p){
+  const msgs=getSessionChat(personKey(p));
+  const last=msgs[msgs.length-1];
+  if(last) return last.from==='me' ? `You: ${last.text}` : last.text;
+  return p.mutual[0] && !p.mutual[0].startsWith('Vault overlap') ? `You both connect on ${p.mutual[0]}. Tap to start chatting.` : 'You matched. Tap to start a session chat.';
+}
+function ensureChatModal(){
+  let modal=$('#chatModal');
+  if(modal) return modal;
+  modal=document.createElement('div');
+  modal.id='chatModal';
+  modal.className='chat-modal hidden';
+  modal.innerHTML=`<div class="chat-sheet glass"><div class="chat-head"><button class="ghost-mini round" id="closeChat">←</button><div class="chat-person" id="chatPerson"></div><button class="danger mini-danger" id="chatClear">Clear</button></div><div class="session-note">Session chat only — messages are not saved to Supabase.</div><div class="chat-messages" id="chatMessages"></div><form class="chat-compose" id="chatCompose"><input id="chatInput" maxlength="500" placeholder="Write a message…" autocomplete="off"><button class="primary" type="submit">Send</button></form></div>`;
+  $('.phone').appendChild(modal);
+  $('#closeChat').onclick=closeChatModal;
+  $('#chatClear').onclick=()=>{ if(activeChatKey){ clearSessionChat(activeChatKey); renderChatMessages(); renderChats(); showToast('Session chat cleared.'); } };
+  $('#chatCompose').onsubmit=e=>{ e.preventDefault(); sendChatMessage(); };
+  return modal;
+}
+function openChat(key){
+  const p=people.find(x=>personKey(x)===String(key));
+  if(!p || !isMutual(p)){ showToast('Chats open after you both like each other.'); return; }
+  activeChatKey=String(key);
+  const modal=ensureChatModal();
+  $('#chatPerson').innerHTML=`${miniAvatarMarkup(p)}<div><h3>${p.name}</h3><p>${p.distanceLabel || 'Matched'}</p></div>`;
+  modal.classList.remove('hidden');
+  renderChatMessages();
+  setTimeout(()=>$('#chatInput')?.focus(),80);
+}
+function closeChatModal(){ const modal=$('#chatModal'); if(modal) modal.classList.add('hidden'); activeChatKey=null; }
+function renderChatMessages(){
+  if(!activeChatKey) return;
+  const p=people.find(x=>personKey(x)===String(activeChatKey));
+  const msgs=getSessionChat(activeChatKey);
+  const starter=p?.mutual?.[0] && !p.mutual[0].startsWith('Vault overlap') ? `You matched with ${p.name}. Shared signal: ${p.mutual[0]}.` : `You matched with ${p?.name || 'this person'}.`;
+  $('#chatMessages').innerHTML = `<div class="chat-bubble system">${starter}</div>` + msgs.map(m=>`<div class="chat-bubble ${m.from==='me'?'mine':'theirs'}">${escapeHtml(m.text)}<span>${new Date(m.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span></div>`).join('');
+  const box=$('#chatMessages'); if(box) box.scrollTop=box.scrollHeight;
+}
+function sendChatMessage(){
+  if(!activeChatKey) return;
+  const input=$('#chatInput');
+  const text=(input?.value||'').trim();
+  if(!text) return;
+  const msgs=getSessionChat(activeChatKey);
+  msgs.push({from:'me', text, at:new Date().toISOString()});
+  setSessionChat(activeChatKey, msgs);
+  input.value='';
+  renderChatMessages();
+  renderChats();
+}
+function escapeHtml(v){ return String(v ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
 
 // Real Admin Studio overrides: form-based Vault/category/answer management.
 let adminSelectedCardId = null;

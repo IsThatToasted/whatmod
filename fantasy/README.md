@@ -14,3 +14,10 @@ This build keeps existing features and adds:
 ## Supabase requirement
 
 Run or confirm the included `supabase-schema.sql`. The directory policy must allow authenticated users to read profile rows, including `liked`, so incoming likes can be detected.
+
+
+## This build
+- Adds Reset likes & matches for testing.
+- Adds Unmatch controls on matched users.
+- Moves users out of Nearby after either side likes.
+- Adds lightweight per-session chat; messages stay in sessionStorage and are not saved to Supabase.
