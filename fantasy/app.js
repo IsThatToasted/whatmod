@@ -1138,4 +1138,295 @@ async function saveAdminConfig(seedDefaults=false){
   }catch(err){ console.warn(err); showToast('Admin save failed. Check schema/RLS.'); }
 }
 
+
+
+/* ============================================================
+   User-focused profiles + durable 72h chat + private photo sharing
+   Additive patch: keeps existing match/admin/profile features intact.
+   ============================================================ */
+const CHAT_MEDIA_BUCKET = 'fv-private-chat';
+const MEDIA_EXPIRY_OPTIONS = { default:72, '30m':0.5, '24h':24, '48h':48 };
+
+function profileRowToPerson(row){
+  const profile=row.profile||{};
+  const displayName=(profile.displayName||profile.name||'Member').trim();
+  const initial=(displayName[0]||'M').toUpperCase();
+  const comp=compatibilityForRatings(row.ratings||{});
+  const city=profile.city||profile.area||'';
+  return {
+    id: row.user_id || row.id || displayName,
+    name: displayName,
+    age: profile.age || '',
+    distance: Number(profile.distance || 999),
+    distanceLabel: city ? `📍 ${city}` : '📍 Nearby',
+    score: comp.score,
+    vibe: profile.headline || profile.bio || 'Building their Fantasy Vault profile.',
+    gradient: deterministicGradient(row.user_id || displayName),
+    initial,
+    avatarUrl: profile.avatarUrl || '',
+    tags: [profile.lookingFor, profile.radius, row.email ? 'Verified' : 'Member'].filter(Boolean).slice(0,3),
+    mutual: comp.shared.length ? comp.shared : ['Vault overlap appears after both people answer more cards'],
+    likesMe: (row.liked || []).map(String).includes(String(authUser?.id || '')),
+    ratings: row.ratings || {},
+    profile,
+    email: row.email || '',
+    updatedAt: row.updated_at || ''
+  };
+}
+
+function compareVaultWithPerson(p){
+  const mine=state.ratings||{};
+  const theirs=p?.ratings||{};
+  const shared=[], curious=[], different=[], limits=[];
+  Object.entries(theirs).forEach(([id,their])=>{
+    const my=mine[id];
+    if(!my) return;
+    const card=vaultCards.find(c=>c.id===id);
+    if(!card) return;
+    const meta=categoryMeta[card.cat]||{};
+    const row={id,title:card.title,cat:card.cat,emoji:meta.emoji||'✨',mine:my,theirs:their,mineLabel:labels[my]||my,theirLabel:labels[their]||their};
+    const myPositive=['love','enjoy'].includes(my);
+    const theirPositive=['love','enjoy'].includes(their);
+    const bothCurious=my==='curious' && their==='curious';
+    if(myPositive && theirPositive) shared.push(row);
+    else if(bothCurious || (['love','enjoy','curious'].includes(my) && ['love','enjoy','curious'].includes(their))) curious.push(row);
+    else if(my==='limit' || their==='limit') limits.push(row);
+    else different.push(row);
+  });
+  return {shared,curious,different,limits};
+}
+
+function ensureMemberProfileModal(){
+  let modal=$('#memberProfileModal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='memberProfileModal';
+    modal.className='member-profile-modal hidden';
+    modal.innerHTML=`<div class="member-profile-sheet glass"><div class="member-profile-top"><button class="ghost-mini round" id="closeMemberProfile" type="button">←</button><button class="ghost mini-profile-chat" id="memberProfileChat" type="button">Chat</button></div><div id="memberProfileBody"></div></div>`;
+    $('.phone').appendChild(modal);
+    $('#closeMemberProfile').onclick=()=>modal.classList.add('hidden');
+    $('#memberProfileChat').onclick=()=>{ const key=modal.dataset.key; modal.classList.add('hidden'); openChat(key); };
+  }
+  return modal;
+}
+
+function ratingRowsHtml(rows, empty){
+  if(!rows.length) return `<div class="profile-empty-mini">${empty}</div>`;
+  return rows.slice(0,12).map(r=>`<div class="vault-compare-row"><span>${escapeHtml(r.emoji)} ${escapeHtml(r.title)}</span><small>You: ${escapeHtml(r.mineLabel)}<br>Them: ${escapeHtml(r.theirLabel)}</small></div>`).join('');
+}
+
+function openMemberProfile(key){
+  const p=people.find(x=>personKey(x)===String(key));
+  if(!p) return showToast('Profile not available yet.');
+  if(!isMutual(p) && !p.likesMe) return showToast('Detailed profiles unlock after a match.');
+  const modal=ensureMemberProfileModal();
+  modal.dataset.key=personKey(p);
+  const cmp=compareVaultWithPerson(p);
+  const avatarStyle=p.avatarUrl ? `background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}')` : `background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`;
+  $('#memberProfileBody').innerHTML=`
+    <div class="member-hero" style="${p.avatarUrl ? `background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.84)), url('${String(p.avatarUrl).replace(/'/g,'%27')}') center/cover` : `background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`}">
+      <div class="member-avatar-large" style="${avatarStyle}">${p.avatarUrl?'':escapeHtml(p.initial)}</div>
+      <div class="member-hero-text"><h2>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h2><p>${escapeHtml(p.vibe||'')}</p></div>
+    </div>
+    <div class="profile-score-grid"><div><b>${p.score}%</b><span>Compatibility</span></div><div><b>${cmp.shared.length}</b><span>Strong matches</span></div><div><b>${cmp.limits.length}</b><span>Boundary notes</span></div></div>
+    <div class="member-about glass-lite"><h3>About</h3><p>${escapeHtml(p.profile?.bio || p.profile?.headline || 'No bio added yet.')}</p><div class="chips">${(p.tags||[]).map(t=>`<span class="chip">${escapeHtml(t)}</span>`).join('')}</div></div>
+    <div class="compare-section"><h3>🔥 You both like</h3>${ratingRowsHtml(cmp.shared,'No strong shared likes yet. Answer more Vault cards to build overlap.')}</div>
+    <div class="compare-section"><h3>👀 Curious / possible overlap</h3>${ratingRowsHtml(cmp.curious,'No shared curiosities yet.')}</div>
+    <div class="compare-section"><h3>🛑 Limits & differences</h3>${ratingRowsHtml(cmp.limits.concat(cmp.different).slice(0,8),'No major conflicts found in answered cards.')}</div>
+  `;
+  $('#memberProfileChat').classList.toggle('hidden', !isMutual(p));
+  modal.classList.remove('hidden');
+}
+
+function renderMatches(){
+  const incoming=incomingLikes();
+  const matched=mutualMatches();
+  let html='<div class="match-tools"><button id="resetConnections" class="ghost small-control" type="button">Reset testing likes</button></div>';
+  if(incoming.length){
+    html += `<div class="match-section"><h3>Liked you</h3>${incoming.map(p=>`<article class="match-card incoming-like">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h3><p>${escapeHtml(p.distanceLabel || 'Nearby')} • wants to connect</p></div><div class="match-actions"><button class="ghost match-action view-profile" data-key="${personKey(p)}">Profile</button><button class="primary match-action accept-like" data-key="${personKey(p)}">Like back</button><button class="ghost match-action ignore-like" data-key="${personKey(p)}">Ignore</button></div></article>`).join('')}</div>`;
+  }
+  if(matched.length){
+    html += `<div class="match-section"><h3>Matches</h3>${matched.map(p=>`<article class="match-card">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h3><p>${escapeHtml(p.distanceLabel || 'Nearby')} • ${escapeHtml(p.mutual[0] || 'Vault compatibility')}</p></div><div class="match-actions"><span class="score-badge">${p.score}%</span><button class="ghost match-action view-profile" data-key="${personKey(p)}">Profile</button><button class="ghost match-action open-chat" data-key="${personKey(p)}">Chat</button><button class="danger match-action unmatch" data-key="${personKey(p)}">Unmatch</button></div></article>`).join('')}</div>`;
+  }
+  if(!incoming.length && !matched.length){
+    html += '<div class="empty-state"><h3>No matches yet</h3><p>When someone likes you, they will appear here. Like them back to open a chat and unlock profile compatibility.</p></div>';
+  }
+  $('#matchesList').innerHTML = html;
+  $('#resetConnections')?.addEventListener('click', resetConnections);
+  $$('.accept-like').forEach(btn=>btn.onclick=()=>acceptLike(btn.dataset.key));
+  $$('.ignore-like').forEach(btn=>btn.onclick=()=>ignoreLike(btn.dataset.key));
+  $$('.unmatch').forEach(btn=>btn.onclick=()=>unmatch(btn.dataset.key));
+  $$('.open-chat').forEach(btn=>btn.onclick=()=>openChat(btn.dataset.key));
+  $$('.view-profile').forEach(btn=>btn.onclick=()=>openMemberProfile(btn.dataset.key));
+}
+
+function renderChats(){
+  const matched=mutualMatches();
+  if(supa && authUser){ matched.forEach(p=>{ const k=personKey(p); if(!chatCache[k]) loadChatMessages(k, true).then(()=>renderChats()); }); }
+  $('#chatList').innerHTML= matched.length ? matched.map(p=>`<article class="chat-row" data-key="${personKey(p)}">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(chatPreview(p))}</p></div><button class="ghost mini-profile-open" data-profile-key="${personKey(p)}" type="button">Profile</button></article>`).join('') : '<div class="empty-state"><h3>No conversations yet</h3><p>Chats appear only after both people like each other.</p></div>';
+  $$('.chat-row').forEach(row=>row.onclick=(e)=>{ if(e.target.closest('[data-profile-key]')) return; openChat(row.dataset.key); });
+  $$('[data-profile-key]').forEach(btn=>btn.onclick=(e)=>{e.stopPropagation(); openMemberProfile(btn.dataset.profileKey);});
+}
+
+async function cleanupExpiredMessages(){
+  // Do not aggressively delete during normal reads; only prune rows already past expiry.
+  if(!supa || !authUser) return;
+  try{ await supa.from('fv_messages').delete().lt('expires_at', new Date(Date.now()-60000).toISOString()); }catch(err){ console.warn('Expired message cleanup failed', err); }
+}
+
+async function signedMediaItems(media=[]){
+  if(!supa || !Array.isArray(media)) return [];
+  const now=Date.now();
+  const out=[];
+  for(const item of media){
+    if(item?.expires_at && new Date(item.expires_at).getTime() <= now) continue;
+    if(!item?.path) continue;
+    try{
+      const expiresIn=Math.max(60, Math.min(3600, Math.floor(((new Date(item.expires_at||Date.now()+3600000)).getTime()-now)/1000)));
+      const {data,error}=await supa.storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(item.path, expiresIn);
+      if(error) throw error;
+      out.push({...item, signedUrl:data.signedUrl});
+    }catch(err){ console.warn('Could not sign media URL', err); }
+  }
+  return out;
+}
+
+async function loadChatMessages(key, quiet=true){
+  if(!supa || !authUser || !key){ setCachedChat(key, []); return []; }
+  try{
+    const me=authUser.id;
+    const other=String(key);
+    const {data,error}=await supa
+      .from('fv_messages')
+      .select('id,sender_id,recipient_id,body,message_type,media,created_at,expires_at')
+      .or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at',{ascending:true})
+      .limit(120);
+    if(error) throw error;
+    const mapped=[];
+    for(const m of (data||[])){
+      mapped.push({
+        id:m.id,
+        from:m.sender_id===me?'me':'them',
+        text:m.body || '',
+        type:m.message_type || 'text',
+        media: await signedMediaItems(m.media || []),
+        at:m.created_at,
+        expiresAt:m.expires_at
+      });
+    }
+    const before=JSON.stringify(getCachedChat(key));
+    setCachedChat(key, mapped);
+    if(!quiet && before !== JSON.stringify(mapped)) renderChats();
+    return mapped;
+  }catch(err){ console.warn('Could not load chat messages', err); if(!quiet) showToast('Could not load messages. Check message schema/RLS.'); return getCachedChat(key); }
+}
+
+function chatPreview(p){
+  const msgs=getCachedChat(personKey(p));
+  const last=msgs[msgs.length-1];
+  if(last){
+    const label=last.type==='photo' ? '📷 Private photo' : last.text;
+    return last.from==='me' ? `You: ${label}` : label;
+  }
+  return p.mutual[0] && !p.mutual[0].startsWith('Vault overlap') ? `You both connect on ${p.mutual[0]}. Tap to start chatting.` : 'You matched. Tap to start chatting.';
+}
+
+function ensureChatModal(){
+  let modal=$('#chatModal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='chatModal';
+    modal.className='chat-modal hidden';
+    modal.innerHTML=`<div class="chat-sheet glass"><div class="chat-head"><button class="ghost-mini round" id="closeChat" type="button" aria-label="Close chat">←</button><div class="chat-person" id="chatPerson"></div><button class="danger mini-danger" id="chatClear" type="button">Clear</button></div><div class="session-note">Messages and private photos expire automatically. Default retention is 72 hours.</div><div class="chat-messages" id="chatMessages"></div><form class="chat-compose enhanced-compose" id="chatCompose"><div class="private-photo-controls"><label class="photo-send-button">📷<input id="chatPhotoInput" type="file" accept="image/*" multiple></label><select id="chatExpiry"><option value="default">72 hours</option><option value="30m">30 minutes</option><option value="24h">24 hours</option><option value="48h">48 hours</option></select></div><input id="chatInput" maxlength="500" placeholder="Write a message…" autocomplete="off" inputmode="text"><button class="primary" id="chatSend" type="submit">Send</button></form></div>`;
+    $('.phone').appendChild(modal);
+  }
+  bindChatModalHandlers();
+  const photo=$('#chatPhotoInput');
+  if(photo && !photo.dataset.bound){
+    photo.dataset.bound='1';
+    photo.addEventListener('change',()=>{ if(photo.files?.length) sendPrivatePhotos([...photo.files]); });
+  }
+  return modal;
+}
+
+function mediaHtml(m){
+  const items=Array.isArray(m.media) ? m.media : [];
+  if(!items.length) return '';
+  return `<div class="private-media-grid ${items.length>1?'album':''}">${items.map(item=>item.signedUrl?`<a href="${item.signedUrl}" target="_blank" rel="noopener" class="private-media-thumb"><img src="${item.signedUrl}" alt="Private shared photo"><span>Expires ${timeUntil(item.expires_at || m.expiresAt)}</span></a>`:`<div class="private-media-thumb expired"><span>Photo unavailable</span></div>`).join('')}</div>`;
+}
+function timeUntil(value){
+  const ms=new Date(value).getTime()-Date.now();
+  if(!value || ms<=0) return 'soon';
+  const h=Math.floor(ms/3600000), m=Math.round((ms%3600000)/60000);
+  if(h>=24) return `${Math.ceil(h/24)}d`;
+  if(h>=1) return `${h}h`;
+  return `${Math.max(1,m)}m`;
+}
+
+function renderChatMessages(){
+  if(!activeChatKey) return;
+  const p=people.find(x=>personKey(x)===String(activeChatKey));
+  const msgs=getCachedChat(activeChatKey);
+  const starter=p?.mutual?.[0] && !p.mutual[0].startsWith('Vault overlap') ? `You matched with ${p.name}. Shared signal: ${p.mutual[0]}.` : `You matched with ${p?.name || 'this person'}.`;
+  $('#chatMessages').innerHTML = `<div class="chat-bubble system">${escapeHtml(starter)}</div>` + msgs.map(m=>`<div class="chat-bubble ${m.from==='me'?'mine':'theirs'} ${m.type==='photo'?'photo-message':''}">${m.type==='photo'?mediaHtml(m):''}${m.text?`<div>${escapeHtml(m.text)}</div>`:''}<span>${new Date(m.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} • expires ${timeUntil(m.expiresAt)}</span></div>`).join('');
+  const box=$('#chatMessages'); if(box) box.scrollTop=box.scrollHeight;
+}
+
+async function sendChatMessage(){
+  if(!activeChatKey){ showToast('Open a matched chat first.'); return; }
+  const input=$('#chatInput');
+  if(!input){ showToast('Chat input was not ready. Reopen the chat.'); return; }
+  const text=(input.value||'').trim();
+  if(!text){ input.focus(); return; }
+  const p=people.find(x=>personKey(x)===String(activeChatKey));
+  if(!p || !isMutual(p)){ showToast('Chats open after you both like each other.'); return; }
+  if(!supa || !authUser){ showToast('Sign in is required to send messages.'); return; }
+  const sendBtn=$('#chatSend');
+  if(sendBtn) sendBtn.disabled = true;
+  try{
+    const expiresAt = new Date(Date.now() + MESSAGE_RETENTION_HOURS*60*60*1000).toISOString();
+    const payload={sender_id:authUser.id,recipient_id:String(activeChatKey),conversation_id:conversationIdFor(activeChatKey),body:text,message_type:'text',media:[],expires_at:expiresAt};
+    const {error}=await supa.from('fv_messages').insert(payload);
+    if(error) throw error;
+    input.value='';
+    await loadChatMessages(activeChatKey, true);
+    renderChatMessages(); renderChats(); input.focus();
+  }catch(err){ console.warn('Message send failed', err); showToast('Message failed. Run the updated message SQL schema.'); }
+  finally{ if(sendBtn) sendBtn.disabled = false; }
+}
+
+async function sendPrivatePhotos(files){
+  if(!files?.length || !activeChatKey) return;
+  const p=people.find(x=>personKey(x)===String(activeChatKey));
+  if(!p || !isMutual(p)){ showToast('Private photos unlock after a match.'); return; }
+  if(!supa || !authUser){ showToast('Sign in is required to send private photos.'); return; }
+  const expiryKey=$('#chatExpiry')?.value || 'default';
+  const hours=MEDIA_EXPIRY_OPTIONS[expiryKey] || 72;
+  const expiresAt=new Date(Date.now()+hours*60*60*1000).toISOString();
+  const input=$('#chatPhotoInput');
+  try{
+    const conv=conversationIdFor(activeChatKey).replace(/[^a-zA-Z0-9_-]/g,'_');
+    const uploaded=[];
+    for(const file of files.slice(0,8)){
+      if(!file.type.startsWith('image/')) continue;
+      if(file.size > 8*1024*1024){ showToast('One photo was over 8MB and skipped.'); continue; }
+      const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+      const path=`${authUser.id}/${conv}/${crypto.randomUUID()}.${ext}`;
+      const {error}=await supa.storage.from(CHAT_MEDIA_BUCKET).upload(path, file, {cacheControl:'3600', upsert:false, contentType:file.type});
+      if(error) throw error;
+      uploaded.push({path,name:file.name,type:file.type,size:file.size,expires_at:expiresAt});
+    }
+    if(!uploaded.length) return;
+    const payload={sender_id:authUser.id,recipient_id:String(activeChatKey),conversation_id:conversationIdFor(activeChatKey),body:`📷 Private photo${uploaded.length>1?' album':''}`,message_type:'photo',media:uploaded,expires_at:expiresAt};
+    const {error}=await supa.from('fv_messages').insert(payload);
+    if(error) throw error;
+    if(input) input.value='';
+    await loadChatMessages(activeChatKey, true);
+    renderChatMessages(); renderChats();
+    showToast(`Private photo${uploaded.length>1?'s':''} sent. Expires in ${expiryKey==='default'?'72h':$('#chatExpiry')?.selectedOptions?.[0]?.textContent || '72h'}.`);
+  }catch(err){ console.warn('Private photo send failed', err); showToast('Photo failed. Run updated SQL and create the private chat bucket.'); }
+}
+
 init();

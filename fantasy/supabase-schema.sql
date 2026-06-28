@@ -189,3 +189,58 @@ using (auth.uid() = sender_id or auth.uid() = recipient_id);
 create index if not exists fv_messages_conversation_created_idx on public.fv_messages(conversation_id, created_at);
 create index if not exists fv_messages_sender_recipient_idx on public.fv_messages(sender_id, recipient_id, created_at);
 create index if not exists fv_messages_expires_idx on public.fv_messages(expires_at);
+
+-- Patch: durable 72-hour messages + private photo/albums with custom expiry.
+alter table public.fv_messages add column if not exists message_type text not null default 'text';
+alter table public.fv_messages add column if not exists media jsonb not null default '[]'::jsonb;
+alter table public.fv_messages add column if not exists retention_hours numeric not null default 72;
+
+-- Relax body for media messages while keeping a practical size limit.
+alter table public.fv_messages drop constraint if exists fv_messages_body_check;
+alter table public.fv_messages add constraint fv_messages_body_check
+check (body is null or char_length(body) between 0 and 500);
+
+-- Replace send policy so photos can use shorter custom expiration windows.
+drop policy if exists "Users can send Fantasy Vault messages" on public.fv_messages;
+create policy "Users can send Fantasy Vault messages"
+on public.fv_messages for insert
+to authenticated
+with check (
+  auth.uid() = sender_id
+  and sender_id <> recipient_id
+  and expires_at > now()
+  and expires_at <= now() + interval '72 hours 5 minutes'
+  and (body is null or char_length(body) <= 500)
+  and message_type in ('text','photo')
+);
+
+-- Private chat media bucket. Objects are not public; the app creates short-lived signed URLs.
+insert into storage.buckets (id, name, public)
+values ('fv-private-chat', 'fv-private-chat', false)
+on conflict (id) do update set public = false;
+
+drop policy if exists "Users can upload own Fantasy Vault chat media" on storage.objects;
+drop policy if exists "Authenticated users can sign Fantasy Vault chat media" on storage.objects;
+drop policy if exists "Users can delete own Fantasy Vault chat media" on storage.objects;
+
+create policy "Users can upload own Fantasy Vault chat media"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'fv-private-chat'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Needed for signed URL creation. Paths are randomized and message rows are protected by RLS.
+create policy "Authenticated users can sign Fantasy Vault chat media"
+on storage.objects for select
+to authenticated
+using (bucket_id = 'fv-private-chat');
+
+create policy "Users can delete own Fantasy Vault chat media"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'fv-private-chat'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
