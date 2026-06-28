@@ -80,28 +80,22 @@
         <div class="photo-card">
           <div>
             <b>Profile photo</b>
-            <p>Upload a square-ish photo for your dating profile. It syncs to Supabase Storage when available.</p>
+            <p>Upload a square-ish photo for your dating profile.</p>
           </div>
           <label class="upload-pill">📷 Change photo<input id="avatarUpload" type="file" accept="image/*" /></label>
           <button id="removeAvatar" class="ghost full">Remove photo</button>
         </div>
-        <div class="sync-card" id="syncCard">
-          <div>Login: <b id="authStatus">not signed in</b></div>
-          <div>Sync: <b id="syncStatus">local fallback</b></div>
-        </div>
         <div class="edit-card">
-          <label>Name<input id="displayName" value="Brian" /></label>
+          <label>Name<input id="displayName" placeholder="Your display name" /></label>
           <label>Headline<input id="headline" placeholder="Chemistry-first, sex-positive, playful" /></label>
           <label>City / Area<input id="city" placeholder="York, PA" /></label>
           <label>Distance radius<select id="radius"><option>10 miles</option><option selected>25 miles</option><option>50 miles</option><option>100 miles</option></select></label>
           <label>Looking for<select id="lookingFor"><option>Dating</option><option selected>Intimate connection</option><option>Friends with chemistry</option><option>Long-term partner</option><option>Exploring</option></select></label>
           <label>Bio<textarea id="bio" placeholder="Write a tasteful dating intro..."></textarea></label>
         </div>
+        <button id="saveProfile" class="primary full">Save profile</button>
         <button id="googleLogin" class="google full">Continue with Google</button>
         <button id="signOut" class="ghost full hidden">Sign out</button>
-        <button id="syncNow" class="primary full">Sync to Supabase</button>
-        <button id="exportData" class="ghost full">Export account data</button>
-        <pre id="exportBox"></pre>
       </section>
 
 

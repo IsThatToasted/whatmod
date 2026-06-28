@@ -75,10 +75,47 @@ let state = load();
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
-function base(){return {ageOk:false, userId: getDeviceId(), profile:{displayName:'Brian',headline:'',city:'',radius:'25 miles',lookingFor:'Intimate connection',bio:'',avatarUrl:''}, ratings:{}, liked:[], passed:[], updatedAt:new Date().toISOString()};}
+function defaultProfileForAuth(user){
+  const meta = user?.user_metadata || {};
+  const emailName = (user?.email || '').split('@')[0] || '';
+  const displayName = (meta.full_name || meta.name || emailName || '').trim();
+  return {
+    displayName,
+    headline:'',
+    city:'',
+    radius:'25 miles',
+    lookingFor:'Intimate connection',
+    bio:'',
+    avatarUrl: meta.avatar_url || meta.picture || ''
+  };
+}
+function base(user=null){return {ageOk:false, userId: user?.id || getDeviceId(), profile: defaultProfileForAuth(user), ratings:{}, liked:[], passed:[], updatedAt:new Date().toISOString()};}
 function getDeviceId(){let id=localStorage.getItem('fvDeviceId'); if(!id){id='local-'+crypto.randomUUID(); localStorage.setItem('fvDeviceId',id);} return id;}
-function load(){try{return {...base(), ...(JSON.parse(localStorage.getItem(KEY))||{})}}catch{return base()}}
-function save(){state.updatedAt=new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(state)); renderVaultStats(); renderMatches(); renderChats(); debounceSync();}
+function userStorageKey(user=authUser){ return user?.id ? `${KEY}:${user.id}` : KEY; }
+function load(user=null){try{return {...base(user), ...(JSON.parse(localStorage.getItem(userStorageKey(user)))||{})}}catch{return base(user)}}
+function save(){state.updatedAt=new Date().toISOString(); localStorage.setItem(userStorageKey(), JSON.stringify(state)); renderVaultStats(); renderMatches(); renderChats(); debounceSync();}
+function repairProfileForAuth(profile={}, user){
+  const defaults = defaultProfileForAuth(user);
+  const fixed = {...defaults, ...(profile||{})};
+  // Migration guard: earlier prototype builds could accidentally copy Brian's local profile
+  // into a different Google account on the same browser. If that happened, prefer the
+  // signed-in Google name and remove the copied demo area.
+  if((fixed.displayName || '').trim().toLowerCase() === 'brian' && (defaults.displayName || '').trim().toLowerCase() !== 'brian'){
+    fixed.displayName = defaults.displayName;
+    if((fixed.city || '').trim().toLowerCase() === 'york, pa') fixed.city = '';
+  }
+  if(!fixed.displayName) fixed.displayName = defaults.displayName;
+  if(!fixed.avatarUrl && defaults.avatarUrl) fixed.avatarUrl = defaults.avatarUrl;
+  return fixed;
+}
+function loadStateForAuthUser(user){
+  const next = load(user);
+  next.ageOk = true;
+  next.userId = user.id;
+  next.profile = repairProfileForAuth(next.profile, user);
+  return next;
+}
+
 let syncTimer=null; function debounceSync(){clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncToSupabase(false),700);}
 
 async function syncToSupabase(show=true){
@@ -108,12 +145,14 @@ async function loadRemoteProfile(){
     const {data,error}=await supa.from('fv_profiles').select('*').eq('user_id',authUser.id).maybeSingle();
     if(error) throw error;
     if(data){
-      state = {...state, profile:{...state.profile,...(data.profile||{})}, ratings:data.ratings||{}, liked:data.liked||[], passed:data.passed||[], userId:authUser.id};
-      localStorage.setItem(KEY, JSON.stringify(state));
+      state = {...state, profile: repairProfileForAuth({...state.profile,...(data.profile||{})}, authUser), ratings:data.ratings||{}, liked:data.liked||[], passed:data.passed||[], userId:authUser.id};
+      localStorage.setItem(userStorageKey(), JSON.stringify(state));
       hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack();
       setSync('loaded from Supabase');
     }else{
-      state.userId = authUser.id;
+      // Brand-new account: start from the signed-in Google user, not old local data from another account.
+      state = loadStateForAuthUser(authUser);
+      hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack(); updateAvatar();
       bootingRemote = false;
       await syncToSupabase(false);
       bootingRemote = true;
@@ -375,8 +414,9 @@ function canEnter(){ return !!authUser; }
 
 function resetLocalAppData(){
   localStorage.removeItem(KEY);
+  if(authUser) localStorage.removeItem(userStorageKey(authUser));
   localStorage.removeItem('fvDeviceId');
-  state = load();
+  state = authUser ? loadStateForAuthUser(authUser) : load();
   hydrateProfileForm();
   renderVault();
   renderVaultStats();
@@ -394,21 +434,23 @@ async function initAuth(){
   authUser=data?.session?.user || null;
   updateAuthUi();
   if(authUser){
-    state.ageOk = true;
-    state.userId = authUser.id;
-    localStorage.setItem(KEY, JSON.stringify(state));
+    state = loadStateForAuthUser(authUser);
+    localStorage.setItem(userStorageKey(), JSON.stringify(state));
+    hydrateProfileForm(); updateAvatar();
     await loadRemoteProfile();
     await loadAdminConfig();
+    await loadPeopleDirectory();
     openApp();
   }
   supa.auth.onAuthStateChange(async (event, session)=>{
     authUser=session?.user || null;
     updateAuthUi();
     if(event === 'SIGNED_IN' && authUser){
-      state.ageOk = true;
-      state.userId = authUser.id;
+      state = loadStateForAuthUser(authUser);
+      hydrateProfileForm(); updateAvatar();
       await loadRemoteProfile();
       await loadAdminConfig();
+      await loadPeopleDirectory();
       save();
       openApp();
       showToast('Google login connected.');
@@ -418,6 +460,12 @@ async function initAuth(){
 }
 
 function setSync(text){const el=$('#syncStatus'); if(el) el.textContent=text;}
+async function saveProfileManually(){
+  save();
+  await syncToSupabase(true);
+  await loadPeopleDirectory();
+  showToast('Profile saved.');
+}
 
 
 function hydrateProfileForm(){
@@ -437,10 +485,11 @@ async function init(){
   $('#closeFilters').onclick=$('#applyFilters').onclick=()=>$('#filters').classList.add('hidden');
   $$('.pill').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; $$('.pill').forEach(x=>x.classList.toggle('active',x===b)); index=0; renderStack();});
   $('#passBtn').onclick=()=>act('pass'); $('#likeBtn').onclick=()=>act('like'); $('#vaultBtn').onclick=()=>{showToast('Mutual Vault details unlock after a match.'); showScreen('vault');};
-  const exportData=$('#exportData'); if(exportData) exportData.onclick=()=>$('#exportBox').textContent=JSON.stringify(state,null,2);
+  const exportData=$('#exportData'); if(exportData) exportData.onclick=()=>{const box=$('#exportBox'); if(box) box.textContent=JSON.stringify(state,null,2);};
   $('#googleLogin').onclick=signInWithGoogle;
   $('#signOut').onclick=signOut;
-  $('#syncNow').onclick=()=>syncToSupabase(true);
+  const syncNow=$('#syncNow'); if(syncNow) syncNow.onclick=()=>syncToSupabase(true);
+  const saveProfileBtn=$('#saveProfile'); if(saveProfileBtn) saveProfileBtn.onclick=saveProfileManually;
   const avatarUpload=$('#avatarUpload'); if(avatarUpload) avatarUpload.onchange=e=>handleAvatarUpload(e.target.files?.[0]);
   const removeAvatar=$('#removeAvatar'); if(removeAvatar) removeAvatar.onclick=()=>{state.profile.avatarUrl=''; updateAvatar(); save(); showToast('Photo removed.');};
   const adminSeed=$('#adminSeed'); if(adminSeed) adminSeed.onclick=()=>saveAdminConfig(true);
