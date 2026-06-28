@@ -77,6 +77,14 @@
 
       <section id="profile" class="screen">
         <div class="profile-hero"><div class="profile-banner"></div><div class="profile-avatar">B</div></div>
+        <div class="photo-card">
+          <div>
+            <b>Profile photo</b>
+            <p>Upload a square-ish photo for your dating profile. It syncs to Supabase Storage when available.</p>
+          </div>
+          <label class="upload-pill">📷 Change photo<input id="avatarUpload" type="file" accept="image/*" /></label>
+          <button id="removeAvatar" class="ghost full">Remove photo</button>
+        </div>
         <div class="sync-card" id="syncCard">
           <div>Login: <b id="authStatus">not signed in</b></div>
           <div>Sync: <b id="syncStatus">local fallback</b></div>
@@ -97,6 +105,28 @@
         <pre id="exportBox"></pre>
       </section>
 
+
+      <section id="admin" class="screen admin-screen">
+        <div class="screen-title"><h2>Admin Studio 🛠️</h2><p>Build and tune Fantasy Vault content. Only <b>ra1nonit1@gmail.com</b> can save changes.</p></div>
+        <div id="adminLock" class="admin-lock hidden">Admin access is restricted to the owner account.</div>
+        <div id="adminPanel" class="admin-panel hidden">
+          <div class="admin-grid">
+            <button id="adminSeed" class="primary full">Seed / Repair Default Vault Config</button>
+            <button id="adminReload" class="ghost full">Reload From Supabase</button>
+          </div>
+          <div class="edit-card admin-editor">
+            <label>Answer options JSON<textarea id="adminLabels" spellcheck="false"></textarea></label>
+            <label>Category metadata JSON<textarea id="adminCategories" spellcheck="false"></textarea></label>
+            <label>Vault cards JSON<textarea id="adminCards" spellcheck="false"></textarea></label>
+          </div>
+          <div class="admin-grid">
+            <button id="adminSave" class="primary full">Save Admin Config</button>
+            <button id="adminResetDefaults" class="danger full">Reset Editor To App Defaults</button>
+          </div>
+          <p class="tiny-note">Tip: categories use the existing theme classes like theme-romance, theme-fantasy, theme-power, theme-boundaries, etc.</p>
+        </div>
+      </section>
+
       <section id="filters" class="modal hidden">
         <div class="modal-card glass">
           <div class="modal-head"><h3>Discovery filters</h3><button id="closeFilters" class="round ghost-mini">×</button></div>
@@ -112,6 +142,7 @@
         <button class="tab" data-screen="matches"><span>💞</span>Matches</button>
         <button class="tab" data-screen="vault"><span>🔐</span>Vault</button>
         <button class="tab" data-screen="chat"><span>💬</span>Chat</button>
+        <button class="tab hidden" id="adminTab" data-screen="admin"><span>🛠️</span>Admin</button>
         <button class="tab" data-screen="profile"><span>👤</span>Profile</button>
       </nav>
     </section>
