@@ -596,3 +596,157 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
   .rain-back-actions{justify-content:flex-start;flex-wrap:wrap}
   .rain-plan-text{-webkit-line-clamp:6}
 }
+
+/* v19: Rain Plan layout fix — keep the new flip wrapper from shrinking into the old timeline grid columns. */
+.item-card.timeline-item{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  align-items:stretch !important;
+  overflow:visible !important;
+}
+.item-card.timeline-item > .card-front,
+.item-card.timeline-item > .rain-back,
+.item-card > .card-front,
+.item-card > .rain-back{
+  grid-column:1 / -1 !important;
+  width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+.item-card.timeline-item > .card-front{
+  display:grid !important;
+  grid-template-columns:86px minmax(180px,1fr) auto !important;
+  gap:14px !important;
+  align-items:center !important;
+}
+.item-card.timeline-item.compact-time-card > .card-front{
+  grid-template-columns:78px minmax(150px,1fr) auto !important;
+  gap:12px !important;
+}
+.item-card.timeline-item .item-actions{
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+  width:auto !important;
+  min-width:max-content !important;
+}
+.item-card.timeline-item .item-actions button{
+  flex:0 0 auto !important;
+  margin:0 !important;
+}
+.item-card.timeline-item .rain-toggle{
+  min-width:76px !important;
+  padding-inline:12px !important;
+}
+.item-card.timeline-item .time-chip{
+  width:76px !important;
+  min-width:76px !important;
+}
+.item-card.timeline-item .item-main{
+  min-width:0 !important;
+  overflow:hidden !important;
+}
+.item-card.timeline-item .item-main h3,
+.item-card.timeline-item .item-meta,
+.item-card.timeline-item .item-notes{
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+@media(max-width:980px){
+  .item-card.timeline-item > .card-front,
+  .item-card.timeline-item.compact-time-card > .card-front{
+    grid-template-columns:74px minmax(0,1fr) !important;
+  }
+  .item-card.timeline-item .item-actions{
+    grid-column:1 / -1 !important;
+    justify-content:flex-start !important;
+    flex-wrap:wrap !important;
+    min-width:0 !important;
+    padding-top:2px !important;
+  }
+}
+@media(max-width:760px){
+  .item-card.timeline-item > .card-front,
+  .item-card.timeline-item.compact-time-card > .card-front{
+    grid-template-columns:1fr !important;
+    gap:10px !important;
+  }
+  .item-card.timeline-item .time-chip{
+    width:max-content !important;
+    min-width:74px !important;
+    padding:0 12px !important;
+  }
+  .item-card.timeline-item .item-actions{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:8px !important;
+  }
+  .item-card.timeline-item .item-actions button{
+    height:38px !important;
+    min-height:38px !important;
+  }
+}
+
+/* v20: Rain Plan flipped-card usability fix — keep controls fully visible/clickable even on short timed items. */
+.item-card.timeline-item.rain-flipped,
+.item-card.rain-flipped{
+  overflow:visible !important;
+  z-index:50 !important;
+  min-height:132px !important;
+  height:auto !important;
+  align-items:stretch !important;
+}
+.item-card.rain-flipped > .rain-back,
+.item-card.timeline-item.rain-flipped > .rain-back{
+  display:flex !important;
+  min-height:104px !important;
+  padding:12px 14px !important;
+  gap:10px !important;
+  justify-content:space-between !important;
+  align-items:stretch !important;
+  pointer-events:auto !important;
+  position:relative !important;
+  z-index:60 !important;
+}
+.rain-back-head,
+.rain-back-actions{
+  flex:0 0 auto !important;
+  flex-wrap:wrap !important;
+}
+.rain-back-head .rain-close,
+.rain-back-actions .edit-rain{
+  position:relative !important;
+  z-index:70 !important;
+  min-height:38px !important;
+  white-space:nowrap !important;
+}
+.rain-plan-text{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow:auto !important;
+  -webkit-line-clamp:unset !important;
+  display:block !important;
+  max-height:96px !important;
+  padding-right:4px !important;
+}
+.timeline-board,
+.day-body,
+.planner-panel{
+  overflow:visible !important;
+}
+@media(max-width:760px){
+  .item-card.timeline-item.rain-flipped,
+  .item-card.rain-flipped{
+    min-height:154px !important;
+  }
+  .item-card.rain-flipped > .rain-back,
+  .item-card.timeline-item.rain-flipped > .rain-back{
+    min-height:126px !important;
+    padding:14px !important;
+  }
+  .rain-back-head{align-items:flex-start !important;}
+  .rain-back-actions{justify-content:flex-start !important;}
+  .rain-plan-text{max-height:110px !important;}
+}
