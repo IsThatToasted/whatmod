@@ -78,7 +78,6 @@ async function syncToSupabase(show=true){
   try{
     const payload={
       user_id: authUser.id,
-      user_key: authUser.id,
       email: authUser.email || null,
       profile:state.profile,
       ratings:state.ratings,
@@ -114,11 +113,9 @@ async function loadRemoteProfile(){
 }
 
 function authRedirectUrl(){
-  // Always return to the exact page the user is currently on.
-  // This prevents a stale config.js or Supabase Site URL from sending hosted builds to localhost.
-  if(location.protocol === 'file:') return window.location.href.split('#')[0];
-  const cleanPath = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
-  return window.location.origin + cleanPath;
+  // Production-only OAuth redirect. This app is permanently hosted at whatmod.com/fantasy.
+  // Never redirect to localhost, even if an old Supabase Site URL or browser cache exists.
+  return 'https://whatmod.com/fantasy/';
 }
 
 async function signInWithGoogle(){
