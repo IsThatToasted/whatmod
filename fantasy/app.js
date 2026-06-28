@@ -1,3 +1,14 @@
+// OAuth rescue: if Supabase/Google ever returns to an old localhost Site URL,
+// immediately move the auth hash back to the permanent hosted app.
+(function rescueLocalhostOAuthRedirect(){
+  const PROD_URL = 'https://whatmod.com/fantasy/';
+  const isBadLocalhost = window.location.hostname === 'localhost' && window.location.port === '3000';
+  const hasAuthHash = window.location.hash && /access_token|refresh_token|error_description/.test(window.location.hash);
+  if (isBadLocalhost && hasAuthHash) {
+    window.location.replace(PROD_URL + window.location.hash);
+  }
+})();
+
 const CONFIG = window.FV_CONFIG || {};
 const KEY = 'fantasyVaultDatingV3';
 const supa = (() => {
@@ -112,19 +123,38 @@ async function loadRemoteProfile(){
   finally{ bootingRemote = false; }
 }
 
+function normalizeUrl(url){
+  try {
+    const u = new URL(url);
+    // Keep exactly the app directory, never include query/hash/index.html.
+    if (u.pathname.endsWith('/index.html')) u.pathname = u.pathname.replace(/index\.html$/, '');
+    if (!u.pathname.endsWith('/')) u.pathname += '/';
+    u.search = '';
+    u.hash = '';
+    return u.toString();
+  } catch {
+    return 'https://whatmod.com/fantasy/';
+  }
+}
+
 function authRedirectUrl(){
-  // Production-only OAuth redirect. This app is permanently hosted at whatmod.com/fantasy.
-  // Never redirect to localhost, even if an old Supabase Site URL or browser cache exists.
-  return 'https://whatmod.com/fantasy/';
+  // Prefer the configured permanent production URL. This keeps GitHub Pages,
+  // Supabase Auth, and Google OAuth using one canonical redirect.
+  const configured = CONFIG.AUTH_REDIRECT_URL || CONFIG.APP_URL || 'https://whatmod.com/fantasy/';
+  return normalizeUrl(configured);
 }
 
 async function signInWithGoogle(){
   if(!supa){ showToast('Supabase is not available. Check config.js.'); return; }
   const redirectTo = authRedirectUrl();
-  console.log('[Fantasy Vault] Google OAuth redirectTo:', redirectTo);
+  console.log('[Fantasy Vault] OAuth redirectTo:', redirectTo);
   const {error}=await supa.auth.signInWithOAuth({
     provider:'google',
-    options:{ redirectTo, queryParams:{ prompt:'select_account' } }
+    options:{
+      redirectTo,
+      skipBrowserRedirect:false,
+      queryParams:{ prompt:'select_account' }
+    }
   });
   if(error){ console.warn(error); showToast('Google login failed to start.'); }
 }

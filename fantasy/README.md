@@ -1,48 +1,37 @@
-# Fantasy Vault — GitHub Hosted Build
+# Fantasy Vault — Clean OAuth Build
 
-Permanent hosted URL:
+Upload the contents of this zip directly into `/fantasy/` so `index.html` is at:
 
-```txt
-https://whatmod.com/fantasy/
-```
-
-This build never redirects OAuth to localhost. Google login always requests:
-
-```txt
-https://whatmod.com/fantasy/
-```
-
-## Upload
-
-Upload/commit all files in this folder to the GitHub Pages folder serving `/fantasy/`. After upload, hard refresh with Ctrl+F5.
+`https://whatmod.com/fantasy/index.html`
 
 ## Supabase Auth settings
 
-In Supabase → Authentication → URL Configuration:
+Supabase → Authentication → URL Configuration:
 
-```txt
 Site URL:
-https://whatmod.com/fantasy/
+
+`https://whatmod.com/fantasy/`
 
 Redirect URLs:
-https://whatmod.com/fantasy/
-https://whatmod.com/fantasy
-```
 
-## Google OAuth Client
+`https://whatmod.com/fantasy/`
+`https://whatmod.com/fantasy`
+
+## Google Cloud OAuth client
 
 Authorized JavaScript origin:
 
-```txt
-https://whatmod.com
-```
+`https://whatmod.com`
 
 Authorized redirect URI:
 
-```txt
-https://gqkkdocvfstbsekxyrbo.supabase.co/auth/v1/callback
-```
+`https://gqkkdocvfstbsekxyrbo.supabase.co/auth/v1/callback`
 
-## Schema
+Do not add `whatmod.com/fantasy` as a Google redirect URI for Supabase OAuth. Google redirects to Supabase; Supabase redirects back to the app.
 
-Use `supabase-schema.sql`. It uses `user_id` only and does not require `user_key`.
+## What changed
+
+- OAuth redirect is centralized in `config.js`.
+- The app normalizes redirects to `https://whatmod.com/fantasy/`.
+- A safety rescue moves any old `localhost:3000/#access_token=...` callback back to the live app.
+- The app uses Supabase `detectSessionInUrl: true` to process the token hash after redirect.
