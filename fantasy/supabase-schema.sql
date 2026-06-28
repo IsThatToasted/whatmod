@@ -1,13 +1,12 @@
--- Fantasy Vault schema with Google/Supabase Auth ownership, admin config, and profile photos.
--- Run in Supabase SQL Editor. For an early prototype, this resets the main profile table.
+-- Fantasy Vault production-safe schema/migration.
+-- Run in Supabase SQL Editor. This version does NOT drop existing user data.
 
 create extension if not exists pgcrypto;
 
--- User profile data synced by the app.
-drop table if exists public.fv_profiles cascade;
-create table public.fv_profiles (
+-- Main user profile data synced by the app.
+create table if not exists public.fv_profiles (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid unique not null references auth.users(id) on delete cascade,
+  user_id uuid unique references auth.users(id) on delete cascade,
   email text,
   profile jsonb not null default '{}'::jsonb,
   ratings jsonb not null default '{}'::jsonb,
@@ -17,12 +16,28 @@ create table public.fv_profiles (
   updated_at timestamptz not null default now()
 );
 
+alter table public.fv_profiles add column if not exists user_id uuid unique references auth.users(id) on delete cascade;
+alter table public.fv_profiles add column if not exists email text;
+alter table public.fv_profiles add column if not exists profile jsonb not null default '{}'::jsonb;
+alter table public.fv_profiles add column if not exists ratings jsonb not null default '{}'::jsonb;
+alter table public.fv_profiles add column if not exists liked jsonb not null default '[]'::jsonb;
+alter table public.fv_profiles add column if not exists passed jsonb not null default '[]'::jsonb;
+alter table public.fv_profiles add column if not exists created_at timestamptz not null default now();
+alter table public.fv_profiles add column if not exists updated_at timestamptz not null default now();
+
 alter table public.fv_profiles enable row level security;
 
-create policy "Users can read own Fantasy Vault profile"
+drop policy if exists "Users can read own Fantasy Vault profile" on public.fv_profiles;
+drop policy if exists "Authenticated users can read Fantasy Vault directory" on public.fv_profiles;
+drop policy if exists "Users can insert own Fantasy Vault profile" on public.fv_profiles;
+drop policy if exists "Users can update own Fantasy Vault profile" on public.fv_profiles;
+drop policy if exists "Users can delete own Fantasy Vault profile" on public.fv_profiles;
+
+-- Needed for Discover/Matches. Keep sensitive data out of profile JSON until a dedicated public profile table is added.
+create policy "Authenticated users can read Fantasy Vault directory"
 on public.fv_profiles for select
 to authenticated
-using (auth.uid() = user_id);
+using (true);
 
 create policy "Users can insert own Fantasy Vault profile"
 on public.fv_profiles for insert
@@ -41,6 +56,7 @@ to authenticated
 using (auth.uid() = user_id);
 
 create index if not exists fv_profiles_user_id_idx on public.fv_profiles(user_id);
+create index if not exists fv_profiles_updated_at_idx on public.fv_profiles(updated_at desc);
 
 -- Admin-editable app/Vault configuration.
 create table if not exists public.fv_admin_config (

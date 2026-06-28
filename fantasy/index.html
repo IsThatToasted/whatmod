@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Fantasy Vault — Dating Prototype</title>
+  <title>Fantasy Vault</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
     <div class="gate-card glass">
       <div class="app-icon">🔐</div>
       <h1>Fantasy Vault</h1>
-      <p>A sex-positive dating prototype for consenting adults to discover chemistry, compatible desires, curiosities, and boundaries.</p>
+      <p>A sex-positive dating app for consenting adults to discover chemistry, compatible desires, curiosities, and boundaries.</p>
       <div class="gate-warning">18+ only. Login is required before entering Fantasy Vault.</div>
       <label class="age-check">
         <input id="ageConfirm" type="checkbox" />
@@ -34,7 +34,7 @@
       <header class="app-top">
         <button class="round ghost-mini profile-nav-button" id="profileShortcut" title="Open profile"><span class="nav-avatar" id="topProfileAvatar">👤</span></button>
         <div class="logo-lockup"><div class="tiny-icon">🔐</div><span>Fantasy Vault</span></div>
-        <button class="round ghost-mini" id="filterOpen">⚙</button>
+        <button class="round ghost-mini" id="filterOpen" title="Discovery filters" aria-label="Discovery filters">🎚️</button>
       </header>
 
       <section id="discover" class="screen active-screen">
@@ -100,8 +100,7 @@
         <button id="googleLogin" class="google full">Continue with Google</button>
         <button id="signOut" class="ghost full hidden">Sign out</button>
         <button id="syncNow" class="primary full">Sync to Supabase</button>
-        <button id="exportData" class="ghost full">Export local data</button>
-        <button id="resetDemo" class="danger full">Reset demo</button>
+        <button id="exportData" class="ghost full">Export account data</button>
         <pre id="exportBox"></pre>
       </section>
 
@@ -133,11 +132,11 @@
           <div id="adminPaneCards" class="admin-pane active">
             <div class="admin-two-col">
               <div class="admin-list-card">
-                <div class="admin-list-head"><h3>Vault Cards</h3><input id="adminCardSearch" placeholder="Search cards..." /></div>
+                <div class="admin-list-head"><h3>Vault Cards</h3><input id="adminCardSearch" placeholder="Search Vault cards..." /></div>
                 <div id="adminCardList" class="admin-list"></div>
               </div>
               <form id="adminCardForm" class="edit-card admin-form">
-                <h3 id="adminCardFormTitle">Add / Edit Card</h3>
+                <h3 id="adminCardFormTitle">Add or Edit Card</h3>
                 <label>Card ID<input id="adminCardId" placeholder="example: praise" /></label>
                 <label>Title<input id="adminCardTitle" placeholder="Praise and encouragement" /></label>
                 <label>Category<select id="adminCardCat"></select></label>
@@ -159,7 +158,7 @@
                 <div id="adminCategoryList" class="admin-list"></div>
               </div>
               <form id="adminCategoryForm" class="edit-card admin-form">
-                <h3>Add / Edit Category</h3>
+                <h3>Add or Edit Category</h3>
                 <label>Category Name<input id="adminCategoryName" placeholder="Romance" /></label>
                 <label>Emoji<input id="adminCategoryEmoji" placeholder="🌹" maxlength="4" /></label>
                 <label>Color Theme<select id="adminCategoryTheme">
@@ -191,7 +190,7 @@
                 <div id="adminAnswerList" class="admin-list"></div>
               </div>
               <form id="adminAnswerForm" class="edit-card admin-form">
-                <h3>Add / Edit Answer</h3>
+                <h3>Add or Edit Answer</h3>
                 <label>Answer Key<input id="adminAnswerKey" placeholder="love" /></label>
                 <label>Label<input id="adminAnswerLabel" placeholder="😍 Love" /></label>
                 <div class="admin-grid">

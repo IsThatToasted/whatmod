@@ -1,22 +1,26 @@
-# Fantasy Vault — Real Admin Dashboard Build
+# Fantasy Vault — Final Polish Build
 
-Upload the contents of this folder directly into `whatmod.com/fantasy/`.
+Upload the **contents** of this folder directly into `whatmod.com/fantasy/`.
 
-## What changed
+## What changed in this build
 
-- Expanded Admin Studio for `ra1nonit1@gmail.com` only.
-- Form-based Vault card creation/editing/deleting.
-- Form-based category creation/editing/deleting.
-- Form-based answer choice creation/editing/deleting.
-- Bulk JSON import/export is still available under Tools, but no longer required for normal editing.
-- Changes save to Supabase `fv_admin_config` and refresh the public Vault immediately.
-- Profile avatar/nav avatar support remains included.
+- Kept the existing dating UI, Google login, photo upload, Vault, matches, messages, and Admin Studio features intact.
+- Changed the top-right cog to a filter/sliders icon because it opens Discovery filters.
+- Removed demo/placeholder profile cards from Discover. The app now loads real signed-in profiles from Supabase.
+- Removed the public-facing `Reset demo` button from the Profile screen.
+- Polished empty states for Discover, Matches, Messages, and Vault.
+- Improved mobile spacing/hover polish and photo rendering.
+- Updated `supabase-schema.sql` to be non-destructive. It no longer drops the existing `fv_profiles` table.
 
-## Required Supabase pieces
+## Required Supabase update
 
-Run `supabase-schema.sql` if you have not already.
+Run the included `supabase-schema.sql` once after upload.
 
-Make sure Supabase Auth URL Configuration uses:
+This adds the authenticated directory-read policy needed for Discover to show other signed-in users. Until another user has created a profile, Discover will show an empty state instead of fake people.
+
+## Supabase Auth URL Configuration
+
+Make sure Supabase Auth uses:
 
 - Site URL: `https://whatmod.com/fantasy/`
 - Redirect URLs:

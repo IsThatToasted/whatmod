@@ -22,13 +22,8 @@ const supa = (() => {
 let authUser = null;
 let bootingRemote = false;
 
-const people = [
-  {name:'Maya', age:29, distance:4, score:94, vibe:'Playful, open-minded, loves late-night chemistry', gradient:['#ff3f91','#8b5cff'], initial:'M', tags:['Night owl','Adventurous','Verified'], mutual:['🎭 Role-play themes','🗣️ Direct talk','🔒 Private photos']},
-  {name:'Sasha', age:27, distance:12, score:86, vibe:'Sensual, romantic, curious, and emotionally warm', gradient:['#ff6b73','#ffd37a'], initial:'S', tags:['Romance','Curious','Local'], mutual:['💬 Praise','🫦 Sensory play','🌹 Soft romance']},
-  {name:'Riley', age:35, distance:18, score:81, vibe:'Bold energy, honest conversations, mutual respect', gradient:['#ff3f91','#ff6b73'], initial:'R', tags:['Bold','Open-minded','Verified'], mutual:['⚡ Power exchange','✅ Check-ins','🔥 Teasing']},
-  {name:'Avery', age:30, distance:24, score:78, vibe:'Warm, funny, privacy-focused, slow-burn chemistry', gradient:['#7c5cff','#ff3f91'], initial:'A', tags:['Private','Funny','Deep chat'], mutual:['🛑 Boundaries','⏳ Quality time','✍️ Fantasy writing']},
-  {name:'Nova', age:33, distance:31, score:88, vibe:'Confident, flirt-forward, loves trying new things safely', gradient:['#57c8ff','#ff3f91'], initial:'N', tags:['Flirty','Verified','Spontaneous'], mutual:['😈 Spicy language','📍 Subtle public flirt','💞 Aftercare']}
-];
+let people = [];
+let directoryLoaded = false;
 
 const DEFAULT_CATEGORY_META = {
   'Anticipation': {emoji:'⏳', theme:'theme-adventure'},
@@ -226,6 +221,72 @@ async function handleAvatarUpload(file){
   }catch(err){ console.warn(err); showToast('Photo saved locally. Create the storage bucket/policies to sync online.'); }
 }
 
+function deterministicGradient(seed='member'){
+  const palettes=[['#ff3f91','#8b5cff'],['#ff6b73','#ffd37a'],['#57c8ff','#ff3f91'],['#8b5cff','#ff6b73'],['#6cffb7','#57c8ff']];
+  const n=[...String(seed)].reduce((a,ch)=>a+ch.charCodeAt(0),0);
+  return palettes[n % palettes.length];
+}
+
+function compatibilityForRatings(otherRatings={}){
+  const mine=state.ratings||{};
+  const shared=[];
+  let positive=0, conflicts=0, compared=0;
+  Object.entries(otherRatings||{}).forEach(([id, val])=>{
+    const my=mine[id];
+    if(!my) return;
+    compared++;
+    const card=vaultCards.find(c=>c.id===id);
+    const meta=card ? (categoryMeta[card.cat]||{}) : {};
+    const label=card ? `${meta.emoji||'✨'} ${card.title}` : id;
+    const myPositive=['love','enjoy','curious'].includes(my);
+    const theirPositive=['love','enjoy','curious'].includes(val);
+    if(myPositive && theirPositive){ positive++; shared.push(label); }
+    if((my==='limit' && theirPositive) || (val==='limit' && myPositive)) conflicts++;
+  });
+  let score = compared ? Math.round(62 + (positive / Math.max(compared,1)) * 35 - conflicts * 10) : 70;
+  score = Math.max(0, Math.min(99, score));
+  return {score, shared: shared.slice(0,4), conflicts};
+}
+
+function profileRowToPerson(row){
+  const profile=row.profile||{};
+  const displayName=(profile.displayName||profile.name||'Member').trim();
+  const initial=(displayName[0]||'M').toUpperCase();
+  const comp=compatibilityForRatings(row.ratings||{});
+  const city=profile.city||profile.area||'';
+  return {
+    id: row.user_id || row.id || displayName,
+    name: displayName,
+    age: profile.age || '',
+    distance: Number(profile.distance || 999),
+    distanceLabel: city ? `📍 ${city}` : '📍 Nearby',
+    score: comp.score,
+    vibe: profile.headline || profile.bio || 'Building their Fantasy Vault profile.',
+    gradient: deterministicGradient(row.user_id || displayName),
+    initial,
+    avatarUrl: profile.avatarUrl || '',
+    tags: [profile.lookingFor, profile.radius, row.email ? 'Verified' : 'Member'].filter(Boolean).slice(0,3),
+    mutual: comp.shared.length ? comp.shared : ['Vault overlap appears after both people answer more cards']
+  };
+}
+
+async function loadPeopleDirectory(){
+  if(!supa || !authUser){ renderStack(); renderMatches(); renderChats(); return; }
+  try{
+    const {data,error}=await supa.from('fv_profiles').select('id,user_id,email,profile,ratings,updated_at').neq('user_id',authUser.id).order('updated_at',{ascending:false}).limit(50);
+    if(error) throw error;
+    people=(data||[]).map(profileRowToPerson);
+    directoryLoaded = true;
+  }catch(err){
+    console.warn('Directory load failed', err);
+    directoryLoaded = false;
+    people=[];
+    setSync('signed in — directory needs public profile policy');
+  }
+  index=0;
+  renderStack(); renderMatches(); renderChats();
+}
+
 function normalizeUrl(url){
   try {
     const u = new URL(url);
@@ -376,8 +437,7 @@ async function init(){
   $('#closeFilters').onclick=$('#applyFilters').onclick=()=>$('#filters').classList.add('hidden');
   $$('.pill').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; $$('.pill').forEach(x=>x.classList.toggle('active',x===b)); index=0; renderStack();});
   $('#passBtn').onclick=()=>act('pass'); $('#likeBtn').onclick=()=>act('like'); $('#vaultBtn').onclick=()=>{showToast('Mutual Vault details unlock after a match.'); showScreen('vault');};
-  $('#resetDemo').onclick=()=>{localStorage.removeItem(KEY); location.reload();};
-  $('#exportData').onclick=()=>$('#exportBox').textContent=JSON.stringify(state,null,2);
+  const exportData=$('#exportData'); if(exportData) exportData.onclick=()=>$('#exportBox').textContent=JSON.stringify(state,null,2);
   $('#googleLogin').onclick=signInWithGoogle;
   $('#signOut').onclick=signOut;
   $('#syncNow').onclick=()=>syncToSupabase(true);
@@ -419,27 +479,54 @@ function updateAvatar(){
   applyAvatar(profileHero, initial);
   navAvatars.forEach(el=>applyAvatar(el, el.id === 'bottomProfileAvatar' ? '👤' : initial));
 }
-function orderedPeople(){ let arr=[...people]; if(mode==='nearby') arr.sort((a,b)=>a.distance-b.distance); if(mode==='compatible') arr.sort((a,b)=>b.score-a.score); if(mode==='new') arr.reverse(); return arr.filter(p=>!state.passed.includes(p.name)); }
+function personKey(p){ return String(p?.id || p?.name || ''); }
+function likedKeys(){ return (state.liked||[]).map(String); }
+function passedKeys(){ return (state.passed||[]).map(String); }
+function orderedPeople(){
+  let arr=[...people];
+  if(mode==='nearby') arr.sort((a,b)=>(a.distance||999)-(b.distance||999));
+  if(mode==='compatible') arr.sort((a,b)=>b.score-a.score);
+  if(mode==='new') arr.reverse();
+  const passed=passedKeys();
+  return arr.filter(p=>!passed.includes(personKey(p)) && !passed.includes(p.name));
+}
+function renderPersonAvatar(p, className='fake-face'){
+  if(p.avatarUrl) return `<div class="${className} real-face" style="background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}')"></div>`;
+  return `<div class="${className}">${p.initial}</div>`;
+}
 function renderStack(){
   const arr=orderedPeople(); if(index>=arr.length) index=0; const p=arr[index];
-  if(!p){ $('#cardStack').innerHTML='<div class="empty-state">No more local profiles in this demo.</div>'; return; }
+  if(!p){ $('#cardStack').innerHTML='<div class="empty-state"><h3>No profiles available yet</h3><p>When other signed-in members complete their profile, they will appear here.</p></div>'; return; }
+  const age=p.age ? `, ${p.age}` : '';
   $('#cardStack').innerHTML=`<article class="person-card">
-    <div class="person-photo" style="background:linear-gradient(145deg,${p.gradient[0]},${p.gradient[1]})"><span class="distance">📍 ${p.distance} mi away</span><span class="verified">✓ verified</span><div class="fake-face">${p.initial}</div></div>
-    <div class="person-info"><div class="name-row"><h2>${p.name}, ${p.age}</h2><strong>${p.score}%</strong></div><p class="headline">${p.vibe}</p><div class="chips">${p.tags.map(t=>`<span class="chip">${t}</span>`).join('')}</div><div class="mutual-box"><b>${p.mutual.length} mutual Vault signals:</b><br>${p.mutual.join(' • ')}</div></div>
+    <div class="person-photo ${p.avatarUrl?'has-profile-photo':''}" style="background:${p.avatarUrl ? `linear-gradient(180deg,transparent 35%,rgba(0,0,0,.86)), url('${String(p.avatarUrl).replace(/'/g,'%27')}') center/cover` : `linear-gradient(145deg,${p.gradient[0]},${p.gradient[1]})`}"><span class="distance">${p.distanceLabel || '📍 Nearby'}</span><span class="verified">✓ verified</span>${p.avatarUrl?'':renderPersonAvatar(p)}</div>
+    <div class="person-info"><div class="name-row"><h2>${p.name}${age}</h2><strong>${p.score}%</strong></div><p class="headline">${p.vibe}</p><div class="chips">${p.tags.map(t=>`<span class="chip">${t}</span>`).join('')}</div><div class="mutual-box"><b>${p.mutual.length} Vault signal${p.mutual.length===1?'':'s'}:</b><br>${p.mutual.join(' • ')}</div></div>
   </article>`;
 }
-function act(type){ const arr=orderedPeople(); const p=arr[index]; if(!p)return; if(type==='like'&&!state.liked.includes(p.name)){state.liked.push(p.name); showToast(`Liked ${p.name}. Match preview added.`);} if(type==='pass'&&!state.passed.includes(p.name)){state.passed.push(p.name); showToast(`Passed on ${p.name}.`);} index++; save(); renderStack(); }
+function act(type){
+  const arr=orderedPeople(); const p=arr[index]; if(!p)return;
+  const key=personKey(p);
+  if(type==='like'&&!likedKeys().includes(key)){state.liked.push(key); showToast(`Liked ${p.name}. Match preview added.`);}
+  if(type==='pass'&&!passedKeys().includes(key)){state.passed.push(key); showToast(`Passed on ${p.name}.`);}
+  index++; save(); renderStack();
+}
 function showToast(msg){ const old=$('.toast'); if(old)old.remove(); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; $('.phone').appendChild(t); setTimeout(()=>t.remove(),2100); }
 function populateCats(){ const cats=[...new Set(vaultCards.map(c=>c.cat))].sort(); $('#categoryFilter').innerHTML='<option value="all">🌈 All</option>'+cats.map(c=>`<option value="${c}">${categoryMeta[c]?.emoji||'✨'} ${c}</option>`).join(''); }
 function renderVault(){
   const q=$('#searchCards').value.toLowerCase(); const cat=$('#categoryFilter').value;
   const list=vaultCards.filter(c=>(cat==='all'||c.cat===cat)&&(!q||`${c.title} ${c.desc} ${c.cat}`.toLowerCase().includes(q)));
-  $('#cards').innerHTML=list.map(card=>{const cur=state.ratings[card.id]; const meta=categoryMeta[card.cat]||{emoji:'✨', theme:'theme-fantasy'}; return `<article class="vcard ${meta.theme}"><div class="vcard-top"><span class="cat-badge">${meta.emoji} ${card.cat}</span><span class="rating-badge">${cur?labels[cur]:'❔ Unanswered'}</span></div><h3>${card.title}</h3><p>${card.desc}</p><div class="answers">${Object.entries(labels).map(([k,v])=>`<button class="answer-btn ${cur===k?'selected':''}" data-id="${card.id}" data-answer="${k}">${v}</button>`).join('')}</div></article>`}).join('');
-  $$('.answer-btn').forEach(b=>b.onclick=()=>{state.ratings[b.dataset.id]=b.dataset.answer; save(); renderVault();});
+  $('#cards').innerHTML=list.map(card=>{const cur=state.ratings[card.id]; const meta=categoryMeta[card.cat]||{emoji:'✨', theme:'theme-fantasy'}; return `<article class="vcard ${meta.theme}"><div class="vcard-top"><span class="cat-badge">${meta.emoji} ${card.cat}</span><span class="rating-badge">${cur?labels[cur]:'❔ Unanswered'}</span></div><h3>${card.title}</h3><p>${card.desc}</p><div class="answers">${Object.entries(labels).map(([k,v])=>`<button class="answer-btn ${cur===k?'selected':''}" data-id="${card.id}" data-answer="${k}">${v}</button>`).join('')}</div></article>`}).join('') || '<div class="empty-state"><h3>No Vault cards yet</h3><p>The admin can add cards from Admin Studio.</p></div>';
+  $$('.answer-btn').forEach(b=>b.onclick=()=>{state.ratings[b.dataset.id]=b.dataset.answer; save(); renderVault(); if(directoryLoaded) loadPeopleDirectory();});
 }
 function renderVaultStats(){ const vals=Object.values(state.ratings); $('#ratedCount').textContent=vals.length; $('#limitCount').textContent=vals.filter(v=>v==='limit').length; $('#vaultPct').textContent=(vaultCards.length?Math.round(vals.length/vaultCards.length*100):0)+'%'; }
-function renderMatches(){ const liked=people.filter(p=>state.liked.includes(p.name)); $('#matchesList').innerHTML=(liked.length?liked:people.slice(0,3)).map(p=>`<article class="match-card"><div class="mini-avatar" style="background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})">${p.initial}</div><div><h3>${p.name}, ${p.age}</h3><p>${p.distance} miles away • ${p.mutual[0]} + more</p></div><span class="score-badge">${p.score}%</span></article>`).join(''); }
-function renderChats(){ const liked=people.filter(p=>state.liked.includes(p.name)); const rows=(liked.length?liked:people.slice(0,3)); $('#chatList').innerHTML=rows.map(p=>`<article class="chat-row"><div class="mini-avatar" style="background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})">${p.initial}</div><div><h3>${p.name}</h3><p>You both marked ${p.mutual[0]} as compatible. Try asking what makes it exciting.</p></div></article>`).join(''); }
+function renderMatches(){
+  const liked=people.filter(p=>likedKeys().includes(personKey(p)) || likedKeys().includes(p.name));
+  $('#matchesList').innerHTML= liked.length ? liked.map(p=>`<article class="match-card"><div class="mini-avatar" style="${p.avatarUrl?`background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`}">${p.avatarUrl?'':p.initial}</div><div><h3>${p.name}${p.age?`, ${p.age}`:''}</h3><p>${p.distanceLabel || 'Nearby'} • ${p.mutual[0] || 'Vault compatibility'}</p></div><span class="score-badge">${p.score}%</span></article>`).join('') : '<div class="empty-state"><h3>No matches yet</h3><p>Like someone from Discover to start building your match list.</p></div>';
+}
+function renderChats(){
+  const liked=people.filter(p=>likedKeys().includes(personKey(p)) || likedKeys().includes(p.name));
+  $('#chatList').innerHTML= liked.length ? liked.map(p=>`<article class="chat-row"><div class="mini-avatar" style="${p.avatarUrl?`background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}');background-size:cover;background-position:center`:`background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`}">${p.avatarUrl?'':p.initial}</div><div><h3>${p.name}</h3><p>${p.mutual[0] && !p.mutual[0].startsWith('Vault overlap') ? `You both connect on ${p.mutual[0]}.` : 'Answer more Vault cards to unlock better conversation starters.'}</p></div></article>`).join('') : '<div class="empty-state"><h3>No conversations yet</h3><p>Your chats will appear here after mutual interest.</p></div>';
+}
 
 // Real Admin Studio overrides: form-based Vault/category/answer management.
 let adminSelectedCardId = null;
