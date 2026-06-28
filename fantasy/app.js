@@ -2090,3 +2090,160 @@ renderAdminWorkspace = function(){
   bindAdminWalletTools();
   if(isAdmin()) loadAdminUsers();
 };
+
+
+/* =========================================================
+   Afterglow patch: Unlock audit, My Unlocks, customization,
+   and functional chat reactions/stickers
+   Additive only: existing shop/wallet/chat systems remain intact.
+   ========================================================= */
+(function(){
+  const ITEM_COPY = {
+    'chat-hearts':'Unlocks heart-themed quick reactions inside matched chats.',
+    'chat-fire':'Unlocks fire/spicy quick reactions inside matched chats.',
+    'sticker-flirt':'Unlocks flirty quick sticker-style messages inside matched chats.',
+    'sticker-soft':'Unlocks soft romance sticker-style messages inside matched chats.',
+    'badge-early':'Adds the Early Supporter badge to your owned unlocks.',
+    'vault-spark':'Unlocks a cosmetic Spark Vault style for your Vault experience.'
+  };
+  function refreshShopItemCopy(){
+    if(!Array.isArray(window.SHOP_ITEMS) && typeof SHOP_ITEMS === 'undefined') return;
+    const items = typeof SHOP_ITEMS !== 'undefined' ? SHOP_ITEMS : window.SHOP_ITEMS;
+    items.forEach(item=>{ if(ITEM_COPY[item.id]) item.desc = ITEM_COPY[item.id]; });
+  }
+  function itemById(id){ const items = typeof SHOP_ITEMS !== 'undefined' ? SHOP_ITEMS : []; return items.find(i=>i.id===id); }
+  function ownedUnlockItems(){
+    ensureEconomy();
+    const owned = new Set((state.inventory?.owned)||[]);
+    const items = typeof SHOP_ITEMS !== 'undefined' ? SHOP_ITEMS : [];
+    return items.filter(i=>owned.has(i.id));
+  }
+  function unlockTypeTitle(type){ return ({avatarFrame:'Profile Frames',profileTheme:'Banner Themes',chatPack:'Chat Reactions',stickerPack:'Chat Stickers',badge:'Badges',vaultPack:'Vault Cosmetics'})[type] || 'Unlocks'; }
+  function unlockTypeEmoji(type){ return ({avatarFrame:'🖼️',profileTheme:'🌈',chatPack:'💬',stickerPack:'😏',badge:'🏆',vaultPack:'🔐'})[type] || '✨'; }
+  function defaultCustomColors(){ return {a:'#ff3f91', b:'#8b5cff'}; }
+  function ensureCustomization(){
+    ensureEconomy();
+    if(!state.inventory.custom || typeof state.inventory.custom !== 'object') state.inventory.custom = defaultCustomColors();
+    state.inventory.custom = {...defaultCustomColors(), ...state.inventory.custom};
+    state.profile.inventory = state.inventory;
+    return state.inventory.custom;
+  }
+  function setCustomization(part,value){
+    const c=ensureCustomization();
+    c[part]=value;
+    state.inventory.custom=c; state.profile.inventory=state.inventory;
+    applyCosmetics(); save(); syncToSupabase(false); renderMyUnlocks();
+  }
+  function equipOrToggleUnlock(id){
+    const item=itemById(id); if(!item) return;
+    if(['avatarFrame','profileTheme'].includes(item.type)) return equipShopItem(id);
+    if(['chatPack','stickerPack'].includes(item.type)) return showToast(`${item.title} is available in matched chats.`);
+    if(item.type==='badge') return showToast(`${item.title} is now in your unlock collection.`);
+    return showToast(`${item.title} is unlocked.`);
+  }
+  function unlockButtonLabel(item){
+    if(['avatarFrame','profileTheme'].includes(item.type)) return isShopEquipped(item) ? 'Equipped' : 'Equip';
+    if(item.type==='chatPack') return 'Use in Chat';
+    if(item.type==='stickerPack') return 'Use Stickers';
+    if(item.type==='badge') return 'Owned Badge';
+    return 'Unlocked';
+  }
+  window.renderMyUnlocks = function renderMyUnlocks(){
+    const panel=$('#myUnlocksPanel'); if(!panel) return;
+    const owned=ownedUnlockItems();
+    ensureCustomization();
+    if(!owned.length){
+      panel.innerHTML=`<div class="my-unlocks-head"><div><h3>My Unlocks</h3><p>Your redeemed Glow Coin items appear here. Unlock frames, themes, reactions, stickers, and badges from the shop.</p></div></div><div class="unlock-empty">No unlocks yet. Claim your daily gift, earn Glow Coins, then redeem your first cosmetic.</div>`;
+      return;
+    }
+    const byType=owned.reduce((acc,item)=>{(acc[item.type]||(acc[item.type]=[])).push(item); return acc;},{});
+    const custom=ensureCustomization();
+    const sections=Object.entries(byType).map(([type,items])=>`<section class="unlock-section"><div class="unlock-section-title"><span>${unlockTypeEmoji(type)} ${unlockTypeTitle(type)}</span><span>${items.length}</span></div><div class="unlock-grid">${items.map(item=>`<article class="unlock-card ${isShopEquipped(item)?'equipped':''}"><h4><span>${item.icon}</span>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.desc)}</p><button class="${isShopEquipped(item)?'ghost':'primary'}" type="button" data-unlock-use="${escapeHtml(item.id)}">${unlockButtonLabel(item)}</button></article>`).join('')}</div></section>`).join('');
+    const canCustomize = owned.some(i=>['avatarFrame','profileTheme'].includes(i.type));
+    panel.innerHTML=`<div class="my-unlocks-head"><div><h3>My Unlocks</h3><p>View, equip, and personalize the cosmetics you earned with Glow Coins.</p></div><button class="gift-small" id="myUnlocksGift" type="button">🎁 Gift</button></div>${sections}${canCustomize?`<div class="customizer-card"><h4>🎨 Color Customizer</h4><div class="customizer-grid"><label>Glow color A<input id="unlockColorA" type="color" value="${escapeHtml(custom.a)}"></label><label>Glow color B<input id="unlockColorB" type="color" value="${escapeHtml(custom.b)}"></label></div><div class="custom-preview"></div><p class="tiny-note">Applies to compatible owned frames and the custom banner glow.</p></div>`:''}`;
+    panel.querySelectorAll('[data-unlock-use]').forEach(btn=>btn.onclick=()=>equipOrToggleUnlock(btn.dataset.unlockUse));
+    $('#myUnlocksGift')?.addEventListener('click', openDailyGift);
+    $('#unlockColorA')?.addEventListener('input', e=>setCustomization('a',e.target.value));
+    $('#unlockColorB')?.addEventListener('input', e=>setCustomization('b',e.target.value));
+  };
+  const _unlockPatchShopButtonHtml = typeof shopButtonHtml === 'function' ? shopButtonHtml : null;
+  if(_unlockPatchShopButtonHtml){
+    shopButtonHtml = function(item){
+      if(isShopOwned(item.id)){
+        if(['avatarFrame','profileTheme'].includes(item.type)) return `<button class="shop-action equip" data-equip-item="${escapeHtml(item.id)}">${isShopEquipped(item)?'Equipped':'Equip'}</button>`;
+        if(['chatPack','stickerPack'].includes(item.type)) return `<button class="shop-action equip" data-use-chat-unlock="${escapeHtml(item.id)}">Available</button>`;
+        return '<button class="shop-action" disabled>Unlocked</button>';
+      }
+      const bal=ensureRewards().glowCoins||0;
+      return `<button class="shop-action" data-buy-item="${escapeHtml(item.id)}" ${bal<item.price?'disabled':''}>Unlock</button>`;
+    };
+  }
+  const _unlockPatchRenderShop = typeof renderShop === 'function' ? renderShop : null;
+  if(_unlockPatchRenderShop){
+    renderShop = function(){
+      refreshShopItemCopy();
+      _unlockPatchRenderShop();
+      renderMyUnlocks();
+      document.querySelectorAll('[data-use-chat-unlock]').forEach(btn=>btn.onclick=()=>showToast('Open a matched chat to use this unlock.'));
+    };
+  }
+  const _unlockPatchBuy = typeof buyShopItem === 'function' ? buyShopItem : null;
+  if(_unlockPatchBuy){ buyShopItem = async function(id){ await _unlockPatchBuy(id); renderMyUnlocks(); }; }
+  const _unlockPatchEquip = typeof equipShopItem === 'function' ? equipShopItem : null;
+  if(_unlockPatchEquip){ equipShopItem = async function(id){ await _unlockPatchEquip(id); applyCosmetics(); renderMyUnlocks(); }; }
+  const _unlockPatchApplyCosmetics = typeof applyCosmetics === 'function' ? applyCosmetics : null;
+  if(_unlockPatchApplyCosmetics){
+    applyCosmetics = function(){
+      _unlockPatchApplyCosmetics();
+      const custom=ensureCustomization();
+      document.body.style.setProperty('--ag-custom-a',custom.a);
+      document.body.style.setProperty('--ag-custom-b',custom.b);
+      const owned=ownedUnlockItems();
+      const hasCustom=owned.some(i=>['avatarFrame','profileTheme'].includes(i.type));
+      document.body.classList.toggle('customized-unlocks', hasCustom);
+      document.querySelectorAll('.profile-banner').forEach(el=>el.classList.toggle('custom-banner', hasCustom && !!state.inventory?.equipped?.profileTheme));
+    };
+  }
+  function ownedIds(){ ensureEconomy(); return new Set(state.inventory?.owned||[]); }
+  function chatQuickButtons(){
+    const owned=ownedIds();
+    const rows=[];
+    if(owned.has('chat-hearts')) rows.push({label:'Heart reactions',buttons:['💕','😍','🥰','💖','💘'].map(x=>({text:x}))});
+    if(owned.has('chat-fire')) rows.push({label:'Fire reactions',buttons:['🔥','😈','✨','⚡','🌶️'].map(x=>({text:x}))});
+    if(owned.has('sticker-flirt')) rows.push({label:'Flirty stickers',buttons:[{text:'😏 Flirty wink'},{text:'😘 Kiss'},{text:'👀 Curious'},{text:'💋 Tease'}]});
+    if(owned.has('sticker-soft')) rows.push({label:'Soft stickers',buttons:[{text:'🥰 Warm hug'},{text:'🌹 Romantic'},{text:'💞 Thinking of you'},{text:'🫶 Sweet'}]});
+    return rows;
+  }
+  function ensureUnlockChatTools(){
+    const sheet=document.querySelector('#chatModal .chat-sheet');
+    if(!sheet) return;
+    let tools=$('#unlockChatTools');
+    if(!tools){
+      tools=document.createElement('div'); tools.id='unlockChatTools'; tools.className='unlock-chat-tools';
+      const compose=$('#chatCompose');
+      if(compose) sheet.insertBefore(tools, compose);
+      else sheet.appendChild(tools);
+    }
+    const rows=chatQuickButtons();
+    if(!rows.length){ tools.innerHTML=''; tools.classList.add('hidden'); return; }
+    tools.classList.remove('hidden');
+    tools.innerHTML=rows.map(row=>`<div><div class="unlock-chat-label">${escapeHtml(row.label)}</div><div class="unlock-chat-row">${row.buttons.map(b=>`<button class="unlock-chat-btn" type="button" data-chat-quick="${escapeHtml(b.text)}">${escapeHtml(b.text)}</button>`).join('')}</div></div>`).join('');
+    tools.querySelectorAll('[data-chat-quick]').forEach(btn=>btn.onclick=()=>sendUnlockQuickChat(btn.dataset.chatQuick));
+  }
+  async function sendUnlockQuickChat(text){
+    const input=$('#chatInput');
+    if(!input) return showToast('Open a matched chat first.');
+    input.value=text;
+    await sendChatMessage();
+  }
+  const _unlockPatchEnsureChatModal = typeof ensureChatModal === 'function' ? ensureChatModal : null;
+  if(_unlockPatchEnsureChatModal){ ensureChatModal = function(){ const modal=_unlockPatchEnsureChatModal(); ensureUnlockChatTools(); return modal; }; }
+  const _unlockPatchOpenChat = typeof openChat === 'function' ? openChat : null;
+  if(_unlockPatchOpenChat){ openChat = async function(key){ await _unlockPatchOpenChat(key); ensureUnlockChatTools(); }; }
+  const _unlockPatchRenderChatMessages = typeof renderChatMessages === 'function' ? renderChatMessages : null;
+  if(_unlockPatchRenderChatMessages){ renderChatMessages = function(){ _unlockPatchRenderChatMessages(); ensureUnlockChatTools(); }; }
+  const _unlockPatchUpdateAvatar = typeof updateAvatar === 'function' ? updateAvatar : null;
+  if(_unlockPatchUpdateAvatar){ updateAvatar = function(){ _unlockPatchUpdateAvatar(); applyCosmetics(); updateGlowCoinDisplays(); renderMyUnlocks(); }; }
+  refreshShopItemCopy();
+  setTimeout(()=>{ try{ ensureEconomy(); applyCosmetics(); renderShop(); renderMyUnlocks(); }catch(e){ console.warn('Unlock patch init skipped', e); } }, 800);
+})();

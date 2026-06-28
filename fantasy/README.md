@@ -18,3 +18,15 @@ No paid features are included. Everything is earned with Glow Coins.
 - The daily gift/present icon is now centered in the top action button.
 - Admin Studio now includes a **Users** tab for owner-only Glow Coin adjustments.
 - Run `supabase-schema.sql` again so the owner account can update user wallet balances safely through RLS.
+
+
+## Unlock Audit Patch
+
+This build makes every visible Glow Shop unlock either functional or clearly part of the owned collection:
+
+- Profile frames and banner themes can be equipped.
+- Owned frames/themes appear in **My Unlocks** with a color customizer.
+- Heart/fire reaction packs add quick reactions inside matched chats.
+- Sticker packs add quick sticker-style messages inside matched chats.
+- Badges/Vault cosmetics appear in the user inventory instead of pretending to be unavailable.
+- Existing wallet, shop, daily gift, matching, chat, admin, and Supabase behavior is preserved.
