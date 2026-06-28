@@ -91,8 +91,10 @@ function defaultProfileForAuth(user){
     displayName,
     headline:'',
     city:'',
+    sex:'',
     radius:'25 miles',
     lookingFor:'Intimate connection',
+    interests:'',
     bio:'',
     avatarUrl: meta.avatar_url || meta.picture || ''
   };
@@ -312,7 +314,7 @@ function profileRowToPerson(row){
     gradient: deterministicGradient(row.user_id || displayName),
     initial,
     avatarUrl: profile.avatarUrl || '',
-    tags: [profile.lookingFor, profile.radius, row.email ? 'Verified' : 'Member'].filter(Boolean).slice(0,3),
+    tags: [profile.sex, profile.lookingFor, profile.interests, profile.radius, row.email ? 'Verified' : 'Member'].filter(Boolean).slice(0,4),
     mutual: comp.shared.length ? comp.shared : ['Vault overlap appears after both people answer more cards'],
     likesMe: (row.liked || []).map(String).includes(String(authUser?.id || ''))
   };
@@ -514,7 +516,7 @@ async function saveProfileManually(){
 
 
 function hydrateProfileForm(){
-  ['displayName','headline','city','radius','lookingFor','bio'].forEach(id=>{const el=$('#'+id); if(el) el.value=state.profile[id]||'';});
+  ['displayName','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); if(el) el.value=state.profile[id]||'';});
   updateAvatar();
 }
 
@@ -541,7 +543,7 @@ async function init(){
   const adminReload=$('#adminReload'); if(adminReload) adminReload.onclick=()=>loadAdminConfig();
   const adminSave=$('#adminSave'); if(adminSave) adminSave.onclick=()=>saveAdminConfig(false);
   const adminResetDefaults=$('#adminResetDefaults'); if(adminResetDefaults) adminResetDefaults.onclick=resetAdminEditorsToDefaults;
-  ['displayName','headline','city','radius','lookingFor','bio'].forEach(id=>{const el=$('#'+id); el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();};});
+  ['displayName','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();};});
   $('#searchCards').oninput=renderVault; $('#categoryFilter').onchange=renderVault;
   applyAdminConfig(currentAdminConfig(), false); populateCats(); updateAvatar(); renderStack(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); await initAuth(); updateGateUi(); if(canEnter()) openApp(); syncToSupabase(false);
 }
@@ -1164,7 +1166,7 @@ function profileRowToPerson(row){
     gradient: deterministicGradient(row.user_id || displayName),
     initial,
     avatarUrl: profile.avatarUrl || '',
-    tags: [profile.lookingFor, profile.radius, row.email ? 'Verified' : 'Member'].filter(Boolean).slice(0,3),
+    tags: [profile.sex, profile.lookingFor, profile.interests, profile.radius, row.email ? 'Verified' : 'Member'].filter(Boolean).slice(0,4),
     mutual: comp.shared.length ? comp.shared : ['Vault overlap appears after both people answer more cards'],
     likesMe: (row.liked || []).map(String).includes(String(authUser?.id || '')),
     ratings: row.ratings || {},
@@ -1210,10 +1212,37 @@ function ensureMemberProfileModal(){
   return modal;
 }
 
-function ratingRowsHtml(rows, empty){
-  if(!rows.length) return `<div class="profile-empty-mini">${empty}</div>`;
-  return rows.slice(0,12).map(r=>`<div class="vault-compare-row"><span>${escapeHtml(r.emoji)} ${escapeHtml(r.title)}</span><small>You: ${escapeHtml(r.mineLabel)}<br>Them: ${escapeHtml(r.theirLabel)}</small></div>`).join('');
+function ratingRowsHtml(rows, empty, type='shared'){
+  if(!rows.length) return `<div class="profile-empty-mini">${escapeHtml(empty)}</div>`;
+  return rows.slice(0,14).map(r=>`<div class="vault-compare-card ${escapeHtml(type)}">
+    <div class="compare-icon">${escapeHtml(r.emoji)}</div>
+    <div class="compare-copy"><b>${escapeHtml(r.title)}</b><span>${escapeHtml(r.cat || 'Vault')}</span></div>
+    <div class="compare-pills"><span>You ${escapeHtml(r.mineLabel)}</span><span>Them ${escapeHtml(r.theirLabel)}</span></div>
+  </div>`).join('');
 }
+
+function interestsHtml(p){
+  const raw=(p?.profile?.interests || '').split(',').map(x=>x.trim()).filter(Boolean);
+  const tags=[p?.profile?.sex, p?.profile?.lookingFor, ...raw].filter(Boolean).slice(0,8);
+  if(!tags.length) return '<span class="desire-chip muted-chip">Exploring</span>';
+  return tags.map(t=>`<span class="desire-chip">${escapeHtml(t)}</span>`).join('');
+}
+
+function topVaultHtml(p){
+  const ratings=p?.ratings||{};
+  const priority=['love','enjoy','curious'];
+  const rows=[];
+  for(const want of priority){
+    Object.entries(ratings).forEach(([id,val])=>{
+      if(val!==want || rows.length>=8) return;
+      const card=vaultCards.find(c=>c.id===id);
+      if(card){ const meta=categoryMeta[card.cat]||{}; rows.push({title:card.title, cat:card.cat, emoji:meta.emoji||'✨', label:labels[val]||val}); }
+    });
+  }
+  if(!rows.length) return '<div class="profile-empty-mini">They have not shared many Vault answers yet.</div>';
+  return rows.map(r=>`<div class="interest-tile"><span>${escapeHtml(r.emoji)}</span><b>${escapeHtml(r.title)}</b><small>${escapeHtml(r.label)}</small></div>`).join('');
+}
+
 
 function openMemberProfile(key){
   const p=people.find(x=>personKey(x)===String(key));
@@ -1222,21 +1251,68 @@ function openMemberProfile(key){
   const modal=ensureMemberProfileModal();
   modal.dataset.key=personKey(p);
   const cmp=compareVaultWithPerson(p);
+  const totalCompared=cmp.shared.length+cmp.curious.length+cmp.different.length+cmp.limits.length;
   const avatarStyle=p.avatarUrl ? `background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}')` : `background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`;
+  const heroBg=p.avatarUrl ? `background:linear-gradient(180deg,rgba(10,6,16,.05),rgba(10,6,16,.88)), url('${String(p.avatarUrl).replace(/'/g,'%27')}') center/cover` : `background:radial-gradient(circle at 25% 20%,${p.gradient[0]},transparent 38%),linear-gradient(135deg,${p.gradient[1]},#150a25 72%)`;
   $('#memberProfileBody').innerHTML=`
-    <div class="member-hero" style="${p.avatarUrl ? `background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.84)), url('${String(p.avatarUrl).replace(/'/g,'%27')}') center/cover` : `background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`}">
+    <div class="member-hero modern-member-hero" style="${heroBg}">
+      <div class="member-hero-shade"></div>
       <div class="member-avatar-large" style="${avatarStyle}">${p.avatarUrl?'':escapeHtml(p.initial)}</div>
-      <div class="member-hero-text"><h2>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h2><p>${escapeHtml(p.vibe||'')}</p></div>
+      <div class="member-hero-text">
+        <div class="member-name-row"><h2>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h2><span class="online-pill">Verified</span></div>
+        <p>${escapeHtml(p.vibe||'Building their Fantasy Vault profile.')}</p>
+        <div class="hero-meta-row">
+          ${p.profile?.sex ? `<span>${escapeHtml(p.profile.sex)}</span>` : ''}
+          ${p.distanceLabel ? `<span>${escapeHtml(p.distanceLabel)}</span>` : ''}
+          ${p.profile?.lookingFor ? `<span>${escapeHtml(p.profile.lookingFor)}</span>` : ''}
+        </div>
+      </div>
     </div>
-    <div class="profile-score-grid"><div><b>${p.score}%</b><span>Compatibility</span></div><div><b>${cmp.shared.length}</b><span>Strong matches</span></div><div><b>${cmp.limits.length}</b><span>Boundary notes</span></div></div>
-    <div class="member-about glass-lite"><h3>About</h3><p>${escapeHtml(p.profile?.bio || p.profile?.headline || 'No bio added yet.')}</p><div class="chips">${(p.tags||[]).map(t=>`<span class="chip">${escapeHtml(t)}</span>`).join('')}</div></div>
-    <div class="compare-section"><h3>🔥 You both like</h3>${ratingRowsHtml(cmp.shared,'No strong shared likes yet. Answer more Vault cards to build overlap.')}</div>
-    <div class="compare-section"><h3>👀 Curious / possible overlap</h3>${ratingRowsHtml(cmp.curious,'No shared curiosities yet.')}</div>
-    <div class="compare-section"><h3>🛑 Limits & differences</h3>${ratingRowsHtml(cmp.limits.concat(cmp.different).slice(0,8),'No major conflicts found in answered cards.')}</div>
+
+    <div class="profile-action-strip">
+      <button class="primary profile-chat-cta" type="button" data-chat-key="${personKey(p)}">💬 Message</button>
+      <button class="ghost profile-unmatch-cta" type="button" data-unmatch-key="${personKey(p)}">Unmatch</button>
+    </div>
+
+    <div class="profile-score-grid modern-score-grid">
+      <div><b>${p.score}%</b><span>chemistry</span></div>
+      <div><b>${cmp.shared.length}</b><span>shared likes</span></div>
+      <div><b>${totalCompared}</b><span>compared</span></div>
+      <div><b>${cmp.limits.length}</b><span>limits</span></div>
+    </div>
+
+    <div class="profile-section-card about-card">
+      <div class="section-heading"><h3>About ${escapeHtml(p.name.split(' ')[0] || p.name)}</h3></div>
+      <p>${escapeHtml(p.profile?.bio || p.profile?.headline || 'No bio added yet.')}</p>
+      <div class="desire-chip-wrap">${interestsHtml(p)}</div>
+    </div>
+
+    <div class="profile-section-card">
+      <div class="section-heading"><h3>🔥 Their vibe</h3><span>Top Vault signals</span></div>
+      <div class="interest-grid">${topVaultHtml(p)}</div>
+    </div>
+
+    <div class="profile-section-card match-glow">
+      <div class="section-heading"><h3>💞 What you match on</h3><span>${cmp.shared.length} strong overlaps</span></div>
+      <div class="compare-grid">${ratingRowsHtml(cmp.shared,'No strong shared likes yet. Answer more Vault cards to build overlap.','shared')}</div>
+    </div>
+
+    <div class="profile-section-card">
+      <div class="section-heading"><h3>👀 Curious together</h3><span>Potential exploration</span></div>
+      <div class="compare-grid">${ratingRowsHtml(cmp.curious,'No shared curiosities yet.','curious')}</div>
+    </div>
+
+    <div class="profile-section-card boundary-card">
+      <div class="section-heading"><h3>🛑 Differences & boundaries</h3><span>Talk before trying</span></div>
+      <div class="compare-grid">${ratingRowsHtml(cmp.limits.concat(cmp.different).slice(0,10),'No major conflicts found in answered cards.','boundary')}</div>
+    </div>
   `;
+  $$('.profile-chat-cta').forEach(btn=>btn.onclick=()=>{ modal.classList.add('hidden'); openChat(btn.dataset.chatKey); });
+  $$('.profile-unmatch-cta').forEach(btn=>btn.onclick=()=>{ modal.classList.add('hidden'); unmatch(btn.dataset.unmatchKey); });
   $('#memberProfileChat').classList.toggle('hidden', !isMutual(p));
   modal.classList.remove('hidden');
 }
+
 
 function renderMatches(){
   const incoming=incomingLikes();
