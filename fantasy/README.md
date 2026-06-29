@@ -35,3 +35,9 @@ Added:
 - Richer Steam-style profile showcase
 - Private album moved higher in matched profile layout
 - No schema changes required
+
+## Latest patch
+- Strengthened visible avatar/profile effects.
+- Added 1000 Glow Coin Full Color Picker unlock.
+- Added shop-based Glow Colorway unlocks for users who do not own the full picker.
+- Color picker is hidden/locked until redeemed; bought colorways can still be equipped.

@@ -3137,3 +3137,205 @@ renderAdminWorkspace = function(){
   setTimeout(()=>{ seedEffectItems(); if(typeof renderShop==='function') renderShop(); renderProfileStylePanel(); if(typeof applyCosmetics==='function') applyCosmetics(); }, 900);
 })();
 
+
+/* =========================================================
+   Afterglow patch: stronger visual effects + gated color system
+   Additive only. Keeps all existing unlocks/features intact.
+   ========================================================= */
+(function afterglowIntenseEffectsAndColorGate(){
+  const esc = (v)=> (typeof escapeHtml === 'function' ? escapeHtml(v) : String(v ?? '').replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])));
+  const COLOR_ITEMS = [
+    {id:'tool-color-picker',cat:'Colors',icon:'🎨',title:'Full Color Picker',desc:'Unlock full custom color control for compatible avatar rings and banner glows.',price:1000,type:'colorTool',value:'color-picker',featured:true},
+    {id:'color-afterglow-pink',cat:'Colors',icon:'💗',title:'Afterglow Pink',desc:'Unlocks a hot pink and violet glow colorway for compatible profile effects.',price:80,type:'colorway',value:'afterglow-pink',colors:{a:'#ff3f91',b:'#8b5cff'}},
+    {id:'color-golden-hour',cat:'Colors',icon:'🌅',title:'Golden Hour',desc:'Unlocks a warm gold and rose glow colorway.',price:90,type:'colorway',value:'golden-hour',colors:{a:'#ffd37a',b:'#ff6b73'}},
+    {id:'color-midnight-blue',cat:'Colors',icon:'🌌',title:'Midnight Blue',desc:'Unlocks a cool blue and violet glow colorway.',price:90,type:'colorway',value:'midnight-blue',colors:{a:'#57c8ff',b:'#7c5cff'}},
+    {id:'color-emerald-lust',cat:'Colors',icon:'💚',title:'Emerald Glow',desc:'Unlocks an emerald and aqua glow colorway.',price:90,type:'colorway',value:'emerald-glow',colors:{a:'#65ffb8',b:'#57c8ff'}},
+    {id:'color-red-velvet',cat:'Colors',icon:'❤️‍🔥',title:'Red Velvet',desc:'Unlocks a deep red and magenta glow colorway.',price:110,type:'colorway',value:'red-velvet',colors:{a:'#ff3b4f',b:'#b1125b'}}
+  ];
+  function seedColorItems(){
+    if(!Array.isArray(SHOP_ITEMS)) return;
+    COLOR_ITEMS.forEach(item=>{ if(!SHOP_ITEMS.some(x=>x.id===item.id)) SHOP_ITEMS.push(item); });
+  }
+  function inventory(){
+    if(typeof ensureEconomy === 'function') return ensureEconomy().inventory;
+    state.inventory = state.inventory || {owned:[], equipped:{}};
+    state.inventory.owned = Array.isArray(state.inventory.owned) ? state.inventory.owned : [];
+    state.inventory.equipped = state.inventory.equipped || {};
+    state.profile = state.profile || {};
+    state.profile.inventory = state.inventory;
+    return state.inventory;
+  }
+  function ownedSet(){ return new Set(inventory().owned || []); }
+  function itemById(id){ return (Array.isArray(SHOP_ITEMS) ? SHOP_ITEMS : []).find(i=>i.id===id); }
+  function colorItemByValue(value){ return (Array.isArray(SHOP_ITEMS) ? SHOP_ITEMS : []).find(i=>i.type==='colorway' && i.value===value); }
+  function ownsColorPicker(){ return ownedSet().has('tool-color-picker'); }
+  function equippedColorway(){ return colorItemByValue(inventory().equipped?.colorway); }
+  function chosenColors(){
+    const inv=inventory();
+    const colorway=equippedColorway();
+    if(colorway?.colors) return colorway.colors;
+    if(ownsColorPicker() && inv.custom) return {a:inv.custom.a || '#ff3f91', b:inv.custom.b || '#8b5cff'};
+    return {a:'#ff3f91', b:'#8b5cff'};
+  }
+  function hasActiveColorControl(){ return ownsColorPicker() || !!equippedColorway(); }
+  seedColorItems();
+
+  if(typeof categoryEmojiForShop === 'function' && !categoryEmojiForShop.__colorGateWrapped){
+    const base = categoryEmojiForShop;
+    categoryEmojiForShop = function(cat){ return cat === 'Colors' ? '🎨' : base(cat); };
+    categoryEmojiForShop.__colorGateWrapped = true;
+  }
+  if(typeof isShopEquipped === 'function' && !isShopEquipped.__colorGateWrapped){
+    const base = isShopEquipped;
+    isShopEquipped = function(item){
+      if(item?.type === 'colorway') return inventory().equipped?.colorway === item.value;
+      return base(item);
+    };
+    isShopEquipped.__colorGateWrapped = true;
+  }
+  if(typeof shopButtonHtml === 'function' && !shopButtonHtml.__colorGateWrapped){
+    const base = shopButtonHtml;
+    shopButtonHtml = function(item){
+      if(item?.type === 'colorway' && typeof isShopOwned === 'function' && isShopOwned(item.id)){
+        return `<button class="shop-action equip" data-equip-item="${esc(item.id)}">${isShopEquipped(item)?'Equipped':'Equip'}</button>`;
+      }
+      if(item?.type === 'colorTool' && typeof isShopOwned === 'function' && isShopOwned(item.id)){
+        return '<button class="shop-action" disabled>Unlocked</button>';
+      }
+      return base(item);
+    };
+    shopButtonHtml.__colorGateWrapped = true;
+  }
+  if(typeof equipShopItem === 'function' && !equipShopItem.__colorGateWrapped){
+    const base = equipShopItem;
+    equipShopItem = async function(id){
+      const item=itemById(id);
+      if(item?.type === 'colorway'){
+        const inv=inventory();
+        if(!ownedSet().has(item.id)){
+          if(typeof buyShopItem === 'function') return buyShopItem(id);
+          return;
+        }
+        inv.equipped.colorway = item.value;
+        inv.custom = {...(inv.custom||{}), ...(item.colors||{})};
+        state.profile.inventory = inv;
+        if(typeof save === 'function') save();
+        if(typeof applyCosmetics === 'function') applyCosmetics();
+        if(typeof renderShop === 'function') renderShop();
+        if(typeof syncToSupabase === 'function') await syncToSupabase(false);
+        if(typeof showToast === 'function') showToast(`${item.title} equipped.`);
+        return;
+      }
+      return base(id);
+    };
+    equipShopItem.__colorGateWrapped = true;
+  }
+  if(typeof buyShopItem === 'function' && !buyShopItem.__colorGateWrapped){
+    const base = buyShopItem;
+    buyShopItem = async function(id){
+      await base(id);
+      const item=itemById(id);
+      if(item?.type === 'colorway' && ownedSet().has(item.id)) await equipShopItem(id);
+      if(item?.type === 'colorTool'){
+        const inv=inventory();
+        inv.custom = inv.custom || chosenColors();
+        state.profile.inventory = inv;
+        if(typeof save === 'function') save();
+        if(typeof showToast === 'function') showToast('Full Color Picker unlocked. Open My Unlocks to customize.');
+      }
+      if(typeof renderMyUnlocks === 'function') renderMyUnlocks();
+    };
+    buyShopItem.__colorGateWrapped = true;
+  }
+  if(typeof unlockTypeTitle === 'function' && !unlockTypeTitle.__colorGateWrapped){
+    const base = unlockTypeTitle;
+    unlockTypeTitle = function(type){
+      if(type==='colorway') return 'Glow Colors';
+      if(type==='colorTool') return 'Color Tools';
+      return base(type);
+    };
+    unlockTypeTitle.__colorGateWrapped = true;
+  }
+  if(typeof unlockTypeEmoji === 'function' && !unlockTypeEmoji.__colorGateWrapped){
+    const base = unlockTypeEmoji;
+    unlockTypeEmoji = function(type){
+      if(type==='colorway') return '🎨';
+      if(type==='colorTool') return '🖌️';
+      return base(type);
+    };
+    unlockTypeEmoji.__colorGateWrapped = true;
+  }
+  if(typeof unlockButtonLabel === 'function' && !unlockButtonLabel.__colorGateWrapped){
+    const base = unlockButtonLabel;
+    unlockButtonLabel = function(item){
+      if(item?.type==='colorway') return isShopEquipped(item) ? 'Equipped' : 'Equip';
+      if(item?.type==='colorTool') return 'Unlocked';
+      return base(item);
+    };
+    unlockButtonLabel.__colorGateWrapped = true;
+  }
+  if(typeof applyCosmetics === 'function' && !applyCosmetics.__colorGateWrapped){
+    const base = applyCosmetics;
+    applyCosmetics = function(){
+      const r=base.apply(this, arguments);
+      const colors=chosenColors();
+      document.body.style.setProperty('--ag-custom-a', colors.a);
+      document.body.style.setProperty('--ag-custom-b', colors.b);
+      document.body.classList.toggle('customized-unlocks', hasActiveColorControl());
+      document.body.classList.toggle('ag-color-picker-unlocked', ownsColorPicker());
+      document.body.classList.toggle('ag-colorway-active', !!equippedColorway());
+      document.querySelectorAll('.profile-banner').forEach(el=>el.classList.toggle('custom-banner', hasActiveColorControl() && !!inventory().equipped?.profileTheme));
+      return r;
+    };
+    applyCosmetics.__colorGateWrapped = true;
+  }
+  function bindColorPickerInputs(panel){
+    const a=panel.querySelector('#unlockColorA');
+    const b=panel.querySelector('#unlockColorB');
+    if(!a || !b) return;
+    const saveColor = ()=>{
+      const inv=inventory();
+      inv.custom = {a:a.value, b:b.value};
+      delete inv.equipped.colorway;
+      state.profile.inventory = inv;
+      if(typeof applyCosmetics === 'function') applyCosmetics();
+      if(typeof save === 'function') save();
+      if(typeof syncToSupabase === 'function') syncToSupabase(false);
+    };
+    a.oninput=saveColor;
+    b.oninput=saveColor;
+  }
+  if(typeof renderMyUnlocks === 'function' && !renderMyUnlocks.__colorGateWrapped){
+    const base=renderMyUnlocks;
+    renderMyUnlocks = function(){
+      base();
+      const panel=document.querySelector('#myUnlocksPanel');
+      if(!panel) return;
+      const owned=ownedSet();
+      const pickerOwned=ownsColorPicker();
+      const customizer=panel.querySelector('.customizer-card');
+      if(customizer && !pickerOwned){
+        const availableColors=(SHOP_ITEMS||[]).filter(i=>i.type==='colorway' && owned.has(i.id));
+        customizer.outerHTML = `<div class="customizer-card locked-customizer"><h4>🔒 Full Color Picker</h4><p class="tiny-note">Unlock the Full Color Picker in the shop for 1000 Glow Coins to choose any custom colors. Until then, equip colorways you redeem from the Colors shop.</p>${availableColors.length?`<div class="colorway-grid">${availableColors.map(c=>`<button type="button" class="colorway-chip ${isShopEquipped(c)?'equipped':''}" data-equip-colorway="${esc(c.id)}"><span style="background:linear-gradient(135deg,${esc(c.colors.a)},${esc(c.colors.b)})"></span>${esc(c.title)}</button>`).join('')}</div>`:`<button type="button" class="shop-action" data-go-color-shop>Open Colors Shop</button>`}</div>`;
+      } else if(customizer && pickerOwned){
+        customizer.classList.add('unlocked-customizer');
+        customizer.querySelector('h4').textContent='🎨 Full Color Picker';
+        const note=customizer.querySelector('.tiny-note');
+        if(note) note.textContent='Unlocked. Choose any glow colors for compatible avatar rings, profile effects, and banner glows.';
+        bindColorPickerInputs(panel);
+      }
+      panel.querySelectorAll('[data-equip-colorway]').forEach(btn=>btn.onclick=()=>equipShopItem(btn.dataset.equipColorway));
+      panel.querySelector('[data-go-color-shop]')?.addEventListener('click',()=>{ if(typeof showScreen==='function') showScreen('shop'); activeShopCategory='Colors'; if(typeof renderShop==='function') renderShop(); });
+    };
+    renderMyUnlocks.__colorGateWrapped = true;
+  }
+  if(typeof renderShop === 'function' && !renderShop.__colorGateWrapped){
+    const base=renderShop;
+    renderShop = function(){ seedColorItems(); const r=base.apply(this, arguments); if(typeof renderMyUnlocks==='function') renderMyUnlocks(); return r; };
+    renderShop.__colorGateWrapped = true;
+  }
+  if(typeof styleSummaryHtml === 'function'){
+    // local in prior patch when present; kept intentionally untouched.
+  }
+  setTimeout(()=>{ try{ seedColorItems(); if(typeof applyCosmetics==='function') applyCosmetics(); if(typeof renderShop==='function') renderShop(); if(typeof renderMyUnlocks==='function') renderMyUnlocks(); }catch(e){ console.warn('Color gate init skipped', e); } }, 1000);
+})();
