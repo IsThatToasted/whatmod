@@ -490,3 +490,10 @@ body.customized-unlocks .profile-avatar.frame-neon,body.customized-unlocks .nav-
 @keyframes agHeartbeatStrong{0%,100%{transform:scale(1)}12%{transform:scale(1.085)}24%{transform:scale(.985)}42%{transform:scale(1.052)}62%{transform:scale(1)}}
 @keyframes agEmberRise{0%,100%{opacity:.35;transform:translateY(4px) scale(.92)}50%{opacity:1;transform:translateY(-8px) scale(1.08)}}
 @keyframes agFloatHeartsStrong{0%,100%{transform:translateY(0) scale(1);opacity:.32}50%{transform:translateY(14px) scale(1.08);opacity:.62}}
+
+/* Test profile QA tools */
+.admin-test-tools{border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.035));}
+.admin-test-tools .admin-grid{grid-template-columns:1fr 1fr;gap:10px;}
+.person-card .real-face{background-size:cover;background-position:center;}
+.person-photo.has-profile-photo{background-size:cover!important;background-position:center!important;}
+@media (max-width:720px){.admin-test-tools .admin-grid{grid-template-columns:1fr;}}

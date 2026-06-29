@@ -3339,3 +3339,222 @@ renderAdminWorkspace = function(){
   }
   setTimeout(()=>{ try{ seedColorItems(); if(typeof applyCosmetics==='function') applyCosmetics(); if(typeof renderShop==='function') renderShop(); if(typeof renderMyUnlocks==='function') renderMyUnlocks(); }catch(e){ console.warn('Color gate init skipped', e); } }, 1000);
 })();
+
+/* =========================================================
+   Afterglow test profile pack + admin QA controls
+   - Additive only: does not remove real Supabase directory users
+   - Uses curated local test profiles with filled Vault answers
+   - Adds owner Admin tools for resetting/simulating profile states
+   ========================================================= */
+(function(){
+  const TEST_PROFILE_COUNT = 20;
+  const TEST_PROFILE_KEY = 'afterglowTestProfilesEnabled';
+  const TEST_LIKES_KEY = 'afterglowTestProfilesLikedMe';
+  const TEST_MATCHED_KEY = 'afterglowTestProfilesMatched';
+  const TEST_CHAT_PREFIX = 'afterglowTestChat:';
+  const TEST_BASE_ID = '00000000-0000-4000-8000-0000000000';
+  const names = ['Arielle Vale','Maya Rose','Selene Hart','Brielle Skye','Nina Sol','Vivian Rae','Isla Monroe','Zara Quinn','Lena Wilde','Jade Loren','Camila Snow','Sienna Lux','Elara Fox','Mila Voss','Avery Belle','Gia Lane','Noelle Storm','Talia Moon','Kira West','Sasha Bloom'];
+  const cities = ['York, PA','Lancaster, PA','Harrisburg, PA','Baltimore, MD','Philadelphia, PA','Reading, PA','Pittsburgh, PA','Frederick, MD','Allentown, PA','King of Prussia, PA'];
+  const moods = ['🔥 Flirty','💬 Chatty','🌹 Romantic','😈 Playful','✨ Curious','🛋️ Cozy','🥂 Date night','🎧 Low-key'];
+  const goals = ['Intimate connection','Dating','Friends with chemistry','Exploring','Long-term partner'];
+  const interestSets = [
+    'flirting, lingerie, soft dominance, late-night talks',
+    'romance, teasing, cuddling, chemistry',
+    'kink-friendly, role-play, aftercare, trust',
+    'date nights, sensory play, private albums',
+    'playful banter, praise, fantasy writing',
+    'adventure, photos, direct talk, confidence',
+    'slow burn, massage, soft romance, curiosity',
+    'spontaneous chemistry, flirting, quality time'
+  ];
+  const headlines = [
+    'Chemistry-first and playful, with a soft spot for good conversation.',
+    'Looking for honest attraction, flirt energy, and mutual curiosity.',
+    'Sweet outside, adventurous once trust is there.',
+    'Into confidence, connection, and a little mystery.',
+    'Here for sparks, respect, and shared exploration.',
+    'Romantic, sensual, and very conversation-driven.'
+  ];
+  function testProfilesEnabled(){ return localStorage.getItem(TEST_PROFILE_KEY) !== '0'; }
+  function setTestProfilesEnabled(v){ localStorage.setItem(TEST_PROFILE_KEY, v ? '1' : '0'); }
+  function getTestLikedMe(){ try{return JSON.parse(localStorage.getItem(TEST_LIKES_KEY)||'[]').map(String);}catch{return [];} }
+  function setTestLikedMe(arr){ localStorage.setItem(TEST_LIKES_KEY, JSON.stringify([...new Set((arr||[]).map(String))])); }
+  function getTestMatched(){ try{return JSON.parse(localStorage.getItem(TEST_MATCHED_KEY)||'[]').map(String);}catch{return [];} }
+  function setTestMatched(arr){ localStorage.setItem(TEST_MATCHED_KEY, JSON.stringify([...new Set((arr||[]).map(String))])); }
+  function testId(i){ return TEST_BASE_ID + String(i+1).padStart(2,'0'); }
+  function seededPick(arr, i){ return arr[i % arr.length]; }
+  function testRatings(seed){
+    const allKeys = Object.keys(labels||{});
+    const preferred = ['love','enjoy','curious','neutral','no','limit'].filter(k=>allKeys.includes(k));
+    const keys = preferred.length ? preferred : allKeys;
+    const out={};
+    (vaultCards||[]).forEach((card, idx)=>{
+      if(card.mode === 'text') out[card.id] = seededPick(['Intimate chemistry with someone who communicates clearly.','A slow-burn fantasy with lots of teasing.','Something playful, private, and trust-based.'], seed+idx);
+      else if(card.mode === 'textarea') out[card.id] = seededPick(['I like building anticipation through conversation, flirting, and thoughtful attention.','For me, the fantasy is usually about chemistry, trust, confidence, and shared curiosity.'], seed+idx);
+      else if(card.mode === 'yesno') out[card.id] = ((idx+seed)%4===0) ? 'no' : 'yes';
+      else if(keys.length) out[card.id] = keys[(idx + seed) % keys.length];
+    });
+    return out;
+  }
+  function makeTestProfile(i){
+    const id=testId(i);
+    const name=names[i];
+    const matched = getTestMatched().includes(id);
+    return {
+      id,
+      name,
+      age: 24 + (i % 12),
+      distance: 2 + ((i*7)%48),
+      distanceLabel: `📍 ${cities[i % cities.length]}`,
+      score: 80 + (i % 18),
+      vibe: headlines[i % headlines.length],
+      gradient: deterministicGradient ? deterministicGradient(id) : ['#ff3f91','#8b5cff'],
+      initial: name[0],
+      avatarUrl: `assets/test-profiles/profile_${String(i+1).padStart(2,'0')}.jpg`,
+      tags: ['Woman', goals[i % goals.length], seededPick(moods,i), 'Verified'],
+      mutual: [],
+      likesMe: matched || getTestLikedMe().includes(id),
+      isTestProfile: true,
+      email: `test${i+1}@afterglow.local`,
+      ratings: testRatings(i),
+      profile: {
+        displayName: name,
+        headline: headlines[i % headlines.length],
+        bio: `${name.split(' ')[0]} is a fully-filled Afterglow test profile for QA. She has complete Vault answers, interests, mood, and profile cosmetics so layouts can be tested without waiting for real users.`,
+        city: cities[i % cities.length],
+        sex: 'Woman',
+        age: 24 + (i % 12),
+        radius: `${10 + (i%5)*10} miles`,
+        lookingFor: goals[i % goals.length],
+        interests: interestSets[i % interestSets.length],
+        mood: seededPick(moods,i),
+        avatarUrl: `assets/test-profiles/profile_${String(i+1).padStart(2,'0')}.jpg`,
+        privateAlbums: {count: 3 + (i%6), previewOnly: true},
+        rewards: {glowCoins: 250 + i*25}
+      }
+    };
+  }
+  function computeTestCompatibility(p){
+    try{
+      const comp = compatibilityForRatings(p.ratings||{});
+      p.score = comp.score;
+      p.mutual = comp.shared && comp.shared.length ? comp.shared : ['Complete Vault test profile'];
+    }catch(e){ p.mutual=['Complete Vault test profile']; }
+    return p;
+  }
+  function testProfiles(){
+    if(!testProfilesEnabled()) return [];
+    return Array.from({length:TEST_PROFILE_COUNT},(_,i)=>computeTestCompatibility(makeTestProfile(i)));
+  }
+  function mergeTestProfilesIntoDirectory(){
+    if(!testProfilesEnabled()) return;
+    const existing = new Set((people||[]).map(p=>String(p.id)));
+    testProfiles().forEach(p=>{ if(!existing.has(String(p.id))) people.push(p); });
+  }
+  window.AfterglowTestProfiles = {testProfiles, setTestProfilesEnabled, getTestLikedMe, setTestLikedMe, getTestMatched, setTestMatched};
+
+  const baseLoadPeopleDirectory = loadPeopleDirectory;
+  loadPeopleDirectory = async function(options={}){
+    try{ await baseLoadPeopleDirectory.call(this, options); }catch(e){ console.warn('Base directory failed before test merge', e); }
+    mergeTestProfilesIntoDirectory();
+    if(!(options&&options.preserveIndex)) index = Math.min(index||0, Math.max(orderedPeople().length-1,0));
+    renderStack(); renderMatches(); renderChats();
+  };
+
+  const baseRenderStack = renderStack;
+  renderStack = function(){ mergeTestProfilesIntoDirectory(); return baseRenderStack.apply(this, arguments); };
+  const baseRenderMatches = renderMatches;
+  renderMatches = function(){ mergeTestProfilesIntoDirectory(); return baseRenderMatches.apply(this, arguments); };
+  const baseRenderChats = renderChats;
+  renderChats = function(){ mergeTestProfilesIntoDirectory(); return baseRenderChats.apply(this, arguments); };
+
+  function isTestKey(key){ return String(key||'').startsWith(TEST_BASE_ID); }
+  function testChatKey(key){ return `${TEST_CHAT_PREFIX}${authUser?.id||state.userId||'local'}:${key}`; }
+  function readTestChat(key){ try{return JSON.parse(localStorage.getItem(testChatKey(key))||'[]');}catch{return [];} }
+  function writeTestChat(key,msgs){ localStorage.setItem(testChatKey(key), JSON.stringify((msgs||[]).slice(-80))); }
+  const baseLoadChatMessages = loadChatMessages;
+  loadChatMessages = async function(key, quiet=true){
+    if(isTestKey(key)){ const msgs=readTestChat(key); setCachedChat(key,msgs); return msgs; }
+    return baseLoadChatMessages.apply(this, arguments);
+  };
+  const baseDeleteConversationMessages = deleteConversationMessages;
+  deleteConversationMessages = async function(key){
+    if(isTestKey(key)){ localStorage.removeItem(testChatKey(key)); setCachedChat(key,[]); return; }
+    return baseDeleteConversationMessages.apply(this, arguments);
+  };
+  const baseSendChatMessage = sendChatMessage;
+  sendChatMessage = async function(){
+    if(activeChatKey && isTestKey(activeChatKey)){
+      const input=$('#chatInput');
+      const text=(input?.value||'').trim();
+      if(!text){ input?.focus(); return; }
+      const msgs=readTestChat(activeChatKey);
+      msgs.push({id:crypto.randomUUID(), from:'me', text, at:new Date().toISOString()});
+      // tiny local automated reply so the thread feels alive during testing
+      if(msgs.length % 2 === 1){
+        const p=people.find(x=>personKey(x)===String(activeChatKey));
+        msgs.push({id:crypto.randomUUID(), from:'them', text:`${p?.name?.split(' ')[0]||'Test'} received your test message 💬`, at:new Date(Date.now()+500).toISOString()});
+      }
+      writeTestChat(activeChatKey,msgs); setCachedChat(activeChatKey,msgs);
+      if(input) input.value='';
+      renderChatMessages(); renderChats(); input?.focus(); return;
+    }
+    return baseSendChatMessage.apply(this, arguments);
+  };
+
+  function resetMyConnections(){
+    state.liked=[]; state.passed=[]; save(); renderStack(); renderMatches(); renderChats(); syncToSupabase(false); showToast('Your likes, passes, and matches were reset.');
+  }
+  async function clearAllTestChats(){
+    Object.keys(localStorage).filter(k=>k.startsWith(TEST_CHAT_PREFIX)).forEach(k=>localStorage.removeItem(k));
+    chatCache={}; if(activeChatKey && isTestKey(activeChatKey)) renderChatMessages(); renderChats(); showToast('All local test chats cleared.');
+  }
+  function simulateIncomingLikes(count=5){
+    const ids=testProfiles().slice(0,count).map(p=>p.id); setTestLikedMe(ids); setTestMatched([]); loadPeopleDirectory({preserveIndex:true, quiet:true}); showToast(`${ids.length} test profiles now like you.`);
+  }
+  function simulateMatches(count=5){
+    const ids=testProfiles().slice(0,count).map(p=>p.id); setTestLikedMe(ids); setTestMatched(ids); state.liked=[...new Set([...(state.liked||[]),...ids])]; save(); loadPeopleDirectory({preserveIndex:true, quiet:true}); showToast(`${ids.length} test matches created.`);
+  }
+  function clearTestSignals(){
+    setTestLikedMe([]); setTestMatched([]); state.liked=(state.liked||[]).filter(k=>!isTestKey(k)); state.passed=(state.passed||[]).filter(k=>!isTestKey(k)); save(); loadPeopleDirectory({preserveIndex:true, quiet:true}); showToast('Test profile likes and matches cleared.');
+  }
+  function injectAdminTestTools(){
+    if(!isAdmin()) return;
+    const pane=$('#adminPaneTools .admin-two-col');
+    if(!pane || $('#adminTestProfileTools')) return;
+    const card=document.createElement('div');
+    card.className='edit-card admin-form admin-test-tools';
+    card.id='adminTestProfileTools';
+    card.innerHTML=`
+      <h3>Test Profile Tools</h3>
+      <p class="tiny-note">Local QA tools for the 20 built-in test profiles. These do not remove real users or real Supabase profiles.</p>
+      <div class="admin-grid">
+        <button id="adminToggleTestProfiles" type="button" class="ghost full"></button>
+        <button id="adminRefreshDirectory" type="button" class="ghost full">Refresh Profiles</button>
+        <button id="adminResetMyConnections" type="button" class="danger full">Reset My Likes/Matches</button>
+        <button id="adminClearTestSignals" type="button" class="ghost full">Clear Test Likes/Matches</button>
+        <button id="adminSimLikes" type="button" class="primary full">Make 5 Test Profiles Like Me</button>
+        <button id="adminSimMatches" type="button" class="primary full">Create 5 Test Matches</button>
+        <button id="adminClearTestChats" type="button" class="ghost full">Clear Test Chats</button>
+      </div>
+      <p class="tiny-note" id="adminTestStatus"></p>`;
+    pane.prepend(card);
+    const refresh=()=>{
+      $('#adminToggleTestProfiles').textContent = testProfilesEnabled() ? 'Hide Test Profiles' : 'Show Test Profiles';
+      $('#adminTestStatus').textContent = `${testProfilesEnabled()?TEST_PROFILE_COUNT:0} local test profiles active • ${getTestLikedMe().length} simulated incoming likes • ${getTestMatched().length} simulated matches`;
+    };
+    $('#adminToggleTestProfiles').onclick=()=>{ setTestProfilesEnabled(!testProfilesEnabled()); if(!testProfilesEnabled()) people=(people||[]).filter(p=>!p.isTestProfile); loadPeopleDirectory({preserveIndex:false, quiet:true}); refresh(); };
+    $('#adminRefreshDirectory').onclick=()=>loadPeopleDirectory({preserveIndex:true, quiet:false});
+    $('#adminResetMyConnections').onclick=resetMyConnections;
+    $('#adminClearTestSignals').onclick=()=>{ clearTestSignals(); refresh(); };
+    $('#adminSimLikes').onclick=()=>{ simulateIncomingLikes(5); refresh(); };
+    $('#adminSimMatches').onclick=()=>{ simulateMatches(5); refresh(); };
+    $('#adminClearTestChats').onclick=clearAllTestChats;
+    refresh();
+  }
+  const baseRenderAdminWorkspace = renderAdminWorkspace;
+  renderAdminWorkspace = function(){ const r=baseRenderAdminWorkspace.apply(this, arguments); injectAdminTestTools(); return r; };
+  const baseRenderAdmin = renderAdmin;
+  renderAdmin = function(){ const r=baseRenderAdmin.apply(this, arguments); setTimeout(injectAdminTestTools,0); return r; };
+  setTimeout(()=>{ mergeTestProfilesIntoDirectory(); renderStack(); renderMatches(); renderChats(); injectAdminTestTools(); }, 500);
+})();
