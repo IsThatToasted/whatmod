@@ -1,13 +1,310 @@
-// Fantasy Vault production config
-// Permanent hosted URL: https://whatmod.com/fantasy/
-// Keep OAuth redirects pointed here. No localhost values belong in production.
-window.FV_CONFIG = {
-  APP_NAME: 'Afterglow',
-  APP_BASE_PATH: '/fantasy',
-  APP_URL: 'https://whatmod.com/fantasy/',
-  AUTH_REDIRECT_URL: 'https://whatmod.com/fantasy/',
-  SUPABASE_URL: 'https://gqkkdocvfstbsekxyrbo.supabase.co',
-  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_b00bWXNlvZo_Wprb8UwjSA_q5Pl8Cyi',
-  USE_SUPABASE: true,
-  LOCAL_FALLBACK: true
-};
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Afterglow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="ageGate" class="age-gate">
+    <div class="gate-card glass">
+      <div class="app-icon">🌅</div>
+      <h1>Afterglow</h1>
+      <p>A sex-positive dating app for consenting adults to discover chemistry, compatible desires, curiosities, and boundaries.</p>
+      <div class="gate-warning">18+ only. Login is required before entering Afterglow.</div>
+      <label class="age-check">
+        <input id="ageConfirm" type="checkbox" />
+        <span>I confirm I am 18 or older and want to enter an adults-only dating app.</span>
+      </label>
+      <div id="gateAuthStatus" class="gate-status">Not signed in</div>
+      <button id="googleGate" class="google full" disabled>Continue with Google</button>
+      <button id="enterApp" class="primary full hidden">Enter Afterglow</button>
+      <button id="gateSignOut" class="ghost full hidden">Use a different Google account</button>
+      <button id="gateResetLocal" class="danger full">Reset local app data</button>
+      <p class="tiny-note">Google login requires the Supabase + Google Cloud OAuth setup in the README.</p>
+    </div>
+  </div>
+
+  <main id="app" class="phone-shell hidden">
+    <section class="phone glass">
+      <header class="app-top">
+        <div class="top-left-cluster">
+          <button class="round ghost-mini profile-nav-button" id="profileShortcut" title="Open profile"><span class="nav-avatar" id="topProfileAvatar">👤</span></button>
+          <button class="coin-pill" id="coinShortcut" title="Glow Coin balance" aria-label="Glow Coin balance"><span>🪙</span><b id="headerGlowCoins">0</b></button>
+        </div>
+        <div class="logo-lockup"><div class="tiny-icon">🌅</div><span>Afterglow</span></div>
+        <div class="top-actions"><button class="round ghost-mini daily-gift-button" id="dailyGift" title="Daily Glow Coin gift" aria-label="Daily Glow Coin gift">🎁</button>
+        <button class="round ghost-mini" id="filterOpen" title="Discovery filters" aria-label="Discovery filters">🎚️</button></div>
+      </header>
+
+      <section id="discover" class="screen active-screen">
+        <div class="discover-tabs">
+          <button class="pill active" data-mode="nearby">📍 Nearby</button>
+          <button class="pill" data-mode="compatible">💘 Chemistry</button>
+          <button class="pill" data-mode="new">✨ New</button>
+        </div>
+        <div id="cardStack" class="card-stack"></div>
+        <div class="swipe-actions">
+          <button id="passBtn" class="action pass" aria-label="Pass">✕</button>
+          <button id="vaultBtn" class="action vault" aria-label="Open vault preview">🔐</button>
+          <button id="likeBtn" class="action like" aria-label="Like">♥</button>
+        </div>
+      </section>
+
+      <section id="matches" class="screen">
+        <div class="screen-title"><h2>Matches</h2><p>People who share chemistry with your Vault.</p></div>
+        <div id="matchesList" class="match-list"></div>
+      </section>
+
+      <section id="vault" class="screen">
+        <div class="screen-title"><h2>Glow Vault 🔐</h2><p>Answer playful cards and prompts to shape your Afterglow compatibility.</p></div>
+        <div class="vault-stats">
+          <div><strong id="vaultPct">0%</strong><span>complete</span></div>
+          <div><strong id="ratedCount">0</strong><span>answered</span></div>
+          <div><strong id="limitCount">0</strong><span>limits</span></div>
+        </div>
+        <div class="vault-toolbar">
+          <input id="searchCards" placeholder="Search fantasies, interests, boundaries..." />
+          <select id="categoryFilter"><option value="all">All</option></select>
+        </div>
+        <div id="cards" class="vault-cards"></div>
+      </section>
+
+      <section id="chat" class="screen">
+        <div class="screen-title"><h2>Messages</h2><p>Conversation starters based on mutual chemistry.</p></div>
+        <div id="chatList" class="chat-list"></div>
+      </section>
+
+
+      <section id="shop" class="screen">
+        <div class="screen-title shop-title">
+          <h2>Glow Shop</h2>
+          <p>Spend earned Glow Coins on cosmetic unlocks. No paid items yet.</p>
+        </div>
+        <div class="shop-wallet-card">
+          <div><span class="wallet-kicker">Balance</span><strong><span id="shopGlowCoins">0</span> Glow Coins</strong><small id="shopInventoryCount">0 owned unlocks</small></div>
+          <button id="shopDailyShortcut" class="gift-small">🎁 Daily Gift</button>
+        </div>
+        <div class="shop-categories" id="shopCategoryTabs"></div>
+        <div id="shopFeatured" class="shop-featured"></div>
+        <div id="shopGrid" class="shop-grid"></div>
+        <div id="myUnlocksPanel" class="my-unlocks-panel"></div>
+      </section>
+
+      <section id="profile" class="screen">
+        <div class="profile-hero"><div class="profile-banner"></div><div class="profile-avatar">B</div></div>
+        <div class="photo-card">
+          <div>
+            <b>Profile photo</b>
+            <p>Upload a square-ish photo for your dating profile.</p>
+          </div>
+          <label class="upload-pill">📷 Change photo<input id="avatarUpload" type="file" accept="image/*" /></label>
+          <button id="removeAvatar" class="ghost full">Remove photo</button>
+        </div>
+        <div class="edit-card">
+          <label>Name<input id="displayName" placeholder="Your display name" /></label>
+          <label>Headline<input id="headline" placeholder="Chemistry-first, sex-positive, playful" /></label>
+          <label>City / Area<input id="city" placeholder="York, PA" /></label>
+          <label>Sex / Gender<select id="sex"><option value="">Prefer not to say</option><option>Woman</option><option>Man</option><option>Non-binary</option><option>Trans woman</option><option>Trans man</option><option>Gender fluid</option><option>Other</option></select></label>
+          <label>Distance radius<select id="radius"><option>10 miles</option><option selected>25 miles</option><option>50 miles</option><option>100 miles</option></select></label>
+          <label>Looking for<select id="lookingFor"><option>Dating</option><option selected>Intimate connection</option><option>Friends with chemistry</option><option>Long-term partner</option><option>Exploring</option></select></label>
+          <label>Interests<input id="interests" placeholder="flirting, chemistry, kink-friendly, cuddling" /></label>
+          <label>Bio<textarea id="bio" placeholder="Write a tasteful dating intro..."></textarea></label>
+        </div>
+        <button id="saveProfile" class="primary full">Save profile</button>
+        <button id="googleLogin" class="google full">Continue with Google</button>
+        <button id="signOut" class="ghost full hidden">Sign out</button>
+      </section>
+
+
+      <section id="admin" class="screen admin-screen">
+        <div class="screen-title">
+          <h2>Admin Studio 🛠️</h2>
+          <p>Build Afterglow from forms instead of JSON. Owner-only saves for <b>ra1nonit1@gmail.com</b>.</p>
+        </div>
+        <div id="adminLock" class="admin-lock hidden">Admin access is restricted to the owner account.</div>
+        <div id="adminPanel" class="admin-panel hidden">
+          <div class="admin-hero glass">
+            <div><span class="admin-kicker">Live content controls</span><h3>Vault Builder</h3><p>Add categories, fantasy cards, and answer choices. Changes save to Supabase and immediately refresh the public Vault.</p></div>
+            <div class="admin-actions"><button id="adminReload" class="ghost full">Reload</button><button id="adminSeed" class="primary full">Seed Defaults</button></div>
+          </div>
+          <div class="admin-stats">
+            <div><b id="adminCardCount">0</b><span>Vault prompts</span></div>
+            <div><b id="adminCategoryCount">0</b><span>Categories</span></div>
+            <div><b id="adminAnswerCount">0</b><span>Answer choices</span></div>
+            <div><b id="adminLastSaved">Not saved yet</b><span>Status</span></div>
+          </div>
+          <div class="admin-tabs">
+            <button class="admin-tab active" data-admin-pane="cards">🎭 Cards</button>
+            <button class="admin-tab" data-admin-pane="categories">🌈 Categories</button>
+            <button class="admin-tab" data-admin-pane="answers">✅ Answers</button>
+            <button class="admin-tab" data-admin-pane="users">🪙 Users</button>
+            <button class="admin-tab" data-admin-pane="tools">🧰 Tools</button>
+          </div>
+
+          <div id="adminPaneCards" class="admin-pane active">
+            <div class="admin-two-col">
+              <div class="admin-list-card">
+                <div class="admin-list-head"><h3>Vault Prompts</h3><input id="adminCardSearch" placeholder="Search Vault prompts..." /></div>
+                <div id="adminCardList" class="admin-list"></div>
+              </div>
+              <form id="adminCardForm" class="edit-card admin-form">
+                <h3 id="adminCardFormTitle">Add or Edit Card</h3>
+                <label>Card ID<input id="adminCardId" placeholder="example: praise" /></label>
+                <label>Title<input id="adminCardTitle" placeholder="Praise and encouragement" /></label>
+                <label>Category<select id="adminCardCat"></select></label>
+                <label>Description<textarea id="adminCardDesc" placeholder="Short, tasteful explanation users will see..."></textarea></label>
+                <label>Prompt type<select id="adminCardMode"><option value="global">Use global answer set</option><option value="yesno">Yes / No</option><option value="custom">Custom choices for this prompt</option><option value="text">Short written answer</option><option value="textarea">Long written answer</option></select></label>
+                <div class="admin-custom-answer-builder" id="adminCustomAnswerBuilder">
+                  <div class="builder-head">
+                    <div><b>Custom answers</b><span>Use fields instead of JSON. These choices only apply when prompt type is Custom choices.</span></div>
+                    <button id="adminAddCustomAnswer" type="button" class="ghost-mini">+ Add answer</button>
+                  </div>
+                  <div id="adminCustomAnswerRows" class="custom-answer-rows"></div>
+                  <textarea id="adminCardAnswers" class="hidden" aria-hidden="true"></textarea>
+                </div>
+                <label class="admin-check"><input id="adminCardProfileVisible" type="checkbox" /> Show this answer on matched profiles when appropriate</label>
+                <div class="admin-grid">
+                  <button id="adminCardNew" type="button" class="ghost full">New Card</button>
+                  <button id="adminCardSave" type="submit" class="primary full">Save Card</button>
+                  <button id="adminCardDuplicate" type="button" class="ghost full">Duplicate</button>
+                  <button id="adminCardDelete" type="button" class="danger full">Delete</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div id="adminPaneCategories" class="admin-pane">
+            <div class="admin-two-col">
+              <div class="admin-list-card">
+                <div class="admin-list-head"><h3>Categories</h3><button id="adminCategoryNew" class="ghost-mini" type="button">+ New</button></div>
+                <div id="adminCategoryList" class="admin-list"></div>
+              </div>
+              <form id="adminCategoryForm" class="edit-card admin-form">
+                <h3>Add or Edit Category</h3>
+                <label>Category Name<input id="adminCategoryName" placeholder="Romance" /></label>
+                <label>Emoji<input id="adminCategoryEmoji" placeholder="🌹" maxlength="4" /></label>
+                <label>Color Theme<select id="adminCategoryTheme">
+                  <option value="theme-romance">Romance / coral</option>
+                  <option value="theme-fantasy">Fantasy / purple</option>
+                  <option value="theme-power">Power / red</option>
+                  <option value="theme-sensory">Sensory / pink</option>
+                  <option value="theme-communication">Communication / blue</option>
+                  <option value="theme-adventure">Adventure / gold</option>
+                  <option value="theme-privacy">Privacy / indigo</option>
+                  <option value="theme-lifestyle">Lifestyle / violet</option>
+                  <option value="theme-drive">Drive / flame</option>
+                  <option value="theme-care">Care / soft</option>
+                  <option value="theme-boundaries">Boundaries / warning</option>
+                </select></label>
+                <div class="admin-grid">
+                  <button id="adminCategorySave" type="submit" class="primary full">Save Category</button>
+                  <button id="adminCategoryDelete" type="button" class="danger full">Delete Category</button>
+                </div>
+                <p class="tiny-note">Deleting a category does not delete cards automatically; reassign or delete those cards first.</p>
+              </form>
+            </div>
+          </div>
+
+          <div id="adminPaneAnswers" class="admin-pane">
+            <div class="admin-two-col">
+              <div class="admin-list-card">
+                <div class="admin-list-head"><h3>Answer Choices</h3><button id="adminAnswerNew" class="ghost-mini" type="button">+ New</button></div>
+                <div id="adminAnswerList" class="admin-list"></div>
+              </div>
+              <form id="adminAnswerForm" class="edit-card admin-form">
+                <h3>Add or Edit Answer</h3>
+                <label>Answer Key<input id="adminAnswerKey" placeholder="love" /></label>
+                <label>Label<input id="adminAnswerLabel" placeholder="😍 Love" /></label>
+                <div class="admin-grid">
+                  <button id="adminAnswerSave" type="submit" class="primary full">Save Answer</button>
+                  <button id="adminAnswerDelete" type="button" class="danger full">Delete Answer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+
+          <div id="adminPaneUsers" class="admin-pane">
+            <div class="admin-two-col">
+              <div class="admin-list-card">
+                <div class="admin-list-head">
+                  <h3>User Wallets</h3>
+                  <button id="adminUsersReload" class="ghost-mini" type="button">Reload</button>
+                </div>
+                <input id="adminUserSearch" class="admin-search-full" placeholder="Search users by name or email..." />
+                <div id="adminUserList" class="admin-list admin-user-list"></div>
+              </div>
+              <form id="adminCoinForm" class="edit-card admin-form">
+                <h3>Adjust Glow Coins</h3>
+                <div id="adminSelectedUserCard" class="admin-selected-user empty">Select a user to edit their Glow Coin balance.</div>
+                <label>Coins to add or subtract<input id="adminCoinAmount" type="number" step="1" placeholder="Example: 25 or -10" /></label>
+                <label>Admin note<input id="adminCoinReason" placeholder="Reason, event, bonus, correction..." /></label>
+                <div class="admin-grid">
+                  <button id="adminAddCoins" type="submit" class="primary full">Add / Subtract Coins</button>
+                  <button id="adminSetCoins" type="button" class="ghost full">Set Exact Balance</button>
+                </div>
+                <p class="tiny-note">This updates the selected user's profile rewards in Supabase. Existing shop/inventory features are unchanged.</p>
+              </form>
+            </div>
+          </div>
+
+          <div id="adminPaneTools" class="admin-pane">
+            <div class="admin-two-col">
+              <div class="edit-card admin-form">
+                <h3>Bulk Tools</h3>
+                <button id="adminExportJson" class="ghost full" type="button">Export Config JSON</button>
+                <button id="adminImportJson" class="ghost full" type="button">Import Config From Box</button>
+                <button id="adminResetDefaults" class="danger full" type="button">Load App Defaults Into Editor</button>
+                <button id="adminSaveAll" class="primary full" type="button">Save All To Supabase</button>
+              </div>
+              <div class="edit-card admin-editor">
+                <label>Config JSON<textarea id="adminJsonBox" spellcheck="false" placeholder="Export or paste full config here..."></textarea></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="dailyModal" class="modal hidden">
+        <div class="modal-card glass daily-modal-card">
+          <div class="modal-head"><h3>Daily Glow Gift</h3><button id="closeDailyGift" class="round ghost-mini">×</button></div>
+          <div class="daily-present">🎁</div>
+          <h2 id="dailyGiftTitle">Claim your Glow Coins</h2>
+          <p id="dailyGiftText">Come back daily to build your streak and unlock more Glow Coins.</p>
+          <div class="glow-balance"><b id="glowCoinBalance">0</b><span>Glow Coins</span></div>
+          <div class="daily-streak-row" id="dailyStreakRow"></div>
+          <button id="claimDailyGift" class="primary full">Claim gift</button>
+        </div>
+      </section>
+
+      <section id="filters" class="modal hidden">
+        <div class="modal-card glass">
+          <div class="modal-head"><h3>Discovery filters</h3><button id="closeFilters" class="round ghost-mini">×</button></div>
+          <label>Show me<select><option>Everyone</option><option>Women</option><option>Men</option><option>Non-binary people</option></select></label>
+          <label>Distance<select><option>10 miles</option><option selected>25 miles</option><option>50 miles</option><option>100 miles</option></select></label>
+          <label>Minimum chemistry<select><option>Any</option><option selected>70%+</option><option>80%+</option><option>90%+</option></select></label>
+          <button id="applyFilters" class="primary full">Apply</button>
+        </div>
+      </section>
+
+      <nav class="bottom-nav">
+        <button class="tab active" data-screen="discover"><span>🧭</span>Discover</button>
+        <button class="tab" data-screen="matches"><span>💞</span>Matches</button>
+        <button class="tab" data-screen="vault"><span>🔐</span>Vault</button>
+        <button class="tab" data-screen="chat"><span>💬</span>Chat</button>
+        <button class="tab hidden" id="adminTab" data-screen="admin"><span>🛠️</span>Admin</button>
+        <button class="tab profile-tab" data-screen="profile"><span class="profile-tab-icon" id="bottomProfileAvatar">👤</span>Profile</button>
+        <button class="tab" data-screen="shop"><span>🛍️</span>Shop</button>
+      </nav>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
