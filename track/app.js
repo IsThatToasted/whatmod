@@ -186,6 +186,112 @@ function setupLocationAutocomplete(input, suggestionBox, linksBox) {
 }
 
 
+async function geocodeOne(query) {
+  const clean = String(query || '').trim();
+  if (!clean) return null;
+  const cacheKey = `geo:${clean.toLowerCase()}`;
+  if (locationCache.has(cacheKey)) return locationCache.get(cacheKey);
+  const suggestions = await fetchLocationSuggestions(clean);
+  const best = suggestions[0] ? { label: suggestions[0].label, lat: Number(suggestions[0].lat), lon: Number(suggestions[0].lon) } : null;
+  locationCache.set(cacheKey, best);
+  return best;
+}
+function selectedDayRouteItems() {
+  const day = selectedDay || currentTrip()?.start_date || todayISO();
+  return items
+    .filter(i => i.item_date === day && i.location && timeToMinutes(i.start_time) !== null)
+    .sort((a,b) => `${a.start_time || '99:99'} ${a.sort_order || 0}`.localeCompare(`${b.start_time || '99:99'} ${b.sort_order || 0}`));
+}
+async function renderDayMap() {
+  if (!els.dailyRouteMap || !window.L) return;
+  const seq = ++routeRenderToken;
+  const day = selectedDay || currentTrip()?.start_date || todayISO();
+  const dayItems = selectedDayRouteItems();
+
+  if (els.dailyMapTitle) els.dailyMapTitle.textContent = `Route for ${fmtLongDate(day)}`;
+  if (!routeMap) {
+    routeMap = L.map(els.dailyRouteMap, { scrollWheelZoom: false, tap: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(routeMap);
+    routeLayer = L.layerGroup().addTo(routeMap);
+    routeMap.setView([39.5, -98.35], 4);
+  }
+
+  routeLayer.clearLayers();
+  routeMarkers = [];
+  if (els.dailyDirectionsLink) els.dailyDirectionsLink.classList.add('hidden');
+  if (els.dailyMapStops) els.dailyMapStops.innerHTML = '';
+
+  if (!dayItems.length) {
+    if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Add locations to timed plans to see this day’s pins and route.';
+    setTimeout(() => routeMap?.invalidateSize(), 120);
+    return;
+  }
+
+  if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Building this day’s route from scheduled stops…';
+  const points = [];
+  for (const item of dayItems.slice(0, 25)) {
+    const geo = await geocodeOne(item.location);
+    if (seq !== routeRenderToken) return;
+    if (geo && Number.isFinite(geo.lat) && Number.isFinite(geo.lon)) points.push({ item, ...geo });
+  }
+
+  if (!points.length) {
+    if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Could not place these locations yet. Try using more specific addresses.';
+    setTimeout(() => routeMap?.invalidateSize(), 120);
+    return;
+  }
+
+  const bounds = [];
+  points.forEach((p, idx) => {
+    bounds.push([p.lat, p.lon]);
+    const marker = L.marker([p.lat, p.lon]).bindPopup(`<strong>${idx + 1}. ${escapeHtml(p.item.title)}</strong><br>${escapeHtml(fmtTime(p.item.start_time))}<br>${escapeHtml(shortLocationLabel(p.item.location))}`);
+    marker.addTo(routeLayer);
+    routeMarkers.push(marker);
+  });
+
+  if (els.dailyMapStops) {
+    els.dailyMapStops.innerHTML = points.map((p, idx) => `<a target="_blank" rel="noopener" href="${mapsUrl(p.item.location, 'google')}"><b>${idx + 1}</b><strong>${escapeHtml(p.item.title)}</strong><span>${escapeHtml(fmtTime(p.item.start_time))}</span></a>`).join('');
+  }
+
+  const waypoints = points.map(p => encodeURIComponent(p.item.location));
+  if (els.dailyDirectionsLink && waypoints.length) {
+    els.dailyDirectionsLink.href = waypoints.length === 1 ? mapsUrl(points[0].item.location, 'google') : `https://www.google.com/maps/dir/?api=1&origin=${waypoints[0]}&destination=${waypoints[waypoints.length - 1]}&waypoints=${waypoints.slice(1, -1).join('%7C')}`;
+    els.dailyDirectionsLink.classList.remove('hidden');
+  }
+
+  if (points.length >= 2) {
+    const coordString = points.map(p => `${p.lon},${p.lat}`).join(';');
+    try {
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`);
+      const data = await res.json();
+      if (seq !== routeRenderToken) return;
+      const route = data?.routes?.[0];
+      if (route?.geometry) {
+        L.geoJSON(route.geometry, { weight: 5, opacity: 0.82 }).addTo(routeLayer);
+        const miles = route.distance ? (route.distance / 1609.344).toFixed(1) : null;
+        const hours = route.duration ? Math.round(route.duration / 3600 * 10) / 10 : null;
+        if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${points.length} stops for this day${miles ? ` • about ${miles} mi` : ''}${hours ? ` • ${hours} hr drive` : ''}. Verify route in your maps app.`;
+      } else if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${points.length} pins found. Route line unavailable right now.`;
+    } catch (err) {
+      console.warn('Daily route unavailable:', err);
+      if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${points.length} pins found. Route line unavailable right now.`;
+    }
+  } else if (els.dailyMapHelp) {
+    els.dailyMapHelp.textContent = 'One stop found for this day. Add another timed location to draw a route.';
+  }
+
+  routeMap.fitBounds(bounds, { padding: [34, 34], maxZoom: 13 });
+  setTimeout(() => routeMap?.invalidateSize(), 160);
+}
+function debounceDayMapRender() {
+  clearTimeout(window.__dailyMapTimer);
+  window.__dailyMapTimer = setTimeout(renderDayMap, 450);
+}
+
+
 async function init() {
   pendingInviteToken = inviteTokenFromUrl();
   const { data } = await client.auth.getSession(); session = data.session;
@@ -304,7 +410,7 @@ function queueTripSave() {
   if (!canEdit()) return renderTripEditor();
   const trip = currentTrip(); if (trip) Object.assign(trip, getTripPatchFromInputs());
   const days = dateRange(trip?.start_date, trip?.end_date); if (!days.includes(selectedDay)) selectedDay = trip?.start_date;
-  renderTripSelect(); renderSummary(); renderDayTabs(); renderTimeline();
+  renderTripSelect(); renderSummary(); renderDayTabs(); renderTimeline(); debounceDayMapRender();
   clearTimeout(autosaveTimer); setStatus('Saving...'); autosaveTimer = setTimeout(saveTrip, 500);
 }
 async function saveTrip() {
