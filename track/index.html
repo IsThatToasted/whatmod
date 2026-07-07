@@ -4,10 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ4D9LOZxj4mR0W0LFsA3RnHPaZvU=" crossorigin="" />
-  <link rel="stylesheet" href="./styles.css?v=19" />
+  <link rel="stylesheet" href="./styles.css?v=21" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQpF9Rk1r1c2bTceEzy8dRN2WI2wL4=" crossorigin="" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
   <div class="app-shell">
@@ -110,23 +109,6 @@
               <div class="metric glass people"><span>Travelers</span><strong id="travelerCount">1</strong><em>people</em></div>
             </section>
 
-            <section class="route-panel glass" id="routePanel">
-              <div class="panel-head route-head">
-                <div>
-                  <p class="eyebrow">Trip route</p>
-                  <h2>Map by scheduled stops</h2>
-                  <p class="helper-text compact-help">Pins and route are built from events with locations, ordered by day and time.</p>
-                </div>
-                <div class="route-actions">
-                  <button id="refreshRouteBtn" class="ghost-btn" type="button">Refresh map</button>
-                  <a id="routeDirectionsLink" class="ghost-btn hidden" target="_blank" rel="noopener">Open directions</a>
-                </div>
-              </div>
-              <div id="routeMap" class="route-map" aria-label="Trip route map"></div>
-              <div id="routeStatus" class="route-status">Add locations to scheduled events to build your route.</div>
-              <div id="routeStops" class="route-stops"></div>
-            </section>
-
             <section class="planner-panel glass">
               <div class="panel-head">
                 <div>
@@ -145,6 +127,19 @@
               </div>
               <div id="dayTabs" class="day-tabs"></div>
               <section id="timeline" class="timeline"></section>
+            </section>
+
+            <section class="daily-map-panel glass" id="dailyMapPanel">
+              <div class="panel-head compact">
+                <div>
+                  <p class="eyebrow">Daily route</p>
+                  <h2 id="dailyMapTitle">Route for selected day</h2>
+                </div>
+                <a id="dailyDirectionsLink" class="ghost-btn map-directions hidden" target="_blank" rel="noopener">Open directions</a>
+              </div>
+              <p id="dailyMapHelp" class="helper-text compact-help">Add locations to timed plans to see today’s pins and route.</p>
+              <div id="dailyRouteMap" class="daily-route-map" aria-label="Map of selected day route"></div>
+              <div id="dailyMapStops" class="daily-map-stops"></div>
             </section>
 
             <section class="timeline-controls">
@@ -214,27 +209,6 @@
     </form>
   </dialog>
 
-  <dialog id="rainDialog">
-    <form method="dialog" class="dialog-card item-dialog-card rain-dialog-card">
-      <h2 id="rainDialogTitle">Rain Plan</h2>
-      <p class="helper-text">Use this as the indoor backup or weather-safe version of the plan. It saves to the same itinerary item.</p>
-      <input id="rainEditingItemId" type="hidden" />
-      <div class="rain-original-card">
-        <strong id="rainOriginalTitle">Event</strong>
-        <span id="rainOriginalMeta">Date and time</span>
-      </div>
-      <label class="full">Rain plan title / backup idea<input id="rainPlanTitle" placeholder="Indoor museum, mall, arcade, cozy lunch backup..." /></label>
-      <div class="dialog-grid">
-        <label>Backup time<input id="rainPlanTime" type="time" /></label>
-        <label>Backup location<input id="rainPlanLocation" class="location-input" placeholder="Indoor address / location" autocomplete="off" /></label>
-        <div id="rainLocationSuggestions" class="suggestions hidden"></div>
-        <div id="rainLocationMapLinks" class="map-links hidden"></div>
-      </div>
-      <label class="full">Details<textarea id="rainPlanDetails" rows="4" placeholder="What changes if it rains? Reservation, price, parking, indoor alternative, what to bring..."></textarea></label>
-      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="clearRainBtn" value="clear" class="ghost-btn danger">Clear rain plan</button><button id="saveRainBtn" value="default">Save rain plan</button></div>
-    </form>
-  </dialog>
-
   <dialog id="itemDialog">
     <form method="dialog" class="dialog-card item-dialog-card">
       <h2 id="itemDialogTitle">Add itinerary item</h2>
@@ -265,10 +239,15 @@
         <div class="item-actions"><button class="shift earlier ghost-btn" type="button">-30</button><button class="shift later ghost-btn" type="button">+30</button><button class="rain-toggle ghost-btn" type="button">☔ Rain</button><button class="edit ghost-btn" type="button">Edit</button><button class="delete danger ghost-btn" type="button">Delete</button></div>
         <button class="resize-handle resize-end" type="button" aria-label="Adjust end time"></button>
       </div>
-      <div class="rain-preview hidden"><strong>☔ Rain plan:</strong> <span class="rain-plan-text"></span></div>
+      <div class="card-face rain-back">
+        <div class="rain-back-head"><span>☔ Rain Plan</span><button class="rain-close ghost-btn" type="button">Back</button></div>
+        <p class="rain-plan-text"></p>
+        <div class="rain-back-actions"><button class="edit-rain ghost-btn" type="button">Edit rain plan</button><button class="reset-rain danger ghost-btn" type="button">Reset rain plan</button></div>
+      </div>
     </article>
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
-  <script src="./app.js?v=19"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="./app.js?v=21"></script>
 </body>
 </html>
