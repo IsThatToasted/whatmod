@@ -128,6 +128,39 @@ function normalizePackingItem(row, idx = 0) {
 function inviteTokenFromUrl() { return new URLSearchParams(location.search).get('invite'); }
 
 const locationCache = new Map();
+
+function loadExternalAsset(tag, attrs) {
+  return new Promise((resolve, reject) => {
+    const el = document.createElement(tag);
+    Object.entries(attrs).forEach(([k, v]) => { if (v !== undefined && v !== null) el.setAttribute(k, v); });
+    el.onload = resolve;
+    el.onerror = reject;
+    document.head.appendChild(el);
+  });
+}
+async function ensureLeafletAvailable() {
+  if (window.L) return true;
+  if (!document.querySelector('link[data-leaflet-fallback]')) {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+    css.dataset.leafletFallback = 'true';
+    document.head.appendChild(css);
+  }
+  const sources = [
+    'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js',
+    'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+  ];
+  for (const src of sources) {
+    try {
+      await loadExternalAsset('script', { src, 'data-leaflet-fallback': 'true' });
+      if (window.L) return true;
+    } catch (_) {}
+  }
+  return !!window.L;
+}
+
 let locationSearchTimer = null;
 function mapsUrl(query, app = 'google') {
   const q = encodeURIComponent(query || '');
@@ -203,20 +236,30 @@ function selectedDayRouteItems() {
     .sort((a,b) => `${a.start_time || '99:99'} ${a.sort_order || 0}`.localeCompare(`${b.start_time || '99:99'} ${b.sort_order || 0}`));
 }
 async function renderDayMap() {
-  if (!els.dailyRouteMap || !window.L) return;
+  if (!els.dailyRouteMap) return;
+  const hasLeaflet = await ensureLeafletAvailable();
+  if (!hasLeaflet) {
+    if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Map library could not load. Check your connection or try refreshing.';
+    els.dailyRouteMap.innerHTML = '<div class="map-fallback">Map could not load yet.</div>';
+    return;
+  }
   const seq = ++routeRenderToken;
   const day = selectedDay || currentTrip()?.start_date || todayISO();
   const dayItems = selectedDayRouteItems();
 
   if (els.dailyMapTitle) els.dailyMapTitle.textContent = `Route for ${fmtLongDate(day)}`;
   if (!routeMap) {
-    routeMap = L.map(els.dailyRouteMap, { scrollWheelZoom: false, tap: true });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    els.dailyRouteMap.innerHTML = '';
+    routeMap = L.map(els.dailyRouteMap, { scrollWheelZoom: false, tap: true, zoomControl: true });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(routeMap);
     routeLayer = L.layerGroup().addTo(routeMap);
     routeMap.setView([39.5, -98.35], 4);
+    requestAnimationFrame(() => routeMap.invalidateSize(true));
+    setTimeout(() => routeMap.invalidateSize(true), 350);
+    setTimeout(() => routeMap.invalidateSize(true), 900);
   }
 
   routeLayer.clearLayers();
@@ -226,7 +269,7 @@ async function renderDayMap() {
 
   if (!dayItems.length) {
     if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Add locations to timed plans to see this day’s pins and route.';
-    setTimeout(() => routeMap?.invalidateSize(), 120);
+    setTimeout(() => routeMap?.invalidateSize(true), 120);
     return;
   }
 
@@ -240,7 +283,7 @@ async function renderDayMap() {
 
   if (!points.length) {
     if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Could not place these locations yet. Try using more specific addresses.';
-    setTimeout(() => routeMap?.invalidateSize(), 120);
+    setTimeout(() => routeMap?.invalidateSize(true), 120);
     return;
   }
 
@@ -284,7 +327,7 @@ async function renderDayMap() {
   }
 
   routeMap.fitBounds(bounds, { padding: [34, 34], maxZoom: 13 });
-  setTimeout(() => routeMap?.invalidateSize(), 160);
+  setTimeout(() => routeMap?.invalidateSize(true), 160);
 }
 function debounceDayMapRender() {
   clearTimeout(window.__dailyMapTimer);

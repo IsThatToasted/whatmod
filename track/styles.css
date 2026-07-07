@@ -776,3 +776,10 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
   .daily-map-stops{display:grid;grid-template-columns:1fr;gap:8px}
   .daily-map-stops a{border-radius:18px;grid-template-columns:auto auto minmax(0,1fr)}
 }
+
+/* v22: robust Leaflet map loading */
+
+.daily-route-map.leaflet-container{background:#eef4ff!important;min-height:340px;z-index:1}
+.daily-route-map .leaflet-pane,.daily-route-map .leaflet-top,.daily-route-map .leaflet-bottom{z-index:2}
+.map-fallback{height:100%;min-height:280px;display:grid;place-items:center;color:#667195;font-weight:900;background:linear-gradient(135deg,#f6f9ff,#fff)}
+@media(max-width:760px){.daily-route-map.leaflet-container{min-height:270px}}
