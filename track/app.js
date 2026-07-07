@@ -17,11 +17,11 @@ const els = {
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'),
-  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'), snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
+  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'), snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn'), routeMap: document.getElementById('routeMap'), routeStatus: document.getElementById('routeStatus'), routeStops: document.getElementById('routeStops'), refreshRouteBtn: document.getElementById('refreshRouteBtn'), routeDirectionsLink: document.getElementById('routeDirectionsLink'), rainDialog: document.getElementById('rainDialog'), rainDialogTitle: document.getElementById('rainDialogTitle'), rainEditingItemId: document.getElementById('rainEditingItemId'), rainOriginalTitle: document.getElementById('rainOriginalTitle'), rainOriginalMeta: document.getElementById('rainOriginalMeta'), rainPlanTitle: document.getElementById('rainPlanTitle'), rainPlanTime: document.getElementById('rainPlanTime'), rainPlanLocation: document.getElementById('rainPlanLocation'), rainPlanDetails: document.getElementById('rainPlanDetails'), saveRainBtn: document.getElementById('saveRainBtn'), clearRainBtn: document.getElementById('clearRainBtn'), rainLocationSuggestions: document.getElementById('rainLocationSuggestions'), rainLocationMapLinks: document.getElementById('rainLocationMapLinks')
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
-let session = null, trips = [], items = [], members = [], packingItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null;
+let session = null, trips = [], items = [], members = [], packingItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, routeMapInstance = null, routeLayerGroup = null, routeRenderSeq = 0;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -183,6 +183,146 @@ function setupLocationAutocomplete(input, suggestionBox, linksBox) {
   });
   input.addEventListener('focus', () => renderMapLinks(linksBox, input.value));
   document.addEventListener('click', e => { if (!suggestionBox.contains(e.target) && e.target !== input) close(); });
+}
+
+
+function parseRainPlan(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return { title: '', time: '', location: '', details: '' };
+  try {
+    const obj = JSON.parse(value);
+    if (obj && typeof obj === 'object' && ('title' in obj || 'details' in obj || 'location' in obj || 'time' in obj)) {
+      return { title: obj.title || '', time: obj.time || '', location: obj.location || '', details: obj.details || '' };
+    }
+  } catch {}
+  return { title: '', time: '', location: '', details: value };
+}
+function serializeRainPlan(plan) {
+  const clean = {
+    title: String(plan.title || '').trim(),
+    time: String(plan.time || '').trim(),
+    location: String(plan.location || '').trim(),
+    details: String(plan.details || '').trim()
+  };
+  return Object.values(clean).some(Boolean) ? JSON.stringify(clean) : '';
+}
+function rainPlanLabel(raw) {
+  const p = parseRainPlan(raw);
+  return p.title || p.details || p.location || 'Rain backup ready';
+}
+async function geocodeOne(query) {
+  const clean = String(query || '').trim();
+  if (!clean) return null;
+  const cacheKey = `geo:${clean.toLowerCase()}`;
+  if (locationCache.has(cacheKey)) return locationCache.get(cacheKey);
+  const suggestions = await fetchLocationSuggestions(clean);
+  const best = suggestions[0] ? { label: suggestions[0].label, lat: Number(suggestions[0].lat), lon: Number(suggestions[0].lon) } : null;
+  locationCache.set(cacheKey, best);
+  return best;
+}
+function routeOrderedItems() {
+  return items
+    .filter(i => i.location && i.item_date && timeToMinutes(i.start_time) !== null)
+    .sort((a,b) => `${a.item_date} ${a.start_time || '99:99'} ${a.sort_order || 0}`.localeCompare(`${b.item_date} ${b.start_time || '99:99'} ${b.sort_order || 0}`));
+}
+async function renderRouteMap() {
+  if (!els.routeMap || !window.L) return;
+  const seq = ++routeRenderSeq;
+  const routeItems = routeOrderedItems();
+  if (!routeMapInstance) {
+    routeMapInstance = L.map(els.routeMap, { scrollWheelZoom: false });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(routeMapInstance);
+    routeLayerGroup = L.layerGroup().addTo(routeMapInstance);
+    routeMapInstance.setView([39.5, -98.35], 4);
+  }
+  routeLayerGroup.clearLayers();
+  if (els.routeDirectionsLink) els.routeDirectionsLink.classList.add('hidden');
+  if (els.routeStops) els.routeStops.innerHTML = '';
+  if (!routeItems.length) {
+    if (els.routeStatus) els.routeStatus.textContent = 'Add start times and locations to events to build your route.';
+    return setTimeout(() => routeMapInstance.invalidateSize(), 60);
+  }
+  if (els.routeStatus) els.routeStatus.textContent = 'Finding route pins…';
+  const points = [];
+  for (const item of routeItems.slice(0, 25)) {
+    const geo = await geocodeOne(item.location);
+    if (seq !== routeRenderSeq) return;
+    if (geo && Number.isFinite(geo.lat) && Number.isFinite(geo.lon)) points.push({ item, ...geo });
+  }
+  if (!points.length) {
+    if (els.routeStatus) els.routeStatus.textContent = 'Could not geocode the saved locations yet. Try more specific addresses.';
+    return;
+  }
+  const bounds = [];
+  points.forEach((p, idx) => {
+    bounds.push([p.lat, p.lon]);
+    L.marker([p.lat, p.lon]).bindPopup(`<strong>${idx + 1}. ${escapeHtml(p.item.title)}</strong><br>${escapeHtml(fmtShortDate(p.item.item_date))} ${escapeHtml(fmtTime(p.item.start_time))}<br>${escapeHtml(shortLocationLabel(p.item.location))}`).addTo(routeLayerGroup);
+  });
+  if (els.routeStops) {
+    els.routeStops.innerHTML = points.map((p, idx) => `<a target="_blank" rel="noopener" href="${mapsUrl(p.item.location, 'google')}"><span>${idx + 1}</span><strong>${escapeHtml(p.item.title)}</strong><em>${escapeHtml(fmtShortDate(p.item.item_date))} ${escapeHtml(fmtTime(p.item.start_time))}</em></a>`).join('');
+  }
+  const googleWaypoints = points.map(p => encodeURIComponent(p.item.location));
+  if (els.routeDirectionsLink && googleWaypoints.length) {
+    els.routeDirectionsLink.href = googleWaypoints.length === 1 ? mapsUrl(points[0].item.location, 'google') : `https://www.google.com/maps/dir/?api=1&origin=${googleWaypoints[0]}&destination=${googleWaypoints[googleWaypoints.length - 1]}&waypoints=${googleWaypoints.slice(1, -1).join('%7C')}`;
+    els.routeDirectionsLink.classList.remove('hidden');
+  }
+  if (points.length >= 2) {
+    const coordString = points.map(p => `${p.lon},${p.lat}`).join(';');
+    try {
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`);
+      const data = await res.json();
+      if (seq !== routeRenderSeq) return;
+      const route = data?.routes?.[0];
+      if (route?.geometry) {
+        L.geoJSON(route.geometry, { weight: 5, opacity: 0.8 }).addTo(routeLayerGroup);
+        const miles = route.distance ? (route.distance / 1609.344).toFixed(1) : null;
+        const hours = route.duration ? Math.round(route.duration / 3600 * 10) / 10 : null;
+        if (els.routeStatus) els.routeStatus.textContent = `${points.length} routed stops${miles ? ` • about ${miles} mi` : ''}${hours ? ` • ${hours} hr drive` : ''}. Route uses open-source map data and should be verified in your maps app.`;
+      } else if (els.routeStatus) els.routeStatus.textContent = `${points.length} pins found. Route line unavailable right now.`;
+    } catch (err) {
+      console.warn('Route unavailable:', err);
+      if (els.routeStatus) els.routeStatus.textContent = `${points.length} pins found. Route line unavailable right now.`;
+    }
+  } else if (els.routeStatus) els.routeStatus.textContent = 'One pin found. Add another timed location to draw a route.';
+  routeMapInstance.fitBounds(bounds, { padding: [32, 32], maxZoom: 13 });
+  setTimeout(() => routeMapInstance.invalidateSize(), 80);
+}
+function debounceRouteRender() {
+  clearTimeout(window.__routeTimer);
+  window.__routeTimer = setTimeout(renderRouteMap, 400);
+}
+function openRainDialog(item) {
+  if (!canEdit()) return alert('This invite is view-only. Ask the owner for an edit invite.');
+  const plan = parseRainPlan(item.rain_plan);
+  els.rainEditingItemId.value = item.id;
+  els.rainDialogTitle.textContent = `Rain Plan ☔`;
+  els.rainOriginalTitle.textContent = item.title || 'Itinerary item';
+  els.rainOriginalMeta.textContent = `${fmtShortDate(item.item_date)} ${fmtTime(item.start_time)}${item.location ? ` • ${shortLocationLabel(item.location)}` : ''}`;
+  els.rainPlanTitle.value = plan.title || '';
+  els.rainPlanTime.value = plan.time || '';
+  els.rainPlanLocation.value = plan.location || '';
+  els.rainPlanDetails.value = plan.details || '';
+  renderMapLinks(els.rainLocationMapLinks, els.rainPlanLocation.value);
+  els.rainDialog.showModal();
+  setTimeout(() => els.rainPlanTitle.focus(), 50);
+}
+async function saveRainFromDialog(e) {
+  e.preventDefault();
+  const id = els.rainEditingItemId.value;
+  if (!id || !canEdit()) return;
+  const plan = serializeRainPlan({ title: els.rainPlanTitle.value, time: els.rainPlanTime.value, location: els.rainPlanLocation.value, details: els.rainPlanDetails.value });
+  await updateItem(id, { rain_plan: plan });
+  els.rainDialog.close();
+}
+async function clearRainFromDialog(e) {
+  e.preventDefault();
+  const id = els.rainEditingItemId.value;
+  if (!id || !canEdit()) return;
+  await updateItem(id, { rain_plan: '' });
+  els.rainDialog.close();
 }
 
 
@@ -364,7 +504,7 @@ async function createInviteLink() {
 }
 async function copyInviteLink() { if (!els.inviteLink.value) return; await navigator.clipboard.writeText(els.inviteLink.value); setStatus('Invite copied'); }
 
-function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); }
+function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); debounceRouteRender(); }
 function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
   const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
@@ -469,15 +609,13 @@ function renderItem(item, isTimed = false) {
   const warning = tpl.querySelector('.overlap-warning');
   if (overlap) { card.classList.add('has-overlap'); warning.classList.remove('hidden'); warning.textContent = `⚠ Overlaps with ${overlap.title}`; }
   const rainText = tpl.querySelector('.rain-plan-text');
-  if (rainText) rainText.textContent = item.rain_plan || 'No rain backup added yet. Tap Edit rain plan to add an indoor option, alternate time, or weather note.';
+  if (rainText) rainText.textContent = item.rain_plan ? rainPlanLabel(item.rain_plan) : 'No rain backup added yet.';
   if (item.rain_plan) card.classList.add('has-rain-plan');
-  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain');
-  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit(); if (editRainBtn) editRainBtn.disabled = !canEdit();
+  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const rainBtn = tpl.querySelector('.rain-toggle');
+  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit(); if (rainBtn) rainBtn.disabled = !canEdit();
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
-  rainBtn?.addEventListener('click', () => card.classList.toggle('rain-flipped'));
-  rainClose?.addEventListener('click', () => card.classList.remove('rain-flipped'));
-  editRainBtn?.addEventListener('click', () => openItemDialog(item.item_date, item));
-  attachRainLongPress(card);
+  rainBtn?.addEventListener('click', () => openRainDialog(item));
+  attachRainLongPress(card, item);
   delBtn.addEventListener('click', () => deleteItem(item.id));
   earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
   laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
@@ -489,7 +627,7 @@ function renderItem(item, isTimed = false) {
   return tpl;
 }
 
-function attachRainLongPress(card) {
+function attachRainLongPress(card, item) {
   let timer = null;
   let startX = 0, startY = 0;
   const clear = () => { if (timer) clearTimeout(timer); timer = null; };
@@ -498,7 +636,7 @@ function attachRainLongPress(card) {
     const t = e.touches?.[0]; if (!t) return;
     startX = t.clientX; startY = t.clientY;
     timer = setTimeout(() => {
-      card.classList.toggle('rain-flipped');
+      openRainDialog(item);
       if (navigator.vibrate) navigator.vibrate(18);
     }, 560);
   }, { passive: true });
@@ -741,7 +879,11 @@ if (els.packingList) els.packingList.addEventListener('dragend', () => {
 });
 
 if (els.resetPackingBtn) els.resetPackingBtn.addEventListener('click', resetPackingItems);
-if (els.snapMode) { els.snapMode.value = localStorage.getItem('timelineSnapMinutes') || '30'; els.snapMode.addEventListener('change', () => { localStorage.setItem('timelineSnapMinutes', els.snapMode.value); renderTimeline(); }); }
+if (els.snapMode) { els.snapMode.value = localStorage.getItem('timelineSnapMinutes') || '30'; els.snapMode.addEventListener('change', () => { localStorage.setItem('timelineSnapMinutes', els.snapMode.value); renderTimeline(); debounceRouteRender(); }); }
+if (els.refreshRouteBtn) els.refreshRouteBtn.addEventListener('click', renderRouteMap);
+if (els.saveRainBtn) els.saveRainBtn.addEventListener('click', saveRainFromDialog);
+if (els.clearRainBtn) els.clearRainBtn.addEventListener('click', clearRainFromDialog);
+setupLocationAutocomplete(els.rainPlanLocation, els.rainLocationSuggestions, els.rainLocationMapLinks);
 if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUndo) await lastUndo(); });
 
 init();
