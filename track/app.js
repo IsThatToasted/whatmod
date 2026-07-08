@@ -469,13 +469,42 @@ function setupLocationAutocomplete(input, suggestionBox, linksBox) {
 }
 
 
+function uniqueGeocodeQueries(query) {
+  const clean = String(query || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return [];
+  const out = [clean];
+  const lower = clean.toLowerCase();
+  const airportMatch = clean.match(/([A-Z][A-Za-z .'-]+?\s+(?:International\s+)?Airport)/i);
+  if (airportMatch?.[1]) out.push(airportMatch[1].trim());
+  if (/philadelphia|\bphl\b/i.test(clean) && /airport|terminal|island/i.test(clean)) out.push('Philadelphia International Airport, Philadelphia, PA');
+  if (/milwaukee|mke|mitchell/i.test(clean) && /airport|terminal|flight/i.test(clean)) out.push('Milwaukee Mitchell International Airport, Milwaukee, WI');
+  if (lower.includes(',')) {
+    const parts = clean.split(',').map(x => x.trim()).filter(Boolean);
+    if (parts[0]) out.push(parts[0]);
+    if (parts.length >= 2) out.push(`${parts[0]}, ${parts[parts.length - 2]}`);
+  }
+  // Last-resort cleanup: Nominatim sometimes fails when a selected result is very long
+  // or contains terminal/road detail. Keep the recognizable place name first.
+  out.push(clean.replace(/\b(Island Avenue|Terminal [A-Z0-9]+|Arrivals|Departures|Garage|Lot)\b.*$/i, '').replace(/,+\s*$/,'').trim());
+  return [...new Set(out.filter(Boolean))];
+}
 async function geocodeOne(query) {
   const clean = String(query || '').trim();
   if (!clean) return null;
   const cacheKey = `geo:${clean.toLowerCase()}`;
   if (locationCache.has(cacheKey)) return locationCache.get(cacheKey);
-  const suggestions = await fetchLocationSuggestions(clean);
-  const best = suggestions[0] ? { label: suggestions[0].label, lat: Number(suggestions[0].lat), lon: Number(suggestions[0].lon) } : null;
+  let best = null;
+  for (const q of uniqueGeocodeQueries(clean)) {
+    try {
+      const suggestions = await fetchLocationSuggestions(q);
+      if (suggestions[0]) {
+        best = { label: suggestions[0].label, lat: Number(suggestions[0].lat), lon: Number(suggestions[0].lon), queryUsed: q };
+        break;
+      }
+    } catch (err) {
+      console.warn('Geocode attempt failed:', q, err);
+    }
+  }
   locationCache.set(cacheKey, best);
   return best;
 }
@@ -589,7 +618,10 @@ async function renderDayMap() {
     }
   } else if (els.dailyMapHelp) {
     if (routePoints.length === 1 && travelPoints.length) els.dailyMapHelp.textContent = 'One driving stop found. Flights/trains are shown separately and do not affect the driving route.';
-    else if (routePoints.length === 1) els.dailyMapHelp.textContent = 'One driving stop found for this day. Add another routed location to draw a route.';
+    else if (routePoints.length === 1) {
+      const hasPointToPoint = dayItems.some(i => isPointToPointType(i) && i.from_location && i.to_location);
+      els.dailyMapHelp.textContent = hasPointToPoint ? 'One end of a drive could not be mapped. Try simplifying the From/To address, for example “Philadelphia International Airport, PA”.' : 'One driving stop found for this day. Add another routed location to draw a route.';
+    }
     else if (travelPoints.length) els.dailyMapHelp.textContent = 'Only flight/transit events found. They are shown separately and excluded from driving directions.';
     else els.dailyMapHelp.textContent = 'No routed stops found for this day.';
   }
