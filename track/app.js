@@ -29,19 +29,13 @@ const ignoreRouteTypes = new Set(['flight', 'train', 'ferry', 'cruise', 'todo', 
 const optionalRouteTypes = new Set(['toddler']);
 function routeBehaviorForItem(item) {
   const type = String(item?.item_type || 'event').toLowerCase();
-  const haystack = `${item?.title || ''} ${item?.location || ''} ${item?.from_location || ''} ${item?.to_location || ''}`.toLowerCase();
-
-  // IMPORTANT: explicit road-route categories always stay routable, even when
-  // the destination is an airport. A pickup drive to PHL should draw a road
-  // route from the From address to the airport, while the actual flight card
-  // remains separate.
-  if (type === 'drive' || type === 'transport' || type === 'gas') return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving stop' };
-  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
-
+  const haystack = `${item?.title || ''} ${item?.location || ''}`.toLowerCase();
   const airportish = /\b([a-z]{3})\b/.test(haystack) && /airport|terminal|flight|airline|arriv|depart|\bphl\b|\bmke\b|\bord\b|\bmdw\b|\bjfk\b|\blga\b|\bewr\b/.test(haystack);
-  if (type === 'flight' || (airportish && /flight|arriv|depart|terminal|airline/.test(haystack))) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
+  if (type === 'flight' || airportish && /flight|arriv|depart|terminal|airline/.test(haystack)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
   if (travelOnlyTypes.has(type)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Travel event' };
   if (ignoreRouteTypes.has(type)) return { kind: 'note', routable: false, pinClass: 'pin-note', label: 'Shown only' };
+  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
+  if (type === 'drive' || type === 'transport' || type === 'gas') return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving stop' };
   return { kind: 'stop', routable: true, pinClass: 'pin-stop', label: 'Driving stop' };
 }
 function mapPinIcon(point, index) {
@@ -86,22 +80,12 @@ function routeLocationsForItem(item) {
   const to = (item.to_location || '').trim();
   const loc = (item.location || '').trim();
   const type = String(item.item_type || '').toLowerCase();
-  const title = String(item.title || '').toLowerCase();
   const points = [];
-
-  // Point-to-point cards are the backbone of the smart map.
-  // Important: older events often stored the destination in `location` before
-  // the dedicated `to_location` field existed. Treat `location` as the
-  // destination fallback so a Drive card can route from home -> airport.
   if (isPointToPointType(item)) {
-    const destination = to || loc;
     if (from) points.push({ query: from, pointKind: 'from', item, behavior, label: pointLabelForItem(item, 'from') });
-    if (destination) points.push({ query: destination, pointKind: 'to', item, behavior, label: pointLabelForItem(item, 'to') });
+    if (to) points.push({ query: to, pointKind: 'to', item, behavior, label: pointLabelForItem(item, 'to') });
     if (!points.length && loc) points.push({ query: loc, pointKind: 'location', item, behavior, label: pointLabelForItem(item, 'location') });
-
-    const explicitRoadRoute = type === 'drive' || type === 'transport' || type === 'gas';
-    const flightLike = !explicitRoadRoute && (type === 'flight' || travelOnlyTypes.has(type) || /\bflight\b|airline|terminal|depart|arrival|arrive/.test(title));
-    if (flightLike) points.forEach(p => p.behavior = { ...p.behavior, routable: false, kind: 'travel', pinClass: 'pin-travel' });
+    if (type === 'flight' || travelOnlyTypes.has(type)) points.forEach(p => p.behavior = { ...p.behavior, routable: false, kind: 'travel' });
     return points;
   }
   if (loc) points.push({ query: loc, pointKind: 'location', item, behavior, label: pointLabelForItem(item, 'location') });
@@ -976,8 +960,8 @@ function renderItem(item, isTimed = false) {
     card.classList.add('timeline-item');
     card.style.top = `${minutesToY(start) + (TIMELINE_EVENT_GAP / 2)}px`;
     const naturalHeight = minutesToY(end) - minutesToY(start) - TIMELINE_EVENT_GAP;
-    card.style.minHeight = `${Math.max(118, naturalHeight)}px`;
-    card.style.height = `${Math.max(118, naturalHeight)}px`;
+    card.style.minHeight = `${Math.max(82, naturalHeight)}px`;
+    card.style.height = `${Math.max(82, naturalHeight)}px`;
     card.classList.toggle('compact-time-card', naturalHeight < 70);
     card.classList.toggle('roomy-time-card', naturalHeight >= 110);
     card.classList.toggle('very-roomy-time-card', naturalHeight >= 170);
@@ -988,8 +972,7 @@ function renderItem(item, isTimed = false) {
   tpl.querySelector('h3').textContent = item.title;
   card.classList.add(`type-${String(item.item_type || 'event').toLowerCase()}`);
   const meta = tpl.querySelector('.item-meta');
-  const routeDest = item.to_location || (isPointToPointType(item) ? item.location : '');
-  const routeText = item.from_location && routeDest ? `${shortLocationLabel(item.from_location)} → ${shortLocationLabel(routeDest)}` : '';
+  const routeText = item.from_location && item.to_location ? `${shortLocationLabel(item.from_location)} → ${shortLocationLabel(item.to_location)}` : '';
   const displayLocation = routeText || shortLocationLabel(itemMapLocation(item));
   const mapQuery = itemMapLocation(item);
   const budget = Number(item.budget || 0);
@@ -1012,19 +995,14 @@ function renderItem(item, isTimed = false) {
   if (rainText) rainText.textContent = item.rain_plan || 'No rain backup added yet. Tap Edit rain plan to add an indoor option, alternate time, or weather note.';
   if (item.rain_plan) card.classList.add('has-rain-plan');
   const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const lockBtn = tpl.querySelector('.lock-toggle'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain'); const resetRainBtn = tpl.querySelector('.reset-rain');
-  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit() || locked; if (editRainBtn) editRainBtn.disabled = !canEdit() || locked; if (resetRainBtn) resetRainBtn.disabled = !canEdit() || locked; if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒' : '🔓'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; lockBtn.setAttribute('aria-label', locked ? 'Unlock this card' : 'Lock this card'); }
+  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit() || locked; if (editRainBtn) editRainBtn.disabled = !canEdit() || locked; if (resetRainBtn) resetRainBtn.disabled = !canEdit() || locked; if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒 Unlock' : '🔓 Lock'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; }
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
   lockBtn?.addEventListener('click', () => toggleItemLock(item));
-  if (rainBtn) { rainBtn.textContent = item.rain_plan ? '☔' : '☔ +'; rainBtn.title = item.rain_plan ? 'View rain plan' : 'Add rain plan'; rainBtn.setAttribute('aria-label', item.rain_plan ? 'View rain plan' : 'Add rain plan'); }
   rainBtn?.addEventListener('click', () => handleRainButton(card, item));
   rainClose?.addEventListener('click', () => card.classList.remove('rain-flipped'));
   editRainBtn?.addEventListener('click', () => openRainEditor(item));
   resetRainBtn?.addEventListener('click', () => resetRainPlan(item.id));
   attachRainLongPress(card, item);
-  card.addEventListener('pointerenter', () => { card.style.zIndex = '80'; });
-  card.addEventListener('pointerleave', () => { if (!card.classList.contains('timeline-moving')) card.style.zIndex = ''; });
-  card.addEventListener('focusin', () => { card.style.zIndex = '90'; });
-  card.addEventListener('focusout', () => { if (!card.classList.contains('timeline-moving')) card.style.zIndex = ''; });
   delBtn.addEventListener('click', () => deleteItem(item.id));
   earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
   laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
@@ -1535,43 +1513,3 @@ if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUnd
 
 setInterval(updateTripCountdown, 60000);
 init();
-
-// v35 lock-in helpers: keep overlapped cards actionable and make Drive cards always routeable.
-document.addEventListener('pointerdown', (e) => {
-  document.querySelectorAll('.item-card.card-active').forEach(card => {
-    if (!card.contains(e.target)) card.classList.remove('card-active');
-  });
-  const card = e.target.closest?.('.item-card');
-  if (card) card.classList.add('card-active');
-}, true);
-
-// Override route behavior after load so explicit road events are never reclassified as flights.
-function routeBehaviorForItem(item) {
-  const type = String(item?.item_type || 'event').toLowerCase();
-  const haystack = `${item?.title || ''} ${item?.location || ''} ${item?.from_location || ''} ${item?.to_location || ''}`.toLowerCase();
-  if (['drive','transport','gas'].includes(type)) return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving route' };
-  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
-  if (['flight','train','ferry','cruise'].includes(type)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Travel event' };
-  const airportish = /airport|terminal|flight|airline|arriv|depart|\bphl\b|\bmke\b|\bord\b|\bmdw\b|\bjfk\b|\blga\b|\bewr\b/.test(haystack);
-  if (airportish && /flight|arriv|depart|terminal|airline/.test(haystack)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
-  if (['todo','rest'].includes(type)) return { kind: 'note', routable: false, pinClass: 'pin-note', label: 'Shown only' };
-  return { kind: 'stop', routable: true, pinClass: 'pin-stop', label: 'Driving stop' };
-}
-function routeLocationsForItem(item) {
-  const behavior = routeBehaviorForItem(item);
-  const from = String(item?.from_location || '').trim();
-  const to = String(item?.to_location || '').trim();
-  const loc = String(item?.location || '').trim();
-  const type = String(item?.item_type || '').toLowerCase();
-  const isP2P = ['drive','transport','flight','train','ferry','cruise','gas'].includes(type);
-  const points = [];
-  if (isP2P) {
-    const destination = to || loc;
-    if (from) points.push({ query: from, pointKind: 'from', item, behavior: { ...behavior }, label: `${item.title || 'Route'} start` });
-    if (destination) points.push({ query: destination, pointKind: 'to', item, behavior: { ...behavior }, label: `${item.title || 'Route'} destination` });
-    if (!points.length && loc) points.push({ query: loc, pointKind: 'location', item, behavior: { ...behavior }, label: item.title || 'Stop' });
-    return points;
-  }
-  if (loc) points.push({ query: loc, pointKind: 'location', item, behavior: { ...behavior }, label: item.title || 'Stop' });
-  return points;
-}
