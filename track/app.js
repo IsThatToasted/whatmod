@@ -29,13 +29,19 @@ const ignoreRouteTypes = new Set(['flight', 'train', 'ferry', 'cruise', 'todo', 
 const optionalRouteTypes = new Set(['toddler']);
 function routeBehaviorForItem(item) {
   const type = String(item?.item_type || 'event').toLowerCase();
-  const haystack = `${item?.title || ''} ${item?.location || ''}`.toLowerCase();
+  const haystack = `${item?.title || ''} ${item?.location || ''} ${item?.from_location || ''} ${item?.to_location || ''}`.toLowerCase();
+
+  // IMPORTANT: explicit road-route categories always stay routable, even when
+  // the destination is an airport. A pickup drive to PHL should draw a road
+  // route from the From address to the airport, while the actual flight card
+  // remains separate.
+  if (type === 'drive' || type === 'transport' || type === 'gas') return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving stop' };
+  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
+
   const airportish = /\b([a-z]{3})\b/.test(haystack) && /airport|terminal|flight|airline|arriv|depart|\bphl\b|\bmke\b|\bord\b|\bmdw\b|\bjfk\b|\blga\b|\bewr\b/.test(haystack);
-  if (type === 'flight' || airportish && /flight|arriv|depart|terminal|airline/.test(haystack)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
+  if (type === 'flight' || (airportish && /flight|arriv|depart|terminal|airline/.test(haystack))) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
   if (travelOnlyTypes.has(type)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Travel event' };
   if (ignoreRouteTypes.has(type)) return { kind: 'note', routable: false, pinClass: 'pin-note', label: 'Shown only' };
-  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
-  if (type === 'drive' || type === 'transport' || type === 'gas') return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving stop' };
   return { kind: 'stop', routable: true, pinClass: 'pin-stop', label: 'Driving stop' };
 }
 function mapPinIcon(point, index) {
@@ -93,7 +99,8 @@ function routeLocationsForItem(item) {
     if (destination) points.push({ query: destination, pointKind: 'to', item, behavior, label: pointLabelForItem(item, 'to') });
     if (!points.length && loc) points.push({ query: loc, pointKind: 'location', item, behavior, label: pointLabelForItem(item, 'location') });
 
-    const flightLike = type === 'flight' || travelOnlyTypes.has(type) || /\bflight\b|airline|terminal|depart|arrival|arrive/.test(title);
+    const explicitRoadRoute = type === 'drive' || type === 'transport' || type === 'gas';
+    const flightLike = !explicitRoadRoute && (type === 'flight' || travelOnlyTypes.has(type) || /\bflight\b|airline|terminal|depart|arrival|arrive/.test(title));
     if (flightLike) points.forEach(p => p.behavior = { ...p.behavior, routable: false, kind: 'travel', pinClass: 'pin-travel' });
     return points;
   }
@@ -969,8 +976,8 @@ function renderItem(item, isTimed = false) {
     card.classList.add('timeline-item');
     card.style.top = `${minutesToY(start) + (TIMELINE_EVENT_GAP / 2)}px`;
     const naturalHeight = minutesToY(end) - minutesToY(start) - TIMELINE_EVENT_GAP;
-    card.style.minHeight = `${Math.max(82, naturalHeight)}px`;
-    card.style.height = `${Math.max(82, naturalHeight)}px`;
+    card.style.minHeight = `${Math.max(118, naturalHeight)}px`;
+    card.style.height = `${Math.max(118, naturalHeight)}px`;
     card.classList.toggle('compact-time-card', naturalHeight < 70);
     card.classList.toggle('roomy-time-card', naturalHeight >= 110);
     card.classList.toggle('very-roomy-time-card', naturalHeight >= 170);
@@ -1014,6 +1021,10 @@ function renderItem(item, isTimed = false) {
   editRainBtn?.addEventListener('click', () => openRainEditor(item));
   resetRainBtn?.addEventListener('click', () => resetRainPlan(item.id));
   attachRainLongPress(card, item);
+  card.addEventListener('pointerenter', () => { card.style.zIndex = '80'; });
+  card.addEventListener('pointerleave', () => { if (!card.classList.contains('timeline-moving')) card.style.zIndex = ''; });
+  card.addEventListener('focusin', () => { card.style.zIndex = '90'; });
+  card.addEventListener('focusout', () => { if (!card.classList.contains('timeline-moving')) card.style.zIndex = ''; });
   delBtn.addEventListener('click', () => deleteItem(item.id));
   earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
   laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
