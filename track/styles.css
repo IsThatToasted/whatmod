@@ -1116,3 +1116,34 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
   .shared-form{grid-template-columns:1fr!important;}
   .shared-form input,.shared-form select,.shared-form button{width:100%;min-height:46px;}
 }
+
+/* v27 Must Do form readability fix: put text input on its own full line */
+.mustdo-panel .shared-form{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:10px!important;
+  align-items:stretch!important;
+}
+.mustdo-panel .shared-form #mustDoInput{
+  grid-column:1 / -1!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:48px!important;
+  box-sizing:border-box!important;
+}
+.mustdo-panel .shared-form #mustDoPriority{
+  width:100%!important;
+  min-width:0!important;
+  min-height:48px!important;
+  box-sizing:border-box!important;
+}
+.mustdo-panel .shared-form #addMustDoBtn{
+  min-height:48px!important;
+  white-space:nowrap!important;
+}
+@media(max-width:520px){
+  .mustdo-panel .shared-form{grid-template-columns:1fr!important;}
+  .mustdo-panel .shared-form #mustDoInput,
+  .mustdo-panel .shared-form #mustDoPriority,
+  .mustdo-panel .shared-form #addMustDoBtn{grid-column:1 / -1!important;width:100%!important;}
+}
