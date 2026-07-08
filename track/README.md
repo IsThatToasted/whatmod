@@ -51,3 +51,7 @@ Rain Plan behavior:
 - Tap the `☔ Rain` button on any itinerary card to flip it.
 - On mobile, long-press a card to flip to the rain plan view.
 - Use `Edit rain plan` or the normal item editor to add/update the rainy-day backup.
+
+
+## Trip creation RLS fix
+If you see `new row violates row-level security policy for table itinerary_trips`, rerun the included `schema.sql`. This version adds `create_itinerary_trip(...)`, a secure Supabase RPC used by the app to create the trip and owner membership together.

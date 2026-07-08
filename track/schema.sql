@@ -102,6 +102,45 @@ $$;
 
 grant execute on function public.user_can_edit_trip(uuid) to authenticated;
 
+
+create or replace function public.create_itinerary_trip(
+  trip_title text default 'New trip',
+  trip_start_date date default current_date,
+  trip_end_date date default current_date
+)
+returns public.itinerary_trips
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_trip public.itinerary_trips%rowtype;
+begin
+  if auth.uid() is null then
+    raise exception 'You must be signed in to create a trip.';
+  end if;
+
+  insert into public.itinerary_trips (user_id, title, start_date, end_date, destination, notes)
+  values (
+    auth.uid(),
+    coalesce(nullif(trim(trip_title), ''), 'New trip'),
+    coalesce(trip_start_date, current_date),
+    coalesce(trip_end_date, coalesce(trip_start_date, current_date)),
+    '',
+    ''
+  )
+  returning * into new_trip;
+
+  insert into public.itinerary_trip_members (trip_id, user_id, role)
+  values (new_trip.id, auth.uid(), 'owner')
+  on conflict (trip_id, user_id) do update set role = 'owner';
+
+  return new_trip;
+end;
+$$;
+
+grant execute on function public.create_itinerary_trip(text, date, date) to authenticated;
+
 create or replace function public.add_trip_owner_member()
 returns trigger
 language plpgsql
@@ -189,6 +228,12 @@ for select using (public.user_can_view_trip(id));
 
 create policy "Users can create trips" on public.itinerary_trips
 for insert with check (auth.uid() = user_id);
+
+drop policy if exists "Authenticated can create trips through app" on public.itinerary_trips;
+create policy "Authenticated can create trips through app" on public.itinerary_trips
+for insert to authenticated
+with check (auth.uid() is not null and user_id = auth.uid());
+
 
 create policy "Editors can update trips" on public.itinerary_trips
 for update using (public.user_can_edit_trip(id)) with check (public.user_can_edit_trip(id));

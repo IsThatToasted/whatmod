@@ -444,9 +444,37 @@ async function seedStarterPackingItems() {
   packingItems = (data || []).map(normalizePackingItem);
 }
 async function createTrip(input) {
-  const payload = { user_id: session.user.id, title: input.title || 'New trip', start_date: input.start_date || todayISO(), end_date: input.end_date || input.start_date || todayISO(), destination: '', notes: '' };
-  const { data, error } = await client.from('itinerary_trips').insert(payload).select().single(); if (error) return showDbError(error);
-  trips.push(data); activeTripId = data.id; selectedDay = data.start_date; localStorage.setItem('activeTripId', activeTripId); await loadTripData();
+  const { data: userData, error: userError } = await client.auth.getUser();
+  const user = userData?.user || session?.user;
+  if (userError || !user) {
+    alert('Please sign in again before creating a trip.');
+    return;
+  }
+
+  const title = input.title || 'New trip';
+  const startDate = input.start_date || todayISO();
+  const endDate = input.end_date || input.start_date || todayISO();
+
+  // Use the security-definer helper from schema.sql so trip creation cannot be blocked by stale RLS policies.
+  let { data, error } = await client.rpc('create_itinerary_trip', {
+    trip_title: title,
+    trip_start_date: startDate,
+    trip_end_date: endDate
+  });
+
+  // Backward-compatible fallback for anyone who has not rerun the newest schema yet.
+  if (error && String(error.message || '').includes('create_itinerary_trip')) {
+    const payload = { user_id: user.id, title, start_date: startDate, end_date: endDate, destination: '', notes: '' };
+    ({ data, error } = await client.from('itinerary_trips').insert(payload).select().single());
+  }
+
+  if (error) return showDbError(error);
+  if (Array.isArray(data)) data = data[0];
+  trips.push(data);
+  activeTripId = data.id;
+  selectedDay = data.start_date;
+  localStorage.setItem('activeTripId', activeTripId);
+  await loadTripData();
 }
 async function deleteTrip() { if (!activeTripId || !canDeleteTrip()) return alert('Only the trip owner can delete the trip.'); if (!confirm('Delete this entire trip and all itinerary items?')) return; const { error } = await client.from('itinerary_trips').delete().eq('id', activeTripId); if (error) return showDbError(error); trips = trips.filter(t => t.id !== activeTripId); activeTripId = trips[0]?.id || null; if (!activeTripId) await createTrip({ title: 'My Trip', start_date: todayISO(), end_date: addDays(todayISO(), 3) }); else await loadTripData(); }
 
