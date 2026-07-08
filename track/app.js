@@ -91,16 +91,30 @@ function routeLocationsForItem(item) {
   if (loc) points.push({ query: loc, pointKind: 'location', item, behavior, label: pointLabelForItem(item, 'location') });
   return points;
 }
+function googleFirstNameFromMeta(meta = {}, fallback = 'Traveler') {
+  const raw = meta.full_name || meta.name || meta.display_name || meta.preferred_username || fallback || 'Traveler';
+  return String(raw).trim().split(/\s+/)[0] || 'Traveler';
+}
+function currentUserFirstName() {
+  return googleFirstNameFromMeta(session?.user?.user_metadata || {}, session?.user?.email?.split('@')[0] || 'You');
+}
+function memberRecord(userId) {
+  return members.find(m => m.user_id === userId);
+}
 function memberLabel(userId) {
   if (!userId) return 'Everyone';
-  if (userId === session?.user?.id) return session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'You';
+  if (userId === session?.user?.id) return currentUserFirstName();
+  const m = memberRecord(userId);
+  if (m?.display_name) return String(m.display_name).trim().split(/\s+/)[0] || 'Traveler';
+  if (m?.email) return String(m.email).split('@')[0];
   const suffix = String(userId).slice(0, 4).toUpperCase();
   return `Traveler ${suffix}`;
 }
 function memberAvatarHtml(userId) {
   if (!userId) return '<span class="assignee-chip everyone">👥 Everyone</span>';
   const label = memberLabel(userId);
-  const pic = userId === session?.user?.id ? session.user.user_metadata?.avatar_url : '';
+  const m = memberRecord(userId);
+  const pic = userId === session?.user?.id ? session.user.user_metadata?.avatar_url : (m?.avatar_url || '');
   return `<span class="assignee-chip">${pic ? `<img src="${escapeHtml(pic)}" alt="">` : `<em>${escapeHtml(label.slice(0,1).toUpperCase())}</em>`}<span>${escapeHtml(label)}</span></span>`;
 }
 function populateAssigneeSelect(selected = '') {
@@ -656,6 +670,23 @@ async function loadMembers() {
   const { data, error } = await client.from('itinerary_trip_members').select('*').eq('trip_id', activeTripId).order('created_at');
   if (error) return showDbError(error);
   members = data || [];
+  await syncCurrentMemberProfile();
+}
+async function syncCurrentMemberProfile() {
+  if (!activeTripId || !session?.user?.id) return;
+  const meta = session.user.user_metadata || {};
+  const display_name = meta.full_name || meta.name || session.user.email?.split('@')[0] || 'Traveler';
+  const avatar_url = meta.avatar_url || meta.picture || '';
+  const current = members.find(m => m.trip_id === activeTripId && m.user_id === session.user.id);
+  if (!current) return;
+  if (current.display_name === display_name && (current.avatar_url || '') === avatar_url) return;
+  const { data, error } = await client.from('itinerary_trip_members')
+    .update({ display_name, avatar_url })
+    .eq('trip_id', activeTripId)
+    .eq('user_id', session.user.id)
+    .select()
+    .single();
+  if (!error && data) members = members.map(m => m.id === data.id ? data : m);
 }
 
 async function loadPackingItems() {
@@ -859,7 +890,7 @@ function renderSharePanel() {
   els.roleBadge.className = `role-badge ${role}`;
   els.createInviteBtn.disabled = !canEdit();
   els.inviteRole.disabled = !canEdit();
-  els.collabList.innerHTML = members.map(m => `<div class="collab-pill"><strong>${m.user_id === session?.user?.id ? 'You' : 'User'}</strong><span>${m.role}</span></div>`).join('') || '<p class="helper-text">No collaborators yet.</p>';
+  els.collabList.innerHTML = members.map(m => `<div class="collab-pill"><strong>${escapeHtml(memberLabel(m.user_id))}</strong><span>${escapeHtml(m.role || 'editor')}</span></div>`).join('') || '<p class="helper-text">No collaborators yet.</p>';
 }
 function renderDayTabs() {
   const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; if (!days.includes(selectedDay)) selectedDay = days[0];
@@ -929,8 +960,8 @@ function renderItem(item, isTimed = false) {
     card.classList.add('timeline-item');
     card.style.top = `${minutesToY(start) + (TIMELINE_EVENT_GAP / 2)}px`;
     const naturalHeight = minutesToY(end) - minutesToY(start) - TIMELINE_EVENT_GAP;
-    card.style.minHeight = `${Math.max(44, naturalHeight)}px`;
-    card.style.height = `${Math.max(44, naturalHeight)}px`;
+    card.style.minHeight = `${Math.max(82, naturalHeight)}px`;
+    card.style.height = `${Math.max(82, naturalHeight)}px`;
     card.classList.toggle('compact-time-card', naturalHeight < 70);
     card.classList.toggle('roomy-time-card', naturalHeight >= 110);
     card.classList.toggle('very-roomy-time-card', naturalHeight >= 170);

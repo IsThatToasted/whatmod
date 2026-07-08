@@ -38,9 +38,14 @@ create table if not exists public.itinerary_trip_members (
   user_id uuid not null references auth.users(id) on delete cascade,
   role text not null default 'editor' check (role in ('owner', 'editor', 'viewer')),
   invite_token text,
+  display_name text,
+  avatar_url text,
   created_at timestamptz not null default now(),
   unique(trip_id, user_id)
 );
+
+alter table public.itinerary_trip_members add column if not exists display_name text;
+alter table public.itinerary_trip_members add column if not exists avatar_url text;
 
 create table if not exists public.itinerary_trip_invites (
   id uuid primary key default gen_random_uuid(),
@@ -131,8 +136,8 @@ begin
   )
   returning * into new_trip;
 
-  insert into public.itinerary_trip_members (trip_id, user_id, role)
-  values (new_trip.id, auth.uid(), 'owner')
+  insert into public.itinerary_trip_members (trip_id, user_id, role, display_name, avatar_url)
+  values (new_trip.id, auth.uid(), 'owner', coalesce(auth.jwt()->'user_metadata'->>'full_name', auth.jwt()->'user_metadata'->>'name', auth.jwt()->>'email'), coalesce(auth.jwt()->'user_metadata'->>'avatar_url', auth.jwt()->'user_metadata'->>'picture'))
   on conflict (trip_id, user_id) do update set role = 'owner';
 
   return new_trip;
@@ -265,12 +270,17 @@ for delete using (public.user_can_edit_trip(trip_id));
 drop policy if exists "Members can read members" on public.itinerary_trip_members;
 drop policy if exists "Owners can manage members" on public.itinerary_trip_members;
 drop policy if exists "Users can see their own memberships" on public.itinerary_trip_members;
+drop policy if exists "Users can update own member profile" on public.itinerary_trip_members;
 
 create policy "Members can read members" on public.itinerary_trip_members
 for select using (public.user_can_view_trip(trip_id));
 
 create policy "Owners can manage members" on public.itinerary_trip_members
 for all using (public.current_user_trip_role(trip_id) = 'owner') with check (public.current_user_trip_role(trip_id) = 'owner');
+
+create policy "Users can update own member profile" on public.itinerary_trip_members
+for update using (auth.uid() = user_id and public.user_can_view_trip(trip_id))
+with check (auth.uid() = user_id and public.user_can_view_trip(trip_id));
 
 drop policy if exists "Members can read invites" on public.itinerary_trip_invites;
 drop policy if exists "Editors can create invites" on public.itinerary_trip_invites;
