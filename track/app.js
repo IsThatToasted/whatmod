@@ -1725,7 +1725,6 @@ function clearFunIdeaForm() {
   if (els.funIdeaTitle) els.funIdeaTitle.value = '';
   if (els.funIdeaDescription) els.funIdeaDescription.value = '';
   if (els.funIdeaPlayType) els.funIdeaPlayType.value = 'private';
-  if (els.funIdeaStatus) els.funIdeaStatus.value = 'planned';
   if (els.funIdeaVisibility) els.funIdeaVisibility.value = 'shared';
   populateFunAssigneeSelect('');
 }
@@ -1743,13 +1742,21 @@ function renderFunIdeasModal() {
   if (els.funIdeasList) {
     const visible = funIdeas.filter(i => i.visibility !== 'private' || i.created_by === session.user.id || isTripOwner());
     els.funIdeasList.innerHTML = visible.length ? visible.map(i => {
-      const creator = memberLabel(i.created_by);
-      const assigned = i.assigned_to ? memberLabel(i.assigned_to) : 'Anyone';
-      const privateBadge = i.visibility === 'private' ? 'Private draft' : 'Shared';
-      const playBadge = i.play_type === 'public' ? 'Public/playful' : 'Private play';
+      const assigned = i.assigned_to ? memberLabel(i.assigned_to) : 'Everyone';
+      const assignedAvatar = i.assigned_to ? memberAvatarHtml(i.assigned_to) : '<span class="fun-everyone-avatar">👥</span>';
+      const visibilityChip = i.visibility === 'private' ? '🔒 Private' : '🌐 Shared';
+      const playChip = i.play_type === 'public' ? '✨ Public/playful' : '💕 Private play';
+      const assigneeChip = i.assigned_to ? `${assignedAvatar}<span>${escapeHtml(assigned)}</span>` : `${assignedAvatar}<span>Everyone</span>`;
+      const hasDescription = !!String(i.description || '').trim();
       return `<article class="fun-idea-card" data-id="${escapeHtml(i.id)}">
-        <div><h3>${escapeHtml(i.title || 'Untitled idea')}</h3><p>${escapeHtml(i.description || '')}</p><div class="fun-badges"><span>${escapeHtml(privateBadge)}</span><span>${escapeHtml(playBadge)}</span><span>${escapeHtml(i.status || 'planned')}</span><span>For ${escapeHtml(assigned)}</span><span>By ${escapeHtml(creator)}</span></div></div>
-        <div class="fun-card-actions"><button type="button" class="fun-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="fun-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button></div>
+        <button type="button" class="fun-card-main" aria-expanded="false">
+          <span class="fun-title-row"><strong>${escapeHtml(i.title || 'Untitled idea')}</strong><span class="fun-expand-icon">⌄</span></span>
+          <span class="fun-badges"><span class="fun-chip assignee">${assigneeChip}</span><span class="fun-chip">${escapeHtml(visibilityChip)}</span><span class="fun-chip">${escapeHtml(playChip)}</span></span>
+        </button>
+        <div class="fun-card-details">
+          ${hasDescription ? `<p>${escapeHtml(i.description || '')}</p>` : '<p class="muted">No extra notes added.</p>'}
+          <div class="fun-card-actions"><button type="button" class="fun-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="fun-delete danger ghost-btn" ${editable ? '' : 'disabled'}>Delete</button></div>
+        </div>
       </article>`;
     }).join('') : '<div class="packing-empty">No Fun Ideas yet. Add one when you are ready.</div>';
   }
@@ -1764,7 +1771,6 @@ async function saveFunIdea() {
     title,
     description: (els.funIdeaDescription?.value || '').trim(),
     play_type: els.funIdeaPlayType?.value || 'private',
-    status: els.funIdeaStatus?.value || 'planned',
     visibility: els.funIdeaVisibility?.value || 'shared',
     assigned_to: els.funIdeaAssignedTo?.value || null,
     updated_at: new Date().toISOString()
@@ -1782,7 +1788,6 @@ function editFunIdea(id) {
   if (els.funIdeaTitle) els.funIdeaTitle.value = i.title || '';
   if (els.funIdeaDescription) els.funIdeaDescription.value = i.description || '';
   if (els.funIdeaPlayType) els.funIdeaPlayType.value = i.play_type || 'private';
-  if (els.funIdeaStatus) els.funIdeaStatus.value = i.status || 'planned';
   if (els.funIdeaVisibility) els.funIdeaVisibility.value = i.visibility || 'shared';
   populateFunAssigneeSelect(i.assigned_to || '');
   els.funIdeaTitle?.focus();
@@ -1886,8 +1891,12 @@ if (els.funPermissionList) els.funPermissionList.addEventListener('change', e =>
 if (els.funIdeasList) els.funIdeasList.addEventListener('click', e => {
   const card = e.target.closest('.fun-idea-card');
   if (!card) return;
-  if (e.target.closest('.fun-edit')) editFunIdea(card.dataset.id);
-  if (e.target.closest('.fun-delete')) deleteFunIdea(card.dataset.id);
+  if (e.target.closest('.fun-edit')) { editFunIdea(card.dataset.id); return; }
+  if (e.target.closest('.fun-delete')) { deleteFunIdea(card.dataset.id); return; }
+  if (e.target.closest('.fun-card-main')) {
+    const open = card.classList.toggle('is-open');
+    e.target.closest('.fun-card-main')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
 });
 if (els.memoryPhotoBtn) els.memoryPhotoBtn.addEventListener('click', () => els.memoryPhotoInput?.click());
 if (els.memoryPhotoInput) els.memoryPhotoInput.addEventListener('change', () => {
