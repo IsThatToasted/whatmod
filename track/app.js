@@ -29,13 +29,16 @@ const ignoreRouteTypes = new Set(['flight', 'train', 'ferry', 'cruise', 'todo', 
 const optionalRouteTypes = new Set(['toddler']);
 function routeBehaviorForItem(item) {
   const type = String(item?.item_type || 'event').toLowerCase();
-  const haystack = `${item?.title || ''} ${item?.location || ''}`.toLowerCase();
+  // Important: explicit driving/pickup events must stay in the road route even if
+  // the destination is an airport. Flights/trains/etc are the only always-separate
+  // travel blocks. This keeps "Drive to PHL" routable from From -> To.
+  if (type === 'drive' || type === 'transport' || type === 'gas') return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving route' };
+  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
+  const haystack = `${item?.title || ''} ${item?.location || ''} ${item?.from_location || ''} ${item?.to_location || ''}`.toLowerCase();
   const airportish = /\b([a-z]{3})\b/.test(haystack) && /airport|terminal|flight|airline|arriv|depart|\bphl\b|\bmke\b|\bord\b|\bmdw\b|\bjfk\b|\blga\b|\bewr\b/.test(haystack);
-  if (type === 'flight' || airportish && /flight|arriv|depart|terminal|airline/.test(haystack)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
+  if (type === 'flight' || (airportish && /flight|arriv|depart|terminal|airline/.test(haystack))) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
   if (travelOnlyTypes.has(type)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Travel event' };
   if (ignoreRouteTypes.has(type)) return { kind: 'note', routable: false, pinClass: 'pin-note', label: 'Shown only' };
-  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
-  if (type === 'drive' || type === 'transport' || type === 'gas') return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving stop' };
   return { kind: 'stop', routable: true, pinClass: 'pin-stop', label: 'Driving stop' };
 }
 function mapPinIcon(point, index) {
@@ -995,7 +998,14 @@ function renderItem(item, isTimed = false) {
   if (rainText) rainText.textContent = item.rain_plan || 'No rain backup added yet. Tap Edit rain plan to add an indoor option, alternate time, or weather note.';
   if (item.rain_plan) card.classList.add('has-rain-plan');
   const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const lockBtn = tpl.querySelector('.lock-toggle'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain'); const resetRainBtn = tpl.querySelector('.reset-rain');
-  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit() || locked; if (editRainBtn) editRainBtn.disabled = !canEdit() || locked; if (resetRainBtn) resetRainBtn.disabled = !canEdit() || locked; if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒 Unlock' : '🔓 Lock'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; }
+  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit() || locked; if (editRainBtn) editRainBtn.disabled = !canEdit() || locked; if (resetRainBtn) resetRainBtn.disabled = !canEdit() || locked;
+  // Compact icon actions keep timeline cards clean on desktop and mobile.
+  earlierBtn.textContent = '−30'; earlierBtn.title = 'Move 30 minutes earlier'; earlierBtn.setAttribute('aria-label', 'Move 30 minutes earlier');
+  laterBtn.textContent = '+30'; laterBtn.title = 'Move 30 minutes later'; laterBtn.setAttribute('aria-label', 'Move 30 minutes later');
+  editBtn.textContent = '✎'; editBtn.title = 'Edit event'; editBtn.setAttribute('aria-label', 'Edit event');
+  delBtn.textContent = '×'; delBtn.title = 'Delete event'; delBtn.setAttribute('aria-label', 'Delete event');
+  if (rainBtn) { rainBtn.textContent = item.rain_plan ? '☔' : '☔+'; rainBtn.title = item.rain_plan ? 'View rain plan' : 'Add rain plan'; rainBtn.setAttribute('aria-label', rainBtn.title); }
+  if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒' : '🔓'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; lockBtn.setAttribute('aria-label', lockBtn.title); }
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
   lockBtn?.addEventListener('click', () => toggleItemLock(item));
   rainBtn?.addEventListener('click', () => handleRainButton(card, item));
