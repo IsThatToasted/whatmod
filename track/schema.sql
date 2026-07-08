@@ -469,3 +469,168 @@ as $$
 $$;
 
 grant execute on function public.get_itinerary_packing_progress(uuid) to authenticated;
+
+-- v36 Hidden Fun Ideas + Photo Memories
+alter table public.itinerary_memories add column if not exists photo_url text default '';
+alter table public.itinerary_memories add column if not exists photo_path text default '';
+
+create table if not exists public.trip_fun_permissions (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  can_access boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(trip_id, user_id)
+);
+
+create table if not exists public.trip_fun_ideas (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  description text default '',
+  play_type text not null default 'private' check (play_type in ('private','public')),
+  visibility text not null default 'shared' check (visibility in ('shared','private')),
+  status text not null default 'planned' check (status in ('planned','maybe','completed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.trip_fun_permissions enable row level security;
+alter table public.trip_fun_ideas enable row level security;
+
+drop policy if exists "fun permissions visible to trip members" on public.trip_fun_permissions;
+create policy "fun permissions visible to trip members" on public.trip_fun_permissions
+  for select using (public.user_can_view_trip(trip_id));
+
+drop policy if exists "owner manages fun permissions" on public.trip_fun_permissions;
+create policy "owner manages fun permissions" on public.trip_fun_permissions
+  for all using (public.current_user_trip_role(trip_id) = 'owner')
+  with check (public.current_user_trip_role(trip_id) = 'owner');
+
+drop policy if exists "fun ideas visible to permitted users" on public.trip_fun_ideas;
+create policy "fun ideas visible to permitted users" on public.trip_fun_ideas
+  for select using (
+    public.current_user_trip_role(trip_id) = 'owner'
+    or created_by = auth.uid()
+    or exists (
+      select 1 from public.trip_fun_permissions p
+      where p.trip_id = trip_fun_ideas.trip_id and p.user_id = auth.uid() and p.can_access = true
+    )
+  );
+
+drop policy if exists "permitted editors manage fun ideas" on public.trip_fun_ideas;
+create policy "permitted editors manage fun ideas" on public.trip_fun_ideas
+  for all using (
+    public.user_can_edit_trip(trip_id) and (
+      public.current_user_trip_role(trip_id) = 'owner'
+      or created_by = auth.uid()
+      or exists (select 1 from public.trip_fun_permissions p where p.trip_id = trip_fun_ideas.trip_id and p.user_id = auth.uid() and p.can_access = true)
+    )
+  ) with check (
+    public.user_can_edit_trip(trip_id) and (
+      public.current_user_trip_role(trip_id) = 'owner'
+      or created_by = auth.uid()
+      or exists (select 1 from public.trip_fun_permissions p where p.trip_id = trip_fun_ideas.trip_id and p.user_id = auth.uid() and p.can_access = true)
+    )
+  );
+
+-- Public storage bucket for photo memories. Paths are still protected by object policies for upload/delete.
+insert into storage.buckets (id, name, public)
+values ('trip-memories', 'trip-memories', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "trip memory photos readable" on storage.objects;
+create policy "trip memory photos readable" on storage.objects
+  for select using (bucket_id = 'trip-memories');
+
+drop policy if exists "trip members upload memory photos" on storage.objects;
+create policy "trip members upload memory photos" on storage.objects
+  for insert with check (
+    bucket_id = 'trip-memories'
+    and auth.uid()::text = (storage.foldername(name))[2]
+    and public.user_can_edit_trip(((storage.foldername(name))[1])::uuid)
+  );
+
+drop policy if exists "trip members delete own memory photos" on storage.objects;
+create policy "trip members delete own memory photos" on storage.objects
+  for delete using (
+    bucket_id = 'trip-memories'
+    and auth.uid()::text = (storage.foldername(name))[2]
+    and public.user_can_edit_trip(((storage.foldername(name))[1])::uuid)
+  );
+
+-- v37 Packing progress accuracy + realtime collaboration
+-- Replaces the packing progress helper with a duplicate-safe version that counts ONLY
+-- each traveler's own packing rows, without exposing item names.
+create or replace function public.get_itinerary_packing_progress(target_trip_id uuid)
+returns table (
+  user_id uuid,
+  display_name text,
+  avatar_url text,
+  packed_count bigint,
+  total_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with member_base as (
+    select distinct on (m.user_id)
+      m.user_id,
+      coalesce(nullif(m.display_name, ''), 'Traveler') as display_name,
+      coalesce(m.avatar_url, '') as avatar_url,
+      m.created_at
+    from public.itinerary_trip_members m
+    where m.trip_id = target_trip_id
+      and public.user_can_view_trip(target_trip_id)
+    order by m.user_id, m.created_at asc
+  ), packing_counts as (
+    select
+      p.user_id,
+      count(*) filter (where p.packed is true) as packed_count,
+      count(*) as total_count
+    from public.itinerary_packing_items p
+    where p.trip_id = target_trip_id
+    group by p.user_id
+  )
+  select
+    m.user_id,
+    m.display_name,
+    m.avatar_url,
+    coalesce(pc.packed_count, 0)::bigint as packed_count,
+    coalesce(pc.total_count, 0)::bigint as total_count
+  from member_base m
+  left join packing_counts pc on pc.user_id = m.user_id
+  order by m.created_at;
+$$;
+
+grant execute on function public.get_itinerary_packing_progress(uuid) to authenticated;
+
+-- Try to enable Supabase Realtime for collaborative trip tables.
+-- If a table is already in the publication, this safely skips it.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'itinerary_items',
+    'itinerary_trip_members',
+    'itinerary_packing_items',
+    'itinerary_must_do',
+    'itinerary_memories',
+    'trip_fun_permissions',
+    'trip_fun_ideas'
+  ] loop
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t)
+       and not exists (
+         select 1 from pg_publication_tables
+         where pubname = 'supabase_realtime'
+           and schemaname = 'public'
+           and tablename = t
+       ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;

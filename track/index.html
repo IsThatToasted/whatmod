@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=35" />
+  <link rel="stylesheet" href="./styles.css?v=36" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -48,7 +48,7 @@
               <input id="emailInput" type="email" placeholder="Email for magic link" />
               <button id="emailBtn">Send link</button>
             </div>
-            <img id="userAvatar" class="user-avatar hidden" alt="User avatar" />
+            <button id="avatarFunBtn" class="avatar-fun-btn hidden" type="button" title="Fun Ideas"><img id="userAvatar" class="user-avatar hidden" alt="User avatar" /></button>
             <button id="logoutBtn" class="ghost-btn hidden">Log out</button>
           </div>
         </div>
@@ -258,12 +258,15 @@
 
             <section class="memory-panel glass" id="memoryPanel">
               <div class="packing-head"><h2>💜 Memories</h2><span id="memoryCount">0</span></div>
-              <p class="helper-text compact-help">Shared notes from the trip. Add the tiny moments you do not want to forget.</p>
-              <div id="memoryList" class="shared-list memory-list"></div>
-              <form id="memoryForm" class="packing-form shared-form">
-                <input id="memoryInput" type="text" placeholder="Save a memory..." maxlength="140" />
+              <p class="helper-text compact-help">Save trip moments as notes or photo memories. Photo memories become a soft slideshow after the trip.</p>
+              <div id="memoryList" class="shared-list memory-list memory-gallery"></div>
+              <form id="memoryForm" class="packing-form shared-form memory-form-upgraded">
+                <input id="memoryInput" type="text" placeholder="Caption or memory note..." maxlength="180" />
+                <input id="memoryPhotoInput" class="hidden" type="file" accept="image/*" capture="environment" />
+                <button id="memoryPhotoBtn" type="button" class="ghost-btn">📷 Add photo</button>
                 <button id="addMemoryBtn" type="submit">Save</button>
               </form>
+              <button id="memorySlideshowBtn" type="button" class="ghost-btn memory-slideshow-btn">▶ View slideshow</button>
             </section>
 
             <section class="progress-panel glass">
@@ -313,6 +316,40 @@
     </form>
   </dialog>
 
+  <dialog id="funIdeasDialog" class="fun-dialog">
+    <form method="dialog" class="dialog-card fun-dialog-card">
+      <div class="fun-dialog-head">
+        <div><p class="eyebrow">Hidden trip list</p><h2>💕 Fun Ideas</h2><p class="helper-text compact-help">Private, owner-controlled ideas for this trip.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <div id="funAccessPanel" class="fun-access-panel hidden">
+        <h3>Access</h3>
+        <p class="helper-text compact-help">Only selected travelers can open this hidden popup from their avatar.</p>
+        <div id="funPermissionList" class="fun-permission-list"></div>
+      </div>
+      <div class="fun-editor">
+        <input id="funIdeaId" type="hidden" />
+        <label>Idea / fantasy / activity<input id="funIdeaTitle" placeholder="Private idea name..." maxlength="120" /></label>
+        <label>Description<textarea id="funIdeaDescription" rows="3" placeholder="Optional notes, boundaries, location, timing, etc."></textarea></label>
+        <div class="dialog-grid compact-grid">
+          <label>Play style<select id="funIdeaPlayType"><option value="private">Private play</option><option value="public">Public / playful</option></select></label>
+          <label>Status<select id="funIdeaStatus"><option value="planned">Planned</option><option value="maybe">Maybe</option><option value="completed">Completed</option></select></label>
+          <label>Visibility<select id="funIdeaVisibility"><option value="shared">Shared with access list</option><option value="private">Private draft</option></select></label>
+        </div>
+        <div class="dialog-actions"><button id="funClearBtn" type="button" class="ghost-btn">Clear</button><button id="funSaveBtn" type="button">Save idea</button></div>
+      </div>
+      <div id="funIdeasList" class="fun-ideas-list"></div>
+    </form>
+  </dialog>
+
+  <dialog id="memorySlideshowDialog" class="slideshow-dialog">
+    <form method="dialog" class="dialog-card slideshow-card">
+      <div class="slideshow-head"><h2>💜 Trip Memories</h2><button value="cancel" class="ghost-btn">Close</button></div>
+      <div id="memorySlideshowStage" class="memory-slideshow-stage"></div>
+      <div class="dialog-actions"><button id="memoryPrevBtn" type="button" class="ghost-btn">← Prev</button><button id="memoryNextBtn" type="button">Next →</button></div>
+    </form>
+  </dialog>
+
   <template id="itemTemplate">
     <article class="item-card" draggable="true">
       <div class="card-face card-front">
@@ -331,6 +368,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=35"></script>
+  <script src="./app.js?v=37"></script>
 </body>
 </html>

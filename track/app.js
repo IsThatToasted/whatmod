@@ -19,7 +19,7 @@ const els = {
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingProgressList: document.getElementById('packingProgressList'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
-  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'),
+  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
@@ -138,7 +138,7 @@ function syncRouteFieldVisibility() {
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '';
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '';
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -262,7 +262,7 @@ async function loadWeatherForTrip(force=false){
 
 function escapeHtml(str) { return String(str || '').replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
 function isMissingRainPlanColumn(error) { return /rain_plan|schema cache|column/i.test(String(error?.message || '')); }
-function isMissingSharedTable(error) { return /itinerary_must_do_items|itinerary_memories|schema cache|relation|does not exist/i.test(String(error?.message || '')); }
+function isMissingSharedTable(error) { return /itinerary_must_do_items|itinerary_memories|trip_fun_ideas|trip_fun_permissions|schema cache|relation|does not exist/i.test(String(error?.message || '')); }
 
 function shortLocationLabel(location) {
   let value = String(location || '').replace(/\s+/g, ' ').trim();
@@ -658,7 +658,7 @@ function refreshAuthUI() {
   if (els.userAvatar) {
     const avatar = meta.avatar_url || meta.picture || '';
     els.userAvatar.src = avatar;
-    els.userAvatar.classList.toggle('hidden', !signedIn || !avatar);
+    els.userAvatar.classList.toggle('hidden', !signedIn || !avatar); if (els.avatarFunBtn) els.avatarFunBtn.classList.toggle('hidden', !signedIn || !avatar);
   }
   els.signedOut.classList.toggle('hidden', signedIn);
   els.appArea.classList.toggle('hidden', !signedIn);
@@ -672,7 +672,7 @@ function refreshAuthUI() {
 }
 async function loginGoogle() { await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.href.includes('?invite=') ? location.href : REDIRECT_TO } }); }
 async function loginEmail() { const email = els.emailInput.value.trim(); if (!email) return alert('Enter your email first.'); const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.includes('?invite=') ? location.href : REDIRECT_TO } }); if (error) return alert(error.message); alert('Magic link sent. Check your email.'); }
-async function logout() { await client.auth.signOut(); trips = []; items = []; members = []; activeTripId = null; render(); }
+async function logout() { if (realtimeChannel) { try { client.removeChannel(realtimeChannel); } catch {} realtimeChannel = null; } await client.auth.signOut(); trips = []; items = []; members = []; activeTripId = null; render(); }
 function showDbError(error) { console.error(error); alert(`${error.message}\n\nRun the newest schema.sql in Supabase SQL Editor. This version needs the members, invites, and accept_itinerary_invite function.`); setStatus('Database setup needed'); }
 
 async function acceptInvite(token) {
@@ -696,7 +696,64 @@ async function loadTrips() {
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
 }
-async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]); await loadPackingProgress(); await loadWeatherForTrip(); setStatus('Ready'); render(); }
+async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]); await loadPackingProgress(); await loadWeatherForTrip(); setupRealtimeSync(); setStatus('Ready'); render(); }
+
+function setupRealtimeSync() {
+  if (!client || !activeTripId || !session?.user?.id) return;
+  if (realtimeChannel) {
+    try { client.removeChannel(realtimeChannel); } catch {}
+    realtimeChannel = null;
+  }
+  const tableNames = [
+    'itinerary_items',
+    'itinerary_trip_members',
+    'itinerary_packing_items',
+    'itinerary_must_do',
+    'itinerary_memories',
+    'trip_fun_permissions',
+    'trip_fun_ideas'
+  ];
+  let channel = client.channel(`trip-live-${activeTripId}`);
+  tableNames.forEach(table => {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `trip_id=eq.${activeTripId}` }, payload => handleRealtimePayload(table, payload));
+  });
+  realtimeChannel = channel.subscribe(status => {
+    if (status === 'SUBSCRIBED') setStatus('Live sync on');
+  });
+}
+
+function handleRealtimePayload(table, payload) {
+  if (!activeTripId) return;
+  const actor = payload?.new?.user_id || payload?.new?.created_by || payload?.new?.updated_by || payload?.old?.user_id || payload?.old?.created_by || '';
+  const selfChange = actor && session?.user?.id && actor === session.user.id;
+  if (!selfChange) {
+    const label = table === 'itinerary_packing_items' ? 'Packing progress updated'
+      : table === 'itinerary_items' ? 'Itinerary updated'
+      : table === 'itinerary_memories' ? 'Memories updated'
+      : table === 'itinerary_must_do' ? 'Must Do updated'
+      : table === 'trip_fun_ideas' || table === 'trip_fun_permissions' ? 'Private list updated'
+      : 'Trip updated';
+    setStatus(label);
+  }
+  const key = `${table}:${payload.eventType}:${payload.new?.id || payload.old?.id || ''}:${payload.new?.updated_at || payload.old?.updated_at || Date.now()}`;
+  if (key === lastLiveSyncKey) return;
+  lastLiveSyncKey = key;
+  clearTimeout(liveSyncTimer);
+  liveSyncTimer = setTimeout(refreshLiveTripData, selfChange ? 250 : 120);
+}
+
+async function refreshLiveTripData() {
+  if (!activeTripId || !session?.user?.id) return;
+  try {
+    await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]);
+    await loadPackingProgress();
+    if (typeof loadFunAccess === 'function') await loadFunAccess();
+    render();
+  } catch (error) {
+    console.warn('Live refresh failed', error);
+  }
+}
+
 async function loadItems() {
   if (!activeTripId) return;
   const { data, error } = await client.from('itinerary_items').select('*').eq('trip_id', activeTripId).order('item_date').order('start_time');
@@ -1279,19 +1336,25 @@ async function addPackingItem(label) {
 async function updatePackingItem(id, patch) {
   if (!canEdit()) return;
   packingItems = packingItems.map(i => i.id === id ? { ...i, ...patch } : i);
+  syncLocalPackingProgress();
   renderPackingList();
   if (packingIsLocalOnly(id)) { savePackingFallback(); return; }
   const { error } = await client.from('itinerary_packing_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', session.user.id);
-  if (error) { console.warn('Packing update failed; keeping local UI value.', error); savePackingFallback(); }
+  if (error) { console.warn('Packing update failed; keeping local UI value.', error); savePackingFallback(); return; }
+  await loadPackingProgress();
+  renderPackingProgressSummary();
 }
 
 async function deletePackingItem(id) {
   if (!canEdit()) return;
   packingItems = packingItems.filter(i => i.id !== id);
+  syncLocalPackingProgress();
   renderPackingList();
   if (packingIsLocalOnly(id)) { savePackingFallback(); return; }
   const { error } = await client.from('itinerary_packing_items').delete().eq('id', id).eq('user_id', session.user.id);
-  if (error) { console.warn('Packing delete failed.', error); }
+  if (error) { console.warn('Packing delete failed.', error); return; }
+  await loadPackingProgress();
+  renderPackingProgressSummary();
 }
 
 async function resetPackingItems() {
@@ -1611,3 +1674,210 @@ if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUnd
 
 setInterval(updateTripCountdown, 60000);
 init();
+
+/* Fun Ideas + Photo Memories patch v36 */
+function isTripOwner() { return currentMembership()?.role === 'owner'; }
+function canAccessFunIdeasLocal() {
+  if (!activeTripId || !session?.user?.id) return false;
+  if (isTripOwner()) return true;
+  return funPermissions.some(p => p.trip_id === activeTripId && p.user_id === session.user.id && p.can_access);
+}
+async function loadFunPermissions() {
+  funPermissions = [];
+  if (!activeTripId || !session?.user?.id) return;
+  const { data, error } = await client.from('trip_fun_permissions').select('*').eq('trip_id', activeTripId);
+  if (error) { console.warn('Fun Ideas permissions unavailable. Run schema.sql.', error); return; }
+  funPermissions = data || [];
+}
+async function loadFunIdeas() {
+  funIdeas = [];
+  if (!activeTripId || !session?.user?.id) return;
+  await loadFunPermissions();
+  if (!canAccessFunIdeasLocal()) return;
+  const { data, error } = await client.from('trip_fun_ideas').select('*').eq('trip_id', activeTripId).order('created_at', { ascending: false });
+  if (error) { console.warn('Fun Ideas table unavailable. Run schema.sql.', error); return; }
+  funIdeas = data || [];
+}
+async function openFunIdeasDialog() {
+  if (!activeTripId || !session?.user?.id) return;
+  await loadFunIdeas();
+  if (!canAccessFunIdeasLocal()) return;
+  renderFunIdeasModal();
+  els.funIdeasDialog?.showModal();
+}
+function clearFunIdeaForm() {
+  if (els.funIdeaId) els.funIdeaId.value = '';
+  if (els.funIdeaTitle) els.funIdeaTitle.value = '';
+  if (els.funIdeaDescription) els.funIdeaDescription.value = '';
+  if (els.funIdeaPlayType) els.funIdeaPlayType.value = 'private';
+  if (els.funIdeaStatus) els.funIdeaStatus.value = 'planned';
+  if (els.funIdeaVisibility) els.funIdeaVisibility.value = 'shared';
+}
+function renderFunIdeasModal() {
+  const editable = canEdit() && canAccessFunIdeasLocal();
+  if (els.funAccessPanel) els.funAccessPanel.classList.toggle('hidden', !isTripOwner());
+  if (els.funPermissionList) {
+    els.funPermissionList.innerHTML = members.map(m => {
+      const isOwnerMember = m.role === 'owner';
+      const allowed = isOwnerMember || funPermissions.some(p => p.user_id === m.user_id && p.can_access);
+      return `<label class="fun-permission-row"><span>${memberAvatarHtml(m.user_id)}<strong>${escapeHtml(memberLabel(m.user_id))}</strong><em>${escapeHtml(m.role || 'editor')}</em></span><input type="checkbox" data-user-id="${escapeHtml(m.user_id)}" ${allowed ? 'checked' : ''} ${isOwnerMember ? 'disabled' : ''}></label>`;
+    }).join('') || '<p class="helper-text">Invite a traveler to share access.</p>';
+  }
+  if (els.funIdeasList) {
+    const visible = funIdeas.filter(i => i.visibility !== 'private' || i.created_by === session.user.id || isTripOwner());
+    els.funIdeasList.innerHTML = visible.length ? visible.map(i => {
+      const creator = memberLabel(i.created_by);
+      const privateBadge = i.visibility === 'private' ? 'Private draft' : 'Shared';
+      const playBadge = i.play_type === 'public' ? 'Public/playful' : 'Private play';
+      return `<article class="fun-idea-card" data-id="${escapeHtml(i.id)}">
+        <div><h3>${escapeHtml(i.title || 'Untitled idea')}</h3><p>${escapeHtml(i.description || '')}</p><div class="fun-badges"><span>${escapeHtml(privateBadge)}</span><span>${escapeHtml(playBadge)}</span><span>${escapeHtml(i.status || 'planned')}</span><span>By ${escapeHtml(creator)}</span></div></div>
+        <div class="fun-card-actions"><button type="button" class="fun-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="fun-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button></div>
+      </article>`;
+    }).join('') : '<div class="packing-empty">No Fun Ideas yet. Add one when you are ready.</div>';
+  }
+}
+async function saveFunIdea() {
+  if (!activeTripId || !session?.user?.id || !canEdit() || !canAccessFunIdeasLocal()) return;
+  const title = (els.funIdeaTitle?.value || '').trim();
+  if (!title) { els.funIdeaTitle?.focus(); return; }
+  const payload = {
+    trip_id: activeTripId,
+    created_by: session.user.id,
+    title,
+    description: (els.funIdeaDescription?.value || '').trim(),
+    play_type: els.funIdeaPlayType?.value || 'private',
+    status: els.funIdeaStatus?.value || 'planned',
+    visibility: els.funIdeaVisibility?.value || 'shared',
+    updated_at: new Date().toISOString()
+  };
+  const id = els.funIdeaId?.value;
+  let result;
+  if (id) result = await client.from('trip_fun_ideas').update(payload).eq('id', id).select('*').single();
+  else result = await client.from('trip_fun_ideas').insert(payload).select('*').single();
+  if (result.error) { showDbError(result.error); return; }
+  await loadFunIdeas(); clearFunIdeaForm(); renderFunIdeasModal();
+}
+function editFunIdea(id) {
+  const i = funIdeas.find(x => x.id === id); if (!i) return;
+  if (els.funIdeaId) els.funIdeaId.value = i.id;
+  if (els.funIdeaTitle) els.funIdeaTitle.value = i.title || '';
+  if (els.funIdeaDescription) els.funIdeaDescription.value = i.description || '';
+  if (els.funIdeaPlayType) els.funIdeaPlayType.value = i.play_type || 'private';
+  if (els.funIdeaStatus) els.funIdeaStatus.value = i.status || 'planned';
+  if (els.funIdeaVisibility) els.funIdeaVisibility.value = i.visibility || 'shared';
+  els.funIdeaTitle?.focus();
+}
+async function deleteFunIdea(id) {
+  if (!canEdit() || !canAccessFunIdeasLocal()) return;
+  if (!confirm('Remove this Fun Idea?')) return;
+  const { error } = await client.from('trip_fun_ideas').delete().eq('id', id);
+  if (error) { showDbError(error); return; }
+  await loadFunIdeas(); renderFunIdeasModal();
+}
+async function toggleFunPermission(userId, canAccess) {
+  if (!isTripOwner() || !activeTripId || !userId) return;
+  const payload = { trip_id: activeTripId, user_id: userId, can_access: !!canAccess, updated_at: new Date().toISOString() };
+  const { error } = await client.from('trip_fun_permissions').upsert(payload, { onConflict: 'trip_id,user_id' });
+  if (error) { showDbError(error); return; }
+  await loadFunPermissions(); renderFunIdeasModal();
+}
+
+function normalizeMemory(row) {
+  return { id: row.id, trip_id: row.trip_id || activeTripId, user_id: row.user_id || row.created_by, note: row.note || row.title || '', location: row.location || '', photo_url: row.photo_url || '', photo_path: row.photo_path || '', memory_date: row.memory_date || todayISO(), created_at: row.created_at || null };
+}
+async function loadMemoryItems() {
+  if (!activeTripId) { memoryItems = []; return; }
+  const { data, error } = await client.from('itinerary_memories').select('*').eq('trip_id', activeTripId).order('created_at', { ascending: false }).limit(60);
+  if (error) { console.warn('Memories table unavailable. Run schema.sql to enable shared Memories.', error); memoryItems = []; return; }
+  memoryItems = (data || []).map(normalizeMemory);
+}
+function renderMemoryList() {
+  if (!els.memoryList) return;
+  const editable = canEdit();
+  const photoCount = memoryItems.filter(m => m.photo_url).length;
+  if (els.memoryCount) els.memoryCount.textContent = String(memoryItems.length);
+  if (els.memoryInput) els.memoryInput.disabled = !editable;
+  if (els.addMemoryBtn) els.addMemoryBtn.disabled = !editable;
+  if (els.memoryPhotoBtn) els.memoryPhotoBtn.disabled = !editable;
+  if (els.memorySlideshowBtn) { els.memorySlideshowBtn.disabled = !photoCount; els.memorySlideshowBtn.classList.toggle('hidden', !photoCount); }
+  if (!memoryItems.length) { els.memoryList.innerHTML = `<div class="packing-empty">No memories yet.${editable ? ' Add a note or photo during the trip.' : ''}</div>`; renderTripProgress(); return; }
+  els.memoryList.innerHTML = memoryItems.slice(0,12).map(mem => `
+    <div class="memory-row ${mem.photo_url ? 'photo-memory' : ''}" data-id="${escapeHtml(mem.id)}">
+      ${mem.photo_url ? `<button type="button" class="memory-photo-btn" data-id="${escapeHtml(mem.id)}"><img src="${escapeHtml(mem.photo_url)}" alt="Trip memory" loading="lazy" /></button>` : '<span class="shared-icon">💜</span>'}
+      <div><strong>${escapeHtml(mem.note || (mem.photo_url ? 'Photo memory' : 'Memory'))}</strong><em>${escapeHtml(fmtShortDate(mem.memory_date))}${mem.location ? ` • ${escapeHtml(shortLocationLabel(mem.location))}` : ''}</em></div>
+      <button type="button" class="memory-delete ghost-btn" ${editable ? '' : 'disabled'} title="Remove memory">×</button>
+    </div>`).join('');
+  renderTripProgress();
+}
+async function uploadMemoryPhoto(file) {
+  if (!file) return { photo_url: '', photo_path: '' };
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  const path = `${activeTripId}/${session.user.id}/${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`;
+  const { error } = await client.storage.from('trip-memories').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg' });
+  if (error) throw error;
+  const { data } = client.storage.from('trip-memories').getPublicUrl(path);
+  return { photo_url: data?.publicUrl || '', photo_path: path };
+}
+async function addMemoryItem(note) {
+  const clean = (note || '').trim();
+  const file = els.memoryPhotoInput?.files?.[0] || null;
+  if ((!clean && !file) || !activeTripId || !session?.user?.id || !canEdit()) return;
+  try {
+    const photo = await uploadMemoryPhoto(file);
+    const payload = { trip_id: activeTripId, user_id: session.user.id, note: clean || (file ? 'Photo memory' : ''), memory_date: selectedDay || todayISO(), ...photo };
+    const { data, error } = await client.from('itinerary_memories').insert(payload).select('*').single();
+    if (error) { showDbError(error); return; }
+    memoryItems.unshift(normalizeMemory(data));
+    if (els.memoryPhotoInput) els.memoryPhotoInput.value = '';
+    renderMemoryList();
+  } catch (err) {
+    console.error(err);
+    alert(`${err.message || 'Photo upload failed'}\n\nRun schema.sql once and make sure the trip-memories storage bucket exists.`);
+  }
+}
+function openMemorySlideshow(startId = null) {
+  const photos = memoryItems.filter(m => m.photo_url);
+  if (!photos.length) return;
+  activeMemorySlide = Math.max(0, startId ? photos.findIndex(m => m.id === startId) : 0);
+  if (activeMemorySlide < 0) activeMemorySlide = 0;
+  renderMemorySlideshow();
+  els.memorySlideshowDialog?.showModal();
+}
+function renderMemorySlideshow() {
+  const photos = memoryItems.filter(m => m.photo_url);
+  const mem = photos[activeMemorySlide];
+  if (!els.memorySlideshowStage || !mem) return;
+  els.memorySlideshowStage.innerHTML = `<figure class="memory-slide"><img src="${escapeHtml(mem.photo_url)}" alt="Trip memory"><figcaption><strong>${escapeHtml(mem.note || 'Photo memory')}</strong><span>${escapeHtml(fmtShortDate(mem.memory_date))} • ${activeMemorySlide + 1}/${photos.length}</span></figcaption></figure>`;
+}
+function stepMemorySlide(dir) {
+  const photos = memoryItems.filter(m => m.photo_url);
+  if (!photos.length) return;
+  activeMemorySlide = (activeMemorySlide + dir + photos.length) % photos.length;
+  renderMemorySlideshow();
+}
+
+if (els.avatarFunBtn) els.avatarFunBtn.addEventListener('click', openFunIdeasDialog);
+if (els.funSaveBtn) els.funSaveBtn.addEventListener('click', saveFunIdea);
+if (els.funClearBtn) els.funClearBtn.addEventListener('click', clearFunIdeaForm);
+if (els.funPermissionList) els.funPermissionList.addEventListener('change', e => {
+  const cb = e.target.closest('input[type="checkbox"][data-user-id]');
+  if (cb) toggleFunPermission(cb.dataset.userId, cb.checked);
+});
+if (els.funIdeasList) els.funIdeasList.addEventListener('click', e => {
+  const card = e.target.closest('.fun-idea-card');
+  if (!card) return;
+  if (e.target.closest('.fun-edit')) editFunIdea(card.dataset.id);
+  if (e.target.closest('.fun-delete')) deleteFunIdea(card.dataset.id);
+});
+if (els.memoryPhotoBtn) els.memoryPhotoBtn.addEventListener('click', () => els.memoryPhotoInput?.click());
+if (els.memoryPhotoInput) els.memoryPhotoInput.addEventListener('change', () => {
+  const file = els.memoryPhotoInput.files?.[0];
+  if (file && els.memoryInput && !els.memoryInput.value.trim()) els.memoryInput.placeholder = `Caption for ${file.name}`;
+});
+if (els.memorySlideshowBtn) els.memorySlideshowBtn.addEventListener('click', () => openMemorySlideshow());
+if (els.memoryList) els.memoryList.addEventListener('click', e => {
+  const photoBtn = e.target.closest('.memory-photo-btn');
+  if (photoBtn) openMemorySlideshow(photoBtn.dataset.id);
+});
+if (els.memoryPrevBtn) els.memoryPrevBtn.addEventListener('click', () => stepMemorySlide(-1));
+if (els.memoryNextBtn) els.memoryNextBtn.addEventListener('click', () => stepMemorySlide(1));
