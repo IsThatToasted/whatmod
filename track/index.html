@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=26" />
+  <link rel="stylesheet" href="./styles.css?v=28" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -20,6 +20,8 @@
         <a href="#plannerTitle"><span>🧳</span>Trips</a>
         <a href="#dayTabs"><span>📅</span>Calendar</a>
         <a href="#totalBudget"><span>💳</span>Budget</a>
+        <a href="#gasPanel"><span>⛽</span>Gas</a>
+        <a href="#activityGeneratorPanel"><span>✨</span>Ideas</a>
         <a href="#collabList"><span>👥</span>People</a>
         <a href="#"><span>⚙️</span>Settings</a>
       </nav>
@@ -201,9 +203,34 @@
               <div id="mustDoList" class="shared-list"></div>
               <form id="mustDoForm" class="packing-form shared-form">
                 <input id="mustDoInput" type="text" placeholder="Add a must-do..." maxlength="100" />
+                <input id="mustDoBudget" type="number" min="0" step="0.01" placeholder="Budget $" />
                 <select id="mustDoPriority" aria-label="Priority"><option value="must">Must</option><option value="want" selected>Want</option><option value="maybe">Maybe</option></select>
                 <button id="addMustDoBtn" type="submit">Add</button>
               </form>
+            </section>
+
+            <section class="gas-panel glass" id="gasPanel">
+              <div class="packing-head"><h2>⛽ Gas Calculator</h2><span id="gasEstimate">$0.00</span></div>
+              <p class="helper-text compact-help">Estimate trip fuel from total miles, vehicle MPG, and average fuel price.</p>
+              <div class="gas-grid">
+                <label>Total miles<input id="gasMiles" type="number" min="0" step="1" placeholder="1014" /></label>
+                <label>MPG<input id="gasMpg" type="number" min="1" step="0.1" placeholder="30" /></label>
+                <label>$/gal<input id="gasPrice" type="number" min="0" step="0.01" placeholder="3.60" /></label>
+              </div>
+              <p id="gasBreakdown" class="helper-text compact-help">Add values to calculate fuel cost.</p>
+            </section>
+
+            <section class="activity-generator-panel glass" id="activityGeneratorPanel">
+              <div class="packing-head"><h2>✨ Activity Generator</h2><span id="activityResultCount">0</span></div>
+              <p class="helper-text compact-help">Find nearby public places from open map data, then add ideas to Must Do or schedule them.</p>
+              <div class="activity-generator-form">
+                <input id="activitySearch" type="text" placeholder="coffee, park, museum, beach..." />
+                <select id="activityRadius"><option value="1500">Nearby</option><option value="5000" selected>Within 5 km</option><option value="15000">Within 15 km</option></select>
+                <button id="activityUseGps" type="button" class="ghost-btn">Use GPS</button>
+                <button id="activityGenerateBtn" type="button">Generate</button>
+              </div>
+              <div id="activityGeneratorStatus" class="helper-text compact-help">Uses your selected trip destination unless GPS is selected.</div>
+              <div id="activityResults" class="activity-results"></div>
             </section>
 
             <section class="memory-panel glass" id="memoryPanel">
@@ -276,6 +303,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=26"></script>
+  <script src="./app.js?v=28"></script>
 </body>
 </html>

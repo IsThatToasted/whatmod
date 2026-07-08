@@ -1147,3 +1147,24 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
   .mustdo-panel .shared-form #mustDoPriority,
   .mustdo-panel .shared-form #addMustDoBtn{grid-column:1 / -1!important;width:100%!important;}
 }
+
+/* v28 production helpers: budgeted must-dos, gas calculator, activity generator */
+.gas-panel,.activity-generator-panel{padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.94),rgba(248,252,255,.9));}
+.gas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;}
+.gas-grid label{display:grid;gap:6px;color:#566187;font-weight:850;font-size:.82rem;}
+.gas-grid input,.activity-generator-form input,.activity-generator-form select{border:1px solid var(--line);border-radius:16px;padding:.78rem .85rem;background:#fff;color:#17234b;font-weight:850;min-width:0;}
+.activity-generator-form{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:center;margin-top:12px;}
+.activity-results{display:grid;gap:10px;margin-top:12px;}
+.activity-result{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;border:1px solid #edf0fb;background:#fff;border-radius:18px;padding:10px;}
+.activity-result strong{display:block;color:#111b44;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.activity-result em{display:block;color:#68749c;font-style:normal;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.activity-result button{border-radius:999px;padding:.62rem .8rem;}
+.mustdo-panel .shared-form{grid-template-columns:minmax(0,1fr) minmax(95px,.45fr) auto!important;}
+.mustdo-panel .shared-form #mustDoBudget{width:100%!important;min-width:0!important;min-height:48px!important;box-sizing:border-box!important;border:1px solid var(--line);border-radius:16px;padding:.65rem .75rem;background:#fff;color:#17234b;font-weight:850;}
+@media(max-width:760px){
+  .gas-panel,.activity-generator-panel{padding:18px!important;border-radius:24px!important;}
+  .gas-grid,.activity-generator-form,.activity-result{grid-template-columns:1fr!important;}
+  .activity-result button{width:100%;min-height:44px;}
+  .mustdo-panel .shared-form{grid-template-columns:1fr!important;}
+  .mustdo-panel .shared-form #mustDoBudget{grid-column:1 / -1!important;}
+}

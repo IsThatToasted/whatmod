@@ -18,8 +18,8 @@ const els = {
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
-  mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'),
-  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'),
+  mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
+  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
@@ -480,7 +480,7 @@ async function deleteTrip() { if (!activeTripId || !canDeleteTrip()) return aler
 
 function getTripPatchFromInputs() {
   let start = els.startDate.value || todayISO(); let end = els.endDate.value || start; if (end < start) { end = start; els.endDate.value = end; }
-  return { title: els.tripTitle.value.trim() || 'Untitled trip', start_date: start, end_date: end, destination: els.destination.value.trim(), notes: els.tripNotes.value.trim(), updated_at: new Date().toISOString() };
+  return { title: els.tripTitle.value.trim() || 'Untitled trip', start_date: start, end_date: end, destination: els.destination.value.trim(), notes: els.tripNotes.value.trim(), gas_miles: Number(els.gasMiles?.value || 0), gas_mpg: Number(els.gasMpg?.value || 0), gas_price: Number(els.gasPrice?.value || 0), updated_at: new Date().toISOString() };
 }
 function queueTripSave() {
   if (!canEdit()) return renderTripEditor();
@@ -549,15 +549,15 @@ async function copyInviteLink() { if (!els.inviteLink.value) return; await navig
 function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); renderMustDoList(); renderMemoryList(); renderDayMap(); }
 function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
-  const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
+  const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; if (els.gasMiles) els.gasMiles.value = Number(t.gas_miles || 0) || ''; if (els.gasMpg) els.gasMpg.value = Number(t.gas_mpg || 0) || ''; if (els.gasPrice) els.gasPrice.value = Number(t.gas_price || 0) || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
   if (els.detailsDestination) els.detailsDestination.textContent = t.destination || 'Add destination';
   if (els.detailsStart) els.detailsStart.textContent = t.start_date ? new Date(`${t.start_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
   if (els.detailsEnd) els.detailsEnd.textContent = t.end_date ? new Date(`${t.end_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
   const editable = canEdit();
-  [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
+  [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.gasMiles, els.gasMpg, els.gasPrice, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
   els.deleteTripBtn.disabled = !canDeleteTrip();
 }
-function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; els.totalBudget.textContent = money(items.reduce((sum, i) => sum + Number(i.budget || 0), 0)); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); if (els.heroDaysLeft) { const today = new Date(todayISO() + 'T12:00:00'); const start = t?.start_date ? new Date(t.start_date + 'T12:00:00') : today; const diff = Math.max(0, Math.ceil((start - today) / 86400000)); els.heroDaysLeft.textContent = days.length ? (diff || days.length) : 0; } els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderTripProgress(); }
+function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; const itemBudget = items.reduce((sum, i) => sum + Number(i.budget || 0), 0); const mustBudget = mustDoItems.reduce((sum, i) => sum + Number(i.budget || 0), 0); const gasBudget = calcGasCost(); els.totalBudget.textContent = money(itemBudget + mustBudget + gasBudget); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); if (els.heroDaysLeft) { const today = new Date(todayISO() + 'T12:00:00'); const start = t?.start_date ? new Date(t.start_date + 'T12:00:00') : today; const diff = Math.max(0, Math.ceil((start - today) / 86400000)); els.heroDaysLeft.textContent = days.length ? (diff || days.length) : 0; } els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderGasCalculator(); renderTripProgress(); }
 function renderSharePanel() {
   const role = currentMembership()?.role || 'viewer';
   els.roleBadge.textContent = role === 'owner' ? 'Owner' : role === 'editor' ? 'Editor' : 'Viewer';
@@ -874,7 +874,7 @@ async function reorderPackingItems(dragId, targetId) {
 
 
 function normalizeMustDo(row, idx = 0) {
-  return { id: row.id, trip_id: row.trip_id || activeTripId, title: row.title || row.label || 'Must do', notes: row.notes || '', location: row.location || '', priority: row.priority || 'want', completed: !!row.completed, completed_by: row.completed_by || null, completed_at: row.completed_at || null, created_by: row.created_by || row.user_id || null, sort_order: row.sort_order ?? idx, created_at: row.created_at || null };
+  return { id: row.id, trip_id: row.trip_id || activeTripId, title: row.title || row.label || 'Must do', notes: row.notes || '', location: row.location || '', budget: Number(row.budget || 0), priority: row.priority || 'want', completed: !!row.completed, completed_by: row.completed_by || null, completed_at: row.completed_at || null, created_by: row.created_by || row.user_id || null, sort_order: row.sort_order ?? idx, created_at: row.created_at || null };
 }
 async function loadMustDoItems() {
   if (!activeTripId) { mustDoItems = []; return; }
@@ -891,6 +891,7 @@ function renderMustDoList() {
   if (els.mustDoProgress) els.mustDoProgress.style.width = total ? `${Math.round((done / total) * 100)}%` : '0%';
   if (els.mustDoInput) els.mustDoInput.disabled = !editable;
   if (els.mustDoPriority) els.mustDoPriority.disabled = !editable;
+  if (els.mustDoBudget) els.mustDoBudget.disabled = !editable;
   if (els.addMustDoBtn) els.addMustDoBtn.disabled = !editable;
   if (!total) { els.mustDoList.innerHTML = `<div class="packing-empty">No shared must-do items yet.${editable ? ' Add one for everyone.' : ''}</div>`; renderTripProgress(); return; }
   const priorityLabel = { must: 'Must', want: 'Want', maybe: 'Maybe' };
@@ -900,7 +901,7 @@ function renderMustDoList() {
       <label>
         <input type="checkbox" ${item.completed ? 'checked' : ''} ${editable ? '' : 'disabled'} />
         <span class="shared-icon">${priorityIcon[item.priority] || '⭐'}</span>
-        <span class="shared-text"><strong>${escapeHtml(item.title)}</strong><em>${escapeHtml(priorityLabel[item.priority] || 'Want')}${item.location ? ` • ${escapeHtml(shortLocationLabel(item.location))}` : ''}</em></span>
+        <span class="shared-text"><strong>${escapeHtml(item.title)}</strong><em>${escapeHtml(priorityLabel[item.priority] || 'Want')}${item.budget ? ` • ${money(item.budget)}` : ''}${item.location ? ` • ${escapeHtml(shortLocationLabel(item.location))}` : ''}</em></span>
       </label>
       <button type="button" class="shared-delete ghost-btn" ${editable ? '' : 'disabled'} title="Remove item">×</button>
     </div>`).join('');
@@ -909,7 +910,7 @@ function renderMustDoList() {
 async function addMustDoItem(title) {
   const clean = (title || '').trim();
   if (!clean || !activeTripId || !session?.user?.id || !canEdit()) return;
-  const payload = { trip_id: activeTripId, created_by: session.user.id, title: clean, priority: els.mustDoPriority?.value || 'want', completed: false, sort_order: Date.now() };
+  const payload = { trip_id: activeTripId, created_by: session.user.id, title: clean, priority: els.mustDoPriority?.value || 'want', budget: Number(els.mustDoBudget?.value || 0), completed: false, sort_order: Date.now() };
   const { data, error } = await client.from('itinerary_must_do_items').insert(payload).select('*').single();
   if (error) { showDbError(error); return; }
   mustDoItems.push(normalizeMustDo(data)); renderMustDoList();
@@ -931,6 +932,73 @@ async function deleteMustDoItem(id) {
   const { error } = await client.from('itinerary_must_do_items').delete().eq('id', id);
   if (error) { mustDoItems = prev; renderMustDoList(); showDbError(error); }
 }
+
+function calcGasCost() {
+  const t = currentTrip() || {};
+  const miles = Number(els.gasMiles?.value || t.gas_miles || 0);
+  const mpg = Number(els.gasMpg?.value || t.gas_mpg || 0);
+  const price = Number(els.gasPrice?.value || t.gas_price || 0);
+  if (!miles || !mpg || !price) return 0;
+  return (miles / mpg) * price;
+}
+function renderGasCalculator() {
+  if (!els.gasEstimate) return;
+  const miles = Number(els.gasMiles?.value || 0), mpg = Number(els.gasMpg?.value || 0), price = Number(els.gasPrice?.value || 0);
+  const gallons = miles && mpg ? miles / mpg : 0;
+  const cost = calcGasCost();
+  els.gasEstimate.textContent = money(cost);
+  if (els.gasBreakdown) els.gasBreakdown.textContent = cost ? `${gallons.toFixed(1)} gallons × ${money(price)}/gal = ${money(cost)}` : 'Add values to calculate fuel cost.';
+}
+async function geocodeText(q) {
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(q || '')}`;
+  const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  const data = await r.json();
+  if (!data?.[0]) throw new Error('Could not find that area.');
+  return { lat: Number(data[0].lat), lon: Number(data[0].lon), label: data[0].display_name };
+}
+function activityQueryFor(term) {
+  const t = String(term || '').toLowerCase();
+  if (/coffee|cafe/.test(t)) return ['node[amenity=cafe]', 'way[amenity=cafe]'];
+  if (/food|restaurant|dinner|lunch|breakfast/.test(t)) return ['node[amenity=restaurant]', 'way[amenity=restaurant]'];
+  if (/museum|science|art/.test(t)) return ['node[tourism=museum]', 'way[tourism=museum]'];
+  if (/park|playground|kid/.test(t)) return ['node[leisure=park]', 'way[leisure=park]', 'node[leisure=playground]'];
+  if (/beach|lake|water/.test(t)) return ['node[natural=beach]', 'way[natural=beach]', 'node[tourism=viewpoint]'];
+  return ['node[tourism~"attraction|museum|viewpoint"]', 'node[amenity~"cafe|restaurant"]', 'way[leisure=park]'];
+}
+async function generateActivities(useGps = false) {
+  if (!els.activityResults) return;
+  els.activityGeneratorStatus.textContent = 'Searching nearby open map data...';
+  els.activityResults.innerHTML = '';
+  try {
+    let center;
+    if (useGps && navigator.geolocation) {
+      center = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(p => resolve({lat:p.coords.latitude, lon:p.coords.longitude, label:'Your current GPS position'}), reject, { enableHighAccuracy:true, timeout:10000 }));
+    } else {
+      const q = currentTrip()?.destination || els.destination?.value || '';
+      if (!q) throw new Error('Add a destination or use GPS first.');
+      center = await geocodeText(q);
+    }
+    const radius = Number(els.activityRadius?.value || 5000);
+    const filters = activityQueryFor(els.activitySearch?.value || 'fun');
+    const body = `[out:json][timeout:18];(${filters.map(f=>`${f}(around:${radius},${center.lat},${center.lon});`).join('')});out center tags 20;`;
+    const res = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body });
+    const data = await res.json();
+    const found = (data.elements || []).map(el => ({
+      title: el.tags?.name || el.tags?.brand || 'Nearby idea',
+      type: el.tags?.tourism || el.tags?.amenity || el.tags?.leisure || 'place',
+      lat: el.lat || el.center?.lat,
+      lon: el.lon || el.center?.lon,
+      address: [el.tags?.['addr:housenumber'], el.tags?.['addr:street'], el.tags?.['addr:city']].filter(Boolean).join(' ')
+    })).filter(x => x.title !== 'Nearby idea').slice(0,12);
+    els.activityResultCount.textContent = String(found.length);
+    els.activityGeneratorStatus.textContent = found.length ? `Found ${found.length} ideas near ${center.label}.` : 'No ideas found. Try a broader word like food, park, museum, or coffee.';
+    els.activityResults.innerHTML = found.map((r, idx)=>`<div class="activity-result"><div><strong>${escapeHtml(r.title)}</strong><em>${escapeHtml(r.type)}${r.address ? ' • '+escapeHtml(r.address) : ''}</em></div><button type="button" data-idx="${idx}" data-action="must">Must Do</button><button type="button" data-idx="${idx}" data-action="schedule" class="ghost-btn">Schedule</button></div>`).join('');
+    window.__activityResults = found;
+  } catch (err) {
+    els.activityGeneratorStatus.textContent = err.message || 'Activity search failed.';
+  }
+}
+
 function normalizeMemory(row) {
   return { id: row.id, trip_id: row.trip_id || activeTripId, user_id: row.user_id || row.created_by, note: row.note || row.title || '', location: row.location || '', memory_date: row.memory_date || todayISO(), created_at: row.created_at || null };
 }
@@ -989,6 +1057,10 @@ els.tripSelect.addEventListener('change', async () => { activeTripId = els.tripS
 function openTripDialog() { els.dialogTripTitle.value = ''; els.dialogStartDate.value = todayISO(); els.dialogEndDate.value = addDays(todayISO(), 3); els.tripDialog.showModal(); }
 els.newTripBtn.addEventListener('click', openTripDialog); if (els.sidebarNewTripBtn) els.sidebarNewTripBtn.addEventListener('click', openTripDialog); if (els.viewItineraryBtn) els.viewItineraryBtn.addEventListener('click', () => document.getElementById('plannerTitle')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 els.createTripConfirm.addEventListener('click', e => { e.preventDefault(); els.tripDialog.close(); createTrip({ title: els.dialogTripTitle.value, start_date: els.dialogStartDate.value, end_date: els.dialogEndDate.value }); });
+[els.gasMiles, els.gasMpg, els.gasPrice].forEach(el => el?.addEventListener('input', queueTripSave));
+els.activityGenerateBtn?.addEventListener('click', () => generateActivities(false));
+els.activityUseGps?.addEventListener('click', () => generateActivities(true));
+els.activityResults?.addEventListener('click', e => { const btn = e.target.closest('button[data-idx]'); if (!btn) return; const idea = window.__activityResults?.[Number(btn.dataset.idx)]; if (!idea) return; const loc = idea.lat && idea.lon ? `${idea.title}, ${idea.address || ''}`.trim() : idea.address || idea.title; if (btn.dataset.action === 'must') { if (els.mustDoInput) els.mustDoInput.value = idea.title; if (els.mustDoPriority) els.mustDoPriority.value = 'want'; addMustDoItem(idea.title); } else { openItemDialog(selectedDay || currentTrip()?.start_date || todayISO(), { title: idea.title, item_type: 'event', location: loc, notes: `Generated idea: ${idea.type}` }); } });
 els.deleteTripBtn.addEventListener('click', deleteTrip); ['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => els[k].addEventListener('input', queueTripSave));
 els.addAnyItemBtn.addEventListener('click', () => openItemDialog(selectedDay)); els.saveItemBtn.addEventListener('click', saveItemFromDialog);
 els.createInviteBtn.addEventListener('click', createInviteLink); els.copyInviteBtn.addEventListener('click', copyInviteLink);
@@ -1057,6 +1129,7 @@ if (els.mustDoForm) els.mustDoForm.addEventListener('submit', async e => {
   e.preventDefault();
   await addMustDoItem(els.mustDoInput.value);
   els.mustDoInput.value = '';
+  if (els.mustDoBudget) els.mustDoBudget.value = '';
 });
 if (els.mustDoList) els.mustDoList.addEventListener('change', e => {
   const row = e.target.closest('.mustdo-row');

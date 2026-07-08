@@ -402,3 +402,12 @@ create policy "Editors can delete memories" on public.itinerary_memories
 for delete using (public.user_can_edit_trip(trip_id));
 
 create index if not exists itinerary_memories_trip_idx on public.itinerary_memories(trip_id, created_at desc);
+
+-- v28 Budgeted Must Do items + trip gas calculator fields.
+alter table public.itinerary_must_do_items
+  add column if not exists budget numeric(10,2) not null default 0;
+
+alter table public.itinerary_trips
+  add column if not exists gas_miles numeric(10,1) not null default 0,
+  add column if not exists gas_mpg numeric(10,1) not null default 0,
+  add column if not exists gas_price numeric(10,2) not null default 0;
