@@ -1535,3 +1535,43 @@ if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUnd
 
 setInterval(updateTripCountdown, 60000);
 init();
+
+// v35 lock-in helpers: keep overlapped cards actionable and make Drive cards always routeable.
+document.addEventListener('pointerdown', (e) => {
+  document.querySelectorAll('.item-card.card-active').forEach(card => {
+    if (!card.contains(e.target)) card.classList.remove('card-active');
+  });
+  const card = e.target.closest?.('.item-card');
+  if (card) card.classList.add('card-active');
+}, true);
+
+// Override route behavior after load so explicit road events are never reclassified as flights.
+function routeBehaviorForItem(item) {
+  const type = String(item?.item_type || 'event').toLowerCase();
+  const haystack = `${item?.title || ''} ${item?.location || ''} ${item?.from_location || ''} ${item?.to_location || ''}`.toLowerCase();
+  if (['drive','transport','gas'].includes(type)) return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving route' };
+  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
+  if (['flight','train','ferry','cruise'].includes(type)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Travel event' };
+  const airportish = /airport|terminal|flight|airline|arriv|depart|\bphl\b|\bmke\b|\bord\b|\bmdw\b|\bjfk\b|\blga\b|\bewr\b/.test(haystack);
+  if (airportish && /flight|arriv|depart|terminal|airline/.test(haystack)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
+  if (['todo','rest'].includes(type)) return { kind: 'note', routable: false, pinClass: 'pin-note', label: 'Shown only' };
+  return { kind: 'stop', routable: true, pinClass: 'pin-stop', label: 'Driving stop' };
+}
+function routeLocationsForItem(item) {
+  const behavior = routeBehaviorForItem(item);
+  const from = String(item?.from_location || '').trim();
+  const to = String(item?.to_location || '').trim();
+  const loc = String(item?.location || '').trim();
+  const type = String(item?.item_type || '').toLowerCase();
+  const isP2P = ['drive','transport','flight','train','ferry','cruise','gas'].includes(type);
+  const points = [];
+  if (isP2P) {
+    const destination = to || loc;
+    if (from) points.push({ query: from, pointKind: 'from', item, behavior: { ...behavior }, label: `${item.title || 'Route'} start` });
+    if (destination) points.push({ query: destination, pointKind: 'to', item, behavior: { ...behavior }, label: `${item.title || 'Route'} destination` });
+    if (!points.length && loc) points.push({ query: loc, pointKind: 'location', item, behavior: { ...behavior }, label: item.title || 'Stop' });
+    return points;
+  }
+  if (loc) points.push({ query: loc, pointKind: 'location', item, behavior: { ...behavior }, label: item.title || 'Stop' });
+  return points;
+}
