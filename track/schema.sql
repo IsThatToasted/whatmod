@@ -285,3 +285,75 @@ create index if not exists itinerary_packing_items_trip_user_idx on public.itine
 -- v18 Rain Plan support for itinerary item card flip.
 alter table public.itinerary_items
   add column if not exists rain_plan text default '';
+
+
+-- v26 Shared Must Do Together list. This is trip-wide, not isolated per traveler.
+create table if not exists public.itinerary_must_do_items (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  notes text default '',
+  location text default '',
+  priority text not null default 'want' check (priority in ('must','want','maybe')),
+  completed boolean not null default false,
+  completed_by uuid references auth.users(id) on delete set null,
+  completed_at timestamptz,
+  sort_order bigint not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.itinerary_must_do_items enable row level security;
+
+drop policy if exists "Members can read shared must do" on public.itinerary_must_do_items;
+drop policy if exists "Editors can insert shared must do" on public.itinerary_must_do_items;
+drop policy if exists "Editors can update shared must do" on public.itinerary_must_do_items;
+drop policy if exists "Editors can delete shared must do" on public.itinerary_must_do_items;
+
+create policy "Members can read shared must do" on public.itinerary_must_do_items
+for select using (public.user_can_view_trip(trip_id));
+
+create policy "Editors can insert shared must do" on public.itinerary_must_do_items
+for insert with check (auth.uid() = created_by and public.user_can_edit_trip(trip_id));
+
+create policy "Editors can update shared must do" on public.itinerary_must_do_items
+for update using (public.user_can_edit_trip(trip_id)) with check (public.user_can_edit_trip(trip_id));
+
+create policy "Editors can delete shared must do" on public.itinerary_must_do_items
+for delete using (public.user_can_edit_trip(trip_id));
+
+create index if not exists itinerary_must_do_trip_idx on public.itinerary_must_do_items(trip_id, completed, sort_order);
+
+-- v26 Shared trip memories. Lightweight text notes; media URLs can be added later without breaking this table.
+create table if not exists public.itinerary_memories (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  note text not null,
+  location text default '',
+  memory_date date not null default current_date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.itinerary_memories enable row level security;
+
+drop policy if exists "Members can read memories" on public.itinerary_memories;
+drop policy if exists "Editors can insert memories" on public.itinerary_memories;
+drop policy if exists "Editors can update own memories" on public.itinerary_memories;
+drop policy if exists "Editors can delete memories" on public.itinerary_memories;
+
+create policy "Members can read memories" on public.itinerary_memories
+for select using (public.user_can_view_trip(trip_id));
+
+create policy "Editors can insert memories" on public.itinerary_memories
+for insert with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
+
+create policy "Editors can update own memories" on public.itinerary_memories
+for update using (auth.uid() = user_id and public.user_can_edit_trip(trip_id)) with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
+
+create policy "Editors can delete memories" on public.itinerary_memories
+for delete using (public.user_can_edit_trip(trip_id));
+
+create index if not exists itinerary_memories_trip_idx on public.itinerary_memories(trip_id, created_at desc);

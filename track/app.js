@@ -17,11 +17,14 @@ const els = {
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'),
-  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'), snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
+  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
+  mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'),
+  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'),
+  snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
 const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
-let session = null, trips = [], items = [], members = [], packingItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0;
+let session = null, trips = [], items = [], members = [], packingItems = [], mustDoItems = [], memoryItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -34,6 +37,7 @@ function fmtLongDate(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(un
 function fmtTime(t) { if (!t) return ''; const [h, m] = t.split(':').map(Number); const d = new Date(); d.setHours(h, m || 0, 0, 0); return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
 function escapeHtml(str) { return String(str || '').replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
 function isMissingRainPlanColumn(error) { return /rain_plan|schema cache|column/i.test(String(error?.message || '')); }
+function isMissingSharedTable(error) { return /itinerary_must_do_items|itinerary_memories|schema cache|relation|does not exist/i.test(String(error?.message || '')); }
 
 function shortLocationLabel(location) {
   let value = String(location || '').replace(/\s+/g, ' ').trim();
@@ -394,7 +398,7 @@ async function loadTrips() {
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
 }
-async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems()]); setStatus('Ready'); render(); }
+async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]); setStatus('Ready'); render(); }
 async function loadItems() {
   if (!activeTripId) return;
   const { data, error } = await client.from('itinerary_items').select('*').eq('trip_id', activeTripId).order('item_date').order('start_time');
@@ -514,7 +518,7 @@ async function createInviteLink() {
 }
 async function copyInviteLink() { if (!els.inviteLink.value) return; await navigator.clipboard.writeText(els.inviteLink.value); setStatus('Invite copied'); }
 
-function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); renderDayMap(); }
+function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); renderMustDoList(); renderMemoryList(); renderDayMap(); }
 function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
   const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
@@ -525,7 +529,7 @@ function renderTripEditor() {
   [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
   els.deleteTripBtn.disabled = !canDeleteTrip();
 }
-function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; els.totalBudget.textContent = money(items.reduce((sum, i) => sum + Number(i.budget || 0), 0)); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); if (els.heroDaysLeft) { const today = new Date(todayISO() + 'T12:00:00'); const start = t?.start_date ? new Date(t.start_date + 'T12:00:00') : today; const diff = Math.max(0, Math.ceil((start - today) / 86400000)); els.heroDaysLeft.textContent = days.length ? (diff || days.length) : 0; } els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; }
+function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; els.totalBudget.textContent = money(items.reduce((sum, i) => sum + Number(i.budget || 0), 0)); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); if (els.heroDaysLeft) { const today = new Date(todayISO() + 'T12:00:00'); const start = t?.start_date ? new Date(t.start_date + 'T12:00:00') : today; const diff = Math.max(0, Math.ceil((start - today) / 86400000)); els.heroDaysLeft.textContent = days.length ? (diff || days.length) : 0; } els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderTripProgress(); }
 function renderSharePanel() {
   const role = currentMembership()?.role || 'viewer';
   els.roleBadge.textContent = role === 'owner' ? 'Owner' : role === 'editor' ? 'Editor' : 'Viewer';
@@ -839,6 +843,116 @@ async function reorderPackingItems(dragId, targetId) {
   await Promise.all(remote.map(i => client.from('itinerary_packing_items').update({ sort_order: i.sort_order, updated_at: new Date().toISOString() }).eq('id', i.id).eq('user_id', session.user.id)));
 }
 
+
+
+function normalizeMustDo(row, idx = 0) {
+  return { id: row.id, trip_id: row.trip_id || activeTripId, title: row.title || row.label || 'Must do', notes: row.notes || '', location: row.location || '', priority: row.priority || 'want', completed: !!row.completed, completed_by: row.completed_by || null, completed_at: row.completed_at || null, created_by: row.created_by || row.user_id || null, sort_order: row.sort_order ?? idx, created_at: row.created_at || null };
+}
+async function loadMustDoItems() {
+  if (!activeTripId) { mustDoItems = []; return; }
+  const { data, error } = await client.from('itinerary_must_do_items').select('*').eq('trip_id', activeTripId).order('completed', { ascending: true }).order('sort_order', { ascending: true });
+  if (error) { console.warn('Must Do table unavailable. Run schema.sql to enable shared Must Do.', error); mustDoItems = []; return; }
+  mustDoItems = (data || []).map(normalizeMustDo);
+}
+function renderMustDoList() {
+  if (!els.mustDoList) return;
+  const editable = canEdit();
+  const total = mustDoItems.length;
+  const done = mustDoItems.filter(i => i.completed).length;
+  if (els.mustDoCount) els.mustDoCount.textContent = `${done}/${total}`;
+  if (els.mustDoProgress) els.mustDoProgress.style.width = total ? `${Math.round((done / total) * 100)}%` : '0%';
+  if (els.mustDoInput) els.mustDoInput.disabled = !editable;
+  if (els.mustDoPriority) els.mustDoPriority.disabled = !editable;
+  if (els.addMustDoBtn) els.addMustDoBtn.disabled = !editable;
+  if (!total) { els.mustDoList.innerHTML = `<div class="packing-empty">No shared must-do items yet.${editable ? ' Add one for everyone.' : ''}</div>`; renderTripProgress(); return; }
+  const priorityLabel = { must: 'Must', want: 'Want', maybe: 'Maybe' };
+  const priorityIcon = { must: '⭐', want: '💜', maybe: '✨' };
+  els.mustDoList.innerHTML = mustDoItems.slice().sort((a,b)=>(a.completed-b.completed)||((a.sort_order??0)-(b.sort_order??0))).map(item => `
+    <div class="shared-row mustdo-row ${item.completed ? 'done' : ''}" data-id="${escapeHtml(item.id)}">
+      <label>
+        <input type="checkbox" ${item.completed ? 'checked' : ''} ${editable ? '' : 'disabled'} />
+        <span class="shared-icon">${priorityIcon[item.priority] || '⭐'}</span>
+        <span class="shared-text"><strong>${escapeHtml(item.title)}</strong><em>${escapeHtml(priorityLabel[item.priority] || 'Want')}${item.location ? ` • ${escapeHtml(shortLocationLabel(item.location))}` : ''}</em></span>
+      </label>
+      <button type="button" class="shared-delete ghost-btn" ${editable ? '' : 'disabled'} title="Remove item">×</button>
+    </div>`).join('');
+  renderTripProgress();
+}
+async function addMustDoItem(title) {
+  const clean = (title || '').trim();
+  if (!clean || !activeTripId || !session?.user?.id || !canEdit()) return;
+  const payload = { trip_id: activeTripId, created_by: session.user.id, title: clean, priority: els.mustDoPriority?.value || 'want', completed: false, sort_order: Date.now() };
+  const { data, error } = await client.from('itinerary_must_do_items').insert(payload).select('*').single();
+  if (error) { showDbError(error); return; }
+  mustDoItems.push(normalizeMustDo(data)); renderMustDoList();
+}
+async function updateMustDoItem(id, patch) {
+  if (!canEdit()) return;
+  if ('completed' in patch) { patch.completed_by = patch.completed ? session.user.id : null; patch.completed_at = patch.completed ? new Date().toISOString() : null; }
+  const prev = mustDoItems.slice();
+  mustDoItems = mustDoItems.map(i => i.id === id ? { ...i, ...patch } : i); renderMustDoList();
+  const { data, error } = await client.from('itinerary_must_do_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select('*').single();
+  if (error) { mustDoItems = prev; renderMustDoList(); showDbError(error); return; }
+  mustDoItems = mustDoItems.map(i => i.id === id ? normalizeMustDo(data) : i); renderMustDoList();
+}
+async function deleteMustDoItem(id) {
+  if (!canEdit()) return;
+  const item = mustDoItems.find(i => i.id === id);
+  if (!item || !confirm(`Remove "${item.title}" from Must Do Together?`)) return;
+  const prev = mustDoItems.slice(); mustDoItems = mustDoItems.filter(i => i.id !== id); renderMustDoList();
+  const { error } = await client.from('itinerary_must_do_items').delete().eq('id', id);
+  if (error) { mustDoItems = prev; renderMustDoList(); showDbError(error); }
+}
+function normalizeMemory(row) {
+  return { id: row.id, trip_id: row.trip_id || activeTripId, user_id: row.user_id || row.created_by, note: row.note || row.title || '', location: row.location || '', memory_date: row.memory_date || todayISO(), created_at: row.created_at || null };
+}
+async function loadMemoryItems() {
+  if (!activeTripId) { memoryItems = []; return; }
+  const { data, error } = await client.from('itinerary_memories').select('*').eq('trip_id', activeTripId).order('created_at', { ascending: false }).limit(20);
+  if (error) { console.warn('Memories table unavailable. Run schema.sql to enable shared Memories.', error); memoryItems = []; return; }
+  memoryItems = (data || []).map(normalizeMemory);
+}
+function renderMemoryList() {
+  if (!els.memoryList) return;
+  const editable = canEdit();
+  if (els.memoryCount) els.memoryCount.textContent = String(memoryItems.length);
+  if (els.memoryInput) els.memoryInput.disabled = !editable;
+  if (els.addMemoryBtn) els.addMemoryBtn.disabled = !editable;
+  if (!memoryItems.length) { els.memoryList.innerHTML = `<div class="packing-empty">No memories yet.${editable ? ' Add a small note during the trip.' : ''}</div>`; renderTripProgress(); return; }
+  els.memoryList.innerHTML = memoryItems.slice(0,6).map(mem => `
+    <div class="memory-row" data-id="${escapeHtml(mem.id)}">
+      <span class="shared-icon">💜</span>
+      <div><strong>${escapeHtml(mem.note)}</strong><em>${escapeHtml(fmtShortDate(mem.memory_date))}${mem.location ? ` • ${escapeHtml(shortLocationLabel(mem.location))}` : ''}</em></div>
+      <button type="button" class="memory-delete ghost-btn" ${editable ? '' : 'disabled'} title="Remove memory">×</button>
+    </div>`).join('');
+  renderTripProgress();
+}
+async function addMemoryItem(note) {
+  const clean = (note || '').trim();
+  if (!clean || !activeTripId || !session?.user?.id || !canEdit()) return;
+  const payload = { trip_id: activeTripId, user_id: session.user.id, note: clean, memory_date: selectedDay || todayISO() };
+  const { data, error } = await client.from('itinerary_memories').insert(payload).select('*').single();
+  if (error) { showDbError(error); return; }
+  memoryItems.unshift(normalizeMemory(data)); renderMemoryList();
+}
+async function deleteMemoryItem(id) {
+  if (!canEdit()) return;
+  const prev = memoryItems.slice(); memoryItems = memoryItems.filter(i => i.id !== id); renderMemoryList();
+  const { error } = await client.from('itinerary_memories').delete().eq('id', id);
+  if (error) { memoryItems = prev; renderMemoryList(); showDbError(error); }
+}
+function renderTripProgress() {
+  if (!els.tripProgress || !els.tripProgressText) return;
+  const itemScore = items.length ? items.filter(i => i.item_date && i.start_time).length / Math.max(1, items.length) : 0;
+  const mustScore = mustDoItems.length ? mustDoItems.filter(i => i.completed).length / mustDoItems.length : 0;
+  const packScore = packingItems.length ? packingItems.filter(i => i.packed).length / packingItems.length : 0;
+  const memoryScore = Math.min(1, memoryItems.length / 5);
+  const pieces = [itemScore, mustScore, packScore, memoryScore].filter(n => !Number.isNaN(n));
+  const pct = Math.round((pieces.reduce((a,b)=>a+b,0) / Math.max(1,pieces.length)) * 100);
+  els.tripProgress.style.width = `${pct}%`;
+  els.tripProgressText.textContent = `${pct}% trip progress`;
+}
+
 function exportJson() { const data = { trip: currentTrip(), items }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${currentTrip()?.title || 'trip'}-itinerary.json`; a.click(); URL.revokeObjectURL(a.href); }
 async function importJson(file) { if (!canEdit()) return; const parsed = JSON.parse(await file.text()); if (!parsed?.items?.length) return alert('No items found in JSON.'); const newItems = parsed.items.map(i => ({ user_id: session.user.id, trip_id: activeTripId, title: i.title, item_date: i.item_date, start_time: i.start_time, end_time: i.end_time, item_type: i.item_type || 'event', budget: Number(i.budget || 0), location: i.location || '', notes: i.notes || '', sort_order: i.sort_order || Date.now() })); const { error } = await client.from('itinerary_items').insert(newItems); if (error) return showDbError(error); await loadTripData(); }
 
@@ -908,6 +1022,30 @@ if (els.packingList) els.packingList.addEventListener('drop', async e => {
 if (els.packingList) els.packingList.addEventListener('dragend', () => {
   packingDragId = null;
   els.packingList.querySelectorAll('.packing-row').forEach(r => r.classList.remove('drag-over','dragging'));
+});
+
+
+if (els.mustDoForm) els.mustDoForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  await addMustDoItem(els.mustDoInput.value);
+  els.mustDoInput.value = '';
+});
+if (els.mustDoList) els.mustDoList.addEventListener('change', e => {
+  const row = e.target.closest('.mustdo-row');
+  if (row && e.target.matches('input[type="checkbox"]')) updateMustDoItem(row.dataset.id, { completed: e.target.checked });
+});
+if (els.mustDoList) els.mustDoList.addEventListener('click', e => {
+  const row = e.target.closest('.mustdo-row');
+  if (row && e.target.closest('.shared-delete')) deleteMustDoItem(row.dataset.id);
+});
+if (els.memoryForm) els.memoryForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  await addMemoryItem(els.memoryInput.value);
+  els.memoryInput.value = '';
+});
+if (els.memoryList) els.memoryList.addEventListener('click', e => {
+  const row = e.target.closest('.memory-row');
+  if (row && e.target.closest('.memory-delete')) deleteMemoryItem(row.dataset.id);
 });
 
 if (els.resetPackingBtn) els.resetPackingBtn.addEventListener('click', resetPackingItems);

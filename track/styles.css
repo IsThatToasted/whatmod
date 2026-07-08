@@ -960,3 +960,159 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
   .item-card.timeline-item .item-actions button,
   .item-card.timeline-item.compact-time-card .item-actions button{font-size:.7rem!important;}
 }
+
+/* v24: stronger phone layout guardrails for iPhone Safari */
+@media (max-width: 680px){
+  *,*::before,*::after{box-sizing:border-box!important;}
+  html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;}
+  .app-shell,.main-wrap,main,#appArea,.dashboard-grid,.content-column,.right-column,
+  .planner-panel,.day-card,.day-body,.timeline-board,.daily-map-panel,.glass{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important;}
+  .main-wrap{padding-left:10px!important;padding-right:10px!important;}
+  .content-column{min-width:0!important;}
+
+  .day-card{padding:0!important;margin:0 0 14px!important;border-radius:24px!important;}
+  .day-header{padding:18px 16px!important;}
+  .day-header strong{font-size:1.32rem!important;line-height:1.12!important;word-break:break-word!important;}
+
+  .item-card.timeline-item,
+  .item-card.timeline-item.compact-time-card,
+  .item-card.timeline-item.roomy-time-card,
+  .item-card.timeline-item.very-roomy-time-card{
+    width:100%!important;
+    max-width:100%!important;
+    margin:10px 0!important;
+    padding:14px!important;
+    display:block!important;
+    contain:layout paint!important;
+  }
+  .item-card.timeline-item > .card-front,
+  .item-card.timeline-item.compact-time-card > .card-front,
+  .item-card.timeline-item.roomy-time-card > .card-front,
+  .item-card.timeline-item.very-roomy-time-card > .card-front{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    width:100%!important;
+    min-width:0!important;
+    gap:12px!important;
+  }
+  .item-card.timeline-item .time-chip{
+    width:fit-content!important;
+    max-width:100%!important;
+    padding:10px 16px!important;
+    font-size:1rem!important;
+    white-space:normal!important;
+  }
+  .item-card.timeline-item .item-main{
+    grid-template-columns:48px minmax(0,1fr)!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .item-card.timeline-item .item-main > div,
+  .item-card.timeline-item .item-main h3,
+  .item-card.timeline-item .item-meta,
+  .item-card.timeline-item .item-notes{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    word-break:break-word!important;
+  }
+  .item-card.timeline-item .item-main h3{font-size:1.08rem!important;line-height:1.18!important;}
+  .item-card.timeline-item .item-meta{font-size:.9rem!important;display:block!important;}
+  .item-card.timeline-item .location-link{display:inline!important;max-width:100%!important;overflow-wrap:anywhere!important;}
+
+  /* Two-column touch controls instead of one long row that runs off-screen. */
+  .item-card.timeline-item .item-actions,
+  .item-card.timeline-item.compact-time-card .item-actions,
+  .item-card.timeline-item.roomy-time-card .item-actions,
+  .item-card.timeline-item.very-roomy-time-card .item-actions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:9px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .item-card.timeline-item .item-actions button,
+  .item-card.timeline-item.compact-time-card .item-actions button,
+  .item-card.timeline-item.roomy-time-card .item-actions button,
+  .item-card.timeline-item.very-roomy-time-card .item-actions button{
+    width:100%!important;
+    min-width:0!important;
+    height:44px!important;
+    min-height:44px!important;
+    padding:0 8px!important;
+    font-size:.92rem!important;
+    line-height:1.05!important;
+    white-space:normal!important;
+  }
+  .item-card.timeline-item .item-actions .delete{grid-column:1 / -1!important;}
+
+  /* Route card and map must not be wider than the phone. */
+  .daily-map-panel{padding:16px!important;margin:12px 0!important;border-radius:24px!important;gap:12px!important;}
+  .daily-map-panel .panel-head{padding:0!important;display:grid!important;grid-template-columns:1fr!important;gap:12px!important;}
+  .daily-map-panel h2{font-size:1.25rem!important;line-height:1.15!important;}
+  .map-directions,
+  .daily-map-panel a.map-directions,
+  #openDirectionsBtn{
+    display:flex!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:46px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border-radius:16px!important;
+    padding:0 12px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .daily-route-map,
+  .daily-route-map.leaflet-container{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    height:240px!important;
+    min-height:240px!important;
+    border-radius:20px!important;
+  }
+  .daily-map-stops{width:100%!important;max-width:100%!important;display:grid!important;grid-template-columns:1fr!important;gap:8px!important;overflow-x:hidden!important;}
+  .daily-map-stops a{width:100%!important;max-width:100%!important;min-width:0!important;grid-template-columns:auto minmax(0,1fr)!important;border-radius:18px!important;}
+  .daily-map-stops a span{display:none!important;}
+  .daily-map-stops a strong{min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;}
+}
+
+@media (max-width: 390px){
+  .item-card.timeline-item .item-actions,
+  .item-card.timeline-item.compact-time-card .item-actions{grid-template-columns:1fr 1fr!important;}
+  .item-card.timeline-item .item-actions button{font-size:.86rem!important;}
+}
+
+
+/* v26 shared trip widgets: Must Do Together, Memories, Trip Progress */
+.mustdo-panel,.memory-panel,.progress-panel{padding:24px;background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(251,248,255,.88));}
+.mustdo-panel h2,.memory-panel h2,.progress-panel h2{margin:0 0 10px;font-size:1.15rem;}
+.mustdo-progress span{background:linear-gradient(90deg,#7c4dff,#ff71b8)!important;}
+.trip-progress span{background:linear-gradient(90deg,#20c86b,#7c4dff,#ffb84d)!important;}
+.shared-list{display:grid;gap:10px;margin:12px 0;}
+.shared-row,.memory-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 10px;border:1px solid #edf0fb;border-radius:18px;background:#fff;box-shadow:0 10px 25px rgba(33,38,83,.04);}
+.shared-row label{display:flex;align-items:center;gap:10px;margin:0!important;min-width:0;}
+.shared-row input[type=checkbox]{width:19px;height:19px;accent-color:#7c4dff;flex:0 0 auto;}
+.shared-icon{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#f6efff;flex:0 0 auto;}
+.shared-text,.memory-row div{display:grid;gap:2px;min-width:0;}
+.shared-text strong,.memory-row strong{font-weight:950;color:#111b44;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.shared-text em,.memory-row em{font-style:normal;color:#68749c;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.shared-row.done{background:linear-gradient(90deg,#fbfffd,#fff);opacity:.78;}
+.shared-row.done strong{text-decoration:line-through;color:#6b769a;}
+.shared-delete,.memory-delete{width:34px;height:34px;border-radius:50%;padding:0!important;display:grid;place-items:center;color:#ff3470!important;background:#fff5f8!important;}
+.shared-form{grid-template-columns:minmax(0,1fr) auto auto!important;gap:8px!important;}
+.shared-form select{border:1px solid var(--line);border-radius:16px;padding:.65rem .75rem;background:#fff;color:#17234b;font-weight:850;}
+.memory-row{grid-template-columns:auto minmax(0,1fr) auto;}
+@media(max-width:760px){
+  .mustdo-panel,.memory-panel,.progress-panel{padding:18px!important;border-radius:24px!important;}
+  .shared-row,.memory-row{border-radius:18px;padding:12px;}
+  .shared-form{grid-template-columns:1fr!important;}
+  .shared-form input,.shared-form select,.shared-form button{width:100%;min-height:46px;}
+}

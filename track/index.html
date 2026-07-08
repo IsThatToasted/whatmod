@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=23" />
+  <link rel="stylesheet" href="./styles.css?v=26" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -193,6 +193,34 @@
               </form>
               <button id="resetPackingBtn" type="button" class="ghost-btn small-btn">Reset starter list</button>
             </section>
+
+            <section class="mustdo-panel glass" id="mustDoPanel">
+              <div class="packing-head"><h2>⭐ Must Do Together</h2><span id="mustDoCount">0/0</span></div>
+              <p class="helper-text compact-help">Shared with everyone on this trip. Great for quick goals, food stops, photos, and non-scheduled ideas.</p>
+              <div class="progress mustdo-progress"><span id="mustDoProgress"></span></div>
+              <div id="mustDoList" class="shared-list"></div>
+              <form id="mustDoForm" class="packing-form shared-form">
+                <input id="mustDoInput" type="text" placeholder="Add a must-do..." maxlength="100" />
+                <select id="mustDoPriority" aria-label="Priority"><option value="must">Must</option><option value="want" selected>Want</option><option value="maybe">Maybe</option></select>
+                <button id="addMustDoBtn" type="submit">Add</button>
+              </form>
+            </section>
+
+            <section class="memory-panel glass" id="memoryPanel">
+              <div class="packing-head"><h2>💜 Memories</h2><span id="memoryCount">0</span></div>
+              <p class="helper-text compact-help">Shared notes from the trip. Add the tiny moments you do not want to forget.</p>
+              <div id="memoryList" class="shared-list memory-list"></div>
+              <form id="memoryForm" class="packing-form shared-form">
+                <input id="memoryInput" type="text" placeholder="Save a memory..." maxlength="140" />
+                <button id="addMemoryBtn" type="submit">Save</button>
+              </form>
+            </section>
+
+            <section class="progress-panel glass">
+              <div class="packing-head"><h2>🌅 Trip Progress</h2><span id="tripProgressText">0% trip progress</span></div>
+              <div class="progress trip-progress"><span id="tripProgress"></span></div>
+              <p class="helper-text compact-help">Progress blends planned events, shared must-dos, personal packing, and memories.</p>
+            </section>
           </aside>
         </section>
       </main>
@@ -248,6 +276,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=23"></script>
+  <script src="./app.js?v=26"></script>
 </body>
 </html>
