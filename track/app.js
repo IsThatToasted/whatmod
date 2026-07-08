@@ -19,7 +19,7 @@ const els = {
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingProgressList: document.getElementById('packingProgressList'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
-  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'),
+  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
@@ -132,6 +132,21 @@ function populateAssigneeSelect(selected = '') {
   els.itemAssignedTo.innerHTML = opts.join('');
   els.itemAssignedTo.value = selected || '';
 }
+
+function populateFunAssigneeSelect(selected = '') {
+  if (!els.funIdeaAssignedTo) return;
+  const seen = new Set();
+  const opts = ['<option value="">Anyone / shared</option>'];
+  const ids = [session?.user?.id, ...members.map(m => m.user_id)].filter(Boolean);
+  ids.forEach(id => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    opts.push(`<option value="${escapeHtml(id)}">${escapeHtml(id === session?.user?.id ? 'Me' : memberLabel(id))}</option>`);
+  });
+  els.funIdeaAssignedTo.innerHTML = opts.join('');
+  els.funIdeaAssignedTo.value = selected || '';
+}
+
 function syncRouteFieldVisibility() {
   const pointToPoint = isPointToPointType({ item_type: els.itemType?.value });
   document.querySelectorAll('.route-field').forEach(el => el.classList.toggle('hidden', !pointToPoint));
@@ -1712,8 +1727,10 @@ function clearFunIdeaForm() {
   if (els.funIdeaPlayType) els.funIdeaPlayType.value = 'private';
   if (els.funIdeaStatus) els.funIdeaStatus.value = 'planned';
   if (els.funIdeaVisibility) els.funIdeaVisibility.value = 'shared';
+  populateFunAssigneeSelect('');
 }
 function renderFunIdeasModal() {
+  populateFunAssigneeSelect(els.funIdeaAssignedTo?.value || '');
   const editable = canEdit() && canAccessFunIdeasLocal();
   if (els.funAccessPanel) els.funAccessPanel.classList.toggle('hidden', !isTripOwner());
   if (els.funPermissionList) {
@@ -1727,10 +1744,11 @@ function renderFunIdeasModal() {
     const visible = funIdeas.filter(i => i.visibility !== 'private' || i.created_by === session.user.id || isTripOwner());
     els.funIdeasList.innerHTML = visible.length ? visible.map(i => {
       const creator = memberLabel(i.created_by);
+      const assigned = i.assigned_to ? memberLabel(i.assigned_to) : 'Anyone';
       const privateBadge = i.visibility === 'private' ? 'Private draft' : 'Shared';
       const playBadge = i.play_type === 'public' ? 'Public/playful' : 'Private play';
       return `<article class="fun-idea-card" data-id="${escapeHtml(i.id)}">
-        <div><h3>${escapeHtml(i.title || 'Untitled idea')}</h3><p>${escapeHtml(i.description || '')}</p><div class="fun-badges"><span>${escapeHtml(privateBadge)}</span><span>${escapeHtml(playBadge)}</span><span>${escapeHtml(i.status || 'planned')}</span><span>By ${escapeHtml(creator)}</span></div></div>
+        <div><h3>${escapeHtml(i.title || 'Untitled idea')}</h3><p>${escapeHtml(i.description || '')}</p><div class="fun-badges"><span>${escapeHtml(privateBadge)}</span><span>${escapeHtml(playBadge)}</span><span>${escapeHtml(i.status || 'planned')}</span><span>For ${escapeHtml(assigned)}</span><span>By ${escapeHtml(creator)}</span></div></div>
         <div class="fun-card-actions"><button type="button" class="fun-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="fun-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button></div>
       </article>`;
     }).join('') : '<div class="packing-empty">No Fun Ideas yet. Add one when you are ready.</div>';
@@ -1748,6 +1766,7 @@ async function saveFunIdea() {
     play_type: els.funIdeaPlayType?.value || 'private',
     status: els.funIdeaStatus?.value || 'planned',
     visibility: els.funIdeaVisibility?.value || 'shared',
+    assigned_to: els.funIdeaAssignedTo?.value || null,
     updated_at: new Date().toISOString()
   };
   const id = els.funIdeaId?.value;
@@ -1765,6 +1784,7 @@ function editFunIdea(id) {
   if (els.funIdeaPlayType) els.funIdeaPlayType.value = i.play_type || 'private';
   if (els.funIdeaStatus) els.funIdeaStatus.value = i.status || 'planned';
   if (els.funIdeaVisibility) els.funIdeaVisibility.value = i.visibility || 'shared';
+  populateFunAssigneeSelect(i.assigned_to || '');
   els.funIdeaTitle?.focus();
 }
 async function deleteFunIdea(id) {

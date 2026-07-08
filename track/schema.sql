@@ -347,6 +347,7 @@ create table if not exists public.itinerary_must_do_items (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
   created_by uuid not null references auth.users(id) on delete cascade,
+  assigned_to uuid references auth.users(id) on delete set null,
   title text not null,
   notes text default '',
   location text default '',
@@ -488,6 +489,7 @@ create table if not exists public.trip_fun_ideas (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
   created_by uuid not null references auth.users(id) on delete cascade,
+  assigned_to uuid references auth.users(id) on delete set null,
   title text not null,
   description text default '',
   play_type text not null default 'private' check (play_type in ('private','public')),
@@ -496,6 +498,9 @@ create table if not exists public.trip_fun_ideas (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+
+alter table public.trip_fun_ideas add column if not exists assigned_to uuid references auth.users(id) on delete set null;
 
 alter table public.trip_fun_permissions enable row level security;
 alter table public.trip_fun_ideas enable row level security;
