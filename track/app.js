@@ -80,12 +80,21 @@ function routeLocationsForItem(item) {
   const to = (item.to_location || '').trim();
   const loc = (item.location || '').trim();
   const type = String(item.item_type || '').toLowerCase();
+  const title = String(item.title || '').toLowerCase();
   const points = [];
+
+  // Point-to-point cards are the backbone of the smart map.
+  // Important: older events often stored the destination in `location` before
+  // the dedicated `to_location` field existed. Treat `location` as the
+  // destination fallback so a Drive card can route from home -> airport.
   if (isPointToPointType(item)) {
+    const destination = to || loc;
     if (from) points.push({ query: from, pointKind: 'from', item, behavior, label: pointLabelForItem(item, 'from') });
-    if (to) points.push({ query: to, pointKind: 'to', item, behavior, label: pointLabelForItem(item, 'to') });
+    if (destination) points.push({ query: destination, pointKind: 'to', item, behavior, label: pointLabelForItem(item, 'to') });
     if (!points.length && loc) points.push({ query: loc, pointKind: 'location', item, behavior, label: pointLabelForItem(item, 'location') });
-    if (type === 'flight' || travelOnlyTypes.has(type)) points.forEach(p => p.behavior = { ...p.behavior, routable: false, kind: 'travel' });
+
+    const flightLike = type === 'flight' || travelOnlyTypes.has(type) || /\bflight\b|airline|terminal|depart|arrival|arrive/.test(title);
+    if (flightLike) points.forEach(p => p.behavior = { ...p.behavior, routable: false, kind: 'travel', pinClass: 'pin-travel' });
     return points;
   }
   if (loc) points.push({ query: loc, pointKind: 'location', item, behavior, label: pointLabelForItem(item, 'location') });
@@ -972,7 +981,8 @@ function renderItem(item, isTimed = false) {
   tpl.querySelector('h3').textContent = item.title;
   card.classList.add(`type-${String(item.item_type || 'event').toLowerCase()}`);
   const meta = tpl.querySelector('.item-meta');
-  const routeText = item.from_location && item.to_location ? `${shortLocationLabel(item.from_location)} → ${shortLocationLabel(item.to_location)}` : '';
+  const routeDest = item.to_location || (isPointToPointType(item) ? item.location : '');
+  const routeText = item.from_location && routeDest ? `${shortLocationLabel(item.from_location)} → ${shortLocationLabel(routeDest)}` : '';
   const displayLocation = routeText || shortLocationLabel(itemMapLocation(item));
   const mapQuery = itemMapLocation(item);
   const budget = Number(item.budget || 0);
@@ -995,9 +1005,10 @@ function renderItem(item, isTimed = false) {
   if (rainText) rainText.textContent = item.rain_plan || 'No rain backup added yet. Tap Edit rain plan to add an indoor option, alternate time, or weather note.';
   if (item.rain_plan) card.classList.add('has-rain-plan');
   const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const lockBtn = tpl.querySelector('.lock-toggle'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain'); const resetRainBtn = tpl.querySelector('.reset-rain');
-  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit() || locked; if (editRainBtn) editRainBtn.disabled = !canEdit() || locked; if (resetRainBtn) resetRainBtn.disabled = !canEdit() || locked; if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒 Unlock' : '🔓 Lock'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; }
+  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit() || locked; if (editRainBtn) editRainBtn.disabled = !canEdit() || locked; if (resetRainBtn) resetRainBtn.disabled = !canEdit() || locked; if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒' : '🔓'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; lockBtn.setAttribute('aria-label', locked ? 'Unlock this card' : 'Lock this card'); }
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
   lockBtn?.addEventListener('click', () => toggleItemLock(item));
+  if (rainBtn) { rainBtn.textContent = item.rain_plan ? '☔' : '☔ +'; rainBtn.title = item.rain_plan ? 'View rain plan' : 'Add rain plan'; rainBtn.setAttribute('aria-label', item.rain_plan ? 'View rain plan' : 'Add rain plan'); }
   rainBtn?.addEventListener('click', () => handleRainButton(card, item));
   rainClose?.addEventListener('click', () => card.classList.remove('rain-flipped'));
   editRainBtn?.addEventListener('click', () => openRainEditor(item));
