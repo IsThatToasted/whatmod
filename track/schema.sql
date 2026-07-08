@@ -438,3 +438,34 @@ alter table public.itinerary_items
   add column if not exists locked_at timestamptz;
 
 create index if not exists itinerary_items_locked_idx on public.itinerary_items(trip_id, locked);
+
+
+-- v33 Shared packing progress counts only. Item labels remain private by RLS.
+create or replace function public.get_itinerary_packing_progress(target_trip_id uuid)
+returns table (
+  user_id uuid,
+  display_name text,
+  avatar_url text,
+  packed_count bigint,
+  total_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    m.user_id,
+    coalesce(m.display_name, 'Traveler') as display_name,
+    coalesce(m.avatar_url, '') as avatar_url,
+    count(p.id) filter (where p.packed) as packed_count,
+    count(p.id) as total_count
+  from public.itinerary_trip_members m
+  left join public.itinerary_packing_items p
+    on p.trip_id = m.trip_id and p.user_id = m.user_id
+  where m.trip_id = target_trip_id
+    and public.user_can_view_trip(target_trip_id)
+  group by m.user_id, m.display_name, m.avatar_url, m.created_at
+  order by m.created_at;
+$$;
+
+grant execute on function public.get_itinerary_packing_progress(uuid) to authenticated;

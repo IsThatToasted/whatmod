@@ -1391,3 +1391,16 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
   .item-card.timeline-item .item-actions{grid-column:1!important;grid-row:auto!important;justify-self:stretch!important;display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;width:100%!important;gap:7px!important;}
   .item-card.timeline-item .item-actions button{width:100%!important;min-width:0!important;height:40px!important;min-height:40px!important;}
 }
+
+
+/* v33: shared packing progress + mobile timeline drag safety */
+.packing-progress-list{display:flex;flex-wrap:wrap;gap:.5rem;margin:.7rem 0 .85rem}
+.packing-progress-pill{display:inline-flex;align-items:center;gap:.45rem;padding:.38rem .55rem;border:1px solid rgba(111,67,245,.14);border-radius:999px;background:rgba(255,255,255,.78);box-shadow:0 8px 18px rgba(42,54,99,.06);font-weight:850;color:var(--ink)}
+.progress-avatar{width:24px;height:24px;border-radius:999px;display:grid;place-items:center;overflow:hidden;background:#f0eaff;color:#7044f5;font-size:.78rem;flex:0 0 auto}
+.progress-avatar img{width:100%;height:100%;object-fit:cover;display:block}.progress-name{max-width:8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.packing-progress-pill strong{color:#7044f5}
+.mobile-drag-note{display:none;color:var(--muted);font-size:.82rem;margin-top:.3rem}
+@media (pointer:coarse){
+  .timeline-item{touch-action:pan-y;}
+  .timeline-item .resize-start,.timeline-item .resize-end{display:none!important;}
+  .timeline-board{touch-action:pan-y;}
+}

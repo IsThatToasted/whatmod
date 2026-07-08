@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=32" />
+  <link rel="stylesheet" href="./styles.css?v=33" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -208,7 +208,8 @@
 
             <section class="packing-panel glass" id="packingPanel">
               <div class="packing-head"><h2>My Packing List</h2><span id="packingCount">0/0</span></div>
-              <p class="helper-text compact-help">Personal to each traveler. Editors can update their own list.</p>
+              <p class="helper-text compact-help">Your item names stay private. Everyone only sees packed counts.</p>
+              <div id="packingProgressList" class="packing-progress-list"></div>
               <div class="progress"><span id="packingProgress"></span></div>
               <div id="packingList" class="packing-list"></div>
               <form id="packingForm" class="packing-form">

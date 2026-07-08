@@ -17,7 +17,7 @@ const els = {
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
-  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
+  packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingProgressList: document.getElementById('packingProgressList'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
   memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
@@ -101,6 +101,9 @@ function googleFirstNameFromMeta(meta = {}, fallback = 'Traveler') {
 function currentUserFirstName() {
   return googleFirstNameFromMeta(session?.user?.user_metadata || {}, session?.user?.email?.split('@')[0] || 'You');
 }
+function isCoarsePointerDevice() {
+  return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+}
 function memberRecord(userId) {
   return members.find(m => m.user_id === userId);
 }
@@ -135,7 +138,7 @@ function syncRouteFieldVisibility() {
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], mustDoItems = [], memoryItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '';
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '';
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -693,7 +696,7 @@ async function loadTrips() {
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
 }
-async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]); await loadWeatherForTrip(); setStatus('Ready'); render(); }
+async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]); await loadPackingProgress(); await loadWeatherForTrip(); setStatus('Ready'); render(); }
 async function loadItems() {
   if (!activeTripId) return;
   const { data, error } = await client.from('itinerary_items').select('*').eq('trip_id', activeTripId).order('item_date').order('start_time');
@@ -722,6 +725,55 @@ async function syncCurrentMemberProfile() {
     .select()
     .single();
   if (!error && data) members = members.map(m => m.id === data.id ? data : m);
+}
+
+
+async function loadPackingProgress() {
+  packingProgressByUser = [];
+  if (!activeTripId || !session?.user?.id) return;
+  try {
+    const { data, error } = await client.rpc('get_itinerary_packing_progress', { target_trip_id: activeTripId });
+    if (error) throw error;
+    packingProgressByUser = (data || []).map(row => ({
+      user_id: row.user_id,
+      display_name: row.display_name || memberLabel(row.user_id),
+      avatar_url: row.avatar_url || '',
+      packed_count: Number(row.packed_count || 0),
+      total_count: Number(row.total_count || 0)
+    }));
+  } catch (error) {
+    // Older schema fallback: show the current user's progress only until schema.sql is rerun.
+    const mineTotal = packingItems.length;
+    const mineDone = packingItems.filter(i => i.packed).length;
+    packingProgressByUser = [{ user_id: session.user.id, display_name: currentUserFirstName(), avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || '', packed_count: mineDone, total_count: mineTotal }];
+    console.warn('Packing progress helper unavailable. Run schema.sql to share progress counts only.', error);
+  }
+}
+
+
+function syncLocalPackingProgress() {
+  if (!session?.user?.id) return;
+  const mine = { user_id: session.user.id, display_name: currentUserFirstName(), avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || '', packed_count: packingItems.filter(i => i.packed).length, total_count: packingItems.length };
+  const idx = packingProgressByUser.findIndex(r => r.user_id === session.user.id);
+  if (idx >= 0) packingProgressByUser[idx] = { ...packingProgressByUser[idx], ...mine };
+  else packingProgressByUser.unshift(mine);
+}
+
+function renderPackingProgressSummary() {
+  if (!els.packingProgressList) return;
+  const rows = packingProgressByUser.length ? packingProgressByUser : [{ user_id: session?.user?.id, display_name: currentUserFirstName(), avatar_url: session?.user?.user_metadata?.avatar_url || '', packed_count: packingItems.filter(i => i.packed).length, total_count: packingItems.length }];
+  els.packingProgressList.innerHTML = rows.map(row => {
+    const total = Number(row.total_count || 0);
+    const done = Number(row.packed_count || 0);
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const name = escapeHtml((row.display_name || memberLabel(row.user_id)).split(/\s+/)[0] || 'Traveler');
+    const avatar = row.avatar_url ? `<img src="${escapeHtml(row.avatar_url)}" alt="" />` : `<span>${escapeHtml(name.slice(0,1).toUpperCase())}</span>`;
+    return `<div class="packing-progress-pill" title="${done}/${total} packed">
+      <span class="progress-avatar">${avatar}</span>
+      <span class="progress-name">${name}</span>
+      <strong>${done}/${total}</strong>
+    </div>`;
+  }).join('');
 }
 
 async function loadPackingItems() {
@@ -989,7 +1041,7 @@ function renderItem(item, isTimed = false) {
   card.dataset.id = item.id;
   const locked = isLockedItem(item);
   if (locked) card.classList.add('is-locked');
-  card.draggable = canEdit() && !locked;
+  card.draggable = canEdit() && !locked && !isCoarsePointerDevice();
   const start = itemStartMinutes(item), end = itemEndMinutes(item);
   if (isTimed) {
     card.classList.add('timeline-item');
@@ -1123,6 +1175,7 @@ async function shiftItemBy(id, delta) {
 function startTimelinePointer(e, item, card) {
   const resizeStart = e.target.closest('.resize-start');
   const resizeEnd = e.target.closest('.resize-end');
+  if (e.pointerType === 'touch' || (isCoarsePointerDevice() && e.pointerType !== 'mouse')) return;
   if (!canEdit() || isLockedItem(item) || (!resizeStart && !resizeEnd && isInteractiveTarget(e.target))) return;
   const board = card.closest('.timeline-board'); if (!board) return;
   e.preventDefault();
@@ -1179,6 +1232,7 @@ function startTimelinePointer(e, item, card) {
 
 function renderPackingList() {
   if (!els.packingList) return;
+  syncLocalPackingProgress();
   const editable = canEdit();
   const total = packingItems.length;
   const done = packingItems.filter(i => i.packed).length;
@@ -1187,6 +1241,7 @@ function renderPackingList() {
   if (els.packingInput) els.packingInput.disabled = !editable;
   if (els.addPackingBtn) els.addPackingBtn.disabled = !editable;
   if (els.resetPackingBtn) els.resetPackingBtn.disabled = !editable;
+  renderPackingProgressSummary();
   if (!total) {
     els.packingList.innerHTML = `<div class="packing-empty">No packing items yet.${editable ? ' Add your first item below.' : ''}</div>`;
     return;
@@ -1218,7 +1273,7 @@ async function addPackingItem(label) {
     console.warn('Packing item saved locally because Supabase table is unavailable.', error);
     return;
   }
-  packingItems.push(normalizePackingItem(data)); renderPackingList();
+  packingItems.push(normalizePackingItem(data)); await loadPackingProgress(); renderPackingList();
 }
 
 async function updatePackingItem(id, patch) {
@@ -1249,6 +1304,7 @@ async function resetPackingItems() {
   }
   packingItems = [];
   await seedStarterPackingItems();
+  await loadPackingProgress();
   renderPackingList();
 }
 
