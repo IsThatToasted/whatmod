@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=28" />
+  <link rel="stylesheet" href="./styles.css?v=32" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -65,6 +65,27 @@
 
         <section id="appArea" class="hidden dashboard-grid">
           <div class="content-column">
+            <section class="home-dashboard glass" id="homeDashboard">
+              <div class="home-orb orb-one"></div>
+              <div class="home-orb orb-two"></div>
+              <div class="home-main">
+                <p class="home-greeting" id="homeGreeting">☀ Good Morning, Traveler</p>
+                <div class="home-countdown"><strong id="homeDaysLeft">0</strong><span id="homeCountdownLabel">days until your trip</span></div>
+                <p class="home-countdown-detail" id="homeCountdownDetail">Add trip dates to start the countdown.</p>
+                <div class="home-progress"><span id="homeProgressBar"></span></div>
+                <button id="homeContinueBtn" type="button" class="home-continue">Continue Planning →</button>
+              </div>
+              <div class="home-planning-card">
+                <h3>Today's Planning</h3>
+                <ul>
+                  <li><span>⭐</span><strong id="homeMustDoLine">0 Must Dos</strong></li>
+                  <li><span>💰</span><strong id="homeBudgetLine">Budget 0%</strong></li>
+                  <li><span>👥</span><strong id="homeActivityLine">No recent activity yet</strong></li>
+                  <li><span>🌤️</span><strong id="homeWeatherLine">Weather loading</strong></li>
+                </ul>
+              </div>
+            </section>
+
             <section class="toolbar glass">
               <div>
                 <label for="tripSelect">Trip</label>
@@ -100,7 +121,7 @@
                   <div id="destinationMapLinks" class="map-links hidden"></div>
                 </div>
               </div>
-              <div class="days-left-card"><strong id="heroDaysLeft">0</strong><span>Days left</span></div>
+              <div class="days-left-card"><strong id="heroDaysLeft">0</strong><span id="heroCountdownLabel">Days left</span><em id="heroCountdownDetail">Add trip dates</em></div>
               <button id="viewItineraryBtn" class="hero-button" type="button">View Itinerary</button>
             </section>
 
@@ -140,6 +161,7 @@
                 <a id="dailyDirectionsLink" class="ghost-btn map-directions hidden" target="_blank" rel="noopener">Open directions</a>
               </div>
               <p id="dailyMapHelp" class="helper-text compact-help">Add locations to timed plans to see today’s pins and route.</p>
+              <div id="dailyMapLegend" class="daily-map-legend hidden"><span><i class="legend-dot drive"></i>Driving route</span><span><i class="legend-dot travel"></i>Flights / transit separate</span><label><input id="dailyShowTravel" type="checkbox" checked /> Show travel events</label></div>
               <div id="dailyRouteMap" class="daily-route-map" aria-label="Map of selected day route"></div>
               <div id="dailyMapStops" class="daily-map-stops"></div>
             </section>
@@ -271,10 +293,15 @@
       <label class="full">Title<input id="itemTitle" placeholder="Dinner, hotel check-in, drive block..." /></label>
       <div class="dialog-grid">
         <label>Date<input id="itemDate" type="date" /></label>
-        <label>Type<select id="itemType"><option value="event">Event</option><option value="drive">Drive block</option><option value="food">Food</option><option value="hotel">Hotel</option><option value="gas">Gas stop</option><option value="todo">To-do</option></select></label>
+        <label>Type<select id="itemType"><option value="event">Event</option><option value="sightseeing">Sightseeing</option><option value="activity">Activity</option><option value="flight">Flight</option><option value="train">Train</option><option value="ferry">Ferry / Boat</option><option value="cruise">Cruise</option><option value="drive">Drive block</option><option value="transport">Transit / Pickup</option><option value="food">Food</option><option value="hotel">Hotel / Check-in</option><option value="gas">Gas stop</option><option value="shopping">Shopping</option><option value="rest">Rest / Downtime</option><option value="toddler">Toddler-friendly</option><option value="todo">To-do / Reminder</option></select></label>
         <label>Start time<input id="itemTime" type="time" /></label>
         <label>End time<input id="itemEndTime" type="time" /></label>
         <label>Budget $<input id="itemBudget" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label>Assigned to<select id="itemAssignedTo"><option value="">Everyone / shared</option></select></label>
+        <label class="route-field">From<input id="itemFromLocation" class="location-input" placeholder="Starting address for drives/pickups" autocomplete="off" /></label>
+        <label class="route-field">To<input id="itemToLocation" class="location-input" placeholder="Destination address" autocomplete="off" /></label>
+        <div id="itemFromSuggestions" class="suggestions hidden"></div>
+        <div id="itemToSuggestions" class="suggestions hidden"></div>
         <label>Location<input id="itemLocation" class="location-input" placeholder="Address / location" autocomplete="off" /></label>
         <div id="itemLocationSuggestions" class="suggestions hidden"></div>
         <div id="itemLocationMapLinks" class="map-links hidden"></div>
@@ -291,7 +318,7 @@
         <button class="resize-handle resize-start" type="button" aria-label="Adjust start time"></button>
         <div class="time-chip"></div>
         <div class="item-main"><div class="item-type"></div><div><h3></h3><p class="item-meta"></p><p class="item-notes"></p><p class="overlap-warning hidden"></p></div></div>
-        <div class="item-actions"><button class="shift earlier ghost-btn" type="button">-30</button><button class="shift later ghost-btn" type="button">+30</button><button class="rain-toggle ghost-btn" type="button">☔ Rain</button><button class="edit ghost-btn" type="button">Edit</button><button class="delete danger ghost-btn" type="button">Delete</button></div>
+        <div class="item-actions"><button class="shift earlier ghost-btn" type="button">-30</button><button class="shift later ghost-btn" type="button">+30</button><button class="lock-toggle ghost-btn" type="button" title="Lock this card">🔓 Lock</button><button class="rain-toggle ghost-btn" type="button">☔ Rain</button><button class="edit ghost-btn" type="button">Edit</button><button class="delete danger ghost-btn" type="button">Delete</button></div>
         <button class="resize-handle resize-end" type="button" aria-label="Adjust end time"></button>
       </div>
       <div class="card-face rain-back">
@@ -303,6 +330,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=28"></script>
+  <script src="./app.js?v=32"></script>
 </body>
 </html>

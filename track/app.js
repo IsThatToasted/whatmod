@@ -12,19 +12,113 @@ const els = {
   tripTitle: document.getElementById('tripTitle'), startDate: document.getElementById('startDate'), endDate: document.getElementById('endDate'), destination: document.getElementById('destination'), tripNotes: document.getElementById('tripNotes'),
   totalBudget: document.getElementById('totalBudget'), stopCount: document.getElementById('stopCount'), dayCount: document.getElementById('dayCount'), plannerTitle: document.getElementById('plannerTitle'), dayTabs: document.getElementById('dayTabs'), timeline: document.getElementById('timeline'),
   addAnyItemBtn: document.getElementById('addAnyItemBtn'), itemDialog: document.getElementById('itemDialog'), itemDialogTitle: document.getElementById('itemDialogTitle'), editingItemId: document.getElementById('editingItemId'),
-  itemTitle: document.getElementById('itemTitle'), itemDate: document.getElementById('itemDate'), itemTime: document.getElementById('itemTime'), itemEndTime: document.getElementById('itemEndTime'), itemType: document.getElementById('itemType'), itemBudget: document.getElementById('itemBudget'), itemLocation: document.getElementById('itemLocation'), itemNotes: document.getElementById('itemNotes'), itemRainPlan: document.getElementById('itemRainPlan'), saveItemBtn: document.getElementById('saveItemBtn'),
+  itemTitle: document.getElementById('itemTitle'), itemDate: document.getElementById('itemDate'), itemTime: document.getElementById('itemTime'), itemEndTime: document.getElementById('itemEndTime'), itemType: document.getElementById('itemType'), itemBudget: document.getElementById('itemBudget'), itemAssignedTo: document.getElementById('itemAssignedTo'), itemFromLocation: document.getElementById('itemFromLocation'), itemToLocation: document.getElementById('itemToLocation'), itemLocation: document.getElementById('itemLocation'), itemNotes: document.getElementById('itemNotes'), itemRainPlan: document.getElementById('itemRainPlan'), saveItemBtn: document.getElementById('saveItemBtn'),
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
-  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), heroDaysLeft: document.getElementById('heroDaysLeft'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'),
+  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
   memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
-const typeIcon = { event: '🎟️', drive: '🚗', food: '🍽️', hotel: '🏨', gas: '⛽', todo: '✅' };
-let session = null, trips = [], items = [], members = [], packingItems = [], mustDoItems = [], memoryItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0;
+const typeIcon = { event: '🎟️', sightseeing: '📸', activity: '🎡', flight: '✈️', train: '🚆', ferry: '⛴️', cruise: '🚢', drive: '🚗', transport: '🚕', food: '🍽️', hotel: '🏨', gas: '⛽', shopping: '🛍️', rest: '😴', toddler: '🧸', todo: '✅' };
+const travelOnlyTypes = new Set(['flight', 'train', 'ferry', 'cruise']);
+const ignoreRouteTypes = new Set(['flight', 'train', 'ferry', 'cruise', 'todo', 'rest']);
+const optionalRouteTypes = new Set(['toddler']);
+function routeBehaviorForItem(item) {
+  const type = String(item?.item_type || 'event').toLowerCase();
+  const haystack = `${item?.title || ''} ${item?.location || ''}`.toLowerCase();
+  const airportish = /\b([a-z]{3})\b/.test(haystack) && /airport|terminal|flight|airline|arriv|depart|\bphl\b|\bmke\b|\bord\b|\bmdw\b|\bjfk\b|\blga\b|\bewr\b/.test(haystack);
+  if (type === 'flight' || airportish && /flight|arriv|depart|terminal|airline/.test(haystack)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Flight / airport' };
+  if (travelOnlyTypes.has(type)) return { kind: 'travel', routable: false, pinClass: 'pin-travel', label: 'Travel event' };
+  if (ignoreRouteTypes.has(type)) return { kind: 'note', routable: false, pinClass: 'pin-note', label: 'Shown only' };
+  if (type === 'hotel') return { kind: 'hotel', routable: true, pinClass: 'pin-hotel', label: 'Lodging' };
+  if (type === 'drive' || type === 'transport' || type === 'gas') return { kind: 'drive', routable: true, pinClass: 'pin-drive', label: 'Driving stop' };
+  return { kind: 'stop', routable: true, pinClass: 'pin-stop', label: 'Driving stop' };
+}
+function mapPinIcon(point, index) {
+  const icon = typeIcon[point.item.item_type] || '📍';
+  const number = point.behavior.routable ? String(index) : icon;
+  return L.divIcon({
+    className: `smart-pin ${point.behavior.pinClass}`,
+    html: `<span>${escapeHtml(number)}</span>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+    popupAnchor: [0, -16]
+  });
+}
+const softOverlapTypes = new Set(['drive', 'flight', 'transport', 'hotel', 'gas', 'rest', 'todo']);
+function shouldFlagOverlap(item, other) {
+  if (!item || !other) return false;
+  const a = String(item.item_type || 'event');
+  const b = String(other.item_type || 'event');
+  // Travel/logistics blocks commonly overlap with the person being picked up, flights, check-ins, or notes.
+  // Keep them visible on the route/timeline, but don't alarm the user unless both are real scheduled activities.
+  if (softOverlapTypes.has(a) || softOverlapTypes.has(b)) return false;
+  return true;
+}
+
+function isPointToPointType(item) {
+  const type = String(item?.item_type || '').toLowerCase();
+  return ['drive','transport','flight','train','ferry','cruise'].includes(type);
+}
+function itemMapLocation(item) {
+  if (!item) return '';
+  if (isPointToPointType(item)) return item.to_location || item.location || item.from_location || '';
+  return item.location || item.to_location || item.from_location || '';
+}
+function pointLabelForItem(item, kind) {
+  if (kind === 'from') return `${item.title || 'Stop'} start`;
+  if (kind === 'to') return `${item.title || 'Stop'} destination`;
+  return item.title || 'Stop';
+}
+function routeLocationsForItem(item) {
+  const behavior = routeBehaviorForItem(item);
+  const from = (item.from_location || '').trim();
+  const to = (item.to_location || '').trim();
+  const loc = (item.location || '').trim();
+  const type = String(item.item_type || '').toLowerCase();
+  const points = [];
+  if (isPointToPointType(item)) {
+    if (from) points.push({ query: from, pointKind: 'from', item, behavior, label: pointLabelForItem(item, 'from') });
+    if (to) points.push({ query: to, pointKind: 'to', item, behavior, label: pointLabelForItem(item, 'to') });
+    if (!points.length && loc) points.push({ query: loc, pointKind: 'location', item, behavior, label: pointLabelForItem(item, 'location') });
+    if (type === 'flight' || travelOnlyTypes.has(type)) points.forEach(p => p.behavior = { ...p.behavior, routable: false, kind: 'travel' });
+    return points;
+  }
+  if (loc) points.push({ query: loc, pointKind: 'location', item, behavior, label: pointLabelForItem(item, 'location') });
+  return points;
+}
+function memberLabel(userId) {
+  if (!userId) return 'Everyone';
+  if (userId === session?.user?.id) return session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'You';
+  const suffix = String(userId).slice(0, 4).toUpperCase();
+  return `Traveler ${suffix}`;
+}
+function memberAvatarHtml(userId) {
+  if (!userId) return '<span class="assignee-chip everyone">👥 Everyone</span>';
+  const label = memberLabel(userId);
+  const pic = userId === session?.user?.id ? session.user.user_metadata?.avatar_url : '';
+  return `<span class="assignee-chip">${pic ? `<img src="${escapeHtml(pic)}" alt="">` : `<em>${escapeHtml(label.slice(0,1).toUpperCase())}</em>`}<span>${escapeHtml(label)}</span></span>`;
+}
+function populateAssigneeSelect(selected = '') {
+  if (!els.itemAssignedTo) return;
+  const seen = new Set();
+  const opts = ['<option value="">Everyone / shared</option>'];
+  const ids = [session?.user?.id, ...members.map(m => m.user_id)].filter(Boolean);
+  ids.forEach(id => { if (seen.has(id)) return; seen.add(id); opts.push(`<option value="${escapeHtml(id)}">${escapeHtml(id === session?.user?.id ? 'Me' : memberLabel(id))}</option>`); });
+  els.itemAssignedTo.innerHTML = opts.join('');
+  els.itemAssignedTo.value = selected || '';
+}
+function syncRouteFieldVisibility() {
+  const pointToPoint = isPointToPointType({ item_type: els.itemType?.value });
+  document.querySelectorAll('.route-field').forEach(el => el.classList.toggle('hidden', !pointToPoint));
+  if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
+  else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
+}
+let session = null, trips = [], items = [], members = [], packingItems = [], mustDoItems = [], memoryItems = [], activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '';
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -35,6 +129,117 @@ function fmtDate(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefi
 function fmtShortDate(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); }
 function fmtLongDate(d) { return new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }); }
 function fmtTime(t) { if (!t) return ''; const [h, m] = t.split(':').map(Number); const d = new Date(); d.setHours(h, m || 0, 0, 0); return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
+
+function plural(n, word) { return `${n} ${word}${n === 1 ? '' : 's'}`; }
+function formatCountdownParts(ms) {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+function updateTripCountdown() {
+  const t = currentTrip();
+  if (!els.heroDaysLeft) return;
+  if (!t?.start_date || !t?.end_date) {
+    els.heroDaysLeft.textContent = '0';
+    if (els.heroCountdownLabel) els.heroCountdownLabel.textContent = 'Days left';
+    if (els.heroCountdownDetail) els.heroCountdownDetail.textContent = 'Add trip dates';
+    return;
+  }
+  const now = new Date();
+  const start = new Date(`${t.start_date}T00:00:00`);
+  const end = new Date(`${t.end_date}T23:59:59`);
+  const days = dateRange(t.start_date, t.end_date);
+  if (now < start) {
+    const ms = start - now;
+    const calendarDays = Math.max(0, Math.ceil(ms / 86400000));
+    els.heroDaysLeft.textContent = calendarDays;
+    if (els.heroCountdownLabel) els.heroCountdownLabel.textContent = calendarDays === 1 ? 'Day left' : 'Days left';
+    if (els.heroCountdownDetail) els.heroCountdownDetail.textContent = `${formatCountdownParts(ms)} until trip`;
+  } else if (now <= end) {
+    const tripDay = Math.min(days.length, Math.max(1, Math.floor((now - start) / 86400000) + 1));
+    const msLeft = end - now;
+    els.heroDaysLeft.textContent = `Day ${tripDay}`;
+    if (els.heroCountdownLabel) els.heroCountdownLabel.textContent = `of ${days.length || 1}`;
+    if (els.heroCountdownDetail) els.heroCountdownDetail.textContent = `${formatCountdownParts(msLeft)} left in trip`;
+  } else {
+    els.heroDaysLeft.textContent = '✓';
+    if (els.heroCountdownLabel) els.heroCountdownLabel.textContent = 'Trip complete';
+    if (els.heroCountdownDetail) els.heroCountdownDetail.textContent = 'Memories ready';
+  }
+}
+
+
+
+// Weather provider layer: Open-Meteo now, easy to swap later.
+const WEATHER_FORECAST_LIMIT_DAYS = 16;
+const WEATHER_CODES = {
+  0:['☀️','Clear'],1:['🌤️','Mostly clear'],2:['⛅','Partly cloudy'],3:['☁️','Cloudy'],
+  45:['🌫️','Fog'],48:['🌫️','Fog'],51:['🌦️','Drizzle'],53:['🌦️','Drizzle'],55:['🌦️','Drizzle'],
+  61:['🌧️','Rain'],63:['🌧️','Rain'],65:['🌧️','Heavy rain'],66:['🌧️','Freezing rain'],67:['🌧️','Freezing rain'],
+  71:['🌨️','Snow'],73:['🌨️','Snow'],75:['❄️','Heavy snow'],77:['❄️','Snow grains'],
+  80:['🌦️','Rain showers'],81:['🌧️','Rain showers'],82:['⛈️','Heavy showers'],95:['⛈️','Thunderstorm'],96:['⛈️','Storm'],99:['⛈️','Storm']
+};
+function weatherCodeInfo(code){ return WEATHER_CODES[Number(code)] || ['🌡️','Forecast']; }
+function daysUntilISO(dateISO){ const d = new Date(`${dateISO}T00:00:00`); const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); return Math.ceil((d - today) / 86400000); }
+function weatherCacheKey(trip){ return `track-weather-v2:${trip?.destination || ''}:${trip?.start_date || ''}:${trip?.end_date || ''}`; }
+function weatherChipHtml(day){
+  const w = weatherByDate[day];
+  if (!w) return '<small class="weather-chip muted">🌤️ soon</small>';
+  const [icon,label] = weatherCodeInfo(w.code);
+  const rain = Number(w.precip || 0);
+  return `<small class="weather-chip ${rain >= 45 ? 'rainy' : ''}" title="${escapeHtml(label)} • ${Math.round(w.min)}°-${Math.round(w.max)}° • ${Math.round(rain)}% rain">${icon} ${Math.round(w.max)}°</small>`;
+}
+function dayWeatherSummaryHtml(day){
+  const w = weatherByDate[day];
+  if (!w) {
+    return `<div class="day-weather-card pending"><strong>🌤️ Live weather</strong><span>${escapeHtml(weatherStatus || 'Forecast appears here when this day is close enough.')}</span></div>`;
+  }
+  const [icon,label] = weatherCodeInfo(w.code);
+  const rain = Number(w.precip || 0);
+  return `<div class="day-weather-card ${rain >= 45 ? 'rainy' : ''}"><strong>${icon} ${escapeHtml(label)}</strong><span>${Math.round(w.min)}° / ${Math.round(w.max)}° • ${Math.round(rain)}% rain chance${rain >= 45 ? ' • Check rain plans' : ''}</span></div>`;
+}
+async function geocodeOne(query){
+  const clean = String(query || '').trim();
+  if (!clean) return null;
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(clean)}`;
+  const data = await fetch(url, { headers: { Accept: 'application/json' }}).then(r=>r.json());
+  const row = Array.isArray(data) ? data[0] : null;
+  return row ? { lat: Number(row.lat), lon: Number(row.lon) } : null;
+}
+async function loadWeatherForTrip(force=false){
+  const t = currentTrip();
+  weatherByDate = {}; weatherStatus = '';
+  if (!t?.start_date || !t?.end_date || !t?.destination) { weatherStatus = 'Add a destination to enable weather.'; return; }
+  const first = daysUntilISO(t.start_date), last = daysUntilISO(t.end_date);
+  if (first > WEATHER_FORECAST_LIMIT_DAYS || last < -1) { weatherStatus = `Forecast unlocks about ${WEATHER_FORECAST_LIMIT_DAYS} days before the trip.`; return; }
+  const key = weatherCacheKey(t);
+  if (!force) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || 'null');
+      if (cached && Date.now() - cached.at < 1000 * 60 * 45) { weatherByDate = cached.byDate || {}; weatherStatus = cached.status || 'Weather cached'; return; }
+    } catch {}
+  }
+  weatherStatus = 'Loading live weather...'; renderDayTabs(); renderTimeline();
+  try {
+    const geo = await geocodeOne(t.destination);
+    if (!geo) { weatherStatus = 'Could not find destination weather.'; return; }
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=auto&start_date=${encodeURIComponent(t.start_date)}&end_date=${encodeURIComponent(t.end_date)}`;
+    const data = await fetch(url).then(r=>r.json());
+    const d = data.daily || {};
+    const byDate = {};
+    (d.time || []).forEach((day, idx)=>{ byDate[day] = { code: d.weather_code?.[idx], max: d.temperature_2m_max?.[idx], min: d.temperature_2m_min?.[idx], precip: d.precipitation_probability_max?.[idx] ?? 0 }; });
+    weatherByDate = byDate;
+    weatherStatus = Object.keys(byDate).length ? 'Live forecast from Open-Meteo.' : 'Weather not available for this date yet.';
+    localStorage.setItem(key, JSON.stringify({ at: Date.now(), byDate: weatherByDate, status: weatherStatus }));
+  } catch (e) {
+    weatherStatus = 'Weather unavailable right now.';
+  }
+}
+
 function escapeHtml(str) { return String(str || '').replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
 function isMissingRainPlanColumn(error) { return /rain_plan|schema cache|column/i.test(String(error?.message || '')); }
 function isMissingSharedTable(error) { return /itinerary_must_do_items|itinerary_memories|schema cache|relation|does not exist/i.test(String(error?.message || '')); }
@@ -60,6 +265,8 @@ function currentTrip() { return trips.find(t => t.id === activeTripId); }
 function currentMembership() { return members.find(m => m.trip_id === activeTripId && m.user_id === session?.user?.id); }
 function canEdit() { return ['owner', 'editor'].includes(currentMembership()?.role); }
 function canDeleteTrip() { return currentMembership()?.role === 'owner'; }
+function isLockedItem(item) { return !!(item?.locked || item?.locked_at); }
+function canEditItem(item) { return canEdit() && !isLockedItem(item); }
 
 
 const DAY_START_MIN = 4 * 60;
@@ -93,7 +300,27 @@ function findOverlap(item, patch = {}) {
   const end = timeToMinutes(patch.end_time ?? item.end_time);
   const day = patch.item_date ?? item.item_date;
   if (start === null || end === null || end <= start) return null;
-  return items.find(other => other.id !== item.id && other.item_date === day && timeToMinutes(other.start_time) !== null && timeToMinutes(other.end_time) !== null && start < timeToMinutes(other.end_time) && end > timeToMinutes(other.start_time));
+  return items.find(other => {
+    if (other.id === item.id || other.item_date !== day) return false;
+    const otherStart = timeToMinutes(other.start_time);
+    const otherEnd = timeToMinutes(other.end_time);
+    if (otherStart === null || otherEnd === null) return false;
+    const overlaps = start < otherEnd && end > otherStart;
+    return overlaps && shouldFlagOverlap({ ...item, ...patch }, other);
+  });
+}
+function findSoftOverlap(item) {
+  const start = timeToMinutes(item.start_time);
+  const end = timeToMinutes(item.end_time);
+  if (start === null || end === null || end <= start) return null;
+  return items.find(other => {
+    if (other.id === item.id || other.item_date !== item.item_date) return false;
+    const otherStart = timeToMinutes(other.start_time);
+    const otherEnd = timeToMinutes(other.end_time);
+    if (otherStart === null || otherEnd === null) return false;
+    const overlaps = start < otherEnd && end > otherStart;
+    return overlaps && !shouldFlagOverlap(item, other);
+  });
 }
 function showUndoToast(text, undoAction) {
   lastUndo = undoAction;
@@ -106,6 +333,7 @@ function showUndoToast(text, undoAction) {
 async function updateItemWithUndo(id, patch, label = 'Event updated') {
   const prev = items.find(i => i.id === id);
   if (!prev) return;
+  if (isLockedItem(prev)) return alert('This card is locked. Unlock it first to move or resize.');
   const previousPatch = { item_date: prev.item_date, start_time: prev.start_time, end_time: prev.end_time, sort_order: prev.sort_order };
   await updateItem(id, patch);
   showUndoToast(`${label}${patch.start_time ? ` to ${fmtTime(patch.start_time)}` : ''}`, async () => {
@@ -234,10 +462,10 @@ async function geocodeOne(query) {
   locationCache.set(cacheKey, best);
   return best;
 }
-function selectedDayRouteItems() {
+function selectedDayMapItems() {
   const day = selectedDay || currentTrip()?.start_date || todayISO();
   return items
-    .filter(i => i.item_date === day && i.location && timeToMinutes(i.start_time) !== null)
+    .filter(i => i.item_date === day && timeToMinutes(i.start_time) !== null && (i.location || i.from_location || i.to_location))
     .sort((a,b) => `${a.start_time || '99:99'} ${a.sort_order || 0}`.localeCompare(`${b.start_time || '99:99'} ${b.sort_order || 0}`));
 }
 async function renderDayMap() {
@@ -250,7 +478,8 @@ async function renderDayMap() {
   }
   const seq = ++routeRenderToken;
   const day = selectedDay || currentTrip()?.start_date || todayISO();
-  const dayItems = selectedDayRouteItems();
+  const dayItems = selectedDayMapItems();
+  const showTravel = els.dailyShowTravel ? els.dailyShowTravel.checked !== false : true;
 
   if (els.dailyMapTitle) els.dailyMapTitle.textContent = `Route for ${fmtLongDate(day)}`;
   if (!routeMap) {
@@ -271,6 +500,7 @@ async function renderDayMap() {
   routeMarkers = [];
   if (els.dailyDirectionsLink) els.dailyDirectionsLink.classList.add('hidden');
   if (els.dailyMapStops) els.dailyMapStops.innerHTML = '';
+  if (els.dailyMapLegend) els.dailyMapLegend.classList.toggle('hidden', !dayItems.length);
 
   if (!dayItems.length) {
     if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Add locations to timed plans to see this day’s pins and route.';
@@ -278,12 +508,16 @@ async function renderDayMap() {
     return;
   }
 
-  if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Building this day’s route from scheduled stops…';
+  if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Building this day’s smart route…';
   const points = [];
-  for (const item of dayItems.slice(0, 25)) {
-    const geo = await geocodeOne(item.location);
-    if (seq !== routeRenderToken) return;
-    if (geo && Number.isFinite(geo.lat) && Number.isFinite(geo.lon)) points.push({ item, ...geo });
+  for (const item of dayItems.slice(0, 30)) {
+    const itemPoints = routeLocationsForItem(item);
+    for (const point of itemPoints) {
+      if (!showTravel && point.behavior.kind === 'travel') continue;
+      const geo = await geocodeOne(point.query);
+      if (seq !== routeRenderToken) return;
+      if (geo && Number.isFinite(geo.lat) && Number.isFinite(geo.lon)) points.push({ ...point, ...geo });
+    }
   }
 
   if (!points.length) {
@@ -292,43 +526,55 @@ async function renderDayMap() {
     return;
   }
 
+  const routePoints = points.filter(p => p.behavior.routable);
+  const travelPoints = points.filter(p => !p.behavior.routable);
   const bounds = [];
-  points.forEach((p, idx) => {
+  let routeIndex = 0;
+  points.forEach((p) => {
     bounds.push([p.lat, p.lon]);
-    const marker = L.marker([p.lat, p.lon]).bindPopup(`<strong>${idx + 1}. ${escapeHtml(p.item.title)}</strong><br>${escapeHtml(fmtTime(p.item.start_time))}<br>${escapeHtml(shortLocationLabel(p.item.location))}`);
+    const isRoute = p.behavior.routable;
+    const displayIndex = isRoute ? ++routeIndex : 0;
+    const marker = L.marker([p.lat, p.lon], { icon: mapPinIcon(p, displayIndex) })
+      .bindPopup(`<strong>${isRoute ? `${displayIndex}. ` : ''}${escapeHtml(p.item.title)}</strong><br>${escapeHtml(p.behavior.label)}<br>${escapeHtml(fmtTime(p.item.start_time))}<br>${escapeHtml(shortLocationLabel(p.query || itemMapLocation(p.item)))}`);
     marker.addTo(routeLayer);
     routeMarkers.push(marker);
   });
 
   if (els.dailyMapStops) {
-    els.dailyMapStops.innerHTML = points.map((p, idx) => `<a target="_blank" rel="noopener" href="${mapsUrl(p.item.location, 'google')}"><b>${idx + 1}</b><strong>${escapeHtml(p.item.title)}</strong><span>${escapeHtml(fmtTime(p.item.start_time))}</span></a>`).join('');
+    const routeHtml = routePoints.map((p, idx) => `<a class="route-stop driving" target="_blank" rel="noopener" href="${mapsUrl(p.query || itemMapLocation(p.item), 'google')}"><b>${idx + 1}</b><strong>${escapeHtml(p.label || p.item.title)}</strong><span>${escapeHtml(fmtTime(p.item.start_time))}</span></a>`).join('');
+    const travelHtml = travelPoints.map((p) => `<a class="route-stop travel" target="_blank" rel="noopener" href="${mapsUrl(p.query || itemMapLocation(p.item), 'google')}"><b>${escapeHtml(typeIcon[p.item.item_type] || '✈️')}</b><strong>${escapeHtml(p.label || p.item.title)}</strong><span>${escapeHtml(fmtTime(p.item.start_time))}</span></a>`).join('');
+    els.dailyMapStops.innerHTML = `${routeHtml}${travelHtml ? `<div class="travel-stop-divider">Travel events shown separately</div>${travelHtml}` : ''}`;
   }
 
-  const waypoints = points.map(p => encodeURIComponent(p.item.location));
+  const waypoints = routePoints.map(p => encodeURIComponent(p.query || itemMapLocation(p.item))); 
   if (els.dailyDirectionsLink && waypoints.length) {
-    els.dailyDirectionsLink.href = waypoints.length === 1 ? mapsUrl(points[0].item.location, 'google') : `https://www.google.com/maps/dir/?api=1&origin=${waypoints[0]}&destination=${waypoints[waypoints.length - 1]}&waypoints=${waypoints.slice(1, -1).join('%7C')}`;
+    els.dailyDirectionsLink.href = waypoints.length === 1 ? mapsUrl(routePoints[0].query || itemMapLocation(routePoints[0].item), 'google') : `https://www.google.com/maps/dir/?api=1&origin=${waypoints[0]}&destination=${waypoints[waypoints.length - 1]}&waypoints=${waypoints.slice(1, -1).join('%7C')}`;
     els.dailyDirectionsLink.classList.remove('hidden');
   }
 
-  if (points.length >= 2) {
-    const coordString = points.map(p => `${p.lon},${p.lat}`).join(';');
+  if (routePoints.length >= 2) {
+    const coordString = routePoints.map(p => `${p.lon},${p.lat}`).join(';');
     try {
       const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`);
       const data = await res.json();
       if (seq !== routeRenderToken) return;
       const route = data?.routes?.[0];
       if (route?.geometry) {
-        L.geoJSON(route.geometry, { weight: 5, opacity: 0.82 }).addTo(routeLayer);
+        L.geoJSON(route.geometry, { weight: 5, opacity: 0.82, className: 'smart-route-line' }).addTo(routeLayer);
         const miles = route.distance ? (route.distance / 1609.344).toFixed(1) : null;
         const hours = route.duration ? Math.round(route.duration / 3600 * 10) / 10 : null;
-        if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${points.length} stops for this day${miles ? ` • about ${miles} mi` : ''}${hours ? ` • ${hours} hr drive` : ''}. Verify route in your maps app.`;
-      } else if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${points.length} pins found. Route line unavailable right now.`;
+        const extra = travelPoints.length ? ` • ${travelPoints.length} travel event${travelPoints.length === 1 ? '' : 's'} separate` : '';
+        if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${routePoints.length} driving stops${miles ? ` • about ${miles} mi` : ''}${hours ? ` • ${hours} hr drive` : ''}${extra}. Verify route in your maps app.`;
+      } else if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${routePoints.length} driving pins found. Route line unavailable right now.${travelPoints.length ? ` ${travelPoints.length} travel event(s) shown separately.` : ''}`;
     } catch (err) {
       console.warn('Daily route unavailable:', err);
-      if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${points.length} pins found. Route line unavailable right now.`;
+      if (els.dailyMapHelp) els.dailyMapHelp.textContent = `${routePoints.length} driving pins found. Route line unavailable right now.${travelPoints.length ? ` ${travelPoints.length} travel event(s) shown separately.` : ''}`;
     }
   } else if (els.dailyMapHelp) {
-    els.dailyMapHelp.textContent = 'One stop found for this day. Add another timed location to draw a route.';
+    if (routePoints.length === 1 && travelPoints.length) els.dailyMapHelp.textContent = 'One driving stop found. Flights/trains are shown separately and do not affect the driving route.';
+    else if (routePoints.length === 1) els.dailyMapHelp.textContent = 'One driving stop found for this day. Add another routed location to draw a route.';
+    else if (travelPoints.length) els.dailyMapHelp.textContent = 'Only flight/transit events found. They are shown separately and excluded from driving directions.';
+    else els.dailyMapHelp.textContent = 'No routed stops found for this day.';
   }
 
   routeMap.fitBounds(bounds, { padding: [34, 34], maxZoom: 13 });
@@ -398,7 +644,7 @@ async function loadTrips() {
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
 }
-async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]); setStatus('Ready'); render(); }
+async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]); await loadWeatherForTrip(); setStatus('Ready'); render(); }
 async function loadItems() {
   if (!activeTripId) return;
   const { data, error } = await client.from('itinerary_items').select('*').eq('trip_id', activeTripId).order('item_date').order('start_time');
@@ -492,21 +738,22 @@ function queueTripSave() {
 async function saveTrip() {
   const trip = currentTrip(); if (!trip || !canEdit()) return; const patch = getTripPatchFromInputs();
   const { data, error } = await client.from('itinerary_trips').update(patch).eq('id', trip.id).select().single(); if (error) return showDbError(error);
-  trips = trips.map(t => t.id === data.id ? data : t); setStatus('Saved'); render();
+  trips = trips.map(t => t.id === data.id ? data : t); await loadWeatherForTrip(true); setStatus('Saved'); render();
 }
 
 function openItemDialog(date, item = null) {
   if (!canEdit()) return alert('This invite is view-only. Ask the owner for an edit invite.');
+  if (item && isLockedItem(item)) return alert('This card is locked. Unlock it first to edit.');
   els.itemDialogTitle.textContent = item ? 'Edit itinerary item' : 'Add itinerary item';
   els.editingItemId.value = item?.id || ''; els.itemTitle.value = item?.title || ''; els.itemDate.value = item?.item_date || date || selectedDay || currentTrip()?.start_date || todayISO();
-  els.itemTime.value = item?.start_time || ''; els.itemEndTime.value = item?.end_time || ''; els.itemType.value = item?.item_type || 'event'; els.itemBudget.value = item?.budget || ''; els.itemLocation.value = item?.location || ''; els.itemNotes.value = item?.notes || ''; if (els.itemRainPlan) els.itemRainPlan.value = item?.rain_plan || '';
-  renderMapLinks(els.itemLocationMapLinks, els.itemLocation.value);
+  els.itemTime.value = item?.start_time || ''; els.itemEndTime.value = item?.end_time || ''; els.itemType.value = item?.item_type || 'event'; els.itemBudget.value = item?.budget || ''; populateAssigneeSelect(item?.assigned_to || ''); if (els.itemFromLocation) els.itemFromLocation.value = item?.from_location || ''; if (els.itemToLocation) els.itemToLocation.value = item?.to_location || ''; els.itemLocation.value = item?.location || ''; els.itemNotes.value = item?.notes || ''; if (els.itemRainPlan) els.itemRainPlan.value = item?.rain_plan || '';
+  syncRouteFieldVisibility(); renderMapLinks(els.itemLocationMapLinks, itemMapLocation({ ...item, location: els.itemLocation.value, from_location: els.itemFromLocation?.value || '', to_location: els.itemToLocation?.value || '', item_type: els.itemType.value }));
   els.itemDialog.showModal(); setTimeout(() => els.itemTitle.focus(), 50);
 }
 async function saveItemFromDialog(e) {
   e.preventDefault(); if (!activeTripId || !canEdit()) return;
   const title = els.itemTitle.value.trim(); if (!title) return alert('Add a title first.');
-  const payload = { title, item_date: els.itemDate.value || currentTrip()?.start_date || todayISO(), start_time: els.itemTime.value || null, end_time: els.itemEndTime.value || null, item_type: els.itemType.value, budget: Number(els.itemBudget.value || 0), location: els.itemLocation.value.trim(), notes: els.itemNotes.value.trim(), rain_plan: els.itemRainPlan?.value.trim() || '', sort_order: Date.now(), updated_at: new Date().toISOString() };
+  const payload = { title, item_date: els.itemDate.value || currentTrip()?.start_date || todayISO(), start_time: els.itemTime.value || null, end_time: els.itemEndTime.value || null, item_type: els.itemType.value, budget: Number(els.itemBudget.value || 0), assigned_to: els.itemAssignedTo?.value || null, from_location: els.itemFromLocation?.value.trim() || '', to_location: els.itemToLocation?.value.trim() || '', location: els.itemLocation.value.trim(), notes: els.itemNotes.value.trim(), rain_plan: els.itemRainPlan?.value.trim() || '', sort_order: Date.now(), updated_at: new Date().toISOString() };
   const id = els.editingItemId.value;
   if (id) {
     let { data, error } = await client.from('itinerary_items').update(payload).eq('id', id).select().single();
@@ -531,8 +778,8 @@ async function saveItemFromDialog(e) {
   }
   selectedDay = payload.item_date; els.itemDialog.close(); render();
 }
-async function updateItem(id, patch) { if (!canEdit()) return; const { data, error } = await client.from('itinerary_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single(); if (error) return showDbError(error); items = items.map(i => i.id === id ? data : i); render(); }
-async function deleteItem(id) { if (!canEdit()) return; if (!confirm('Delete this item?')) return; const { error } = await client.from('itinerary_items').delete().eq('id', id); if (error) return showDbError(error); items = items.filter(i => i.id !== id); render(); }
+async function updateItem(id, patch) { if (!canEdit()) return; const current = items.find(i => i.id === id); if (current && isLockedItem(current) && !('locked' in patch) && !('locked_at' in patch)) return alert('This card is locked. Unlock it first to make changes.'); const { data, error } = await client.from('itinerary_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single(); if (error) return showDbError(error); items = items.map(i => i.id === id ? data : i); render(); }
+async function deleteItem(id) { if (!canEdit()) return; const item = items.find(i => i.id === id); if (isLockedItem(item)) return alert('This card is locked. Unlock it before deleting.'); if (!confirm('Delete this item?')) return; const { error } = await client.from('itinerary_items').delete().eq('id', id); if (error) return showDbError(error); items = items.filter(i => i.id !== id); render(); }
 
 async function createInviteLink() {
   if (!activeTripId || !canEdit()) return alert('Only editors can create invite links.');
@@ -546,7 +793,7 @@ async function createInviteLink() {
 }
 async function copyInviteLink() { if (!els.inviteLink.value) return; await navigator.clipboard.writeText(els.inviteLink.value); setStatus('Invite copied'); }
 
-function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); renderMustDoList(); renderMemoryList(); renderDayMap(); }
+function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderHomeDashboard(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); renderMustDoList(); renderMemoryList(); renderDayMap(); }
 function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
   const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; if (els.gasMiles) els.gasMiles.value = Number(t.gas_miles || 0) || ''; if (els.gasMpg) els.gasMpg.value = Number(t.gas_mpg || 0) || ''; if (els.gasPrice) els.gasPrice.value = Number(t.gas_price || 0) || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
@@ -557,7 +804,55 @@ function renderTripEditor() {
   [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.gasMiles, els.gasMpg, els.gasPrice, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
   els.deleteTripBtn.disabled = !canDeleteTrip();
 }
-function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; const itemBudget = items.reduce((sum, i) => sum + Number(i.budget || 0), 0); const mustBudget = mustDoItems.reduce((sum, i) => sum + Number(i.budget || 0), 0); const gasBudget = calcGasCost(); els.totalBudget.textContent = money(itemBudget + mustBudget + gasBudget); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); if (els.heroDaysLeft) { const today = new Date(todayISO() + 'T12:00:00'); const start = t?.start_date ? new Date(t.start_date + 'T12:00:00') : today; const diff = Math.max(0, Math.ceil((start - today) / 86400000)); els.heroDaysLeft.textContent = days.length ? (diff || days.length) : 0; } els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderGasCalculator(); renderTripProgress(); }
+function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; const itemBudget = items.reduce((sum, i) => sum + Number(i.budget || 0), 0); const mustBudget = mustDoItems.reduce((sum, i) => String(i.priority || '').toLowerCase() === 'must' ? sum + Number(i.budget || 0) : sum, 0); const gasBudget = calcGasCost(); els.totalBudget.textContent = money(itemBudget + mustBudget + gasBudget); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); updateTripCountdown(); els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderGasCalculator(); renderTripProgress(); }
+function renderHomeDashboard() {
+  if (!els.homeGreeting) return;
+  const t = currentTrip();
+  const first = (session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || session?.user?.email?.split('@')[0] || 'Traveler').split(' ')[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+  els.homeGreeting.textContent = `${hour < 18 ? '☀' : '🌙'} ${greeting}, ${first}`;
+  const now = new Date();
+  const start = t?.start_date ? new Date(`${t.start_date}T00:00:00`) : null;
+  const end = t?.end_date ? new Date(`${t.end_date}T23:59:59`) : null;
+  if (!t || !start) {
+    els.homeDaysLeft.textContent = '—'; els.homeCountdownLabel.textContent = 'days until your trip'; els.homeCountdownDetail.textContent = 'Create a trip to start planning.';
+  } else if (now < start) {
+    const diff = start - now;
+    const days = Math.max(0, Math.ceil(diff / 86400000));
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    els.homeDaysLeft.textContent = String(days);
+    els.homeCountdownLabel.textContent = `days until ${t.title || 'your trip'}`;
+    els.homeCountdownDetail.textContent = `${Math.max(0, days-1)}d ${hours}h ${mins}m until go time`;
+  } else if (end && now <= end) {
+    const allDays = dateRange(t.start_date, t.end_date);
+    const today = todayISO();
+    const idx = Math.max(0, allDays.indexOf(today));
+    const diff = end - now;
+    els.homeDaysLeft.textContent = `Day ${idx + 1}`;
+    els.homeCountdownLabel.textContent = `of ${allDays.length}`;
+    els.homeCountdownDetail.textContent = `${Math.ceil(diff / 86400000)}d left in this adventure`;
+  } else {
+    els.homeDaysLeft.textContent = '✓'; els.homeCountdownLabel.textContent = 'trip complete'; els.homeCountdownDetail.textContent = 'Add memories and save your favorite moments.';
+  }
+  const must = mustDoItems.filter(i => String(i.priority || '').toLowerCase() === 'must');
+  const doneMust = must.filter(i => i.completed).length;
+  els.homeMustDoLine.textContent = `${must.length} Must Do${must.length === 1 ? '' : 's'}${must.length ? ` • ${doneMust}/${must.length} done` : ''}`;
+  const planned = items.reduce((sum, i) => sum + Number(i.budget || 0), 0) + must.reduce((sum, i) => sum + Number(i.budget || 0), 0) + calcGasCost();
+  const tripBudget = Number(t?.budget || 0);
+  const pct = tripBudget ? Math.min(999, Math.round((planned / tripBudget) * 100)) : (planned ? 100 : 0);
+  els.homeBudgetLine.textContent = tripBudget ? `Budget ${pct}% • ${money(planned)} / ${money(tripBudget)}` : `Planned ${money(planned)}`;
+  const progressPct = (() => { const val = els.tripProgressText?.textContent?.match(/\d+/); return val ? Number(val[0]) : 0; })();
+  if (els.homeProgressBar) els.homeProgressBar.style.width = `${Math.max(6, Math.min(100, progressPct || pct || 8))}%`;
+  const recent = items.slice().sort((a,b)=> new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+  const other = recent.find(i => i.user_id && i.user_id !== session?.user?.id);
+  const todayAdded = recent.filter(i => String(i.created_at || '').slice(0,10) === todayISO()).length;
+  els.homeActivityLine.textContent = other ? `${memberLabel(other.user_id)} updated ${other.title || 'an event'}` : todayAdded ? `${todayAdded} event${todayAdded === 1 ? '' : 's'} added today` : `${items.length} planned event${items.length === 1 ? '' : 's'}`;
+  const w = weatherByDate?.[selectedDay || t?.start_date];
+  if (w) { const [wi, wl] = weatherCodeInfo(w.code); els.homeWeatherLine.textContent = `${wi} ${wl} • ${Math.round(w.max)}° / ${Math.round(w.min)}° • ${Math.round(w.precip || 0)}% rain`; } else { els.homeWeatherLine.textContent = weatherStatus || 'Weather ready'; }
+}
+
 function renderSharePanel() {
   const role = currentMembership()?.role || 'viewer';
   els.roleBadge.textContent = role === 'owner' ? 'Owner' : role === 'editor' ? 'Editor' : 'Viewer';
@@ -568,7 +863,7 @@ function renderSharePanel() {
 }
 function renderDayTabs() {
   const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; if (!days.includes(selectedDay)) selectedDay = days[0];
-  els.dayTabs.innerHTML = days.map((day, idx) => { const count = items.filter(i => i.item_date === day).length; return `<button class="day-tab ${day === selectedDay ? 'active' : ''}" data-day="${day}"><span>Day ${idx + 1}</span><strong>${fmtShortDate(day)}</strong><em>${count} item${count === 1 ? '' : 's'}</em></button>`; }).join('');
+  els.dayTabs.innerHTML = days.map((day, idx) => { const count = items.filter(i => i.item_date === day).length; return `<button class="day-tab ${day === selectedDay ? 'active' : ''}" data-day="${day}"><span>Day ${idx + 1}</span><strong>${fmtShortDate(day)}</strong><em>${count} item${count === 1 ? '' : 's'}</em>${weatherChipHtml(day)}</button>`; }).join('');
   els.dayTabs.querySelectorAll('.day-tab').forEach(btn => btn.addEventListener('click', () => { selectedDay = btn.dataset.day; renderDayTabs(); renderTimeline(); renderDayMap(); }));
 }
 function renderTimeline() {
@@ -580,7 +875,7 @@ function renderTimeline() {
     const timedItems = dayItems.filter(i => timeToMinutes(i.start_time) !== null);
     const anytimeItems = dayItems.filter(i => timeToMinutes(i.start_time) === null);
     const card = document.createElement('section'); card.className = 'day-card glass'; card.dataset.date = day;
-    card.innerHTML = `<div class="day-header"><div><p>Day ${days.indexOf(day) + 1}</p><strong>${fmtDate(day)}</strong></div><span>${dayItems.length} planned</span></div><div class="timeline-board" data-day="${day}"></div><div class="anytime-list"></div><button class="quick-add ghost-btn">+ Add to this day</button>`;
+    card.innerHTML = `<div class="day-header"><div><p>Day ${days.indexOf(day) + 1}</p><strong>${fmtDate(day)}</strong></div><span>${dayItems.length} planned</span></div>${dayWeatherSummaryHtml(day)}<div class="timeline-board" data-day="${day}"></div><div class="anytime-list"></div><button class="quick-add ghost-btn">+ Add to this day</button>`;
     const board = card.querySelector('.timeline-board');
     const anytime = card.querySelector('.anytime-list');
     const totalRows = (DAY_END_MIN - DAY_START_MIN) / 30;
@@ -612,7 +907,7 @@ function renderTimeline() {
       board.addEventListener('drop', async e => {
         e.preventDefault(); board.classList.remove('drag-over');
         if (!draggedId) return;
-        const dragged = items.find(i => i.id === draggedId); if (!dragged) return;
+        const dragged = items.find(i => i.id === draggedId); if (!dragged) return; if (isLockedItem(dragged)) { draggedId = null; return alert('This card is locked. Unlock it first to move it.'); }
         const rect = board.getBoundingClientRect();
         const newStart = yToMinutes(e.clientY - rect.top);
         await updateItemWithUndo(draggedId, { item_date: day, ...defaultTimedPatch(dragged, newStart) }, 'Event moved');
@@ -626,7 +921,9 @@ function renderItem(item, isTimed = false) {
   const tpl = document.getElementById('itemTemplate').content.cloneNode(true);
   const card = tpl.querySelector('.item-card');
   card.dataset.id = item.id;
-  card.draggable = canEdit();
+  const locked = isLockedItem(item);
+  if (locked) card.classList.add('is-locked');
+  card.draggable = canEdit() && !locked;
   const start = itemStartMinutes(item), end = itemEndMinutes(item);
   if (isTimed) {
     card.classList.add('timeline-item');
@@ -642,20 +939,34 @@ function renderItem(item, isTimed = false) {
   tpl.querySelector('.time-chip').textContent = time || 'Anytime';
   tpl.querySelector('.item-type').textContent = typeIcon[item.item_type] || '📌';
   tpl.querySelector('h3').textContent = item.title;
+  card.classList.add(`type-${String(item.item_type || 'event').toLowerCase()}`);
   const meta = tpl.querySelector('.item-meta');
-  const parts = [Number(item.budget || 0) ? money(item.budget) : '', item.item_type].filter(Boolean);
-  const locLabel = shortLocationLabel(item.location);
-  meta.innerHTML = `${item.location ? `<a class="location-link" target="_blank" rel="noopener" title="${escapeHtml(item.location)}" href="${mapsUrl(item.location, 'google')}">📍 ${escapeHtml(locLabel)}</a>${parts.length ? ' • ' : ''}` : ''}${escapeHtml(parts.join(' • '))}`;
+  const routeText = item.from_location && item.to_location ? `${shortLocationLabel(item.from_location)} → ${shortLocationLabel(item.to_location)}` : '';
+  const displayLocation = routeText || shortLocationLabel(itemMapLocation(item));
+  const mapQuery = itemMapLocation(item);
+  const budget = Number(item.budget || 0);
+  const assignee = memberAvatarHtml(item.assigned_to || '');
+  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a>` : ''}`;
   tpl.querySelector('.item-notes').textContent = item.notes || '';
   const overlap = findOverlap(item);
+  const softOverlap = !overlap ? findSoftOverlap(item) : null;
   const warning = tpl.querySelector('.overlap-warning');
-  if (overlap) { card.classList.add('has-overlap'); warning.classList.remove('hidden'); warning.textContent = `⚠ Overlaps with ${overlap.title}`; }
+  if (overlap) {
+    card.classList.add('has-overlap');
+    warning.classList.remove('hidden');
+    warning.textContent = `⚠ Overlaps with ${overlap.title}`;
+  } else if (softOverlap) {
+    card.classList.add('has-soft-overlap');
+    warning.classList.remove('hidden');
+    warning.textContent = `↔ Same time as ${softOverlap.title}`;
+  }
   const rainText = tpl.querySelector('.rain-plan-text');
   if (rainText) rainText.textContent = item.rain_plan || 'No rain backup added yet. Tap Edit rain plan to add an indoor option, alternate time, or weather note.';
   if (item.rain_plan) card.classList.add('has-rain-plan');
-  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain'); const resetRainBtn = tpl.querySelector('.reset-rain');
-  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit(); if (editRainBtn) editRainBtn.disabled = !canEdit(); if (resetRainBtn) resetRainBtn.disabled = !canEdit();
+  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const lockBtn = tpl.querySelector('.lock-toggle'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain'); const resetRainBtn = tpl.querySelector('.reset-rain');
+  editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit() || locked; if (editRainBtn) editRainBtn.disabled = !canEdit() || locked; if (resetRainBtn) resetRainBtn.disabled = !canEdit() || locked; if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒 Unlock' : '🔓 Lock'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; }
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
+  lockBtn?.addEventListener('click', () => toggleItemLock(item));
   rainBtn?.addEventListener('click', () => handleRainButton(card, item));
   rainClose?.addEventListener('click', () => card.classList.remove('rain-flipped'));
   editRainBtn?.addEventListener('click', () => openRainEditor(item));
@@ -664,12 +975,25 @@ function renderItem(item, isTimed = false) {
   delBtn.addEventListener('click', () => deleteItem(item.id));
   earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
   laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
-  if (canEdit()) {
+  if (canEdit() && !locked) {
     card.addEventListener('dragstart', () => { draggedId = item.id; card.classList.add('dragging'); });
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
     card.addEventListener('pointerdown', e => startTimelinePointer(e, item, card));
   }
   return tpl;
+}
+
+async function toggleItemLock(item) {
+  if (!canEdit()) return;
+  const locked = isLockedItem(item);
+  const patch = locked
+    ? { locked: false, locked_by: null, locked_at: null }
+    : { locked: true, locked_by: session.user.id, locked_at: new Date().toISOString() };
+  const { data, error } = await client.from('itinerary_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', item.id).select().single();
+  if (error) return showDbError(error);
+  items = items.map(i => i.id === item.id ? data : i);
+  setStatus(locked ? 'Card unlocked' : 'Card locked');
+  render();
 }
 
 function openRainEditor(item) {
@@ -714,7 +1038,7 @@ function attachRainLongPress(card, item) {
 }
 
 async function shiftItemBy(id, delta) {
-  const item = items.find(i => i.id === id); if (!item || !canEdit()) return;
+  const item = items.find(i => i.id === id); if (!item || !canEdit()) return; if (isLockedItem(item)) return alert('This card is locked. Unlock it first to move it.');
   const start = timeToMinutes(item.start_time) ?? DAY_START_MIN;
   const end = timeToMinutes(item.end_time) ?? start + 60;
   const duration = Math.max(30, end - start);
@@ -726,7 +1050,7 @@ async function shiftItemBy(id, delta) {
 function startTimelinePointer(e, item, card) {
   const resizeStart = e.target.closest('.resize-start');
   const resizeEnd = e.target.closest('.resize-end');
-  if (!canEdit() || (!resizeStart && !resizeEnd && isInteractiveTarget(e.target))) return;
+  if (!canEdit() || isLockedItem(item) || (!resizeStart && !resizeEnd && isInteractiveTarget(e.target))) return;
   const board = card.closest('.timeline-board'); if (!board) return;
   e.preventDefault();
   card.setPointerCapture?.(e.pointerId);
@@ -1050,22 +1374,25 @@ function renderTripProgress() {
 }
 
 function exportJson() { const data = { trip: currentTrip(), items }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${currentTrip()?.title || 'trip'}-itinerary.json`; a.click(); URL.revokeObjectURL(a.href); }
-async function importJson(file) { if (!canEdit()) return; const parsed = JSON.parse(await file.text()); if (!parsed?.items?.length) return alert('No items found in JSON.'); const newItems = parsed.items.map(i => ({ user_id: session.user.id, trip_id: activeTripId, title: i.title, item_date: i.item_date, start_time: i.start_time, end_time: i.end_time, item_type: i.item_type || 'event', budget: Number(i.budget || 0), location: i.location || '', notes: i.notes || '', sort_order: i.sort_order || Date.now() })); const { error } = await client.from('itinerary_items').insert(newItems); if (error) return showDbError(error); await loadTripData(); }
+async function importJson(file) { if (!canEdit()) return; const parsed = JSON.parse(await file.text()); if (!parsed?.items?.length) return alert('No items found in JSON.'); const newItems = parsed.items.map(i => ({ user_id: session.user.id, trip_id: activeTripId, title: i.title, item_date: i.item_date, start_time: i.start_time, end_time: i.end_time, item_type: i.item_type || 'event', budget: Number(i.budget || 0), location: i.location || '', from_location: i.from_location || '', to_location: i.to_location || '', assigned_to: i.assigned_to || null, notes: i.notes || '', sort_order: i.sort_order || Date.now() })); const { error } = await client.from('itinerary_items').insert(newItems); if (error) return showDbError(error); await loadTripData(); }
 
 els.googleBtn.addEventListener('click', loginGoogle); els.emailBtn.addEventListener('click', loginEmail); els.logoutBtn.addEventListener('click', logout);
 els.tripSelect.addEventListener('change', async () => { activeTripId = els.tripSelect.value; selectedDay = null; localStorage.setItem('activeTripId', activeTripId); await loadTripData(); });
 function openTripDialog() { els.dialogTripTitle.value = ''; els.dialogStartDate.value = todayISO(); els.dialogEndDate.value = addDays(todayISO(), 3); els.tripDialog.showModal(); }
-els.newTripBtn.addEventListener('click', openTripDialog); if (els.sidebarNewTripBtn) els.sidebarNewTripBtn.addEventListener('click', openTripDialog); if (els.viewItineraryBtn) els.viewItineraryBtn.addEventListener('click', () => document.getElementById('plannerTitle')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+els.newTripBtn.addEventListener('click', openTripDialog); if (els.sidebarNewTripBtn) els.sidebarNewTripBtn.addEventListener('click', openTripDialog); if (els.viewItineraryBtn) els.viewItineraryBtn.addEventListener('click', () => document.getElementById('plannerTitle')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); if (els.homeContinueBtn) els.homeContinueBtn.addEventListener('click', () => document.getElementById('plannerTitle')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 els.createTripConfirm.addEventListener('click', e => { e.preventDefault(); els.tripDialog.close(); createTrip({ title: els.dialogTripTitle.value, start_date: els.dialogStartDate.value, end_date: els.dialogEndDate.value }); });
 [els.gasMiles, els.gasMpg, els.gasPrice].forEach(el => el?.addEventListener('input', queueTripSave));
 els.activityGenerateBtn?.addEventListener('click', () => generateActivities(false));
 els.activityUseGps?.addEventListener('click', () => generateActivities(true));
 els.activityResults?.addEventListener('click', e => { const btn = e.target.closest('button[data-idx]'); if (!btn) return; const idea = window.__activityResults?.[Number(btn.dataset.idx)]; if (!idea) return; const loc = idea.lat && idea.lon ? `${idea.title}, ${idea.address || ''}`.trim() : idea.address || idea.title; if (btn.dataset.action === 'must') { if (els.mustDoInput) els.mustDoInput.value = idea.title; if (els.mustDoPriority) els.mustDoPriority.value = 'want'; addMustDoItem(idea.title); } else { openItemDialog(selectedDay || currentTrip()?.start_date || todayISO(), { title: idea.title, item_type: 'event', location: loc, notes: `Generated idea: ${idea.type}` }); } });
-els.deleteTripBtn.addEventListener('click', deleteTrip); ['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => els[k].addEventListener('input', queueTripSave));
+els.deleteTripBtn.addEventListener('click', deleteTrip); if (els.dailyShowTravel) els.dailyShowTravel.addEventListener('change', renderDayMap); ['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => els[k].addEventListener('input', queueTripSave));
 els.addAnyItemBtn.addEventListener('click', () => openItemDialog(selectedDay)); els.saveItemBtn.addEventListener('click', saveItemFromDialog);
 els.createInviteBtn.addEventListener('click', createInviteLink); els.copyInviteBtn.addEventListener('click', copyInviteLink);
 setupLocationAutocomplete(els.destination, els.destinationSuggestions, els.destinationMapLinks);
 setupLocationAutocomplete(els.itemLocation, els.itemLocationSuggestions, els.itemLocationMapLinks);
+setupLocationAutocomplete(els.itemFromLocation, els.itemFromSuggestions, null);
+setupLocationAutocomplete(els.itemToLocation, els.itemToSuggestions, null);
+els.itemType?.addEventListener('change', syncRouteFieldVisibility);
 els.expandAllBtn.addEventListener('click', () => { document.body.classList.add('show-all-days'); renderTimeline(); }); els.collapseAllBtn.addEventListener('click', () => { document.body.classList.remove('show-all-days'); renderTimeline(); });
 els.exportBtn.addEventListener('click', exportJson); els.importInput.addEventListener('change', e => e.target.files[0] && importJson(e.target.files[0]));
 
@@ -1153,4 +1480,5 @@ if (els.resetPackingBtn) els.resetPackingBtn.addEventListener('click', resetPack
 if (els.snapMode) { els.snapMode.value = localStorage.getItem('timelineSnapMinutes') || '30'; els.snapMode.addEventListener('change', () => { localStorage.setItem('timelineSnapMinutes', els.snapMode.value); renderTimeline(); }); }
 if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUndo) await lastUndo(); });
 
+setInterval(updateTripCountdown, 60000);
 init();

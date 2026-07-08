@@ -411,3 +411,20 @@ alter table public.itinerary_trips
   add column if not exists gas_miles numeric(10,1) not null default 0,
   add column if not exists gas_mpg numeric(10,1) not null default 0,
   add column if not exists gas_price numeric(10,2) not null default 0;
+
+-- v31 Point-to-point routing and assignee support.
+alter table public.itinerary_items
+  add column if not exists from_location text default '',
+  add column if not exists to_location text default '',
+  add column if not exists assigned_to uuid references auth.users(id) on delete set null;
+
+create index if not exists itinerary_items_assigned_to_idx on public.itinerary_items(assigned_to);
+
+
+-- v32 Card locking to prevent accidental edits/moves.
+alter table public.itinerary_items
+  add column if not exists locked boolean not null default false,
+  add column if not exists locked_by uuid references auth.users(id) on delete set null,
+  add column if not exists locked_at timestamptz;
+
+create index if not exists itinerary_items_locked_idx on public.itinerary_items(trip_id, locked);

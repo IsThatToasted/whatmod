@@ -55,3 +55,26 @@ Rain Plan behavior:
 
 ## Trip creation RLS fix
 If you see `new row violates row-level security policy for table itinerary_trips`, rerun the included `schema.sql`. This version adds `create_itinerary_trip(...)`, a secure Supabase RPC used by the app to create the trip and owner membership together.
+
+
+## Latest update: smarter overlaps + new categories
+
+This version adds more event types (Sightseeing, Activity, Flight, Transit/Pickup, Shopping, Rest/Downtime, Toddler-friendly) and changes overlap handling so logistics/travel blocks like flights, drives, pickups, hotel check-ins, gas stops, rest blocks, and reminders do not trigger red conflict warnings when they overlap normal plans. They show a softer informational same-time note instead.
+
+## v31 Production polish notes
+
+This version keeps the existing Supabase structure and adds mostly frontend polish:
+
+- Polished event cards with icon, category pill, cost pill, rain-plan badge, assignee/everyone badge, and cleaner map-location row.
+- Live weather provider layer using Open-Meteo when the trip is within the available forecast window.
+- Weather chips on day tabs and a selected-day weather summary card.
+- Weather data is cached in the browser for about 45 minutes to avoid unnecessary requests.
+- No required schema change for weather in this version.
+
+Weather note: forecasts only appear when the trip dates are close enough for live forecast data. For far-future trips, the app shows a friendly “forecast unlocks” message instead of failing.
+
+## v32 Home dashboard + card locks
+
+Run `schema.sql` once after uploading this version. It adds `locked`, `locked_by`, and `locked_at` to itinerary cards.
+
+Locked cards can still be viewed, but cannot be dragged, resized, shifted, edited, deleted, or have rain plans changed until an owner/editor taps Unlock on that card.
