@@ -80,3 +80,10 @@ Weather note: forecasts only appear when the trip dates are close enough for liv
 Run `schema.sql` once after uploading this version. It adds `locked`, `locked_by`, and `locked_at` to itinerary cards.
 
 Locked cards can still be viewed, but cannot be dragged, resized, shifted, edited, deleted, or have rain plans changed until an owner/editor taps Unlock on that card.
+
+
+## ItineraryTrackerV2 settings patch
+- Added `settings.html` as a real standalone settings page instead of a sidebar anchor that scrolls the planner.
+- Sidebar Settings now opens `settings.html`.
+- Desktop/tablet card action dock spacing was tightened so buttons stay inside the right side of event cards.
+- No Supabase schema change is required for this patch.
