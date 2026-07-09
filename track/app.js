@@ -153,7 +153,7 @@ function syncRouteFieldVisibility() {
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '';
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -1704,6 +1704,14 @@ if (els.snapMode) { els.snapMode.value = localStorage.getItem('timelineSnapMinut
 if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUndo) await lastUndo(); });
 
 setInterval(updateTripCountdown, 60000);
+
+const mobileNavHome = document.getElementById('mobileNavHome');
+const mobileNavPlan = document.getElementById('mobileNavPlan');
+const mobileNavMemory = document.getElementById('mobileNavMemory');
+mobileNavHome?.addEventListener('click', () => scrollToAppSection('homeDashboard'));
+mobileNavPlan?.addEventListener('click', () => scrollToAppSection('plannerTitle'));
+mobileNavMemory?.addEventListener('click', () => startQuickMemoryCapture());
+
 init();
 
 /* Fun Ideas + Photo Memories patch v36 */
@@ -1994,6 +2002,23 @@ function stepMemorySlide(dir) {
   renderMemorySlideshow();
 }
 
+function defaultMemoryTitle() {
+  const d = new Date();
+  const stamp = d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  return `Memory ${stamp}`;
+}
+function scrollToAppSection(id) {
+  const el = document.getElementById(id) || document.querySelector(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function startQuickMemoryCapture() {
+  if (!activeTripId) return alert('Create or select a trip first.');
+  if (!canEdit()) return alert('You need edit access to add memories.');
+  quickMemoryCaptureMode = true;
+  els.memoryPhotoInput?.click();
+}
+
 
 if (els.funNewIdeaBtn) els.funNewIdeaBtn.addEventListener('click', () => { clearFunIdeaForm(); showFunEditor(true); });
 if (els.funCancelEditorBtn) els.funCancelEditorBtn.addEventListener('click', () => { clearFunIdeaForm(); showFunEditor(false); });
@@ -2027,8 +2052,19 @@ if (els.funIdeasList) els.funIdeasList.addEventListener('click', e => {
   }
 });
 if (els.memoryPhotoBtn) els.memoryPhotoBtn.addEventListener('click', () => els.memoryPhotoInput?.click());
-if (els.memoryPhotoInput) els.memoryPhotoInput.addEventListener('change', () => {
+if (els.memoryPhotoInput) els.memoryPhotoInput.addEventListener('change', async () => {
   const file = els.memoryPhotoInput.files?.[0];
+  if (!file) { quickMemoryCaptureMode = false; return; }
+  if (quickMemoryCaptureMode) {
+    quickMemoryCaptureMode = false;
+    const fallbackTitle = defaultMemoryTitle();
+    const entered = prompt('Add a title for this memory. Leave blank to auto-name it.', '');
+    const title = (entered || '').trim() || fallbackTitle;
+    if (els.memoryInput) els.memoryInput.value = title;
+    await addMemoryItem(title);
+    if (els.memoryInput) els.memoryInput.value = '';
+    return;
+  }
   if (file && els.memoryInput && !els.memoryInput.value.trim()) els.memoryInput.placeholder = `Caption for ${file.name}`;
 });
 if (els.memorySlideshowBtn) els.memorySlideshowBtn.addEventListener('click', () => openMemorySlideshow());

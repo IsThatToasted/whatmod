@@ -1,4 +1,6 @@
-# Itinerary Tracker for GitHub Pages + Supabase
+# ItineraryTrackerV2
+
+Checkpoint build focused on PC/tablet display polish, mobile quick navigation, and camera-first memories.
 
 Static app intended for: `https://whatmod.com/track/`
 
