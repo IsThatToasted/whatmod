@@ -667,7 +667,9 @@ begin
     'itinerary_memories',
     'trip_fun_permissions',
     'trip_fun_ideas',
-    'trip_fun_categories'
+    'trip_fun_categories',
+    'itinerary_shopping_items',
+    'itinerary_shopping_permissions'
   ] loop
     if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t)
        and not exists (
@@ -675,6 +677,102 @@ begin
          where pubname = 'supabase_realtime'
            and schemaname = 'public'
            and tablename = t
+       ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+
+
+-- v52 Shopping lists attached to Shopping itinerary events
+create table if not exists public.itinerary_shopping_items (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  itinerary_item_id uuid not null references public.itinerary_items(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  label text not null,
+  quantity numeric default 1,
+  notes text default '',
+  completed boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.itinerary_shopping_permissions (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  itinerary_item_id uuid not null references public.itinerary_items(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  can_access boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(itinerary_item_id, user_id)
+);
+
+alter table public.itinerary_shopping_items enable row level security;
+alter table public.itinerary_shopping_permissions enable row level security;
+
+create index if not exists itinerary_shopping_items_trip_item_idx on public.itinerary_shopping_items(trip_id, itinerary_item_id);
+create index if not exists itinerary_shopping_permissions_trip_item_idx on public.itinerary_shopping_permissions(trip_id, itinerary_item_id);
+
+create or replace function public.user_can_access_shopping_list(target_item_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.itinerary_items i
+    where i.id = target_item_id
+      and public.user_can_view_trip(i.trip_id)
+      and (
+        public.current_user_trip_role(i.trip_id) = 'owner'
+        or i.user_id = auth.uid()
+        or exists (
+          select 1 from public.itinerary_shopping_permissions p
+          where p.itinerary_item_id = target_item_id
+            and p.user_id = auth.uid()
+            and p.can_access = true
+        )
+      )
+  );
+$$;
+
+grant execute on function public.user_can_access_shopping_list(uuid) to authenticated;
+
+drop policy if exists "shopping list visible to permitted users" on public.itinerary_shopping_items;
+create policy "shopping list visible to permitted users" on public.itinerary_shopping_items
+  for select using (public.user_can_access_shopping_list(itinerary_item_id));
+
+drop policy if exists "shopping list editable by permitted editors" on public.itinerary_shopping_items;
+create policy "shopping list editable by permitted editors" on public.itinerary_shopping_items
+  for all using (public.user_can_edit_trip(trip_id) and public.user_can_access_shopping_list(itinerary_item_id))
+  with check (public.user_can_edit_trip(trip_id) and public.user_can_access_shopping_list(itinerary_item_id));
+
+drop policy if exists "shopping permissions visible to trip members" on public.itinerary_shopping_permissions;
+create policy "shopping permissions visible to trip members" on public.itinerary_shopping_permissions
+  for select using (public.user_can_view_trip(trip_id));
+
+drop policy if exists "shopping permissions managed by owner or event creator" on public.itinerary_shopping_permissions;
+create policy "shopping permissions managed by owner or event creator" on public.itinerary_shopping_permissions
+  for all using (
+    public.current_user_trip_role(trip_id) = 'owner'
+    or exists (select 1 from public.itinerary_items i where i.id = itinerary_item_id and i.user_id = auth.uid())
+  ) with check (
+    public.current_user_trip_role(trip_id) = 'owner'
+    or exists (select 1 from public.itinerary_items i where i.id = itinerary_item_id and i.user_id = auth.uid())
+  );
+
+-- Add shopping tables to realtime if available.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['itinerary_shopping_items','itinerary_shopping_permissions'] loop
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t)
+       and not exists (
+         select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
        ) then
       execute format('alter publication supabase_realtime add table public.%I', t);
     end if;

@@ -108,3 +108,12 @@ This checkpoint focuses on moving the app from feature-complete prototype toward
 - Preserved the mobile quick nav and existing Supabase/data functionality.
 
 No new Supabase schema is required for the UI revamp.
+
+
+## v52 patch
+
+- Mobile Settings shortcut appears near the bottom of the app on phones.
+- Shopping itinerary cards now show a **List** pill.
+- Shopping lists are shared per shopping event with item add/edit/delete/complete.
+- Shopping list access can be toggled per invited traveler, similar to Fun Ideas.
+- Run `schema.sql` once to add the shopping list tables and realtime support.

@@ -19,7 +19,7 @@ const els = {
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingProgressList: document.getElementById('packingProgressList'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
-  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funIdeaCategory: document.getElementById('funIdeaCategory'), funCategoryFilter: document.getElementById('funCategoryFilter'), funCategoryManageBtn: document.getElementById('funCategoryManageBtn'), funCategoryEditor: document.getElementById('funCategoryEditor'), funCategoryName: document.getElementById('funCategoryName'), funCategoryEmoji: document.getElementById('funCategoryEmoji'), funAddCategoryBtn: document.getElementById('funAddCategoryBtn'), funCategoryList: document.getElementById('funCategoryList'), funNewIdeaBtn: document.getElementById('funNewIdeaBtn'), funCancelEditorBtn: document.getElementById('funCancelEditorBtn'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'),
+  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funIdeaCategory: document.getElementById('funIdeaCategory'), funCategoryFilter: document.getElementById('funCategoryFilter'), funCategoryManageBtn: document.getElementById('funCategoryManageBtn'), funCategoryEditor: document.getElementById('funCategoryEditor'), funCategoryName: document.getElementById('funCategoryName'), funCategoryEmoji: document.getElementById('funCategoryEmoji'), funAddCategoryBtn: document.getElementById('funAddCategoryBtn'), funCategoryList: document.getElementById('funCategoryList'), funNewIdeaBtn: document.getElementById('funNewIdeaBtn'), funCancelEditorBtn: document.getElementById('funCancelEditorBtn'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'), shoppingListDialog: document.getElementById('shoppingListDialog'), shoppingListTitle: document.getElementById('shoppingListTitle'), shoppingPermissionPanel: document.getElementById('shoppingPermissionPanel'), shoppingPermissionList: document.getElementById('shoppingPermissionList'), shoppingListBody: document.getElementById('shoppingListBody'), shoppingNewBtn: document.getElementById('shoppingNewBtn'), shoppingEditor: document.getElementById('shoppingEditor'), shoppingItemId: document.getElementById('shoppingItemId'), shoppingItemName: document.getElementById('shoppingItemName'), shoppingItemQty: document.getElementById('shoppingItemQty'), shoppingItemNotes: document.getElementById('shoppingItemNotes'), shoppingCancelEditorBtn: document.getElementById('shoppingCancelEditorBtn'), shoppingSaveBtn: document.getElementById('shoppingSaveBtn'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
@@ -153,7 +153,7 @@ function syncRouteFieldVisibility() {
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false;
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], shoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -277,7 +277,7 @@ async function loadWeatherForTrip(force=false){
 
 function escapeHtml(str) { return String(str || '').replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
 function isMissingRainPlanColumn(error) { return /rain_plan|schema cache|column/i.test(String(error?.message || '')); }
-function isMissingSharedTable(error) { return /itinerary_must_do_items|itinerary_memories|trip_fun_ideas|trip_fun_permissions|schema cache|relation|does not exist/i.test(String(error?.message || '')); }
+function isMissingSharedTable(error) { return /itinerary_must_do_items|itinerary_memories|trip_fun_ideas|trip_fun_permissions|itinerary_shopping_items|itinerary_shopping_permissions|schema cache|relation|does not exist/i.test(String(error?.message || '')); }
 
 function shortLocationLabel(location) {
   let value = String(location || '').replace(/\s+/g, ' ').trim();
@@ -727,7 +727,9 @@ function setupRealtimeSync() {
     'itinerary_memories',
     'trip_fun_permissions',
     'trip_fun_ideas',
-    'trip_fun_categories'
+    'trip_fun_categories',
+    'itinerary_shopping_items',
+    'itinerary_shopping_permissions'
   ];
   let channel = client.channel(`trip-live-${activeTripId}`);
   tableNames.forEach(table => {
@@ -761,6 +763,7 @@ function handleRealtimePayload(table, payload) {
       : table === 'itinerary_memories' ? 'Memories updated'
       : table === 'itinerary_must_do' ? 'Must Do updated'
       : table === 'trip_fun_ideas' || table === 'trip_fun_permissions' || table === 'trip_fun_categories' ? 'Private list updated'
+      : table === 'itinerary_shopping_items' || table === 'itinerary_shopping_permissions' ? 'Shopping list updated'
       : 'Trip updated';
     setStatus(label);
   }
@@ -778,7 +781,9 @@ async function refreshLiveTripData() {
     await loadPackingProgress();
     if (typeof loadFunCategories === 'function') await loadFunCategories();
     if (typeof loadFunIdeas === 'function') await loadFunIdeas();
+    if (activeShoppingItemId && typeof loadShoppingForItem === 'function') await loadShoppingForItem(activeShoppingItemId);
     render();
+    if (activeShoppingItemId && els.shoppingListDialog?.open) renderShoppingListModal();
   } catch (error) {
     console.warn('Live refresh failed', error);
   }
@@ -1151,7 +1156,7 @@ function renderItem(item, isTimed = false) {
   const mapQuery = itemMapLocation(item);
   const budget = Number(item.budget || 0);
   const assignee = memberAvatarHtml(item.assigned_to || '');
-  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a>` : ''}`;
+  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a>` : ''}`;
   tpl.querySelector('.item-notes').textContent = item.notes || '';
   const overlap = findOverlap(item);
   const softOverlap = !overlap ? findSoftOverlap(item) : null;
@@ -1180,6 +1185,7 @@ function renderItem(item, isTimed = false) {
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
   lockBtn?.addEventListener('click', () => toggleItemLock(item));
   rainBtn?.addEventListener('click', () => handleRainButton(card, item));
+  tpl.querySelector('.shopping-list-pill')?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openShoppingListDialog(item.id); });
   rainClose?.addEventListener('click', () => card.classList.remove('rain-flipped'));
   editRainBtn?.addEventListener('click', () => openRainEditor(item));
   resetRainBtn?.addEventListener('click', () => resetRainPlan(item.id));
@@ -2024,6 +2030,136 @@ function stepMemorySlide(dir) {
   renderMemorySlideshow();
 }
 
+
+function shoppingEventById(id) { return items.find(i => i.id === id); }
+function canManageShoppingAccess(item) {
+  if (!item) return false;
+  return currentMembership()?.role === 'owner' || item.user_id === session?.user?.id;
+}
+function canAccessShoppingListLocal(item) {
+  if (!item || !session?.user?.id) return false;
+  if (currentMembership()?.role === 'owner' || item.user_id === session.user.id) return true;
+  return shoppingListPermissions.some(p => p.itinerary_item_id === item.id && p.user_id === session.user.id && p.can_access);
+}
+async function loadShoppingForItem(itemId) {
+  shoppingListItems = [];
+  shoppingListPermissions = [];
+  if (!activeTripId || !itemId || !session?.user?.id) return;
+  const [perms, rows] = await Promise.all([
+    client.from('itinerary_shopping_permissions').select('*').eq('trip_id', activeTripId).eq('itinerary_item_id', itemId),
+    client.from('itinerary_shopping_items').select('*').eq('trip_id', activeTripId).eq('itinerary_item_id', itemId).order('created_at', { ascending: true })
+  ]);
+  if (perms.error) { console.warn('Shopping permissions unavailable. Run schema.sql.', perms.error); shoppingListPermissions = []; }
+  else shoppingListPermissions = perms.data || [];
+  if (rows.error) { console.warn('Shopping list unavailable. Run schema.sql.', rows.error); shoppingListItems = []; }
+  else shoppingListItems = rows.data || [];
+}
+async function openShoppingListDialog(itemId) {
+  const item = shoppingEventById(itemId);
+  if (!item) return;
+  activeShoppingItemId = itemId;
+  await loadShoppingForItem(itemId);
+  if (!canAccessShoppingListLocal(item)) {
+    activeShoppingItemId = null;
+    return alert('This shopping list is private until the trip owner or event creator enables access.');
+  }
+  clearShoppingForm();
+  renderShoppingListModal();
+  els.shoppingListDialog?.showModal();
+}
+function clearShoppingForm() {
+  if (els.shoppingItemId) els.shoppingItemId.value = '';
+  if (els.shoppingItemName) els.shoppingItemName.value = '';
+  if (els.shoppingItemQty) els.shoppingItemQty.value = '1';
+  if (els.shoppingItemNotes) els.shoppingItemNotes.value = '';
+}
+function showShoppingEditor(show=true) {
+  els.shoppingEditor?.classList.toggle('hidden', !show);
+  if (show) setTimeout(() => els.shoppingItemName?.focus(), 40);
+}
+function renderShoppingListModal() {
+  const item = shoppingEventById(activeShoppingItemId);
+  if (!item) return;
+  const access = canAccessShoppingListLocal(item);
+  const editable = canEdit() && access;
+  const canPerm = canManageShoppingAccess(item);
+  if (els.shoppingListTitle) els.shoppingListTitle.textContent = `Shopping List · ${item.title || 'Shopping'}`;
+  if (els.shoppingPermissionPanel) els.shoppingPermissionPanel.classList.toggle('hidden', !canPerm);
+  if (els.shoppingPermissionList) {
+    els.shoppingPermissionList.innerHTML = members.map(m => {
+      const fixed = m.role === 'owner' || m.user_id === item.user_id;
+      const allowed = fixed || shoppingListPermissions.some(p => p.user_id === m.user_id && p.can_access);
+      return `<label class="shopping-permission-row"><span>${memberAvatarHtml(m.user_id)}<strong>${escapeHtml(memberLabel(m.user_id))}</strong><em>${m.user_id === item.user_id ? 'creator' : escapeHtml(m.role || 'traveler')}</em></span><input type="checkbox" data-user-id="${escapeHtml(m.user_id)}" ${allowed ? 'checked' : ''} ${fixed ? 'disabled' : ''}></label>`;
+    }).join('') || '<p class="helper-text">Invite travelers to share this list.</p>';
+  }
+  const done = shoppingListItems.filter(x => x.completed).length;
+  if (els.shoppingListBody) {
+    els.shoppingListBody.innerHTML = shoppingListItems.length ? shoppingListItems.map(x => `
+      <article class="shopping-list-row ${x.completed ? 'is-complete' : ''}" data-id="${escapeHtml(x.id)}">
+        <label class="shopping-check"><input type="checkbox" class="shopping-complete" ${x.completed ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
+        <div class="shopping-row-main"><strong>${escapeHtml(x.label || 'Shopping item')}</strong><em>${Number(x.quantity || 1)} needed${x.notes ? ` · ${escapeHtml(x.notes)}` : ''}</em></div>
+        <button type="button" class="shopping-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button>
+        <button type="button" class="shopping-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button>
+      </article>`).join('') : '<div class="packing-empty">No shopping items yet. Add what everyone should grab.</div>';
+  }
+  const count = els.shoppingListDialog?.querySelector('.shopping-count');
+  if (count) count.textContent = `${done}/${shoppingListItems.length} complete`;
+  if (els.shoppingNewBtn) els.shoppingNewBtn.disabled = !editable;
+  if (els.shoppingSaveBtn) els.shoppingSaveBtn.disabled = !editable;
+}
+async function saveShoppingItem() {
+  const eventItem = shoppingEventById(activeShoppingItemId);
+  if (!eventItem || !canEdit() || !canAccessShoppingListLocal(eventItem)) return;
+  const label = (els.shoppingItemName?.value || '').trim();
+  if (!label) return els.shoppingItemName?.focus();
+  const payload = {
+    trip_id: activeTripId,
+    itinerary_item_id: activeShoppingItemId,
+    user_id: session.user.id,
+    label,
+    quantity: Math.max(1, Number(els.shoppingItemQty?.value || 1)),
+    notes: (els.shoppingItemNotes?.value || '').trim(),
+    updated_at: new Date().toISOString()
+  };
+  const id = els.shoppingItemId?.value;
+  const result = id
+    ? await client.from('itinerary_shopping_items').update(payload).eq('id', id).select('*').single()
+    : await client.from('itinerary_shopping_items').insert(payload).select('*').single();
+  if (result.error) return showDbError(result.error);
+  await loadShoppingForItem(activeShoppingItemId); clearShoppingForm(); showShoppingEditor(false); renderShoppingListModal(); broadcastTripChange('Shopping list updated');
+}
+function editShoppingItem(id) {
+  const row = shoppingListItems.find(x => x.id === id); if (!row) return;
+  if (els.shoppingItemId) els.shoppingItemId.value = row.id;
+  if (els.shoppingItemName) els.shoppingItemName.value = row.label || '';
+  if (els.shoppingItemQty) els.shoppingItemQty.value = String(row.quantity || 1);
+  if (els.shoppingItemNotes) els.shoppingItemNotes.value = row.notes || '';
+  showShoppingEditor(true);
+}
+async function updateShoppingItem(id, patch) {
+  const eventItem = shoppingEventById(activeShoppingItemId);
+  if (!eventItem || !canEdit() || !canAccessShoppingListLocal(eventItem)) return;
+  const { error } = await client.from('itinerary_shopping_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) return showDbError(error);
+  await loadShoppingForItem(activeShoppingItemId); renderShoppingListModal(); broadcastTripChange('Shopping list updated');
+}
+async function deleteShoppingItem(id) {
+  const eventItem = shoppingEventById(activeShoppingItemId);
+  if (!eventItem || !canEdit() || !canAccessShoppingListLocal(eventItem)) return;
+  if (!confirm('Remove this shopping item?')) return;
+  const { error } = await client.from('itinerary_shopping_items').delete().eq('id', id);
+  if (error) return showDbError(error);
+  await loadShoppingForItem(activeShoppingItemId); renderShoppingListModal(); broadcastTripChange('Shopping list updated');
+}
+async function toggleShoppingPermission(userId, canAccess) {
+  const item = shoppingEventById(activeShoppingItemId);
+  if (!item || !canManageShoppingAccess(item)) return;
+  const payload = { trip_id: activeTripId, itinerary_item_id: activeShoppingItemId, user_id: userId, can_access: !!canAccess, updated_at: new Date().toISOString() };
+  const { error } = await client.from('itinerary_shopping_permissions').upsert(payload, { onConflict: 'itinerary_item_id,user_id' });
+  if (error) return showDbError(error);
+  await loadShoppingForItem(activeShoppingItemId); renderShoppingListModal(); broadcastTripChange('Shopping list access updated');
+}
+
 function defaultMemoryTitle() {
   const d = new Date();
   const stamp = d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -2096,6 +2232,26 @@ if (els.memoryList) els.memoryList.addEventListener('click', e => {
 });
 if (els.memoryPrevBtn) els.memoryPrevBtn.addEventListener('click', () => stepMemorySlide(-1));
 if (els.memoryNextBtn) els.memoryNextBtn.addEventListener('click', () => stepMemorySlide(1));
+
+
+if (els.shoppingListDialog) els.shoppingListDialog.addEventListener('close', () => { activeShoppingItemId = null; shoppingListItems = []; shoppingListPermissions = []; });
+if (els.shoppingNewBtn) els.shoppingNewBtn.addEventListener('click', () => { clearShoppingForm(); showShoppingEditor(true); });
+if (els.shoppingCancelEditorBtn) els.shoppingCancelEditorBtn.addEventListener('click', () => { clearShoppingForm(); showShoppingEditor(false); });
+if (els.shoppingSaveBtn) els.shoppingSaveBtn.addEventListener('click', saveShoppingItem);
+if (els.shoppingPermissionList) els.shoppingPermissionList.addEventListener('change', e => {
+  const cb = e.target.closest('input[type="checkbox"][data-user-id]');
+  if (cb) toggleShoppingPermission(cb.dataset.userId, cb.checked);
+});
+if (els.shoppingListBody) els.shoppingListBody.addEventListener('click', e => {
+  const row = e.target.closest('.shopping-list-row'); if (!row) return;
+  if (e.target.closest('.shopping-edit')) return editShoppingItem(row.dataset.id);
+  if (e.target.closest('.shopping-delete')) return deleteShoppingItem(row.dataset.id);
+});
+if (els.shoppingListBody) els.shoppingListBody.addEventListener('change', e => {
+  const cb = e.target.closest('.shopping-complete');
+  const row = e.target.closest('.shopping-list-row');
+  if (cb && row) updateShoppingItem(row.dataset.id, { completed: cb.checked });
+});
 
 
 /* v51 Production UI Revamp theme boot */
