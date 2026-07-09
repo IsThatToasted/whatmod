@@ -1904,3 +1904,237 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
     padding-top:4px!important;
   }
 }
+
+/* ItineraryTrackerV2.1: desktop/tablet event card containment fix
+   Goal: keep ALL controls/pills/icons inside the card, especially short-duration PC cards.
+   Mobile (<761px) is intentionally left alone. */
+@media (min-width:761px){
+  .timeline-board{
+    overflow:visible!important;
+  }
+  .item-card.timeline-item,
+  .item-card.timeline-item.compact-time-card,
+  .item-card.timeline-item.roomy-time-card,
+  .item-card.timeline-item.very-roomy-time-card{
+    box-sizing:border-box!important;
+    overflow:visible!important;
+    border-radius:22px!important;
+    min-height:96px!important;
+    box-shadow:0 14px 34px rgba(18,33,74,.075)!important;
+  }
+  .item-card.timeline-item:hover,
+  .item-card.timeline-item:focus-within,
+  .item-card.timeline-item.active-card{
+    z-index:90!important;
+    box-shadow:0 24px 68px rgba(18,33,74,.16)!important;
+  }
+
+  /* One predictable card grid: time | content | compact actions */
+  .item-card.timeline-item > .card-front,
+  .item-card.timeline-item.compact-time-card > .card-front,
+  .item-card.timeline-item.roomy-time-card > .card-front,
+  .item-card.timeline-item.very-roomy-time-card > .card-front{
+    display:grid!important;
+    grid-template-columns:92px minmax(0,1fr) 236px!important;
+    grid-template-rows:auto!important;
+    grid-template-areas:"time main actions"!important;
+    align-items:start!important;
+    gap:12px!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:96px!important;
+    box-sizing:border-box!important;
+    padding:12px 14px!important;
+    overflow:hidden!important;
+    border-radius:22px!important;
+  }
+
+  .item-card.timeline-item .time-chip,
+  .item-card.timeline-item.compact-time-card .time-chip,
+  .item-card.timeline-item.roomy-time-card .time-chip,
+  .item-card.timeline-item.very-roomy-time-card .time-chip{
+    grid-area:time!important;
+    width:82px!important;
+    min-width:82px!important;
+    max-width:82px!important;
+    min-height:58px!important;
+    align-self:start!important;
+    justify-self:start!important;
+    margin:0!important;
+    padding:8px 8px!important;
+    box-sizing:border-box!important;
+    border-radius:18px!important;
+    font-size:.82rem!important;
+    line-height:1.08!important;
+    white-space:normal!important;
+  }
+
+  /* Put the category icon back beside the title, never floating above/center. */
+  .item-card.timeline-item .item-main,
+  .item-card.timeline-item.compact-time-card .item-main,
+  .item-card.timeline-item.roomy-time-card .item-main,
+  .item-card.timeline-item.very-roomy-time-card .item-main{
+    grid-area:main!important;
+    display:grid!important;
+    grid-template-columns:46px minmax(0,1fr)!important;
+    gap:12px!important;
+    align-items:start!important;
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    padding:0!important;
+    margin:0!important;
+  }
+  .item-card.timeline-item .item-type,
+  .item-card.timeline-item.compact-time-card .item-type,
+  .item-card.timeline-item.roomy-time-card .item-type,
+  .item-card.timeline-item.very-roomy-time-card .item-type{
+    position:static!important;
+    grid-column:1!important;
+    grid-row:1!important;
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    border-radius:16px!important;
+    margin:0!important;
+    align-self:start!important;
+    justify-self:start!important;
+    transform:none!important;
+  }
+  .item-card.timeline-item .item-main > div:last-child,
+  .item-card.timeline-item.compact-time-card .item-main > div:last-child,
+  .item-card.timeline-item.roomy-time-card .item-main > div:last-child,
+  .item-card.timeline-item.very-roomy-time-card .item-main > div:last-child{
+    grid-column:2!important;
+    min-width:0!important;
+    width:100%!important;
+    overflow:hidden!important;
+  }
+  .item-card.timeline-item .item-main h3,
+  .item-card.timeline-item.compact-time-card .item-main h3,
+  .item-card.timeline-item.roomy-time-card .item-main h3,
+  .item-card.timeline-item.very-roomy-time-card .item-main h3{
+    margin:0 0 6px!important;
+    font-size:1rem!important;
+    line-height:1.15!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    max-width:100%!important;
+  }
+  .item-card.timeline-item .item-meta,
+  .item-card.timeline-item.compact-time-card .item-meta,
+  .item-card.timeline-item.roomy-time-card .item-meta,
+  .item-card.timeline-item.very-roomy-time-card .item-meta{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:center!important;
+    gap:6px!important;
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    line-height:1.1!important;
+    white-space:normal!important;
+  }
+  .item-card.timeline-item .item-meta > span,
+  .item-card.timeline-item .item-meta > a,
+  .item-card.timeline-item .location-link,
+  .item-card.timeline-item .location-link.full-row{
+    max-width:min(30ch,100%)!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    display:inline-flex!important;
+    align-items:center!important;
+  }
+  .item-card.timeline-item .item-notes{
+    margin:7px 0 0!important;
+    display:-webkit-box!important;
+    -webkit-line-clamp:1!important;
+    -webkit-box-orient:vertical!important;
+    overflow:hidden!important;
+    white-space:normal!important;
+    line-height:1.25!important;
+  }
+  .item-card.timeline-item.very-roomy-time-card .item-notes,
+  .item-card.timeline-item.roomy-time-card .item-notes{
+    -webkit-line-clamp:2!important;
+  }
+  .item-card.timeline-item.compact-time-card .item-notes{
+    display:none!important;
+  }
+
+  /* Compact action dock: always inside the card, never hanging off right/bottom. */
+  .item-card.timeline-item .item-actions,
+  .item-card.timeline-item.compact-time-card .item-actions,
+  .item-card.timeline-item.roomy-time-card .item-actions,
+  .item-card.timeline-item.very-roomy-time-card .item-actions{
+    grid-area:actions!important;
+    display:grid!important;
+    grid-template-columns:repeat(6,34px)!important;
+    grid-auto-rows:34px!important;
+    gap:6px!important;
+    justify-content:end!important;
+    align-content:start!important;
+    align-items:center!important;
+    width:234px!important;
+    min-width:234px!important;
+    max-width:234px!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+  }
+  .item-card.timeline-item .item-actions button,
+  .item-card.timeline-item.compact-time-card .item-actions button,
+  .item-card.timeline-item.roomy-time-card .item-actions button,
+  .item-card.timeline-item.very-roomy-time-card .item-actions button{
+    width:34px!important;
+    min-width:34px!important;
+    max-width:34px!important;
+    height:34px!important;
+    min-height:34px!important;
+    padding:0!important;
+    border-radius:999px!important;
+    display:grid!important;
+    place-items:center!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+    font-size:.78rem!important;
+    line-height:1!important;
+  }
+  .item-card.timeline-item .item-actions .shift{
+    font-size:.72rem!important;
+    font-weight:950!important;
+  }
+  .item-card.timeline-item .item-actions .delete{
+    color:#ff3f70!important;
+    background:#fff1f6!important;
+    border-color:#ffc8d8!important;
+  }
+  .item-card.timeline-item .resize-handle{display:none!important;}
+
+  /* Medium screens: actions go under content instead of squeezing the card. */
+  @media (max-width:1180px){
+    .item-card.timeline-item > .card-front,
+    .item-card.timeline-item.compact-time-card > .card-front,
+    .item-card.timeline-item.roomy-time-card > .card-front,
+    .item-card.timeline-item.very-roomy-time-card > .card-front{
+      grid-template-columns:90px minmax(0,1fr)!important;
+      grid-template-areas:"time main" "time actions"!important;
+      min-height:112px!important;
+    }
+    .item-card.timeline-item .item-actions,
+    .item-card.timeline-item.compact-time-card .item-actions,
+    .item-card.timeline-item.roomy-time-card .item-actions,
+    .item-card.timeline-item.very-roomy-time-card .item-actions{
+      width:100%!important;
+      min-width:0!important;
+      max-width:100%!important;
+      justify-content:start!important;
+      grid-template-columns:repeat(6,34px)!important;
+      margin-top:2px!important;
+    }
+  }
+}
