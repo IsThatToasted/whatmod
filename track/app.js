@@ -728,8 +728,7 @@ function setupRealtimeSync() {
     'trip_fun_permissions',
     'trip_fun_ideas',
     'trip_fun_categories',
-    'itinerary_shopping_items',
-    'itinerary_shopping_permissions'
+    'itinerary_shopping_items'
   ];
   let channel = client.channel(`trip-live-${activeTripId}`);
   tableNames.forEach(table => {
@@ -763,7 +762,7 @@ function handleRealtimePayload(table, payload) {
       : table === 'itinerary_memories' ? 'Memories updated'
       : table === 'itinerary_must_do' ? 'Must Do updated'
       : table === 'trip_fun_ideas' || table === 'trip_fun_permissions' || table === 'trip_fun_categories' ? 'Private list updated'
-      : table === 'itinerary_shopping_items' || table === 'itinerary_shopping_permissions' ? 'Shopping list updated'
+      : table === 'itinerary_shopping_items' ? 'Shopping list updated'
       : 'Trip updated';
     setStatus(label);
   }
@@ -2033,26 +2032,24 @@ function stepMemorySlide(dir) {
 
 function shoppingEventById(id) { return items.find(i => i.id === id); }
 function canManageShoppingAccess(item) {
-  if (!item) return false;
-  return currentMembership()?.role === 'owner' || item.user_id === session?.user?.id;
+  return false;
 }
 function canAccessShoppingListLocal(item) {
-  if (!item || !session?.user?.id) return false;
-  if (currentMembership()?.role === 'owner' || item.user_id === session.user.id) return true;
-  return shoppingListPermissions.some(p => p.itinerary_item_id === item.id && p.user_id === session.user.id && p.can_access);
+  // Shopping lists are public to trip members/collaborators.
+  return !!item && !!session?.user?.id && !!currentMembership();
 }
 async function loadShoppingForItem(itemId) {
   shoppingListItems = [];
   shoppingListPermissions = [];
   if (!activeTripId || !itemId || !session?.user?.id) return;
-  const [perms, rows] = await Promise.all([
-    client.from('itinerary_shopping_permissions').select('*').eq('trip_id', activeTripId).eq('itinerary_item_id', itemId),
-    client.from('itinerary_shopping_items').select('*').eq('trip_id', activeTripId).eq('itinerary_item_id', itemId).order('created_at', { ascending: true })
-  ]);
-  if (perms.error) { console.warn('Shopping permissions unavailable. Run schema.sql.', perms.error); shoppingListPermissions = []; }
-  else shoppingListPermissions = perms.data || [];
-  if (rows.error) { console.warn('Shopping list unavailable. Run schema.sql.', rows.error); shoppingListItems = []; }
-  else shoppingListItems = rows.data || [];
+  const { data, error } = await client
+    .from('itinerary_shopping_items')
+    .select('*')
+    .eq('trip_id', activeTripId)
+    .eq('itinerary_item_id', itemId)
+    .order('created_at', { ascending: true });
+  if (error) { console.warn('Shopping list unavailable. Run schema.sql.', error); shoppingListItems = []; }
+  else shoppingListItems = data || [];
 }
 async function openShoppingListDialog(itemId) {
   const item = shoppingEventById(itemId);
@@ -2061,7 +2058,7 @@ async function openShoppingListDialog(itemId) {
   await loadShoppingForItem(itemId);
   if (!canAccessShoppingListLocal(item)) {
     activeShoppingItemId = null;
-    return alert('This shopping list is private until the trip owner or event creator enables access.');
+    return alert('You need to be part of this trip to open the shopping list.');
   }
   clearShoppingForm();
   renderShoppingListModal();
@@ -2082,16 +2079,10 @@ function renderShoppingListModal() {
   if (!item) return;
   const access = canAccessShoppingListLocal(item);
   const editable = canEdit() && access;
-  const canPerm = canManageShoppingAccess(item);
+  const canPerm = false;
   if (els.shoppingListTitle) els.shoppingListTitle.textContent = `Shopping List · ${item.title || 'Shopping'}`;
-  if (els.shoppingPermissionPanel) els.shoppingPermissionPanel.classList.toggle('hidden', !canPerm);
-  if (els.shoppingPermissionList) {
-    els.shoppingPermissionList.innerHTML = members.map(m => {
-      const fixed = m.role === 'owner' || m.user_id === item.user_id;
-      const allowed = fixed || shoppingListPermissions.some(p => p.user_id === m.user_id && p.can_access);
-      return `<label class="shopping-permission-row"><span>${memberAvatarHtml(m.user_id)}<strong>${escapeHtml(memberLabel(m.user_id))}</strong><em>${m.user_id === item.user_id ? 'creator' : escapeHtml(m.role || 'traveler')}</em></span><input type="checkbox" data-user-id="${escapeHtml(m.user_id)}" ${allowed ? 'checked' : ''} ${fixed ? 'disabled' : ''}></label>`;
-    }).join('') || '<p class="helper-text">Invite travelers to share this list.</p>';
-  }
+  if (els.shoppingPermissionPanel) els.shoppingPermissionPanel.classList.add('hidden');
+  if (els.shoppingPermissionList) els.shoppingPermissionList.innerHTML = '';
   const done = shoppingListItems.filter(x => x.completed).length;
   if (els.shoppingListBody) {
     els.shoppingListBody.innerHTML = shoppingListItems.length ? shoppingListItems.map(x => `
@@ -2151,14 +2142,7 @@ async function deleteShoppingItem(id) {
   if (error) return showDbError(error);
   await loadShoppingForItem(activeShoppingItemId); renderShoppingListModal(); broadcastTripChange('Shopping list updated');
 }
-async function toggleShoppingPermission(userId, canAccess) {
-  const item = shoppingEventById(activeShoppingItemId);
-  if (!item || !canManageShoppingAccess(item)) return;
-  const payload = { trip_id: activeTripId, itinerary_item_id: activeShoppingItemId, user_id: userId, can_access: !!canAccess, updated_at: new Date().toISOString() };
-  const { error } = await client.from('itinerary_shopping_permissions').upsert(payload, { onConflict: 'itinerary_item_id,user_id' });
-  if (error) return showDbError(error);
-  await loadShoppingForItem(activeShoppingItemId); renderShoppingListModal(); broadcastTripChange('Shopping list access updated');
-}
+async function toggleShoppingPermission(userId, canAccess) { return; }
 
 function defaultMemoryTitle() {
   const d = new Date();

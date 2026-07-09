@@ -115,5 +115,5 @@ No new Supabase schema is required for the UI revamp.
 - Mobile Settings shortcut appears near the bottom of the app on phones.
 - Shopping itinerary cards now show a **List** pill.
 - Shopping lists are shared per shopping event with item add/edit/delete/complete.
-- Shopping list access can be toggled per invited traveler, similar to Fun Ideas.
+- Shopping lists are now public to all trip collaborators, so there is no per-user access UI to maintain.
 - Run `schema.sql` once to add the shopping list tables and realtime support.
