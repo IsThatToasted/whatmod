@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Itinerary Tracker</title>
-  <link rel="stylesheet" href="./styles.css?v=36" />
+  <link rel="stylesheet" href="./styles.css?v=38" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -327,18 +327,35 @@
         <p class="helper-text compact-help">Only selected travelers can open this hidden popup from their avatar.</p>
         <div id="funPermissionList" class="fun-permission-list"></div>
       </div>
-      <div class="fun-editor">
+      <div class="fun-board-toolbar">
+        <div id="funCategoryFilter" class="fun-category-filter"></div>
+        <div class="fun-toolbar-actions">
+          <button id="funCategoryManageBtn" type="button" class="ghost-btn">Categories</button>
+          <button id="funNewIdeaBtn" type="button" class="fun-add-btn">+ Add Idea</button>
+        </div>
+      </div>
+      <div id="funCategoryEditor" class="fun-category-editor hidden">
+        <div class="fun-category-add-row">
+          <input id="funCategoryEmoji" maxlength="4" value="✨" aria-label="Category emoji" />
+          <input id="funCategoryName" placeholder="New category name..." maxlength="40" />
+          <button id="funAddCategoryBtn" type="button">Add category</button>
+        </div>
+        <div id="funCategoryList" class="fun-category-list"></div>
+      </div>
+      <div id="funIdeasList" class="fun-ideas-list"></div>
+      <div class="fun-editor hidden">
         <input id="funIdeaId" type="hidden" />
+        <div class="fun-editor-head"><h3>Add / Edit Idea</h3><button id="funCancelEditorBtn" type="button" class="ghost-btn">Close</button></div>
         <label>Idea / fantasy / activity<input id="funIdeaTitle" placeholder="Private idea name..." maxlength="120" /></label>
         <label>Description<textarea id="funIdeaDescription" rows="3" placeholder="Optional notes, boundaries, location, timing, etc."></textarea></label>
         <div class="dialog-grid compact-grid fun-grid">
+          <label>Category<select id="funIdeaCategory"><option value="">No category</option></select></label>
           <label>Play style<select id="funIdeaPlayType"><option value="private">Private play</option><option value="public">Public / playful</option></select></label>
           <label>Visibility<select id="funIdeaVisibility"><option value="shared">Shared with access list</option><option value="private">Private draft</option></select></label>
           <label>Assigned to<select id="funIdeaAssignedTo"><option value="">Anyone / shared</option></select></label>
         </div>
         <div class="dialog-actions"><button id="funClearBtn" type="button" class="ghost-btn">Clear</button><button id="funSaveBtn" type="button">Save idea</button></div>
       </div>
-      <div id="funIdeasList" class="fun-ideas-list"></div>
     </form>
   </dialog>
 
@@ -368,6 +385,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=37"></script>
+  <script src="./app.js?v=38"></script>
 </body>
 </html>

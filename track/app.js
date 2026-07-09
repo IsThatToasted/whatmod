@@ -19,7 +19,7 @@ const els = {
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingProgressList: document.getElementById('packingProgressList'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
-  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'),
+  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funIdeaCategory: document.getElementById('funIdeaCategory'), funCategoryFilter: document.getElementById('funCategoryFilter'), funCategoryManageBtn: document.getElementById('funCategoryManageBtn'), funCategoryEditor: document.getElementById('funCategoryEditor'), funCategoryName: document.getElementById('funCategoryName'), funCategoryEmoji: document.getElementById('funCategoryEmoji'), funAddCategoryBtn: document.getElementById('funAddCategoryBtn'), funCategoryList: document.getElementById('funCategoryList'), funNewIdeaBtn: document.getElementById('funNewIdeaBtn'), funCancelEditorBtn: document.getElementById('funCancelEditorBtn'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
@@ -153,7 +153,7 @@ function syncRouteFieldVisibility() {
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '';
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '';
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -726,15 +726,29 @@ function setupRealtimeSync() {
     'itinerary_must_do',
     'itinerary_memories',
     'trip_fun_permissions',
-    'trip_fun_ideas'
+    'trip_fun_ideas',
+    'trip_fun_categories'
   ];
   let channel = client.channel(`trip-live-${activeTripId}`);
   tableNames.forEach(table => {
     channel = channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `trip_id=eq.${activeTripId}` }, payload => handleRealtimePayload(table, payload));
   });
+  channel = channel.on('broadcast', { event: 'trip-change' }, ({ payload }) => {
+    if (!payload || payload.trip_id !== activeTripId) return;
+    if (payload.actor && payload.actor === session?.user?.id) return;
+    setStatus(payload.label || 'Trip updated');
+    clearTimeout(liveSyncTimer);
+    liveSyncTimer = setTimeout(refreshLiveTripData, 120);
+  });
   realtimeChannel = channel.subscribe(status => {
     if (status === 'SUBSCRIBED') setStatus('Live sync on');
   });
+}
+function broadcastTripChange(label = 'Trip updated') {
+  try {
+    if (!realtimeChannel || !activeTripId) return;
+    realtimeChannel.send({ type: 'broadcast', event: 'trip-change', payload: { trip_id: activeTripId, actor: session?.user?.id || '', label, at: Date.now() } });
+  } catch (error) { console.warn('Broadcast sync unavailable', error); }
 }
 
 function handleRealtimePayload(table, payload) {
@@ -746,7 +760,7 @@ function handleRealtimePayload(table, payload) {
       : table === 'itinerary_items' ? 'Itinerary updated'
       : table === 'itinerary_memories' ? 'Memories updated'
       : table === 'itinerary_must_do' ? 'Must Do updated'
-      : table === 'trip_fun_ideas' || table === 'trip_fun_permissions' ? 'Private list updated'
+      : table === 'trip_fun_ideas' || table === 'trip_fun_permissions' || table === 'trip_fun_categories' ? 'Private list updated'
       : 'Trip updated';
     setStatus(label);
   }
@@ -762,7 +776,8 @@ async function refreshLiveTripData() {
   try {
     await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]);
     await loadPackingProgress();
-    if (typeof loadFunAccess === 'function') await loadFunAccess();
+    if (typeof loadFunCategories === 'function') await loadFunCategories();
+    if (typeof loadFunIdeas === 'function') await loadFunIdeas();
     render();
   } catch (error) {
     console.warn('Live refresh failed', error);
@@ -968,7 +983,7 @@ async function saveItemFromDialog(e) {
   }
   selectedDay = payload.item_date; els.itemDialog.close(); render();
 }
-async function updateItem(id, patch) { if (!canEdit()) return; const current = items.find(i => i.id === id); if (current && isLockedItem(current) && !('locked' in patch) && !('locked_at' in patch)) return alert('This card is locked. Unlock it first to make changes.'); const { data, error } = await client.from('itinerary_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single(); if (error) return showDbError(error); items = items.map(i => i.id === id ? data : i); render(); }
+async function updateItem(id, patch) { if (!canEdit()) return; const current = items.find(i => i.id === id); if (current && isLockedItem(current) && !('locked' in patch) && !('locked_at' in patch)) return alert('This card is locked. Unlock it first to make changes.'); const { data, error } = await client.from('itinerary_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single(); if (error) return showDbError(error); items = items.map(i => i.id === id ? data : i); broadcastTripChange('Itinerary updated'); render(); }
 async function deleteItem(id) { if (!canEdit()) return; const item = items.find(i => i.id === id); if (isLockedItem(item)) return alert('This card is locked. Unlock it before deleting.'); if (!confirm('Delete this item?')) return; const { error } = await client.from('itinerary_items').delete().eq('id', id); if (error) return showDbError(error); items = items.filter(i => i.id !== id); render(); }
 
 async function createInviteLink() {
@@ -1190,6 +1205,7 @@ async function toggleItemLock(item) {
   if (error) return showDbError(error);
   items = items.map(i => i.id === item.id ? data : i);
   setStatus(locked ? 'Card unlocked' : 'Card locked');
+  broadcastTripChange(locked ? 'Card unlocked' : 'Card locked');
   render();
 }
 
@@ -1697,6 +1713,7 @@ function canAccessFunIdeasLocal() {
   if (isTripOwner()) return true;
   return funPermissions.some(p => p.trip_id === activeTripId && p.user_id === session.user.id && p.can_access);
 }
+function canManageFunCategories() { return canEdit() && canAccessFunIdeasLocal(); }
 async function loadFunPermissions() {
   funPermissions = [];
   if (!activeTripId || !session?.user?.id) return;
@@ -1709,6 +1726,7 @@ async function loadFunIdeas() {
   if (!activeTripId || !session?.user?.id) return;
   await loadFunPermissions();
   if (!canAccessFunIdeasLocal()) return;
+  await loadFunCategories();
   const { data, error } = await client.from('trip_fun_ideas').select('*').eq('trip_id', activeTripId).order('created_at', { ascending: false });
   if (error) { console.warn('Fun Ideas table unavailable. Run schema.sql.', error); return; }
   funIdeas = data || [];
@@ -1727,7 +1745,83 @@ function clearFunIdeaForm() {
   if (els.funIdeaPlayType) els.funIdeaPlayType.value = 'private';
   if (els.funIdeaVisibility) els.funIdeaVisibility.value = 'shared';
   populateFunAssigneeSelect('');
+  populateFunCategorySelect('');
 }
+
+
+async function loadFunCategories() {
+  funCategories = [];
+  if (!activeTripId || !session?.user?.id) return;
+  const { data, error } = await client.from('trip_fun_categories').select('*').eq('trip_id', activeTripId).order('created_at', { ascending: true });
+  if (error) { console.warn('Fun Ideas categories unavailable. Run schema.sql.', error); return; }
+  funCategories = data || [];
+  if (!funCategories.length && canManageFunCategories()) await ensureDefaultFunCategories();
+}
+async function ensureDefaultFunCategories() {
+  const defaults = [
+    { emoji: '💕', name: 'Romantic' },
+    { emoji: '🔥', name: 'Adventurous' },
+    { emoji: '🛁', name: 'Relaxing' },
+    { emoji: '🎭', name: 'Roleplay' },
+    { emoji: '⭐', name: 'Favorites' }
+  ];
+  const { data, error } = await client.from('trip_fun_categories').insert(defaults.map(c => ({ ...c, trip_id: activeTripId, created_by: session.user.id }))).select('*');
+  if (!error) funCategories = data || [];
+}
+function funCategoryName(id) {
+  if (!id) return '';
+  const c = funCategories.find(x => x.id === id);
+  return c ? `${c.emoji || '✨'} ${c.name || 'Category'}` : '';
+}
+function populateFunCategorySelect(selected = '') {
+  if (!els.funIdeaCategory) return;
+  els.funIdeaCategory.innerHTML = '<option value="">No category</option>' + funCategories.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml((c.emoji || '✨') + ' ' + (c.name || 'Category'))}</option>`).join('');
+  els.funIdeaCategory.value = selected || '';
+}
+function renderFunCategoryFilter() {
+  if (!els.funCategoryFilter) return;
+  const chips = [`<button type="button" class="fun-category-chip ${funCategoryFilterValue === 'all' ? 'active' : ''}" data-filter="all">All</button>`]
+    .concat(funCategories.map(c => `<button type="button" class="fun-category-chip ${funCategoryFilterValue === c.id ? 'active' : ''}" data-filter="${escapeHtml(c.id)}">${escapeHtml(c.emoji || '✨')} ${escapeHtml(c.name || 'Category')}</button>`));
+  els.funCategoryFilter.innerHTML = chips.join('');
+}
+function renderFunCategoryManager() {
+  if (!els.funCategoryList) return;
+  els.funCategoryList.innerHTML = funCategories.length ? funCategories.map(c => `<div class="fun-category-row" data-id="${escapeHtml(c.id)}"><span>${escapeHtml(c.emoji || '✨')} <strong>${escapeHtml(c.name || 'Category')}</strong></span><span><button type="button" class="fun-category-edit ghost-btn">Edit</button><button type="button" class="fun-category-delete danger ghost-btn">Delete</button></span></div>`).join('') : '<p class="helper-text">No categories yet.</p>';
+}
+async function addFunCategory() {
+  if (!canManageFunCategories()) return;
+  const name = (els.funCategoryName?.value || '').trim();
+  if (!name) return els.funCategoryName?.focus();
+  const emoji = (els.funCategoryEmoji?.value || '✨').trim().slice(0, 4) || '✨';
+  const { error } = await client.from('trip_fun_categories').insert({ trip_id: activeTripId, created_by: session.user.id, name, emoji });
+  if (error) { showDbError(error); return; }
+  if (els.funCategoryName) els.funCategoryName.value = '';
+  if (els.funCategoryEmoji) els.funCategoryEmoji.value = '✨';
+  await loadFunCategories(); renderFunIdeasModal(); broadcastTripChange('Fun Ideas categories updated');
+}
+async function editFunCategory(id) {
+  if (!canManageFunCategories()) return;
+  const c = funCategories.find(x => x.id === id); if (!c) return;
+  const name = prompt('Category name', c.name || ''); if (name === null) return;
+  const emoji = prompt('Emoji', c.emoji || '✨'); if (emoji === null) return;
+  const { error } = await client.from('trip_fun_categories').update({ name: name.trim() || c.name, emoji: (emoji.trim() || c.emoji || '✨').slice(0, 4), updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) { showDbError(error); return; }
+  await loadFunCategories(); renderFunIdeasModal(); broadcastTripChange('Fun Ideas categories updated');
+}
+async function deleteFunCategory(id) {
+  if (!canManageFunCategories()) return;
+  if (!confirm('Delete this category? Ideas will stay, but lose this category.')) return;
+  await client.from('trip_fun_ideas').update({ category_id: null, updated_at: new Date().toISOString() }).eq('category_id', id);
+  const { error } = await client.from('trip_fun_categories').delete().eq('id', id);
+  if (error) { showDbError(error); return; }
+  if (funCategoryFilterValue === id) funCategoryFilterValue = 'all';
+  await loadFunCategories(); await loadFunIdeas(); renderFunIdeasModal(); broadcastTripChange('Fun Ideas categories updated');
+}
+function showFunEditor(show = true) {
+  document.querySelector('.fun-editor')?.classList.toggle('hidden', !show);
+  if (show) setTimeout(() => els.funIdeaTitle?.focus(), 50);
+}
+
 function funIdeaForChipHtml(assignedTo) {
   if (!assignedTo) return '<span class="fun-chip assignee for-us"><span class="fun-everyone-avatar">👥</span><span>For Us</span></span>';
   const isMe = assignedTo === session?.user?.id;
@@ -1744,6 +1838,9 @@ function funIdeaForChipHtml(assignedTo) {
 
 function renderFunIdeasModal() {
   populateFunAssigneeSelect(els.funIdeaAssignedTo?.value || '');
+  populateFunCategorySelect(els.funIdeaCategory?.value || '');
+  renderFunCategoryFilter();
+  renderFunCategoryManager();
   const editable = canEdit() && canAccessFunIdeasLocal();
   if (els.funAccessPanel) els.funAccessPanel.classList.toggle('hidden', !isTripOwner());
   if (els.funPermissionList) {
@@ -1754,16 +1851,17 @@ function renderFunIdeasModal() {
     }).join('') || '<p class="helper-text">Invite a traveler to share access.</p>';
   }
   if (els.funIdeasList) {
-    const visible = funIdeas.filter(i => i.visibility !== 'private' || i.created_by === session.user.id || isTripOwner());
+    const visible = funIdeas.filter(i => (i.visibility !== 'private' || i.created_by === session.user.id || isTripOwner()) && (funCategoryFilterValue === 'all' || i.category_id === funCategoryFilterValue));
     els.funIdeasList.innerHTML = visible.length ? visible.map(i => {
       const visibilityChip = i.visibility === 'private' ? '🔒 Private' : '🌐 Shared';
       const playChip = i.play_type === 'public' ? '✨ Public Play' : '💕 Private Play';
       const assigneeChip = funIdeaForChipHtml(i.assigned_to || '');
+      const categoryChip = i.category_id ? `<span class="fun-chip category">${escapeHtml(funCategoryName(i.category_id))}</span>` : '';
       const hasDescription = !!String(i.description || '').trim();
       return `<article class="fun-idea-card" data-id="${escapeHtml(i.id)}">
         <button type="button" class="fun-card-main" aria-expanded="false">
           <span class="fun-title-row"><strong>${escapeHtml(i.title || 'Untitled idea')}</strong><span class="fun-expand-icon">⌄</span></span>
-          <span class="fun-badges">${assigneeChip}<span class="fun-chip">${escapeHtml(visibilityChip)}</span><span class="fun-chip">${escapeHtml(playChip)}</span></span>
+          <span class="fun-badges">${assigneeChip}${categoryChip}<span class="fun-chip">${escapeHtml(visibilityChip)}</span><span class="fun-chip">${escapeHtml(playChip)}</span></span>
         </button>
         <div class="fun-card-details">
           ${hasDescription ? `<p>${escapeHtml(i.description || '')}</p>` : '<p class="muted">No extra notes added.</p>'}
@@ -1785,6 +1883,7 @@ async function saveFunIdea() {
     play_type: els.funIdeaPlayType?.value || 'private',
     visibility: els.funIdeaVisibility?.value || 'shared',
     assigned_to: els.funIdeaAssignedTo?.value || null,
+    category_id: els.funIdeaCategory?.value || null,
     updated_at: new Date().toISOString()
   };
   const id = els.funIdeaId?.value;
@@ -1792,7 +1891,7 @@ async function saveFunIdea() {
   if (id) result = await client.from('trip_fun_ideas').update(payload).eq('id', id).select('*').single();
   else result = await client.from('trip_fun_ideas').insert(payload).select('*').single();
   if (result.error) { showDbError(result.error); return; }
-  await loadFunIdeas(); clearFunIdeaForm(); renderFunIdeasModal();
+  await loadFunIdeas(); clearFunIdeaForm(); showFunEditor(false); renderFunIdeasModal(); broadcastTripChange('Private list updated');
 }
 function editFunIdea(id) {
   const i = funIdeas.find(x => x.id === id); if (!i) return;
@@ -1802,6 +1901,8 @@ function editFunIdea(id) {
   if (els.funIdeaPlayType) els.funIdeaPlayType.value = i.play_type || 'private';
   if (els.funIdeaVisibility) els.funIdeaVisibility.value = i.visibility || 'shared';
   populateFunAssigneeSelect(i.assigned_to || '');
+  populateFunCategorySelect(i.category_id || '');
+  showFunEditor(true);
   els.funIdeaTitle?.focus();
 }
 async function deleteFunIdea(id) {
@@ -1809,14 +1910,14 @@ async function deleteFunIdea(id) {
   if (!confirm('Remove this Fun Idea?')) return;
   const { error } = await client.from('trip_fun_ideas').delete().eq('id', id);
   if (error) { showDbError(error); return; }
-  await loadFunIdeas(); renderFunIdeasModal();
+  await loadFunIdeas(); renderFunIdeasModal(); broadcastTripChange('Private list updated');
 }
 async function toggleFunPermission(userId, canAccess) {
   if (!isTripOwner() || !activeTripId || !userId) return;
   const payload = { trip_id: activeTripId, user_id: userId, can_access: !!canAccess, updated_at: new Date().toISOString() };
   const { error } = await client.from('trip_fun_permissions').upsert(payload, { onConflict: 'trip_id,user_id' });
   if (error) { showDbError(error); return; }
-  await loadFunPermissions(); renderFunIdeasModal();
+  await loadFunPermissions(); renderFunIdeasModal(); broadcastTripChange('Private list access updated');
 }
 
 function normalizeMemory(row) {
@@ -1892,6 +1993,21 @@ function stepMemorySlide(dir) {
   activeMemorySlide = (activeMemorySlide + dir + photos.length) % photos.length;
   renderMemorySlideshow();
 }
+
+
+if (els.funNewIdeaBtn) els.funNewIdeaBtn.addEventListener('click', () => { clearFunIdeaForm(); showFunEditor(true); });
+if (els.funCancelEditorBtn) els.funCancelEditorBtn.addEventListener('click', () => { clearFunIdeaForm(); showFunEditor(false); });
+if (els.funCategoryManageBtn) els.funCategoryManageBtn.addEventListener('click', () => els.funCategoryEditor?.classList.toggle('hidden'));
+if (els.funAddCategoryBtn) els.funAddCategoryBtn.addEventListener('click', addFunCategory);
+if (els.funCategoryFilter) els.funCategoryFilter.addEventListener('click', e => {
+  const btn = e.target.closest('.fun-category-chip'); if (!btn) return;
+  funCategoryFilterValue = btn.dataset.filter || 'all'; renderFunIdeasModal();
+});
+if (els.funCategoryList) els.funCategoryList.addEventListener('click', e => {
+  const row = e.target.closest('.fun-category-row'); if (!row) return;
+  if (e.target.closest('.fun-category-edit')) editFunCategory(row.dataset.id);
+  if (e.target.closest('.fun-category-delete')) deleteFunCategory(row.dataset.id);
+});
 
 if (els.avatarFunBtn) els.avatarFunBtn.addEventListener('click', openFunIdeasDialog);
 if (els.funSaveBtn) els.funSaveBtn.addEventListener('click', saveFunIdea);

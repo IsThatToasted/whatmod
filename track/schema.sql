@@ -485,11 +485,23 @@ create table if not exists public.trip_fun_permissions (
   unique(trip_id, user_id)
 );
 
+
+create table if not exists public.trip_fun_categories (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  emoji text not null default '✨',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.trip_fun_ideas (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
   created_by uuid not null references auth.users(id) on delete cascade,
   assigned_to uuid references auth.users(id) on delete set null,
+  category_id uuid references public.trip_fun_categories(id) on delete set null,
   title text not null,
   description text default '',
   play_type text not null default 'private' check (play_type in ('private','public')),
@@ -501,8 +513,10 @@ create table if not exists public.trip_fun_ideas (
 
 
 alter table public.trip_fun_ideas add column if not exists assigned_to uuid references auth.users(id) on delete set null;
+alter table public.trip_fun_ideas add column if not exists category_id uuid references public.trip_fun_categories(id) on delete set null;
 
 alter table public.trip_fun_permissions enable row level security;
+alter table public.trip_fun_categories enable row level security;
 alter table public.trip_fun_ideas enable row level security;
 
 drop policy if exists "fun permissions visible to trip members" on public.trip_fun_permissions;
@@ -513,6 +527,32 @@ drop policy if exists "owner manages fun permissions" on public.trip_fun_permiss
 create policy "owner manages fun permissions" on public.trip_fun_permissions
   for all using (public.current_user_trip_role(trip_id) = 'owner')
   with check (public.current_user_trip_role(trip_id) = 'owner');
+
+
+drop policy if exists "fun categories visible to permitted users" on public.trip_fun_categories;
+create policy "fun categories visible to permitted users" on public.trip_fun_categories
+  for select using (
+    public.current_user_trip_role(trip_id) = 'owner'
+    or exists (
+      select 1 from public.trip_fun_permissions p
+      where p.trip_id = trip_fun_categories.trip_id and p.user_id = auth.uid() and p.can_access = true
+    )
+  );
+
+drop policy if exists "owner manages fun categories" on public.trip_fun_categories;
+drop policy if exists "permitted editors manage fun categories" on public.trip_fun_categories;
+create policy "permitted editors manage fun categories" on public.trip_fun_categories
+  for all using (
+    public.user_can_edit_trip(trip_id) and (
+      public.current_user_trip_role(trip_id) = 'owner'
+      or exists (select 1 from public.trip_fun_permissions p where p.trip_id = trip_fun_categories.trip_id and p.user_id = auth.uid() and p.can_access = true)
+    )
+  ) with check (
+    public.user_can_edit_trip(trip_id) and (
+      public.current_user_trip_role(trip_id) = 'owner'
+      or exists (select 1 from public.trip_fun_permissions p where p.trip_id = trip_fun_categories.trip_id and p.user_id = auth.uid() and p.can_access = true)
+    )
+  );
 
 drop policy if exists "fun ideas visible to permitted users" on public.trip_fun_ideas;
 create policy "fun ideas visible to permitted users" on public.trip_fun_ideas
@@ -626,7 +666,8 @@ begin
     'itinerary_must_do',
     'itinerary_memories',
     'trip_fun_permissions',
-    'trip_fun_ideas'
+    'trip_fun_ideas',
+    'trip_fun_categories'
   ] loop
     if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t)
        and not exists (
