@@ -2405,3 +2405,201 @@ input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--muted) 72
   .shopping-list-row{ grid-template-columns:auto 1fr; }
   .shopping-list-row .shopping-edit,.shopping-list-row .shopping-delete{ grid-column:auto; min-height:38px; }
 }
+
+
+/* v53 modal viewport containment + shopping/fun dialog polish */
+html, body{
+  max-width:100%;
+  overflow-x:hidden!important;
+}
+dialog.fun-dialog, dialog.shopping-dialog{
+  width:100vw!important;
+  max-width:100vw!important;
+  min-width:0!important;
+  padding:0!important;
+  margin:auto!important;
+  overflow:hidden!important;
+}
+dialog.fun-dialog[open], dialog.shopping-dialog[open]{
+  display:grid!important;
+  place-items:center!important;
+}
+.fun-dialog-card, .shopping-dialog-card{
+  box-sizing:border-box!important;
+  width:min(760px, calc(100dvw - 28px))!important;
+  max-width:calc(100dvw - 28px)!important;
+  min-width:0!important;
+  max-height:calc(100dvh - 28px)!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  padding:clamp(16px, 3vw, 24px)!important;
+}
+.fun-dialog-card *, .shopping-dialog-card *{
+  box-sizing:border-box!important;
+  max-width:100%;
+  min-width:0;
+}
+.fun-dialog-head, .shopping-dialog-head, .shopping-list-toolbar, .fun-board-toolbar, .fun-toolbar-actions{
+  min-width:0!important;
+  max-width:100%!important;
+}
+.fun-dialog-head h2, .shopping-dialog-head h2,
+.fun-idea-card h3, .shopping-row-main strong{
+  overflow-wrap:anywhere!important;
+  word-break:normal!important;
+}
+.fun-permission-panel, .shopping-permission-panel, .fun-category-editor, .shopping-editor{
+  overflow:hidden!important;
+  max-width:100%!important;
+}
+.fun-permission-row, .shopping-permission-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:10px!important;
+  width:100%!important;
+}
+.fun-permission-row > span, .shopping-permission-row > span{
+  display:grid!important;
+  grid-template-columns:32px minmax(0,1fr)!important;
+  grid-template-areas:'avatar name' 'avatar role'!important;
+  align-items:center!important;
+  gap:0 10px!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+.fun-permission-row > span img, .fun-permission-row > span em.avatar-fallback,
+.shopping-permission-row > span img, .shopping-permission-row > span em.avatar-fallback{
+  grid-area:avatar!important;
+}
+.fun-permission-row > span strong, .shopping-permission-row > span strong{
+  grid-area:name!important;
+  display:block!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  line-height:1.1!important;
+}
+.fun-permission-row > span em, .shopping-permission-row > span em{
+  grid-area:role!important;
+  display:block!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  line-height:1.15!important;
+}
+.fun-permission-row input, .shopping-permission-row input{
+  justify-self:end!important;
+  flex:0 0 auto!important;
+}
+.shopping-list-toolbar{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+}
+.shopping-list-body, .fun-ideas-list{
+  overflow-x:hidden!important;
+}
+.shopping-list-row{
+  width:100%!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+.fun-idea-card{
+  width:100%!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+.fun-badges{
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+.fun-badges span{
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+@media (max-width:760px){
+  dialog.fun-dialog, dialog.shopping-dialog{
+    align-items:end!important;
+  }
+  .fun-dialog-card, .shopping-dialog-card{
+    width:calc(100dvw - 18px)!important;
+    max-width:calc(100dvw - 18px)!important;
+    max-height:calc(100dvh - 24px)!important;
+    border-radius:28px!important;
+    margin:0 auto calc(8px + env(safe-area-inset-bottom))!important;
+    padding:18px!important;
+  }
+  .fun-dialog-head, .shopping-dialog-head{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;
+  }
+  .fun-dialog-head .ghost-btn, .shopping-dialog-head .ghost-btn{
+    width:100%!important;
+    min-height:48px!important;
+  }
+  .shopping-list-toolbar{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+  .shopping-list-toolbar .fun-add-btn{
+    width:100%!important;
+    min-height:48px!important;
+  }
+  .fun-board-toolbar{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+  .fun-toolbar-actions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+  }
+  .fun-toolbar-actions button{
+    width:100%!important;
+    min-height:44px!important;
+    padding-inline:10px!important;
+  }
+  .fun-category-filter{
+    display:flex!important;
+    gap:8px!important;
+    overflow-x:auto!important;
+    max-width:100%!important;
+    padding-bottom:4px!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  .fun-category-filter button{
+    flex:0 0 auto!important;
+    white-space:nowrap!important;
+  }
+  .fun-category-add-row{
+    display:grid!important;
+    grid-template-columns:64px minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+  .fun-category-add-row button{
+    grid-column:1 / -1!important;
+    width:100%!important;
+  }
+  .fun-permission-row, .shopping-permission-row{
+    grid-template-columns:minmax(0,1fr) 32px!important;
+    padding:12px!important;
+  }
+  .fun-permission-row > span, .shopping-permission-row > span{
+    grid-template-columns:34px minmax(0,1fr)!important;
+  }
+  .shopping-list-row{
+    grid-template-columns:32px minmax(0,1fr)!important;
+    gap:10px!important;
+  }
+  .shopping-list-row .shopping-edit, .shopping-list-row .shopping-delete{
+    grid-column:2!important;
+    width:100%!important;
+  }
+}
