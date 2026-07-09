@@ -2955,3 +2955,91 @@ dialog.fun-dialog[open], dialog.shopping-dialog[open]{
     min-width:70px !important;
   }
 }
+
+/* v57: desktop action dock consistency polish
+   Keeps the same 3x2 action footprint on short and tall timeline cards so
+   delete/edit/utility buttons never touch the card edge or each other. */
+@media (min-width:761px){
+  .item-card.timeline-item > .card-front,
+  .item-card.timeline-item.compact-time-card > .card-front,
+  .item-card.timeline-item.roomy-time-card > .card-front,
+  .item-card.timeline-item.very-roomy-time-card > .card-front{
+    grid-template-columns:88px minmax(0,1fr) 140px !important;
+    gap:18px !important;
+    padding-right:18px !important;
+    box-sizing:border-box !important;
+  }
+
+  .item-card.timeline-item .item-actions,
+  .item-card.timeline-item.compact-time-card .item-actions,
+  .item-card.timeline-item.roomy-time-card .item-actions,
+  .item-card.timeline-item.very-roomy-time-card .item-actions{
+    width:132px !important;
+    min-width:132px !important;
+    max-width:132px !important;
+    grid-template-columns:repeat(3,36px) !important;
+    grid-auto-rows:36px !important;
+    gap:8px !important;
+    justify-content:center !important;
+    align-content:center !important;
+    justify-self:end !important;
+    padding:4px !important;
+    border-radius:999px !important;
+    box-sizing:border-box !important;
+  }
+
+  .item-card.timeline-item .item-actions button,
+  .item-card.timeline-item.compact-time-card .item-actions button,
+  .item-card.timeline-item.roomy-time-card .item-actions button,
+  .item-card.timeline-item.very-roomy-time-card .item-actions button{
+    width:36px !important;
+    min-width:36px !important;
+    max-width:36px !important;
+    height:36px !important;
+    min-height:36px !important;
+    max-height:36px !important;
+    margin:0 !important;
+    padding:0 !important;
+    box-sizing:border-box !important;
+  }
+
+  .item-card.timeline-item .item-actions .delete,
+  .item-card.timeline-item.compact-time-card .item-actions .delete,
+  .item-card.timeline-item.roomy-time-card .item-actions .delete,
+  .item-card.timeline-item.very-roomy-time-card .item-actions .delete{
+    grid-column:auto !important;
+  }
+}
+
+@media (min-width:761px) and (max-width:1040px){
+  .item-card.timeline-item > .card-front,
+  .item-card.timeline-item.compact-time-card > .card-front,
+  .item-card.timeline-item.roomy-time-card > .card-front,
+  .item-card.timeline-item.very-roomy-time-card > .card-front{
+    grid-template-columns:76px minmax(0,1fr) 128px !important;
+    gap:12px !important;
+    padding-right:12px !important;
+  }
+  .item-card.timeline-item .item-actions,
+  .item-card.timeline-item.compact-time-card .item-actions,
+  .item-card.timeline-item.roomy-time-card .item-actions,
+  .item-card.timeline-item.very-roomy-time-card .item-actions{
+    width:120px !important;
+    min-width:120px !important;
+    max-width:120px !important;
+    grid-template-columns:repeat(3,34px) !important;
+    grid-auto-rows:34px !important;
+    gap:7px !important;
+  }
+  .item-card.timeline-item .item-actions button,
+  .item-card.timeline-item.compact-time-card .item-actions button,
+  .item-card.timeline-item.roomy-time-card .item-actions button,
+  .item-card.timeline-item.very-roomy-time-card .item-actions button{
+    width:34px !important;
+    min-width:34px !important;
+    max-width:34px !important;
+    height:34px !important;
+    min-height:34px !important;
+    max-height:34px !important;
+  }
+}
