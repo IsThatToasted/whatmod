@@ -87,3 +87,8 @@ Locked cards can still be viewed, but cannot be dragged, resized, shifted, edite
 - Sidebar Settings now opens `settings.html`.
 - Desktop/tablet card action dock spacing was tightened so buttons stay inside the right side of event cards.
 - No Supabase schema change is required for this patch.
+
+
+## ItineraryTrackerV2 mobile nav patch
+
+This patch updates the mobile quick nav to: Home, Must Do, Add Memory, and Packing. Add Memory opens the camera/photo picker flow directly. The nav stays sticky at the top, fades after 10 seconds of inactivity while scrolled, and wakes back up when the user scrolls/touches the page.

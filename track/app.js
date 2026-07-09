@@ -1705,12 +1705,32 @@ if (els.undoBtn) els.undoBtn.addEventListener('click', async () => { if (lastUnd
 
 setInterval(updateTripCountdown, 60000);
 
+const mobileQuickNav = document.querySelector('.mobile-quick-nav');
 const mobileNavHome = document.getElementById('mobileNavHome');
-const mobileNavPlan = document.getElementById('mobileNavPlan');
+const mobileNavMustDo = document.getElementById('mobileNavMustDo');
 const mobileNavMemory = document.getElementById('mobileNavMemory');
-mobileNavHome?.addEventListener('click', () => scrollToAppSection('homeDashboard'));
-mobileNavPlan?.addEventListener('click', () => scrollToAppSection('plannerTitle'));
-mobileNavMemory?.addEventListener('click', () => startQuickMemoryCapture());
+const mobileNavPacking = document.getElementById('mobileNavPacking');
+let mobileQuickNavIdleTimer = null;
+function mobileNavIsPhone() { return window.matchMedia?.('(max-width: 760px)').matches; }
+function wakeMobileQuickNav() {
+  if (!mobileQuickNav || !mobileNavIsPhone()) return;
+  mobileQuickNav.classList.remove('is-idle');
+  clearTimeout(mobileQuickNavIdleTimer);
+  mobileQuickNavIdleTimer = setTimeout(() => {
+    if (window.scrollY > 40 && mobileNavIsPhone()) mobileQuickNav.classList.add('is-idle');
+  }, 10000);
+}
+function attachMobileQuickNavAutoHide() {
+  if (!mobileQuickNav) return;
+  ['scroll','touchstart','touchmove','wheel'].forEach(evt => window.addEventListener(evt, wakeMobileQuickNav, { passive: true }));
+  window.addEventListener('resize', wakeMobileQuickNav, { passive: true });
+  wakeMobileQuickNav();
+}
+mobileNavHome?.addEventListener('click', () => { wakeMobileQuickNav(); scrollToAppSection('homeDashboard'); });
+mobileNavMustDo?.addEventListener('click', () => { wakeMobileQuickNav(); scrollToAppSection('mustDoPanel'); });
+mobileNavMemory?.addEventListener('click', () => { wakeMobileQuickNav(); startQuickMemoryCapture(); });
+mobileNavPacking?.addEventListener('click', () => { wakeMobileQuickNav(); scrollToAppSection('packingPanel'); });
+attachMobileQuickNavAutoHide();
 
 init();
 

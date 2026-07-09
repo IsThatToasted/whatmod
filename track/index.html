@@ -4,15 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ItineraryTrackerV2</title>
-  <link rel="stylesheet" href="./styles.css?v=41" />
+  <link rel="stylesheet" href="./styles.css?v=42" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <nav class="mobile-quick-nav" aria-label="Quick mobile navigation">
     <button id="mobileNavHome" type="button"><span>🏠</span><strong>Home</strong></button>
-    <button id="mobileNavPlan" type="button"><span>🗓️</span><strong>Plan</strong></button>
-    <button id="mobileNavMemory" type="button"><span>📷</span><strong>Memories</strong></button>
+    <button id="mobileNavMustDo" type="button"><span>⭐</span><strong>Must Do</strong></button>
+    <button id="mobileNavMemory" class="mobile-nav-memory" type="button"><span>📷</span><strong>Add Memory</strong></button>
+    <button id="mobileNavPacking" type="button"><span>🎒</span><strong>Packing</strong></button>
   </nav>
 
   <div class="app-shell">
@@ -391,6 +392,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=41"></script>
+  <script src="./app.js?v=42"></script>
 </body>
 </html>
