@@ -1707,6 +1707,7 @@ setInterval(updateTripCountdown, 60000);
 
 const mobileQuickNav = document.querySelector('.mobile-quick-nav');
 const mobileNavHome = document.getElementById('mobileNavHome');
+const mobileNavPlan = document.getElementById('mobileNavPlan');
 const mobileNavMustDo = document.getElementById('mobileNavMustDo');
 const mobileNavMemory = document.getElementById('mobileNavMemory');
 const mobileNavPacking = document.getElementById('mobileNavPacking');
@@ -1727,6 +1728,7 @@ function attachMobileQuickNavAutoHide() {
   wakeMobileQuickNav();
 }
 mobileNavHome?.addEventListener('click', () => { wakeMobileQuickNav(); scrollToAppSection('homeDashboard'); });
+mobileNavPlan?.addEventListener('click', () => { wakeMobileQuickNav(); scrollToAppSection('plannerTitle'); });
 mobileNavMustDo?.addEventListener('click', () => { wakeMobileQuickNav(); scrollToAppSection('mustDoPanel'); });
 mobileNavMemory?.addEventListener('click', () => { wakeMobileQuickNav(); startQuickMemoryCapture(); });
 mobileNavPacking?.addEventListener('click', () => { wakeMobileQuickNav(); scrollToAppSection('packingPanel'); });
