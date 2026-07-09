@@ -2096,3 +2096,48 @@ if (els.memoryList) els.memoryList.addEventListener('click', e => {
 });
 if (els.memoryPrevBtn) els.memoryPrevBtn.addEventListener('click', () => stepMemorySlide(-1));
 if (els.memoryNextBtn) els.memoryNextBtn.addEventListener('click', () => stepMemorySlide(1));
+
+
+/* v51 Production UI Revamp theme boot */
+(function productionUIRevampThemeBoot(){
+  const PREF_KEY = 'itineraryTrackerV2.settings';
+  const THEMES = ['light', 'dark', 'purple'];
+  function readTheme(){
+    try {
+      const prefs = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+      return THEMES.includes(prefs.appTheme) ? prefs.appTheme : (THEMES.includes(localStorage.getItem('itineraryTrackerV2.theme')) ? localStorage.getItem('itineraryTrackerV2.theme') : 'purple');
+    } catch { return 'purple'; }
+  }
+  function writeTheme(theme){
+    const value = THEMES.includes(theme) ? theme : 'purple';
+    try {
+      const prefs = JSON.parse(localStorage.getItem(PREF_KEY) || '{}');
+      prefs.appTheme = value;
+      localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+      localStorage.setItem('itineraryTrackerV2.theme', value);
+    } catch {}
+    applyTheme(value);
+  }
+  function applyTheme(theme){
+    const value = THEMES.includes(theme) ? theme : 'purple';
+    document.documentElement.dataset.theme = value;
+    document.body.classList.remove('theme-light','theme-dark','theme-purple');
+    document.body.classList.add('theme-' + value);
+    document.querySelectorAll('[data-theme-pick]').forEach(btn => btn.classList.toggle('active', btn.dataset.themePick === value));
+  }
+  function injectSwitcher(){
+    const topActions = document.querySelector('.top-actions');
+    if (!topActions || document.getElementById('themeSwitcher')) return;
+    const box = document.createElement('div');
+    box.id = 'themeSwitcher';
+    box.className = 'theme-switcher';
+    box.setAttribute('aria-label','Theme picker');
+    box.innerHTML = '<button type="button" data-theme-pick="light" title="Clean Light"><span></span></button><button type="button" data-theme-pick="purple" title="Purple Glow"><span></span></button><button type="button" data-theme-pick="dark" title="Night Mode"><span></span></button>';
+    topActions.prepend(box);
+    box.addEventListener('click', e => { const btn = e.target.closest('[data-theme-pick]'); if (btn) writeTheme(btn.dataset.themePick); });
+    applyTheme(readTheme());
+  }
+  applyTheme(readTheme());
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectSwitcher); else injectSwitcher();
+  window.addEventListener('storage', e => { if (e.key === PREF_KEY || e.key === 'itineraryTrackerV2.theme') applyTheme(readTheme()); });
+})();

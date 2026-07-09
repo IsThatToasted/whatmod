@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ItineraryTrackerV2 Settings</title>
-  <link rel="stylesheet" href="./styles.css?v=41" />
+  <title>ItineraryTrackerV2.1 Settings</title>
+  <link rel="stylesheet" href="./styles.css?v=51" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="settings-page">
@@ -34,6 +34,9 @@
       <article class="settings-card">
         <h2>Display</h2>
         <form id="displayForm" class="settings-form">
+          <label>Theme
+            <select id="appTheme"><option value="purple">Purple Glow</option><option value="light">Clean Light</option><option value="dark">Night Mode</option></select>
+          </label>
           <label>Weather unit
             <select id="weatherUnit"><option value="F">Fahrenheit</option><option value="C">Celsius</option></select>
           </label>
@@ -90,16 +93,23 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const PREF_KEY = 'itineraryTrackerV2.settings';
 const $ = id => document.getElementById(id);
-const fields = ['weatherUnit','timelineDensity','reduceMotion','defaultDayStart','defaultDayEnd','defaultMpg','defaultGasPrice','showTravelDefault','showLiveToasts','mobileLongPress'];
+const fields = ['appTheme','weatherUnit','timelineDensity','reduceMotion','defaultDayStart','defaultDayEnd','defaultMpg','defaultGasPrice','showTravelDefault','showLiveToasts','mobileLongPress'];
 function firstName(meta = {}, fallback = 'Traveler') { return String(meta.full_name || meta.name || meta.display_name || fallback || 'Traveler').trim().split(/\s+/)[0] || 'Traveler'; }
 function readPrefs(){ try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch { return {}; } }
+function applyThemeSetting(theme){
+  const value = ['light','dark','purple'].includes(theme) ? theme : 'purple';
+  document.documentElement.dataset.theme = value;
+  document.body.classList.remove('theme-light','theme-dark','theme-purple');
+  document.body.classList.add('theme-' + value);
+}
 function writePrefs(){
   const data = {};
   fields.forEach(id => { const el = $(id); if (!el) return; data[id] = el.type === 'checkbox' ? el.checked : el.value; });
   localStorage.setItem(PREF_KEY, JSON.stringify(data));
+  applyThemeSetting(data.appTheme || 'purple');
   $('settingsStatus').textContent = 'Settings saved on this device.';
 }
-function loadPrefs(){ const p = readPrefs(); fields.forEach(id => { const el = $(id); if (!el || p[id] === undefined) return; if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id]; }); }
+function loadPrefs(){ const p = readPrefs(); if (!p.appTheme) p.appTheme = localStorage.getItem('itineraryTrackerV2.theme') || 'purple'; fields.forEach(id => { const el = $(id); if (!el || p[id] === undefined) return; if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id]; }); applyThemeSetting(p.appTheme || 'purple'); }
 async function loadProfile(){
   const { data } = await client.auth.getSession();
   const user = data?.session?.user;

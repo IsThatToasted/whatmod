@@ -1,4 +1,4 @@
-# ItineraryTrackerV2
+# ItineraryTrackerV2.1 Production UI
 
 Checkpoint build focused on PC/tablet display polish, mobile quick navigation, and camera-first memories.
 
@@ -92,3 +92,19 @@ Locked cards can still be viewed, but cannot be dragged, resized, shifted, edite
 ## ItineraryTrackerV2 mobile nav patch
 
 This patch updates the mobile quick nav to: Home, Must Do, Add Memory, and Packing. Add Memory opens the camera/photo picker flow directly. The nav stays sticky at the top, fades after 10 seconds of inactivity while scrolled, and wakes back up when the user scrolls/touches the page.
+
+
+## V2.1 Production UI Revamp
+
+This checkpoint focuses on moving the app from feature-complete prototype toward a product-ready interface.
+
+### Added / polished
+- Three selectable themes: Purple Glow, Clean Light, and Night Mode.
+- Theme picker in the top bar and Settings page.
+- Unified glass-card design system with consistent shadows, radii, spacing, and color tokens.
+- Reworked dashboard/home card styling.
+- Polished trip hero, summary metrics, day tabs, side panels, modals, and route panel.
+- Rebuilt desktop/tablet event-card layout so short and tall cards use the same contained action dock.
+- Preserved the mobile quick nav and existing Supabase/data functionality.
+
+No new Supabase schema is required for the UI revamp.
