@@ -1728,6 +1728,20 @@ function clearFunIdeaForm() {
   if (els.funIdeaVisibility) els.funIdeaVisibility.value = 'shared';
   populateFunAssigneeSelect('');
 }
+function funIdeaForChipHtml(assignedTo) {
+  if (!assignedTo) return '<span class="fun-chip assignee for-us"><span class="fun-everyone-avatar">👥</span><span>For Us</span></span>';
+  const isMe = assignedTo === session?.user?.id;
+  const label = isMe ? 'Me' : memberLabel(assignedTo);
+  const rawName = isMe ? currentUserFirstName() : memberLabel(assignedTo);
+  const m = memberRecord(assignedTo);
+  const pic = isMe ? session?.user?.user_metadata?.avatar_url : (m?.avatar_url || '');
+  const initial = String(rawName || label || 'U').trim().slice(0, 1).toUpperCase() || 'U';
+  const avatar = pic
+    ? `<span class="fun-person-avatar"><img src="${escapeHtml(pic)}" alt=""></span>`
+    : `<span class="fun-person-avatar initial">${escapeHtml(initial)}</span>`;
+  return `<span class="fun-chip assignee">${avatar}<span>For ${escapeHtml(label)}</span></span>`;
+}
+
 function renderFunIdeasModal() {
   populateFunAssigneeSelect(els.funIdeaAssignedTo?.value || '');
   const editable = canEdit() && canAccessFunIdeasLocal();
@@ -1742,16 +1756,14 @@ function renderFunIdeasModal() {
   if (els.funIdeasList) {
     const visible = funIdeas.filter(i => i.visibility !== 'private' || i.created_by === session.user.id || isTripOwner());
     els.funIdeasList.innerHTML = visible.length ? visible.map(i => {
-      const assigned = i.assigned_to ? memberLabel(i.assigned_to) : 'Everyone';
-      const assignedAvatar = i.assigned_to ? memberAvatarHtml(i.assigned_to) : '<span class="fun-everyone-avatar">👥</span>';
       const visibilityChip = i.visibility === 'private' ? '🔒 Private' : '🌐 Shared';
-      const playChip = i.play_type === 'public' ? '✨ Public/playful' : '💕 Private play';
-      const assigneeChip = i.assigned_to ? `${assignedAvatar}<span>${escapeHtml(assigned)}</span>` : `${assignedAvatar}<span>Everyone</span>`;
+      const playChip = i.play_type === 'public' ? '✨ Public Play' : '💕 Private Play';
+      const assigneeChip = funIdeaForChipHtml(i.assigned_to || '');
       const hasDescription = !!String(i.description || '').trim();
       return `<article class="fun-idea-card" data-id="${escapeHtml(i.id)}">
         <button type="button" class="fun-card-main" aria-expanded="false">
           <span class="fun-title-row"><strong>${escapeHtml(i.title || 'Untitled idea')}</strong><span class="fun-expand-icon">⌄</span></span>
-          <span class="fun-badges"><span class="fun-chip assignee">${assigneeChip}</span><span class="fun-chip">${escapeHtml(visibilityChip)}</span><span class="fun-chip">${escapeHtml(playChip)}</span></span>
+          <span class="fun-badges">${assigneeChip}<span class="fun-chip">${escapeHtml(visibilityChip)}</span><span class="fun-chip">${escapeHtml(playChip)}</span></span>
         </button>
         <div class="fun-card-details">
           ${hasDescription ? `<p>${escapeHtml(i.description || '')}</p>` : '<p class="muted">No extra notes added.</p>'}

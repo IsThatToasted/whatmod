@@ -1671,3 +1671,11 @@ button:disabled,input:disabled,textarea:disabled,select:disabled{opacity:.62;cur
 .fun-card-details{display:none;padding:0 16px 15px;border-top:1px solid rgba(124,92,255,.1);animation:funDetailsIn .18s ease}.fun-idea-card.is-open .fun-card-details{display:block}.fun-card-details p{margin:12px 0 12px;color:#536088;white-space:pre-wrap;line-height:1.45}.fun-card-details .muted{color:#8a93b5;font-style:italic}.fun-card-actions{display:flex;justify-content:flex-end;gap:8px;align-items:center}.fun-card-actions button{min-height:38px;border-radius:999px;padding:8px 12px}
 @keyframes funDetailsIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:700px){.fun-grid{grid-template-columns:1fr}.fun-card-main{padding:14px}.fun-title-row strong{white-space:normal}.fun-card-details{padding:0 14px 14px}.fun-card-actions{justify-content:stretch}.fun-card-actions button{flex:1}}
+
+/* Fun Ideas assignee chip cleanup v38 */
+.fun-chip.assignee{gap:7px!important;white-space:nowrap!important;}
+.fun-chip.assignee.for-us{color:#5a32df;background:#f3efff;border-color:#e4dbff;}
+.fun-person-avatar,.fun-everyone-avatar{width:22px!important;height:22px!important;border-radius:999px!important;display:inline-grid!important;place-items:center!important;overflow:hidden!important;flex:0 0 auto!important;background:linear-gradient(135deg,#f3efff,#ffeaf4)!important;font-size:12px!important;font-weight:900!important;}
+.fun-person-avatar img{width:100%!important;height:100%!important;object-fit:cover!important;display:block!important;}
+.fun-person-avatar.initial{background:linear-gradient(135deg,#6f43f5,#a879ff)!important;color:#fff!important;}
+@media(max-width:760px){.fun-badges{gap:6px!important}.fun-chip{max-width:100%;}.fun-chip.assignee span:last-child{overflow:hidden;text-overflow:ellipsis;}}
