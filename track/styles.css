@@ -2603,3 +2603,181 @@ dialog.fun-dialog[open], dialog.shopping-dialog[open]{
     width:100%!important;
   }
 }
+
+/* v55 checkpoint: stable desktop/tablet timeline cards.
+   Fixes tiny cards losing text/actions and prevents cards from visually sinking under the hour grid. */
+@media (min-width: 761px){
+  .timeline-board{
+    overflow:visible !important;
+  }
+  .item-card.timeline-item{
+    min-height:116px !important;
+    box-sizing:border-box !important;
+    z-index:8 !important;
+    background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(252,250,255,.98)) !important;
+    border:1px solid rgba(200,211,245,.9) !important;
+    box-shadow:0 18px 42px rgba(25,34,74,.10) !important;
+    overflow:hidden !important;
+  }
+  .item-card.timeline-item:hover,
+  .item-card.timeline-item:focus-within,
+  .item-card.timeline-item.card-active{
+    z-index:60 !important;
+    box-shadow:0 22px 54px rgba(25,34,74,.16) !important;
+  }
+  .item-card.timeline-item.has-overlap{
+    background:linear-gradient(180deg, rgba(255,248,252,.99), rgba(255,241,248,.99)) !important;
+    border-color:rgba(255,125,181,.55) !important;
+  }
+  .item-card.timeline-item.has-soft-overlap{
+    background:linear-gradient(180deg, rgba(255,255,255,.99), rgba(250,247,255,.99)) !important;
+  }
+
+  .item-card.timeline-item > .card-front,
+  .item-card.timeline-item.compact-time-card > .card-front{
+    min-height:100% !important;
+    display:grid !important;
+    grid-template-columns:88px minmax(0,1fr) 208px !important;
+    gap:14px !important;
+    align-items:center !important;
+    padding:0 !important;
+  }
+
+  .item-card.timeline-item .time-chip,
+  .item-card.timeline-item.compact-time-card .time-chip{
+    width:74px !important;
+    min-width:74px !important;
+    min-height:58px !important;
+    align-self:center !important;
+    font-size:.82rem !important;
+    line-height:1.08 !important;
+    border-radius:18px !important;
+  }
+
+  .item-card.timeline-item .item-main,
+  .item-card.timeline-item.compact-time-card .item-main{
+    display:grid !important;
+    grid-template-columns:42px minmax(0,1fr) !important;
+    gap:12px !important;
+    align-items:center !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+  }
+  .item-card.timeline-item .item-type,
+  .item-card.timeline-item.compact-time-card .item-type{
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    border-radius:16px !important;
+    align-self:center !important;
+    box-shadow:0 10px 24px rgba(34,45,86,.08) !important;
+  }
+  .item-card.timeline-item .item-main h3,
+  .item-card.timeline-item.compact-time-card .item-main h3{
+    display:block !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    font-size:1rem !important;
+    line-height:1.16 !important;
+    margin:0 0 7px !important;
+    max-width:100% !important;
+  }
+  .item-card.timeline-item .item-meta,
+  .item-card.timeline-item.compact-time-card .item-meta{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:5px !important;
+    align-items:center !important;
+    white-space:normal !important;
+    overflow:hidden !important;
+    max-height:48px !important;
+    line-height:1.15 !important;
+  }
+  .item-card.timeline-item .item-notes,
+  .item-card.timeline-item.compact-time-card .item-notes{
+    display:none !important;
+  }
+  .item-card.timeline-item.roomy-time-card .item-notes,
+  .item-card.timeline-item.very-roomy-time-card .item-notes{
+    display:-webkit-box !important;
+    -webkit-line-clamp:1 !important;
+    -webkit-box-orient:vertical !important;
+    margin-top:7px !important;
+    white-space:normal !important;
+  }
+  .item-card.timeline-item .location-link,
+  .item-card.timeline-item.compact-time-card .location-link{
+    display:inline-flex !important;
+    max-width:clamp(130px, 24vw, 280px) !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+  }
+
+  .item-card.timeline-item .item-actions,
+  .item-card.timeline-item.compact-time-card .item-actions{
+    width:208px !important;
+    min-width:208px !important;
+    max-width:208px !important;
+    display:grid !important;
+    grid-template-columns:repeat(3, 1fr) !important;
+    gap:7px !important;
+    justify-self:end !important;
+    align-self:center !important;
+    align-items:center !important;
+    justify-content:end !important;
+    padding:0 !important;
+    margin:0 !important;
+  }
+  .item-card.timeline-item .item-actions button,
+  .item-card.timeline-item.compact-time-card .item-actions button{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:none !important;
+    height:36px !important;
+    min-height:36px !important;
+    padding:0 !important;
+    border-radius:999px !important;
+    font-size:.75rem !important;
+    line-height:1 !important;
+    display:grid !important;
+    place-items:center !important;
+    white-space:nowrap !important;
+  }
+  .item-card.timeline-item .item-actions .rain-toggle,
+  .item-card.timeline-item.compact-time-card .item-actions .rain-toggle{
+    min-width:0 !important;
+    padding:0 !important;
+  }
+  .item-card.timeline-item .resize-handle{
+    pointer-events:auto !important;
+  }
+}
+
+@media (min-width:761px) and (max-width:1040px){
+  .item-card.timeline-item > .card-front,
+  .item-card.timeline-item.compact-time-card > .card-front{
+    grid-template-columns:82px minmax(0,1fr) 184px !important;
+    gap:10px !important;
+  }
+  .item-card.timeline-item .item-actions,
+  .item-card.timeline-item.compact-time-card .item-actions{
+    width:184px !important;
+    min-width:184px !important;
+    max-width:184px !important;
+    gap:5px !important;
+  }
+  .item-card.timeline-item .item-actions button,
+  .item-card.timeline-item.compact-time-card .item-actions button{
+    height:34px !important;
+    min-height:34px !important;
+    font-size:.7rem !important;
+  }
+  .item-card.timeline-item .time-chip,
+  .item-card.timeline-item.compact-time-card .time-chip{
+    width:70px !important;
+    min-width:70px !important;
+    font-size:.76rem !important;
+  }
+}
