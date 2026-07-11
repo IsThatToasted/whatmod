@@ -778,3 +778,140 @@ begin
     end if;
   end loop;
 end $$;
+
+-- v60 Database cleanup + safer trip deletion
+-- Fixes old empty starter-trip buildup and makes trip deletion clean up related rows/storage metadata.
+
+create or replace function public.delete_itinerary_trip_cascade(target_trip_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, storage
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'You must be signed in.';
+  end if;
+
+  if public.current_user_trip_role(target_trip_id) <> 'owner' then
+    raise exception 'Only the trip owner can delete this trip.';
+  end if;
+
+  -- Remove memory photo objects whose storage path starts with trip_id/user_id/...
+  -- This keeps Supabase Storage from growing after a trip is deleted.
+  begin
+    delete from storage.objects
+    where bucket_id = 'trip-memories'
+      and (storage.foldername(name))[1] = target_trip_id::text;
+  exception when others then
+    -- Keep the trip deletion working even if Storage is not configured yet.
+    null;
+  end;
+
+  -- Most app tables already have ON DELETE CASCADE from itinerary_trips.
+  -- Deleting the trip is the source of truth and cascades child data.
+  delete from public.itinerary_trips
+  where id = target_trip_id;
+
+  return true;
+end;
+$$;
+
+grant execute on function public.delete_itinerary_trip_cascade(uuid) to authenticated;
+
+create or replace function public.cleanup_duplicate_empty_itinerary_starters()
+returns integer
+language plpgsql
+security definer
+set search_path = public, storage
+as $$
+declare
+  removed_count integer := 0;
+begin
+  if auth.uid() is null then
+    return 0;
+  end if;
+
+  -- Remove duplicate empty starter trips for the signed-in user.
+  -- A starter is only considered empty if it has no itinerary items, must-do items,
+  -- memories, fun ideas, or shopping items. Personal starter packing rows are ignored
+  -- so old empty templates can still be cleaned up.
+  with user_trips as (
+    select t.id, t.created_at,
+      exists(select 1 from public.itinerary_items i where i.trip_id = t.id) as has_items,
+      exists(select 1 from public.itinerary_must_do_items m where m.trip_id = t.id) as has_must,
+      exists(select 1 from public.itinerary_memories mem where mem.trip_id = t.id) as has_memories,
+      exists(select 1 from public.trip_fun_ideas f where f.trip_id = t.id) as has_fun,
+      exists(select 1 from public.itinerary_shopping_items s where s.trip_id = t.id) as has_shopping
+    from public.itinerary_trips t
+    where t.user_id = auth.uid()
+      and lower(coalesce(t.title, '')) in ('my trip', 'new trip', 'untitled trip')
+  ), empty_starters as (
+    select id, created_at
+    from user_trips
+    where not (has_items or has_must or has_memories or has_fun or has_shopping)
+  ), real_trip_count as (
+    select count(*)::int as n
+    from public.itinerary_trips t
+    where t.user_id = auth.uid()
+      and not exists (select 1 from empty_starters e where e.id = t.id)
+  ), to_delete as (
+    select e.id
+    from empty_starters e, real_trip_count r
+    where r.n > 0
+       or e.id not in (select id from empty_starters order by created_at asc limit 1)
+  ), deleted_storage as (
+    delete from storage.objects o
+    using to_delete d
+    where o.bucket_id = 'trip-memories'
+      and (storage.foldername(o.name))[1] = d.id::text
+    returning 1
+  ), deleted as (
+    delete from public.itinerary_trips t
+    using to_delete d
+    where t.id = d.id
+    returning 1
+  )
+  select count(*)::integer into removed_count from deleted;
+
+  return coalesce(removed_count, 0);
+exception when undefined_table then
+  return 0;
+end;
+$$;
+
+grant execute on function public.cleanup_duplicate_empty_itinerary_starters() to authenticated;
+
+create or replace function public.cleanup_my_orphaned_itinerary_storage()
+returns integer
+language plpgsql
+security definer
+set search_path = public, storage
+as $$
+declare
+  removed_count integer := 0;
+begin
+  if auth.uid() is null then
+    return 0;
+  end if;
+
+  -- Clean old memory photo objects for this user where the trip no longer exists.
+  with deleted as (
+    delete from storage.objects o
+    where o.bucket_id = 'trip-memories'
+      and (storage.foldername(o.name))[2] = auth.uid()::text
+      and not exists (
+        select 1 from public.itinerary_trips t
+        where t.id::text = (storage.foldername(o.name))[1]
+      )
+    returning 1
+  )
+  select count(*)::integer into removed_count from deleted;
+
+  return coalesce(removed_count, 0);
+exception when others then
+  return 0;
+end;
+$$;
+
+grant execute on function public.cleanup_my_orphaned_itinerary_storage() to authenticated;

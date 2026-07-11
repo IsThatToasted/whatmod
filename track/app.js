@@ -153,7 +153,7 @@ function syncRouteFieldVisibility() {
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], shoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false;
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], shoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false, starterCleanupChecked = false;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -706,7 +706,33 @@ async function loadTrips() {
   const { data, error } = await client.from('itinerary_trips').select('*').order('start_date', { ascending: true });
   if (error) return showDbError(error);
   trips = data || [];
-  if (!trips.length) return createTrip({ title: 'My Trip', start_date: todayISO(), end_date: addDays(todayISO(), 3) });
+
+  // One-time per session cleanup for old duplicate starter trips. This only removes
+  // empty default "My Trip/New trip" records for the signed-in user, keeping real trips safe.
+  if (!starterCleanupChecked && session?.user?.id) {
+    starterCleanupChecked = true;
+    try {
+      const { data: removed, error: cleanupError } = await client.rpc('cleanup_duplicate_empty_itinerary_starters');
+      if (!cleanupError && Number(removed || 0) > 0) {
+        setStatus(`Cleaned up ${removed} empty starter trip${Number(removed) === 1 ? '' : 's'}`);
+        const refreshed = await client.from('itinerary_trips').select('*').order('start_date', { ascending: true });
+        if (!refreshed.error) trips = refreshed.data || trips;
+      }
+    } catch (cleanupError) {
+      console.warn('Starter cleanup unavailable. Run schema.sql to enable it.', cleanupError);
+    }
+  }
+
+  if (!trips.length) {
+    activeTripId = null;
+    localStorage.removeItem('activeTripId');
+    items = []; members = []; packingItems = []; packingProgressByUser = []; mustDoItems = []; memoryItems = [];
+    funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; shoppingListPermissions = [];
+    setStatus('No trips yet — create one to start planning');
+    render();
+    try { openTripDialog(); } catch {}
+    return;
+  }
   activeTripId = activeTripId || localStorage.getItem('activeTripId') || trips[0]?.id;
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
@@ -931,7 +957,44 @@ async function createTrip(input) {
   localStorage.setItem('activeTripId', activeTripId);
   await loadTripData();
 }
-async function deleteTrip() { if (!activeTripId || !canDeleteTrip()) return alert('Only the trip owner can delete the trip.'); if (!confirm('Delete this entire trip and all itinerary items?')) return; const { error } = await client.from('itinerary_trips').delete().eq('id', activeTripId); if (error) return showDbError(error); trips = trips.filter(t => t.id !== activeTripId); activeTripId = trips[0]?.id || null; if (!activeTripId) await createTrip({ title: 'My Trip', start_date: todayISO(), end_date: addDays(todayISO(), 3) }); else await loadTripData(); }
+async function deleteTrip() {
+  if (!activeTripId || !canDeleteTrip()) return alert('Only the trip owner can delete the trip.');
+  const trip = currentTrip();
+  if (!confirm(`Delete "${trip?.title || 'this trip'}" and all of its itinerary data? This cannot be undone.`)) return;
+
+  let error = null;
+  try {
+    const res = await client.rpc('delete_itinerary_trip_cascade', { target_trip_id: activeTripId });
+    error = res.error;
+  } catch (rpcError) {
+    console.warn('delete_itinerary_trip_cascade unavailable, falling back to direct delete.', rpcError);
+    error = rpcError;
+  }
+
+  // Backward-compatible fallback for users who have not rerun schema.sql yet.
+  if (error) {
+    const fallback = await client.from('itinerary_trips').delete().eq('id', activeTripId);
+    error = fallback.error;
+  }
+
+  if (error) return showDbError(error);
+
+  const deletedId = activeTripId;
+  trips = trips.filter(t => t.id !== deletedId);
+  if (localStorage.getItem('activeTripId') === deletedId) localStorage.removeItem('activeTripId');
+  activeTripId = trips[0]?.id || null;
+
+  if (!activeTripId) {
+    items = []; members = []; packingItems = []; packingProgressByUser = []; mustDoItems = []; memoryItems = [];
+    funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; shoppingListPermissions = [];
+    setStatus('Trip deleted. Create a new trip when ready.');
+    render();
+    try { openTripDialog(); } catch {}
+    return;
+  }
+  localStorage.setItem('activeTripId', activeTripId);
+  await loadTripData();
+}
 
 function getTripPatchFromInputs() {
   let start = els.startDate.value || todayISO(); let end = els.endDate.value || start; if (end < start) { end = start; els.endDate.value = end; }
@@ -1003,9 +1066,14 @@ async function createInviteLink() {
 async function copyInviteLink() { if (!els.inviteLink.value) return; await navigator.clipboard.writeText(els.inviteLink.value); setStatus('Invite copied'); }
 
 function render() { renderTripSelect(); renderTripEditor(); renderSummary(); renderHomeDashboard(); renderSharePanel(); renderDayTabs(); renderTimeline(); renderPackingList(); renderMustDoList(); renderMemoryList(); renderDayMap(); }
-function renderTripSelect() { els.tripSelect.innerHTML = trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join(''); els.tripSelect.value = activeTripId || ''; }
+function renderTripSelect() { els.tripSelect.innerHTML = trips.length ? trips.map(t => `<option value="${t.id}">${escapeHtml(t.title || 'Untitled trip')}</option>`).join('') : '<option value="">No trips yet</option>'; els.tripSelect.value = activeTripId || ''; }
 function renderTripEditor() {
-  const t = currentTrip(); if (!t) return; els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; if (els.gasMiles) els.gasMiles.value = Number(t.gas_miles || 0) || ''; if (els.gasMpg) els.gasMpg.value = Number(t.gas_mpg || 0) || ''; if (els.gasPrice) els.gasPrice.value = Number(t.gas_price || 0) || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
+  const t = currentTrip();
+  if (!t) {
+    ['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => { if (els[k]) els[k].value = ''; });
+    [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.gasMiles, els.gasMpg, els.gasPrice, els.addAnyItemBtn, els.deleteTripBtn].forEach(el => { if (el) el.disabled = true; });
+    return;
+  } els.tripTitle.value = t.title || ''; els.startDate.value = t.start_date || ''; els.endDate.value = t.end_date || ''; els.destination.value = t.destination || ''; els.tripNotes.value = t.notes || ''; if (els.gasMiles) els.gasMiles.value = Number(t.gas_miles || 0) || ''; if (els.gasMpg) els.gasMpg.value = Number(t.gas_mpg || 0) || ''; if (els.gasPrice) els.gasPrice.value = Number(t.gas_price || 0) || ''; renderMapLinks(els.destinationMapLinks, t.destination || ''); selectedDay ||= t.start_date;
   if (els.detailsDestination) els.detailsDestination.textContent = t.destination || 'Add destination';
   if (els.detailsStart) els.detailsStart.textContent = t.start_date ? new Date(`${t.start_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
   if (els.detailsEnd) els.detailsEnd.textContent = t.end_date ? new Date(`${t.end_date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -2196,9 +2264,9 @@ if (els.funIdeasList) els.funIdeasList.addEventListener('click', e => {
 if (els.memoryPhotoBtn) els.memoryPhotoBtn.addEventListener('click', () => els.memoryPhotoInput?.click());
 if (els.memoryPhotoInput) els.memoryPhotoInput.addEventListener('change', async () => {
   const file = els.memoryPhotoInput.files?.[0];
-  if (!file) { quickMemoryCaptureMode = false; return; }
+  if (!file) { quickMemoryCaptureMode = false, starterCleanupChecked = false; return; }
   if (quickMemoryCaptureMode) {
-    quickMemoryCaptureMode = false;
+    quickMemoryCaptureMode = false, starterCleanupChecked = false;
     const fallbackTitle = defaultMemoryTitle();
     const entered = prompt('Add a title for this memory. Leave blank to auto-name it.', '');
     const title = (entered || '').trim() || fallbackTitle;
@@ -2329,14 +2397,14 @@ async function addMemoryItem(note) {
     console.error(err);
     alert(`${err.message || 'Photo upload failed'}\n\nRun schema.sql once and make sure the trip-memories storage bucket exists.`);
   } finally {
-    quickMemoryCaptureMode = false;
+    quickMemoryCaptureMode = false, starterCleanupChecked = false;
     resetMemoryPhotoPicker();
   }
 }
 async function handleMemoryPhotoInputChangeFixed(event) {
   event?.stopImmediatePropagation?.();
   const file = els.memoryPhotoInput?.files?.[0] || null;
-  if (!file) { quickMemoryCaptureMode = false; return; }
+  if (!file) { quickMemoryCaptureMode = false, starterCleanupChecked = false; return; }
   const fallbackTitle = defaultMemoryTitle();
   let title = '';
   // Always ask for a title when a photo is chosen, whether launched from Add Memory or the Memories panel.
@@ -2350,6 +2418,6 @@ async function handleMemoryPhotoInputChangeFixed(event) {
   await addMemoryItem(title);
 }
 // Clear the file input before every picker open so selecting the same photo/camera result still fires change.
-els.memoryPhotoBtn?.addEventListener('click', () => { resetMemoryPhotoPicker(); quickMemoryCaptureMode = false; setTimeout(() => els.memoryPhotoInput?.click(), 20); }, true);
+els.memoryPhotoBtn?.addEventListener('click', () => { resetMemoryPhotoPicker(); quickMemoryCaptureMode = false, starterCleanupChecked = false; setTimeout(() => els.memoryPhotoInput?.click(), 20); }, true);
 els.memoryPhotoInput?.addEventListener('click', () => { /* intentionally no-op; value is reset before programmatic click */ }, true);
 els.memoryPhotoInput?.addEventListener('change', handleMemoryPhotoInputChangeFixed, true);

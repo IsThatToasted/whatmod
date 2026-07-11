@@ -117,3 +117,13 @@ No new Supabase schema is required for the UI revamp.
 - Shopping lists are shared per shopping event with item add/edit/delete/complete.
 - Shopping lists are now public to all trip collaborators, so there is no per-user access UI to maintain.
 - Run `schema.sql` once to add the shopping list tables and realtime support.
+
+## v60 Cleanup tightening
+
+This build adds:
+- Safer trip deletion through `delete_itinerary_trip_cascade()`.
+- Automatic cleanup of duplicate empty `My Trip` / `New trip` starter records for the signed-in user.
+- Storage cleanup for memory photos when a trip is deleted.
+- No automatic creation of a new `My Trip` after deleting the last trip; the app now prompts you to create one instead.
+
+Run `schema.sql` once in Supabase SQL Editor before testing deletion/cleanup.
