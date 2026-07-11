@@ -2409,6 +2409,50 @@ async function handleMemoryPhotoInputChangeFixed(event) {
   if (els.memoryInput) els.memoryInput.value = '';
 }
 // Clear the file input before every picker open so selecting the same photo/camera result still fires change.
-els.memoryPhotoBtn?.addEventListener('click', () => { resetMemoryPhotoPicker(); quickMemoryCaptureMode = false; starterCleanupChecked = false; els.memoryPhotoInput?.click(); }, true);
+els.memoryPhotoBtn?.addEventListener('click', (event) => {
+  // Capture-phase guard: prevents the older bubble-phase listener from also firing,
+  // which caused the desktop file picker to open twice.
+  event?.preventDefault?.();
+  event?.stopImmediatePropagation?.();
+  resetMemoryPhotoPicker();
+  quickMemoryCaptureMode = false;
+  starterCleanupChecked = false;
+  els.memoryPhotoInput?.click();
+}, true);
 els.memoryPhotoInput?.addEventListener('click', () => { /* intentionally no-op; value is reset before programmatic click */ }, true);
 els.memoryPhotoInput?.addEventListener('change', handleMemoryPhotoInputChangeFixed, true);
+
+
+/* v2.1.10 delete confirmations + memory picker single-open guard */
+async function deleteMemoryItem(id) {
+  if (!canEdit()) return;
+  const mem = memoryItems.find(i => i.id === id);
+  const label = mem?.note || (mem?.photo_url ? 'this photo memory' : 'this memory');
+  if (!confirm(`Delete "${label}"? This cannot be undone.`)) return;
+  const prev = memoryItems.slice();
+  memoryItems = memoryItems.filter(i => i.id !== id);
+  renderMemoryList();
+  const { error } = await client.from('itinerary_memories').delete().eq('id', id);
+  if (error) { memoryItems = prev; renderMemoryList(); showDbError(error); return; }
+  await loadMemoryItems();
+  renderMemoryList();
+  renderHomeDashboard?.();
+  renderTripProgress?.();
+  broadcastTripChange?.('Memory deleted');
+}
+async function deletePackingItem(id) {
+  if (!canEdit()) return;
+  const item = packingItems.find(i => i.id === id);
+  const label = item?.title || item?.name || 'this packing item';
+  if (!confirm(`Remove "${label}" from your packing list?`)) return;
+  const prev = packingItems.slice();
+  packingItems = packingItems.filter(i => i.id !== id);
+  syncLocalPackingProgress();
+  renderPackingList();
+  if (packingIsLocalOnly(id)) { savePackingFallback(); return; }
+  const { error } = await client.from('itinerary_packing_items').delete().eq('id', id).eq('user_id', session.user.id);
+  if (error) { packingItems = prev; syncLocalPackingProgress(); renderPackingList(); console.warn('Packing delete failed.', error); showDbError?.(error); return; }
+  await loadPackingProgress();
+  renderPackingProgressSummary();
+  broadcastTripChange?.('Packing updated');
+}
