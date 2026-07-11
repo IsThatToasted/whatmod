@@ -2265,17 +2265,13 @@ if (els.memoryPhotoBtn) els.memoryPhotoBtn.addEventListener('click', () => els.m
 if (els.memoryPhotoInput) els.memoryPhotoInput.addEventListener('change', async () => {
   const file = els.memoryPhotoInput.files?.[0];
   if (!file) { quickMemoryCaptureMode = false, starterCleanupChecked = false; return; }
-  if (quickMemoryCaptureMode) {
-    quickMemoryCaptureMode = false, starterCleanupChecked = false;
-    const fallbackTitle = defaultMemoryTitle();
-    const entered = prompt('Add a title for this memory. Leave blank to auto-name it.', '');
-    const title = (entered || '').trim() || fallbackTitle;
-    if (els.memoryInput) els.memoryInput.value = title;
-    await addMemoryItem(title);
-    if (els.memoryInput) els.memoryInput.value = '';
-    return;
-  }
-  if (file && els.memoryInput && !els.memoryInput.value.trim()) els.memoryInput.placeholder = `Caption for ${file.name}`;
+  // Mobile-first memory flow: no popup. A photo automatically saves as a dated memory.
+  quickMemoryCaptureMode = false;
+  starterCleanupChecked = false;
+  const title = defaultMemoryTitle();
+  if (els.memoryInput) els.memoryInput.value = title;
+  await addMemoryItem(title);
+  if (els.memoryInput) els.memoryInput.value = '';
 });
 if (els.memorySlideshowBtn) els.memorySlideshowBtn.addEventListener('click', () => openMemorySlideshow());
 if (els.memoryList) els.memoryList.addEventListener('click', e => {
@@ -2362,7 +2358,8 @@ function startQuickMemoryCapture() {
   if (!canEdit()) return alert('You need edit access to add memories.');
   quickMemoryCaptureMode = true;
   resetMemoryPhotoPicker();
-  setTimeout(() => els.memoryPhotoInput?.click(), 20);
+  // Keep the camera/file picker inside the user gesture; iOS can block delayed clicks.
+  els.memoryPhotoInput?.click();
 }
 async function insertMemoryRecordFixed(note, photo) {
   const base = {
@@ -2405,19 +2402,13 @@ async function handleMemoryPhotoInputChangeFixed(event) {
   event?.stopImmediatePropagation?.();
   const file = els.memoryPhotoInput?.files?.[0] || null;
   if (!file) { quickMemoryCaptureMode = false, starterCleanupChecked = false; return; }
-  const fallbackTitle = defaultMemoryTitle();
-  let title = '';
-  // Always ask for a title when a photo is chosen, whether launched from Add Memory or the Memories panel.
-  try {
-    const entered = prompt('Add a title for this memory. Leave blank to auto-name it.', '');
-    title = (entered || '').trim() || fallbackTitle;
-  } catch (_) {
-    title = fallbackTitle;
-  }
+  // No title popup. Every camera/photo memory auto-saves with the local date and time.
+  const title = defaultMemoryTitle();
   if (els.memoryInput) els.memoryInput.value = title;
   await addMemoryItem(title);
+  if (els.memoryInput) els.memoryInput.value = '';
 }
 // Clear the file input before every picker open so selecting the same photo/camera result still fires change.
-els.memoryPhotoBtn?.addEventListener('click', () => { resetMemoryPhotoPicker(); quickMemoryCaptureMode = false, starterCleanupChecked = false; setTimeout(() => els.memoryPhotoInput?.click(), 20); }, true);
+els.memoryPhotoBtn?.addEventListener('click', () => { resetMemoryPhotoPicker(); quickMemoryCaptureMode = false; starterCleanupChecked = false; els.memoryPhotoInput?.click(); }, true);
 els.memoryPhotoInput?.addEventListener('click', () => { /* intentionally no-op; value is reset before programmatic click */ }, true);
 els.memoryPhotoInput?.addEventListener('change', handleMemoryPhotoInputChangeFixed, true);
