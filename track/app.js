@@ -2281,3 +2281,75 @@ if (els.shoppingListBody) els.shoppingListBody.addEventListener('change', e => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectSwitcher); else injectSwitcher();
   window.addEventListener('storage', e => { if (e.key === PREF_KEY || e.key === 'itineraryTrackerV2.theme') applyTheme(readTheme()); });
 })();
+
+/* v2.1.8 memory upload hardening
+   Fixes: file input re-select glitches, title prompt not appearing after first upload,
+   optimistic memory list not refreshing, and safe fallback if the photo columns were not
+   added yet. */
+function resetMemoryPhotoPicker() {
+  if (els.memoryPhotoInput) els.memoryPhotoInput.value = '';
+}
+function startQuickMemoryCapture() {
+  if (!activeTripId) return alert('Create or select a trip first.');
+  if (!canEdit()) return alert('You need edit access to add memories.');
+  quickMemoryCaptureMode = true;
+  resetMemoryPhotoPicker();
+  setTimeout(() => els.memoryPhotoInput?.click(), 20);
+}
+async function insertMemoryRecordFixed(note, photo) {
+  const base = {
+    trip_id: activeTripId,
+    user_id: session.user.id,
+    note: (note || '').trim() || defaultMemoryTitle(),
+    memory_date: selectedDay || todayISO()
+  };
+  const withPhoto = { ...base, ...(photo || {}) };
+  let result = await client.from('itinerary_memories').insert(withPhoto).select('*').single();
+  if (result.error && /photo_url|photo_path|column/i.test(String(result.error.message || '')) && (photo?.photo_url || photo?.photo_path)) {
+    result = await client.from('itinerary_memories').insert(base).select('*').single();
+  }
+  return result;
+}
+async function addMemoryItem(note) {
+  const clean = (note || '').trim();
+  const file = els.memoryPhotoInput?.files?.[0] || null;
+  if ((!clean && !file) || !activeTripId || !session?.user?.id || !canEdit()) return;
+  try {
+    const photo = file ? await uploadMemoryPhoto(file) : { photo_url: '', photo_path: '' };
+    const { error } = await insertMemoryRecordFixed(clean || (file ? defaultMemoryTitle() : ''), photo);
+    if (error) { showDbError(error); return; }
+    resetMemoryPhotoPicker();
+    if (els.memoryInput) els.memoryInput.value = '';
+    await loadMemoryItems();
+    renderMemoryList();
+    renderHomeDashboard?.();
+    renderTripProgress?.();
+    broadcastTripChange?.('Memory added');
+  } catch (err) {
+    console.error(err);
+    alert(`${err.message || 'Photo upload failed'}\n\nRun schema.sql once and make sure the trip-memories storage bucket exists.`);
+  } finally {
+    quickMemoryCaptureMode = false;
+    resetMemoryPhotoPicker();
+  }
+}
+async function handleMemoryPhotoInputChangeFixed(event) {
+  event?.stopImmediatePropagation?.();
+  const file = els.memoryPhotoInput?.files?.[0] || null;
+  if (!file) { quickMemoryCaptureMode = false; return; }
+  const fallbackTitle = defaultMemoryTitle();
+  let title = '';
+  // Always ask for a title when a photo is chosen, whether launched from Add Memory or the Memories panel.
+  try {
+    const entered = prompt('Add a title for this memory. Leave blank to auto-name it.', '');
+    title = (entered || '').trim() || fallbackTitle;
+  } catch (_) {
+    title = fallbackTitle;
+  }
+  if (els.memoryInput) els.memoryInput.value = title;
+  await addMemoryItem(title);
+}
+// Clear the file input before every picker open so selecting the same photo/camera result still fires change.
+els.memoryPhotoBtn?.addEventListener('click', () => { resetMemoryPhotoPicker(); quickMemoryCaptureMode = false; setTimeout(() => els.memoryPhotoInput?.click(), 20); }, true);
+els.memoryPhotoInput?.addEventListener('click', () => { /* intentionally no-op; value is reset before programmatic click */ }, true);
+els.memoryPhotoInput?.addEventListener('change', handleMemoryPhotoInputChangeFixed, true);
