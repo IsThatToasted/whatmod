@@ -1,4 +1,4 @@
-# ItineraryTrackerV2.3 UI Redesign
+# ItineraryTrackerV2.3.2 UI Redesign
 
 Production UI redesign checkpoint based on the latest stable V2.2 licensing/mobile-layout build.
 
@@ -6,7 +6,7 @@ This is primarily a UI/layout pass. Existing Supabase auth, trip data, licensing
 
 Deploy `index.html`, `settings.html`, `app.js`, `styles.css`, `schema.sql`, `assets/`, `content/`, and `tools/` to your `/track` GitHub Pages path.
 
-Build marker: `V2.3.0-ui-redesign-2026-07-12` / cache version `v=230`.
+Build marker: `V2.3.2.0-ui-redesign-2026-07-12` / cache version `v=230`.
 
 # ItineraryTrackerV2.2 — Production Stabilization
 
@@ -316,3 +316,22 @@ The helper does not connect to Supabase and does not need any secrets. It only g
 - Custom max-trip limits
 - Feature toggles for maps, memories, shopping lists, and recaps
 - Direct entitlement grants to a user email
+
+## V2.3.2.1 Shopping list ordering + budget costs
+
+This patch adds shopping-list item drag/drop ordering and an estimated-cost field for each shopping item. Shopping item costs are included in the trip's estimated budget total. Run `schema.sql` once so Supabase adds `estimated_cost` and `sort_order` to `itinerary_shopping_items`.
+
+
+## V2.3.2 Travel Expense / Budget separation
+- Flight events now have ticket, checked baggage, and other flight cost fields.
+- Drive/transit/gas blocks now have a driving/gas cost field.
+- Other travel costs can be entered on travel-type events.
+- Travel Expense is displayed separately from normal Planned Budget.
+- Normal Budget remains for activities, lodging, food, shopping, and Must Do costs.
+- Run `schema.sql` once to add the new travel-expense columns.
+
+
+## V2.3.2 Hotel/Lodging Travel Expense Patch
+- Hotel/lodging event budget values now count under Travel Expense instead of Planned Budget.
+- Planned Budget now excludes all travel-type event budgets: flight, train, ferry, cruise, drive, transport, gas, hotel, and lodging.
+- Travel Expense includes explicit flight/drive fields plus travel-type event budget fallback values.

@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ItineraryTrackerV2.3 UI Redesign</title>
-  <link rel="stylesheet" href="./styles.css?v=230" />
+  <link rel="stylesheet" href="./styles.css?v=233" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -138,7 +138,8 @@
             </section>
 
             <section class="summary-grid">
-              <div class="metric glass budget"><span>Total Budget</span><strong id="totalBudget">$0</strong><em>of planned spend</em></div>
+              <div class="metric glass budget"><span>Planned Budget</span><strong id="totalBudget">$0</strong><em>non-travel planned spend</em></div>
+              <div class="metric glass travel"><span>Travel Expense</span><strong id="travelExpenseTotal">$0</strong><em>flights, baggage & driving</em></div>
               <div class="metric glass items"><span>Planned Items</span><strong id="stopCount">0</strong><em>activities & stops</em></div>
               <div class="metric glass days"><span>Trip Days</span><strong id="dayCount">0</strong><em>days planned</em></div>
               <div class="metric glass people"><span>Travelers</span><strong id="travelerCount">1</strong><em>people</em></div>
@@ -313,7 +314,12 @@
         <label>Type<select id="itemType"><option value="event">Event</option><option value="sightseeing">Sightseeing</option><option value="activity">Activity</option><option value="flight">Flight</option><option value="train">Train</option><option value="ferry">Ferry / Boat</option><option value="cruise">Cruise</option><option value="drive">Drive block</option><option value="transport">Transit / Pickup</option><option value="food">Food</option><option value="hotel">Hotel / Check-in</option><option value="gas">Gas stop</option><option value="shopping">Shopping</option><option value="rest">Rest / Downtime</option><option value="toddler">Toddler-friendly</option><option value="todo">To-do / Reminder</option></select></label>
         <label>Start time<input id="itemTime" type="time" /></label>
         <label>End time<input id="itemEndTime" type="time" /></label>
-        <label>Budget $<input id="itemBudget" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label class="normal-budget-field">Budget $<input id="itemBudget" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label class="travel-expense-field flight-expense-field hidden">Ticket cost $<input id="itemFlightTicket" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label class="travel-expense-field flight-expense-field hidden">Checked bags $<input id="itemFlightBaggage" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label class="travel-expense-field flight-expense-field hidden">Other flight costs $<input id="itemFlightOther" type="number" min="0" step="0.01" placeholder="seat fees, parking, etc." /></label>
+        <label class="travel-expense-field drive-expense-field hidden">Driving / gas cost $<input id="itemDriveGas" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label class="travel-expense-field general-travel-expense-field hidden">Other travel expense $<input id="itemTravelOther" type="number" min="0" step="0.01" placeholder="0" /></label>
         <label>Assigned to<select id="itemAssignedTo"><option value="">Everyone / shared</option></select></label>
         <label class="route-field">From<input id="itemFromLocation" class="location-input" placeholder="Starting address for drives/pickups" autocomplete="off" /></label>
         <label class="route-field">To<input id="itemToLocation" class="location-input" placeholder="Destination address" autocomplete="off" /></label>
@@ -410,6 +416,7 @@
         <label>Item name<input id="shoppingItemName" placeholder="Snacks, sunscreen, drinks..." maxlength="120" /></label>
         <div class="dialog-grid compact-grid">
           <label>Quantity<input id="shoppingItemQty" type="number" min="1" step="1" value="1" /></label>
+          <label>Estimated cost<input id="shoppingItemCost" type="number" min="0" step="0.01" placeholder="0.00" /></label>
           <label>Notes<input id="shoppingItemNotes" placeholder="Brand, size, who needs it..." maxlength="180" /></label>
         </div>
         <div class="dialog-actions"><button id="shoppingSaveBtn" type="button">Save item</button></div>
@@ -443,6 +450,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=230"></script>
+  <script src="./app.js?v=233"></script>
 </body>
 </html>

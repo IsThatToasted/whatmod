@@ -17,14 +17,14 @@ const els = {
   tripTitle: document.getElementById('tripTitle'), startDate: document.getElementById('startDate'), endDate: document.getElementById('endDate'), destination: document.getElementById('destination'), tripNotes: document.getElementById('tripNotes'),
   totalBudget: document.getElementById('totalBudget'), stopCount: document.getElementById('stopCount'), dayCount: document.getElementById('dayCount'), plannerTitle: document.getElementById('plannerTitle'), dayTabs: document.getElementById('dayTabs'), timeline: document.getElementById('timeline'),
   addAnyItemBtn: document.getElementById('addAnyItemBtn'), itemDialog: document.getElementById('itemDialog'), itemDialogTitle: document.getElementById('itemDialogTitle'), editingItemId: document.getElementById('editingItemId'),
-  itemTitle: document.getElementById('itemTitle'), itemDate: document.getElementById('itemDate'), itemTime: document.getElementById('itemTime'), itemEndTime: document.getElementById('itemEndTime'), itemType: document.getElementById('itemType'), itemBudget: document.getElementById('itemBudget'), itemAssignedTo: document.getElementById('itemAssignedTo'), itemFromLocation: document.getElementById('itemFromLocation'), itemToLocation: document.getElementById('itemToLocation'), itemLocation: document.getElementById('itemLocation'), itemNotes: document.getElementById('itemNotes'), itemRainPlan: document.getElementById('itemRainPlan'), saveItemBtn: document.getElementById('saveItemBtn'),
+  itemTitle: document.getElementById('itemTitle'), itemDate: document.getElementById('itemDate'), itemTime: document.getElementById('itemTime'), itemEndTime: document.getElementById('itemEndTime'), itemType: document.getElementById('itemType'), itemBudget: document.getElementById('itemBudget'), itemFlightTicket: document.getElementById('itemFlightTicket'), itemFlightBaggage: document.getElementById('itemFlightBaggage'), itemFlightOther: document.getElementById('itemFlightOther'), itemDriveGas: document.getElementById('itemDriveGas'), itemTravelOther: document.getElementById('itemTravelOther'), travelExpenseTotal: document.getElementById('travelExpenseTotal'), itemAssignedTo: document.getElementById('itemAssignedTo'), itemFromLocation: document.getElementById('itemFromLocation'), itemToLocation: document.getElementById('itemToLocation'), itemLocation: document.getElementById('itemLocation'), itemNotes: document.getElementById('itemNotes'), itemRainPlan: document.getElementById('itemRainPlan'), saveItemBtn: document.getElementById('saveItemBtn'),
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingProgressList: document.getElementById('packingProgressList'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
-  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funIdeaCategory: document.getElementById('funIdeaCategory'), funCategoryFilter: document.getElementById('funCategoryFilter'), funCategoryManageBtn: document.getElementById('funCategoryManageBtn'), funCategoryEditor: document.getElementById('funCategoryEditor'), funCategoryName: document.getElementById('funCategoryName'), funCategoryEmoji: document.getElementById('funCategoryEmoji'), funAddCategoryBtn: document.getElementById('funAddCategoryBtn'), funCategoryList: document.getElementById('funCategoryList'), funNewIdeaBtn: document.getElementById('funNewIdeaBtn'), funCancelEditorBtn: document.getElementById('funCancelEditorBtn'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'), shoppingListDialog: document.getElementById('shoppingListDialog'), shoppingListTitle: document.getElementById('shoppingListTitle'), shoppingPermissionPanel: document.getElementById('shoppingPermissionPanel'), shoppingPermissionList: document.getElementById('shoppingPermissionList'), shoppingListBody: document.getElementById('shoppingListBody'), shoppingNewBtn: document.getElementById('shoppingNewBtn'), shoppingEditor: document.getElementById('shoppingEditor'), shoppingItemId: document.getElementById('shoppingItemId'), shoppingItemName: document.getElementById('shoppingItemName'), shoppingItemQty: document.getElementById('shoppingItemQty'), shoppingItemNotes: document.getElementById('shoppingItemNotes'), shoppingCancelEditorBtn: document.getElementById('shoppingCancelEditorBtn'), shoppingSaveBtn: document.getElementById('shoppingSaveBtn'),
+  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funIdeaCategory: document.getElementById('funIdeaCategory'), funCategoryFilter: document.getElementById('funCategoryFilter'), funCategoryManageBtn: document.getElementById('funCategoryManageBtn'), funCategoryEditor: document.getElementById('funCategoryEditor'), funCategoryName: document.getElementById('funCategoryName'), funCategoryEmoji: document.getElementById('funCategoryEmoji'), funAddCategoryBtn: document.getElementById('funAddCategoryBtn'), funCategoryList: document.getElementById('funCategoryList'), funNewIdeaBtn: document.getElementById('funNewIdeaBtn'), funCancelEditorBtn: document.getElementById('funCancelEditorBtn'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'), shoppingListDialog: document.getElementById('shoppingListDialog'), shoppingListTitle: document.getElementById('shoppingListTitle'), shoppingPermissionPanel: document.getElementById('shoppingPermissionPanel'), shoppingPermissionList: document.getElementById('shoppingPermissionList'), shoppingListBody: document.getElementById('shoppingListBody'), shoppingNewBtn: document.getElementById('shoppingNewBtn'), shoppingEditor: document.getElementById('shoppingEditor'), shoppingItemId: document.getElementById('shoppingItemId'), shoppingItemName: document.getElementById('shoppingItemName'), shoppingItemQty: document.getElementById('shoppingItemQty'), shoppingItemCost: document.getElementById('shoppingItemCost'), shoppingItemNotes: document.getElementById('shoppingItemNotes'), shoppingCancelEditorBtn: document.getElementById('shoppingCancelEditorBtn'), shoppingSaveBtn: document.getElementById('shoppingSaveBtn'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
@@ -153,15 +153,39 @@ function populateFunAssigneeSelect(selected = '') {
 }
 
 function syncRouteFieldVisibility() {
-  const pointToPoint = isPointToPointType({ item_type: els.itemType?.value });
+  const type = String(els.itemType?.value || 'event').toLowerCase();
+  const pointToPoint = isPointToPointType({ item_type: type });
   document.querySelectorAll('.route-field').forEach(el => el.classList.toggle('hidden', !pointToPoint));
+  document.querySelectorAll('.travel-expense-field').forEach(el => el.classList.toggle('hidden', true));
+  document.querySelectorAll('.flight-expense-field').forEach(el => el.classList.toggle('hidden', !['flight','train','ferry','cruise'].includes(type)));
+  document.querySelectorAll('.drive-expense-field').forEach(el => el.classList.toggle('hidden', !['drive','transport','gas'].includes(type)));
+  document.querySelectorAll('.general-travel-expense-field').forEach(el => el.classList.toggle('hidden', !isTravelExpenseType(type)));
+  document.querySelectorAll('.normal-budget-field').forEach(el => el.classList.toggle('dimmed-budget-field', isTravelExpenseType(type)));
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funReactions = [], funReactionSaveTimers = {}, shoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false, starterCleanupChecked = false;
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funReactions = [], funReactionSaveTimers = {}, shoppingListItems = [], allShoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false, starterCleanupChecked = false;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+function itemTravelExpense(item) {
+  const explicitTravel = Number(item?.flight_ticket_cost || 0) + Number(item?.flight_baggage_cost || 0) + Number(item?.flight_other_cost || 0) + Number(item?.drive_gas_cost || 0) + Number(item?.travel_other_cost || 0);
+  // Travel/lodging event budget belongs in Travel Expense, not the regular planned budget.
+  // This keeps hotel/lodging costs, flight fallback costs, gas/drive fallback costs, etc. separated cleanly.
+  const travelBudgetFallback = isTravelExpenseType(item?.item_type) ? Number(item?.budget || 0) : 0;
+  return explicitTravel + travelBudgetFallback;
+}
+function tripPlannedBudgetTotal() {
+  const normalItemBudget = items.reduce((sum, i) => isTravelExpenseType(i.item_type) ? sum : sum + Number(i.budget || 0), 0);
+  const mustBudget = mustDoItems.reduce((sum, i) => String(i.priority || '').toLowerCase() === 'must' ? sum + Number(i.budget || 0) : sum, 0);
+  return normalItemBudget + mustBudget + calcShoppingCost();
+}
+function tripTravelExpenseTotal() {
+  return items.reduce((sum, i) => sum + itemTravelExpense(i), 0) + calcGasCost();
+}
+function isTravelExpenseType(type) {
+  return ['flight','train','ferry','cruise','drive','transport','gas','hotel','lodging'].includes(String(type || '').toLowerCase());
+}
 const todayISO = () => new Date().toISOString().slice(0, 10);
 function addDays(dateString, days) { const d = new Date(`${dateString}T12:00:00`); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
 function dateRange(start, end) { if (!start || !end) return []; if (end < start) end = start; const out = []; let cur = start; while (cur <= end && out.length < 90) { out.push(cur); cur = addDays(cur, 1); } return out; }
@@ -732,7 +756,7 @@ async function loadTrips() {
     activeTripId = null;
     localStorage.removeItem('activeTripId');
     items = []; members = []; packingItems = []; packingProgressByUser = []; mustDoItems = []; memoryItems = [];
-    funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; shoppingListPermissions = [];
+    funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; allShoppingListItems = []; shoppingListPermissions = [];
     setStatus('No trips yet — create one to start planning');
     render();
     try { openTripDialog(); } catch {}
@@ -742,7 +766,7 @@ async function loadTrips() {
   if (!trips.find(t => t.id === activeTripId)) activeTripId = trips[0]?.id;
   await loadTripData();
 }
-async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]); await loadPackingProgress(); await loadWeatherForTrip(); setupRealtimeSync(); setStatus('Ready'); render(); }
+async function loadTripData() { await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems(), loadAllShoppingItems()]); await loadPackingProgress(); await loadWeatherForTrip(); setupRealtimeSync(); setStatus('Ready'); render(); }
 
 function setupRealtimeSync() {
   if (!client || !activeTripId || !session?.user?.id) return;
@@ -808,7 +832,7 @@ function handleRealtimePayload(table, payload) {
 async function refreshLiveTripData() {
   if (!activeTripId || !session?.user?.id) return;
   try {
-    await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems()]);
+    await Promise.all([loadItems(), loadMembers(), loadPackingItems(), loadMustDoItems(), loadMemoryItems(), loadAllShoppingItems()]);
     await loadPackingProgress();
     if (typeof loadFunCategories === 'function') await loadFunCategories();
     if (typeof loadFunIdeas === 'function') await loadFunIdeas();
@@ -992,7 +1016,7 @@ async function deleteTrip() {
 
   if (!activeTripId) {
     items = []; members = []; packingItems = []; packingProgressByUser = []; mustDoItems = []; memoryItems = [];
-    funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; shoppingListPermissions = [];
+    funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; allShoppingListItems = []; shoppingListPermissions = [];
     setStatus('Trip deleted. Create a new trip when ready.');
     render();
     try { openTripDialog(); } catch {}
@@ -1024,14 +1048,14 @@ function openItemDialog(date, item = null) {
   if (item && isLockedItem(item)) return alert('This card is locked. Unlock it first to edit.');
   els.itemDialogTitle.textContent = item ? 'Edit itinerary item' : 'Add itinerary item';
   els.editingItemId.value = item?.id || ''; els.itemTitle.value = item?.title || ''; els.itemDate.value = item?.item_date || date || selectedDay || currentTrip()?.start_date || todayISO();
-  els.itemTime.value = item?.start_time || ''; els.itemEndTime.value = item?.end_time || ''; els.itemType.value = item?.item_type || 'event'; els.itemBudget.value = item?.budget || ''; populateAssigneeSelect(item?.assigned_to || ''); if (els.itemFromLocation) els.itemFromLocation.value = item?.from_location || ''; if (els.itemToLocation) els.itemToLocation.value = item?.to_location || ''; els.itemLocation.value = item?.location || ''; els.itemNotes.value = item?.notes || ''; if (els.itemRainPlan) els.itemRainPlan.value = item?.rain_plan || '';
+  els.itemTime.value = item?.start_time || ''; els.itemEndTime.value = item?.end_time || ''; els.itemType.value = item?.item_type || 'event'; els.itemBudget.value = item?.budget || ''; if (els.itemFlightTicket) els.itemFlightTicket.value = item?.flight_ticket_cost || ''; if (els.itemFlightBaggage) els.itemFlightBaggage.value = item?.flight_baggage_cost || ''; if (els.itemFlightOther) els.itemFlightOther.value = item?.flight_other_cost || ''; if (els.itemDriveGas) els.itemDriveGas.value = item?.drive_gas_cost || ''; if (els.itemTravelOther) els.itemTravelOther.value = item?.travel_other_cost || ''; populateAssigneeSelect(item?.assigned_to || ''); if (els.itemFromLocation) els.itemFromLocation.value = item?.from_location || ''; if (els.itemToLocation) els.itemToLocation.value = item?.to_location || ''; els.itemLocation.value = item?.location || ''; els.itemNotes.value = item?.notes || ''; if (els.itemRainPlan) els.itemRainPlan.value = item?.rain_plan || '';
   syncRouteFieldVisibility(); renderMapLinks(els.itemLocationMapLinks, itemMapLocation({ ...item, location: els.itemLocation.value, from_location: els.itemFromLocation?.value || '', to_location: els.itemToLocation?.value || '', item_type: els.itemType.value }));
   els.itemDialog.showModal(); setTimeout(() => els.itemTitle.focus(), 50);
 }
 async function saveItemFromDialog(e) {
   e.preventDefault(); if (!activeTripId || !canEdit()) return;
   const title = els.itemTitle.value.trim(); if (!title) return alert('Add a title first.');
-  const payload = { title, item_date: els.itemDate.value || currentTrip()?.start_date || todayISO(), start_time: els.itemTime.value || null, end_time: els.itemEndTime.value || null, item_type: els.itemType.value, budget: Number(els.itemBudget.value || 0), assigned_to: els.itemAssignedTo?.value || null, from_location: els.itemFromLocation?.value.trim() || '', to_location: els.itemToLocation?.value.trim() || '', location: els.itemLocation.value.trim(), notes: els.itemNotes.value.trim(), rain_plan: els.itemRainPlan?.value.trim() || '', sort_order: Date.now(), updated_at: new Date().toISOString() };
+  const payload = { title, item_date: els.itemDate.value || currentTrip()?.start_date || todayISO(), start_time: els.itemTime.value || null, end_time: els.itemEndTime.value || null, item_type: els.itemType.value, budget: Number(els.itemBudget.value || 0), flight_ticket_cost: Number(els.itemFlightTicket?.value || 0), flight_baggage_cost: Number(els.itemFlightBaggage?.value || 0), flight_other_cost: Number(els.itemFlightOther?.value || 0), drive_gas_cost: Number(els.itemDriveGas?.value || 0), travel_other_cost: Number(els.itemTravelOther?.value || 0), assigned_to: els.itemAssignedTo?.value || null, from_location: els.itemFromLocation?.value.trim() || '', to_location: els.itemToLocation?.value.trim() || '', location: els.itemLocation.value.trim(), notes: els.itemNotes.value.trim(), rain_plan: els.itemRainPlan?.value.trim() || '', sort_order: Date.now(), updated_at: new Date().toISOString() };
   const id = els.editingItemId.value;
   if (id) {
     let { data, error } = await client.from('itinerary_items').update(payload).eq('id', id).select().single();
@@ -1087,7 +1111,7 @@ function renderTripEditor() {
   [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.gasMiles, els.gasMpg, els.gasPrice, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
   els.deleteTripBtn.disabled = !canDeleteTrip();
 }
-function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; const itemBudget = items.reduce((sum, i) => sum + Number(i.budget || 0), 0); const mustBudget = mustDoItems.reduce((sum, i) => String(i.priority || '').toLowerCase() === 'must' ? sum + Number(i.budget || 0) : sum, 0); const gasBudget = calcGasCost(); els.totalBudget.textContent = money(itemBudget + mustBudget + gasBudget); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); updateTripCountdown(); els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderGasCalculator(); renderTripProgress(); }
+function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; const plannedBudget = tripPlannedBudgetTotal(); const travelExpense = tripTravelExpenseTotal(); els.totalBudget.textContent = money(plannedBudget); if (els.travelExpenseTotal) els.travelExpenseTotal.textContent = money(travelExpense); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); updateTripCountdown(); els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderGasCalculator(); renderTripProgress(); }
 function renderHomeDashboard() {
   if (!els.homeGreeting) return;
   const t = currentTrip();
@@ -1122,7 +1146,7 @@ function renderHomeDashboard() {
   const must = mustDoItems.filter(i => String(i.priority || '').toLowerCase() === 'must');
   const doneMust = must.filter(i => i.completed).length;
   els.homeMustDoLine.textContent = `${must.length} Must Do${must.length === 1 ? '' : 's'}${must.length ? ` • ${doneMust}/${must.length} done` : ''}`;
-  const planned = items.reduce((sum, i) => sum + Number(i.budget || 0), 0) + must.reduce((sum, i) => sum + Number(i.budget || 0), 0) + calcGasCost();
+  const planned = tripPlannedBudgetTotal() + tripTravelExpenseTotal();
   const tripBudget = Number(t?.budget || 0);
   const pct = tripBudget ? Math.min(999, Math.round((planned / tripBudget) * 100)) : (planned ? 100 : 0);
   els.homeBudgetLine.textContent = tripBudget ? `Budget ${pct}% • ${money(planned)} / ${money(tripBudget)}` : `Planned ${money(planned)}`;
@@ -1228,8 +1252,9 @@ function renderItem(item, isTimed = false) {
   const displayLocation = routeText || shortLocationLabel(itemMapLocation(item));
   const mapQuery = itemMapLocation(item);
   const budget = Number(item.budget || 0);
+  const travelCost = itemTravelExpense(item);
   const assignee = memberAvatarHtml(item.assigned_to || '');
-  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a>` : ''}`;
+  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${travelCost ? `<span class="travel-cost-pill">✈️ Travel ${money(travelCost)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a>` : ''}`;
   tpl.querySelector('.item-notes').textContent = item.notes || '';
   const overlap = findOverlap(item);
   const softOverlap = !overlap ? findSoftOverlap(item) : null;
@@ -1726,7 +1751,7 @@ function renderTripProgress() {
 }
 
 function exportJson() { const data = { trip: currentTrip(), items }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${currentTrip()?.title || 'trip'}-itinerary.json`; a.click(); URL.revokeObjectURL(a.href); }
-async function importJson(file) { if (!canEdit()) return; const parsed = JSON.parse(await file.text()); if (!parsed?.items?.length) return alert('No items found in JSON.'); const newItems = parsed.items.map(i => ({ user_id: session.user.id, trip_id: activeTripId, title: i.title, item_date: i.item_date, start_time: i.start_time, end_time: i.end_time, item_type: i.item_type || 'event', budget: Number(i.budget || 0), location: i.location || '', from_location: i.from_location || '', to_location: i.to_location || '', assigned_to: i.assigned_to || null, notes: i.notes || '', sort_order: i.sort_order || Date.now() })); const { error } = await client.from('itinerary_items').insert(newItems); if (error) return showDbError(error); await loadTripData(); }
+async function importJson(file) { if (!canEdit()) return; const parsed = JSON.parse(await file.text()); if (!parsed?.items?.length) return alert('No items found in JSON.'); const newItems = parsed.items.map(i => ({ user_id: session.user.id, trip_id: activeTripId, title: i.title, item_date: i.item_date, start_time: i.start_time, end_time: i.end_time, item_type: i.item_type || 'event', budget: Number(i.budget || 0), flight_ticket_cost: Number(i.flight_ticket_cost || 0), flight_baggage_cost: Number(i.flight_baggage_cost || 0), flight_other_cost: Number(i.flight_other_cost || 0), drive_gas_cost: Number(i.drive_gas_cost || 0), travel_other_cost: Number(i.travel_other_cost || 0), location: i.location || '', from_location: i.from_location || '', to_location: i.to_location || '', assigned_to: i.assigned_to || null, notes: i.notes || '', sort_order: i.sort_order || Date.now() })); const { error } = await client.from('itinerary_items').insert(newItems); if (error) return showDbError(error); await loadTripData(); }
 
 els.googleBtn.addEventListener('click', loginGoogle); els.emailBtn.addEventListener('click', loginEmail); els.logoutBtn.addEventListener('click', logout);
 els.tripSelect.addEventListener('change', async () => { activeTripId = els.tripSelect.value; selectedDay = null; localStorage.setItem('activeTripId', activeTripId); await loadTripData(); });
@@ -2226,6 +2251,32 @@ function stepMemorySlide(dir) {
 }
 
 
+
+function shoppingCostValue(row) {
+  const raw = row?.estimated_cost ?? row?.cost ?? 0;
+  const n = Number(raw || 0);
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
+}
+function calcShoppingCost() {
+  return (allShoppingListItems || []).reduce((sum, row) => sum + shoppingCostValue(row), 0);
+}
+async function loadAllShoppingItems() {
+  allShoppingListItems = [];
+  if (!activeTripId || !session?.user?.id) return;
+  const { data, error } = await client
+    .from('itinerary_shopping_items')
+    .select('*')
+    .eq('trip_id', activeTripId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.warn('Shopping budget unavailable. Run the latest schema.sql.', error);
+    allShoppingListItems = [];
+  } else {
+    allShoppingListItems = data || [];
+  }
+}
+
 function shoppingEventById(id) { return items.find(i => i.id === id); }
 function canManageShoppingAccess(item) {
   return false;
@@ -2243,6 +2294,7 @@ async function loadShoppingForItem(itemId) {
     .select('*')
     .eq('trip_id', activeTripId)
     .eq('itinerary_item_id', itemId)
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
   if (error) { console.warn('Shopping list unavailable. Run schema.sql.', error); shoppingListItems = []; }
   else shoppingListItems = data || [];
@@ -2264,6 +2316,7 @@ function clearShoppingForm() {
   if (els.shoppingItemId) els.shoppingItemId.value = '';
   if (els.shoppingItemName) els.shoppingItemName.value = '';
   if (els.shoppingItemQty) els.shoppingItemQty.value = '1';
+  if (els.shoppingItemCost) els.shoppingItemCost.value = '';
   if (els.shoppingItemNotes) els.shoppingItemNotes.value = '';
 }
 function showShoppingEditor(show=true) {
@@ -2281,16 +2334,16 @@ function renderShoppingListModal() {
   if (els.shoppingPermissionList) els.shoppingPermissionList.innerHTML = '';
   const done = shoppingListItems.filter(x => x.completed).length;
   if (els.shoppingListBody) {
-    els.shoppingListBody.innerHTML = shoppingListItems.length ? shoppingListItems.map(x => `
-      <article class="shopping-list-row ${x.completed ? 'is-complete' : ''}" data-id="${escapeHtml(x.id)}">
+    els.shoppingListBody.innerHTML = shoppingListItems.length ? shoppingListItems.map((x, idx) => `
+      <article class="shopping-list-row ${x.completed ? 'is-complete' : ''}" data-id="${escapeHtml(x.id)}" draggable="${editable ? 'true' : 'false'}">
+        <button type="button" class="shopping-drag-handle" title="Drag to reorder" aria-label="Drag to reorder" ${editable ? '' : 'disabled'}>⋮⋮</button>
         <label class="shopping-check"><input type="checkbox" class="shopping-complete" ${x.completed ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
-        <div class="shopping-row-main"><strong>${escapeHtml(x.label || 'Shopping item')}</strong><em>${Number(x.quantity || 1)} needed${x.notes ? ` · ${escapeHtml(x.notes)}` : ''}</em></div>
-        <button type="button" class="shopping-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button>
-        <button type="button" class="shopping-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button>
+        <div class="shopping-row-main"><strong>${escapeHtml(x.label || 'Shopping item')}</strong><em>${Number(x.quantity || 1)} needed${shoppingCostValue(x) ? ` · ${money(shoppingCostValue(x))}` : ''}${x.notes ? ` · ${escapeHtml(x.notes)}` : ''}</em></div>
+        <div class="shopping-row-actions"><button type="button" class="shopping-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="shopping-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button></div>
       </article>`).join('') : '<div class="packing-empty">No shopping items yet. Add what everyone should grab.</div>';
   }
   const count = els.shoppingListDialog?.querySelector('.shopping-count');
-  if (count) count.textContent = `${done}/${shoppingListItems.length} complete`;
+  if (count) { const totalCost = shoppingListItems.reduce((sum, row) => sum + shoppingCostValue(row), 0); count.textContent = `${done}/${shoppingListItems.length} complete${totalCost ? ` · ${money(totalCost)} est.` : ''}`; }
   if (els.shoppingNewBtn) els.shoppingNewBtn.disabled = !editable;
   if (els.shoppingSaveBtn) els.shoppingSaveBtn.disabled = !editable;
 }
@@ -2305,6 +2358,7 @@ async function saveShoppingItem() {
     user_id: session.user.id,
     label,
     quantity: Math.max(1, Number(els.shoppingItemQty?.value || 1)),
+    estimated_cost: Math.max(0, Number(els.shoppingItemCost?.value || 0)),
     notes: (els.shoppingItemNotes?.value || '').trim(),
     updated_at: new Date().toISOString()
   };
@@ -2313,13 +2367,14 @@ async function saveShoppingItem() {
     ? await client.from('itinerary_shopping_items').update(payload).eq('id', id).select('*').single()
     : await client.from('itinerary_shopping_items').insert(payload).select('*').single();
   if (result.error) return showDbError(result.error);
-  await loadShoppingForItem(activeShoppingItemId); clearShoppingForm(); showShoppingEditor(false); renderShoppingListModal(); broadcastTripChange('Shopping list updated');
+  await loadShoppingForItem(activeShoppingItemId); await loadAllShoppingItems(); clearShoppingForm(); showShoppingEditor(false); renderShoppingListModal(); renderSummary(); broadcastTripChange('Shopping list updated');
 }
 function editShoppingItem(id) {
   const row = shoppingListItems.find(x => x.id === id); if (!row) return;
   if (els.shoppingItemId) els.shoppingItemId.value = row.id;
   if (els.shoppingItemName) els.shoppingItemName.value = row.label || '';
   if (els.shoppingItemQty) els.shoppingItemQty.value = String(row.quantity || 1);
+  if (els.shoppingItemCost) els.shoppingItemCost.value = shoppingCostValue(row) ? String(shoppingCostValue(row)) : '';
   if (els.shoppingItemNotes) els.shoppingItemNotes.value = row.notes || '';
   showShoppingEditor(true);
 }
@@ -2328,7 +2383,7 @@ async function updateShoppingItem(id, patch) {
   if (!eventItem || !canEdit() || !canAccessShoppingListLocal(eventItem)) return;
   const { error } = await client.from('itinerary_shopping_items').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id);
   if (error) return showDbError(error);
-  await loadShoppingForItem(activeShoppingItemId); renderShoppingListModal(); broadcastTripChange('Shopping list updated');
+  await loadShoppingForItem(activeShoppingItemId); await loadAllShoppingItems(); renderShoppingListModal(); renderSummary(); broadcastTripChange('Shopping list updated');
 }
 async function deleteShoppingItem(id) {
   const eventItem = shoppingEventById(activeShoppingItemId);
@@ -2336,8 +2391,32 @@ async function deleteShoppingItem(id) {
   if (!confirm('Remove this shopping item?')) return;
   const { error } = await client.from('itinerary_shopping_items').delete().eq('id', id);
   if (error) return showDbError(error);
-  await loadShoppingForItem(activeShoppingItemId); renderShoppingListModal(); broadcastTripChange('Shopping list updated');
+  await loadShoppingForItem(activeShoppingItemId); await loadAllShoppingItems(); renderShoppingListModal(); renderSummary(); broadcastTripChange('Shopping list updated');
 }
+
+async function persistShoppingOrder() {
+  const eventItem = shoppingEventById(activeShoppingItemId);
+  if (!eventItem || !canEdit() || !canAccessShoppingListLocal(eventItem)) return;
+  const updates = shoppingListItems.map((row, idx) => ({ id: row.id, sort_order: idx, updated_at: new Date().toISOString() }));
+  await Promise.all(updates.map(u => client.from('itinerary_shopping_items').update({ sort_order: u.sort_order, updated_at: u.updated_at }).eq('id', u.id)));
+  await loadShoppingForItem(activeShoppingItemId);
+  await loadAllShoppingItems();
+  renderShoppingListModal();
+  renderSummary();
+  broadcastTripChange('Shopping list reordered');
+}
+function reorderShoppingItems(dragId, dropId) {
+  if (!dragId || !dropId || dragId === dropId) return;
+  const from = shoppingListItems.findIndex(x => x.id === dragId);
+  const to = shoppingListItems.findIndex(x => x.id === dropId);
+  if (from < 0 || to < 0) return;
+  const [moved] = shoppingListItems.splice(from, 1);
+  shoppingListItems.splice(to, 0, moved);
+  shoppingListItems = shoppingListItems.map((row, idx) => ({ ...row, sort_order: idx }));
+  renderShoppingListModal();
+  persistShoppingOrder();
+}
+
 async function toggleShoppingPermission(userId, canAccess) { return; }
 
 function defaultMemoryTitle() {
@@ -2423,6 +2502,37 @@ if (els.shoppingListBody) els.shoppingListBody.addEventListener('click', e => {
   if (e.target.closest('.shopping-edit')) return editShoppingItem(row.dataset.id);
   if (e.target.closest('.shopping-delete')) return deleteShoppingItem(row.dataset.id);
 });
+
+let shoppingDragId = null;
+if (els.shoppingListBody) els.shoppingListBody.addEventListener('dragstart', e => {
+  const row = e.target.closest('.shopping-list-row');
+  if (!row || !canEdit()) return;
+  shoppingDragId = row.dataset.id;
+  row.classList.add('is-dragging');
+  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', shoppingDragId); } catch {}
+});
+if (els.shoppingListBody) els.shoppingListBody.addEventListener('dragend', e => {
+  e.target.closest('.shopping-list-row')?.classList.remove('is-dragging');
+  shoppingDragId = null;
+});
+if (els.shoppingListBody) els.shoppingListBody.addEventListener('dragover', e => {
+  if (!shoppingDragId) return;
+  const row = e.target.closest('.shopping-list-row');
+  if (!row || row.dataset.id === shoppingDragId) return;
+  e.preventDefault();
+  row.classList.add('is-drop-target');
+});
+if (els.shoppingListBody) els.shoppingListBody.addEventListener('dragleave', e => {
+  e.target.closest('.shopping-list-row')?.classList.remove('is-drop-target');
+});
+if (els.shoppingListBody) els.shoppingListBody.addEventListener('drop', e => {
+  const row = e.target.closest('.shopping-list-row');
+  if (!row || !shoppingDragId) return;
+  e.preventDefault();
+  row.classList.remove('is-drop-target');
+  reorderShoppingItems(shoppingDragId, row.dataset.id);
+});
+
 if (els.shoppingListBody) els.shoppingListBody.addEventListener('change', e => {
   const cb = e.target.closest('.shopping-complete');
   const row = e.target.closest('.shopping-list-row');
@@ -2817,7 +2927,7 @@ async function deletePackingItem(id) {
     try { localStorage.removeItem(`itineraryTrackerV2.completedPlannerOpen:${deletedId}`); } catch {}
     if (!activeTripId) {
       items = []; members = []; packingItems = []; packingProgressByUser = []; mustDoItems = []; memoryItems = [];
-      funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; shoppingListPermissions = [];
+      funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; allShoppingListItems = []; shoppingListPermissions = [];
       setStatus('Trip deleted. Create a new trip when ready.');
       stopAmbientMemorySound();
       render();
@@ -3668,7 +3778,7 @@ async function deletePackingItem(id) {
 
 /* === V2.2.9 hard cache/license/reaction stabilization === */
 (function(){
-  const BUILD = 'V2.3.0-ui-redesign-2026-07-12';
+  const BUILD = 'V2.3.2-hotel-travel-expense-2026-07-12';
   window.ITINERARY_TRACKER_BUILD = BUILD;
   try {
     document.documentElement.setAttribute('data-build', BUILD);
@@ -3902,7 +4012,7 @@ async function deletePackingItem(id) {
    Fixes showToast missing during license redemption and blocks Premium-only
    memory capture before the file picker/camera can open on Free accounts. */
 (function toastLicenseMemoryGateFix(){
-  const BUILD = 'V2.3.0-ui-redesign-2026-07-12';
+  const BUILD = 'V2.3.2-hotel-travel-expense-2026-07-12';
   window.ITINERARY_TRACKER_BUILD = BUILD;
   try { document.documentElement.setAttribute('data-build', BUILD); } catch (_) {}
 
@@ -4043,7 +4153,7 @@ async function deletePackingItem(id) {
 
 /* === V2.2.12 configurable licensing / entitlements === */
 (function(){
-  const BUILD = 'V2.3.0-ui-redesign-2026-07-12';
+  const BUILD = 'V2.3.2-hotel-travel-expense-2026-07-12';
   const DEFAULT_FREE = {
     plan: 'free', active: false,
     events_per_day: 5, max_trips: 1,

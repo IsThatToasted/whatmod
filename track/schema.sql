@@ -1332,3 +1332,55 @@ $$;
 --   'user@example.com', 'premium', true, 40, 10, true, true, false, true,
 --   'Premium but shopping lists disabled for testing'
 -- );
+
+-- v53 Shopping list cost + drag ordering
+alter table public.itinerary_shopping_items
+  add column if not exists estimated_cost numeric default 0,
+  add column if not exists sort_order numeric default 0;
+
+create index if not exists itinerary_shopping_items_sort_idx
+  on public.itinerary_shopping_items(trip_id, itinerary_item_id, sort_order, created_at);
+
+-- Backfill sort order for older shopping rows without changing user-visible data.
+with ranked as (
+  select id, row_number() over (partition by itinerary_item_id order by created_at, id) - 1 as rn
+  from public.itinerary_shopping_items
+  where sort_order is null or sort_order = 0
+)
+update public.itinerary_shopping_items s
+set sort_order = ranked.rn
+from ranked
+where s.id = ranked.id;
+
+
+-- v53 Shopping lists are shared with all trip collaborators.
+create or replace function public.user_can_access_shopping_list(target_item_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.itinerary_items i
+    where i.id = target_item_id
+      and public.user_can_view_trip(i.trip_id)
+  );
+$$;
+
+grant execute on function public.user_can_access_shopping_list(uuid) to authenticated;
+
+
+-- v2.3.2 Travel Expense fields: separates travel costs from normal planned budget.
+alter table public.itinerary_items add column if not exists flight_ticket_cost numeric(10,2) not null default 0;
+alter table public.itinerary_items add column if not exists flight_baggage_cost numeric(10,2) not null default 0;
+alter table public.itinerary_items add column if not exists flight_other_cost numeric(10,2) not null default 0;
+alter table public.itinerary_items add column if not exists drive_gas_cost numeric(10,2) not null default 0;
+alter table public.itinerary_items add column if not exists travel_other_cost numeric(10,2) not null default 0;
+
+create or replace view public.itinerary_trip_cost_summary as
+select
+  t.id as trip_id,
+  coalesce((select sum(coalesce(i.budget,0)) from public.itinerary_items i where i.trip_id = t.id),0) as event_budget,
+  coalesce((select sum(coalesce(i.flight_ticket_cost,0)+coalesce(i.flight_baggage_cost,0)+coalesce(i.flight_other_cost,0)+coalesce(i.drive_gas_cost,0)+coalesce(i.travel_other_cost,0)) from public.itinerary_items i where i.trip_id = t.id),0) as travel_expenses
+from public.itinerary_trips t;
