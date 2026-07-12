@@ -930,3 +930,63 @@ alter table public.itinerary_trip_members add column if not exists logistics_not
 comment on column public.itinerary_trip_members.nickname is 'Optional traveler nickname for Traveler Passport UI.';
 comment on column public.itinerary_trip_members.trip_role is 'Trip role such as Driver, Planner, Food Scout, Photographer, Parent, etc.';
 comment on column public.itinerary_trip_members.travel_style is 'Comma-separated travel style chips selected by traveler.';
+
+-- V2.2.2 Fun Ideas reaction sliders
+create table if not exists public.trip_fun_reactions (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  fun_idea_id uuid not null references public.trip_fun_ideas(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  score int not null default 50 check (score between 0 and 100),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(fun_idea_id, user_id)
+);
+
+alter table public.trip_fun_reactions enable row level security;
+
+drop policy if exists "fun reactions visible to permitted users" on public.trip_fun_reactions;
+create policy "fun reactions visible to permitted users" on public.trip_fun_reactions
+  for select using (
+    public.current_user_trip_role(trip_id) = 'owner'
+    or exists (
+      select 1 from public.trip_fun_permissions p
+      where p.trip_id = trip_fun_reactions.trip_id
+        and p.user_id = auth.uid()
+        and p.can_access = true
+    )
+  );
+
+drop policy if exists "fun reactions editable by self" on public.trip_fun_reactions;
+create policy "fun reactions editable by self" on public.trip_fun_reactions
+  for all using (
+    user_id = auth.uid()
+    and (
+      public.current_user_trip_role(trip_id) = 'owner'
+      or exists (
+        select 1 from public.trip_fun_permissions p
+        where p.trip_id = trip_fun_reactions.trip_id
+          and p.user_id = auth.uid()
+          and p.can_access = true
+      )
+    )
+  ) with check (
+    user_id = auth.uid()
+    and (
+      public.current_user_trip_role(trip_id) = 'owner'
+      or exists (
+        select 1 from public.trip_fun_permissions p
+        where p.trip_id = trip_fun_reactions.trip_id
+          and p.user_id = auth.uid()
+          and p.can_access = true
+      )
+    )
+  );
+
+do $$
+begin
+  begin
+    alter publication supabase_realtime add table public.trip_fun_reactions;
+  exception when duplicate_object then null;
+  end;
+end $$;
