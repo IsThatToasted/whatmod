@@ -1,107 +1,129 @@
-{
-  "brand": "WhatMod",
-  "logoMark": "✦",
-  "tagline": "Cute tools for serious workflows.",
-  "headline": "Software, automations, and tiny apps built to make live selling easier.",
-  "subheadline": "A simple showcase for WhatMod, WhatDash, inventory tools, trip planners, and the experiments I build along the way.",
-  "heroBadge": "✨ Built by Brian Chambers",
-  "heroNote": "Built tiny for big ideas",
-  "avatar": "assets/mascot.svg",
-  "primaryCta": {
-    "label": "View Projects",
-    "href": "#projects"
-  },
-  "secondaryCta": {
-    "label": "About Brian",
-    "href": "#about"
-  },
-  "theme": {
-    "accent": "#ff7ab6",
-    "accent2": "#7c5cff",
-    "background": "#fff7fb",
-    "ink": "#24182f"
-  },
-  "sections": {
-    "projects": {
-      "enabled": true,
-      "eyebrow": "Showcase",
-      "title": "Project showcase",
-      "text": "Software, experiments, and small business tools organized in simple editable content files.",
-      "buttonLabel": "Work with me",
-      "buttonHref": "#contact"
-    },
-    "features": {
-      "enabled": true,
-      "eyebrow": "What I build",
-      "title": "Tiny workflows",
-      "text": "Simple software that removes repeated work without becoming overcomplicated.",
-      "cards": [
-        {
-          "title": "Live selling tools",
-          "text": "Dashboards, browser tools, chat helpers, barcode flows, and inventory systems."
-        },
-        {
-          "title": "Static sites",
-          "text": "GitHub Pages-ready catalogs, landing pages, and lightweight app showcases."
-        },
-        {
-          "title": "Tiny workflows",
-          "text": "Simple software that removes repeated work without becoming overcomplicated."
-        }
-      ]
-    },
-    "stats": {
-      "enabled": true,
-      "items": [
-        {
-          "value": "10+ ",
-          "label": "apps and experiments"
-        },
-        {
-          "value": "Static ",
-          "label": "GitHub Pages friendly"
-        },
-        {
-          "value": "Local ",
-          "label": "simple builder workflow"
-        }
-      ],
-      "value": "Local ",
-      "label": "simple builder workflow"
-    },
-    "about": {
-      "enabled": true,
-      "eyebrow": "About",
-      "title": "Builder notes",
-      "text": "I build lightweight tools that solve real workflow problems: Chrome extensions, local desktop utilities, static catalogs, planning apps, and automation helpers.",
-      "bullets": [
-        "Chrome extensions and browser tools",
-        "Local desktop workflows and catalog builders",
-        "Static sites that publish cleanly to GitHub Pages",
-        "Cute UI, practical features, low maintenance"
-      ]
-    },
-    "contact": {
-      "enabled": true,
-      "eyebrow": "Links",
-      "title": "Contact / links",
-      "text": "Want to see the code, catalog, or newest experiments?",
-      "buttons": [
-        {
-          "label": "GitHub",
-          "href": "https://github.com/IsThatToasted",
-          "style": "primary"
-        },
-        {
-          "label": "Featured project",
-          "href": "https://github.com/IsThatToasted/whatmod",
-          "style": "ghost"
-        }
-      ],
-      "label": "Featured project",
-      "href": "https://github.com/IsThatToasted/whatmod",
-      "style": "ghost"
-    }
-  },
-  "footer": "Solving Annoying Problems One App at a Time"
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ItineraryTrackerV2.1 Settings</title>
+  <link rel="stylesheet" href="./styles.css?v=62" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="settings-page">
+  <div class="settings-shell">
+    <header class="settings-top">
+      <div>
+        <p class="eyebrow">ItineraryTrackerV2</p>
+        <h1>Settings</h1>
+        <p class="subtitle">General app preferences, profile status, and local defaults.</p>
+      </div>
+      <a class="settings-back" href="./">← Back to tracker</a>
+    </header>
+
+    <section class="settings-grid">
+      <article class="settings-card">
+        <h2>Profile</h2>
+        <p>Your Google profile is used for avatars, first names, assignments, and collaboration labels.</p>
+        <div class="settings-profile">
+          <div id="profileAvatarWrap" class="avatar-placeholder">👤</div>
+          <div>
+            <strong id="profileName">Not signed in</strong><br />
+            <span id="profileEmail" class="helper-text compact-help">Open the tracker and sign in to sync trips.</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="settings-card">
+        <h2>Display</h2>
+        <form id="displayForm" class="settings-form">
+          <label>Theme
+            <select id="appTheme"><option value="purple">Purple Glow</option><option value="light">Clean Light</option><option value="dark">Night Mode</option></select>
+          </label>
+          <label>Weather unit
+            <select id="weatherUnit"><option value="F">Fahrenheit</option><option value="C">Celsius</option></select>
+          </label>
+          <label>Timeline density
+            <select id="timelineDensity"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select>
+          </label>
+          <label class="settings-toggle"><span>Reduce extra animations</span><input id="reduceMotion" type="checkbox" /></label>
+        </form>
+      </article>
+
+      <article class="settings-card">
+        <h2>Trip Defaults</h2>
+        <form id="tripDefaultsForm" class="settings-form">
+          <label>Default day start
+            <input id="defaultDayStart" type="time" value="06:00" />
+          </label>
+          <label>Default day end
+            <input id="defaultDayEnd" type="time" value="23:00" />
+          </label>
+          <label>Vehicle MPG
+            <input id="defaultMpg" type="number" min="1" step="0.1" placeholder="30" />
+          </label>
+          <label>Average gas price
+            <input id="defaultGasPrice" type="number" min="0" step="0.01" placeholder="3.60" />
+          </label>
+        </form>
+      </article>
+
+      <article class="settings-card">
+        <h2>Map & Collaboration</h2>
+        <form id="mapForm" class="settings-form">
+          <label class="settings-toggle"><span>Show travel events on maps by default</span><input id="showTravelDefault" type="checkbox" checked /></label>
+          <label class="settings-toggle"><span>Show subtle live update messages</span><input id="showLiveToasts" type="checkbox" checked /></label>
+          <label class="settings-toggle"><span>Mobile drag requires long press</span><input id="mobileLongPress" type="checkbox" checked /></label>
+        </form>
+      </article>
+
+      <article class="settings-card danger-zone">
+        <h2>Local Data</h2>
+        <p>This only clears local browser preferences/cache on this device. It does not delete trips from Supabase.</p>
+        <div class="settings-actions">
+          <button id="saveSettingsBtn" type="button">Save settings</button>
+          <button id="clearLocalBtn" type="button" class="ghost-btn">Clear local cache</button>
+          <button id="settingsLogoutBtn" type="button" class="danger ghost-btn">Log out</button>
+        </div>
+        <p id="settingsStatus" class="settings-status"></p>
+      </article>
+    </section>
+  </div>
+
+<script>
+const SUPABASE_URL = 'https://cuhbzgeqvgzshwwfkpdm.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo';
+const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const PREF_KEY = 'itineraryTrackerV2.settings';
+const $ = id => document.getElementById(id);
+const fields = ['appTheme','weatherUnit','timelineDensity','reduceMotion','defaultDayStart','defaultDayEnd','defaultMpg','defaultGasPrice','showTravelDefault','showLiveToasts','mobileLongPress'];
+function firstName(meta = {}, fallback = 'Traveler') { return String(meta.full_name || meta.name || meta.display_name || fallback || 'Traveler').trim().split(/\s+/)[0] || 'Traveler'; }
+function readPrefs(){ try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch { return {}; } }
+function applyThemeSetting(theme){
+  const value = ['light','dark','purple'].includes(theme) ? theme : 'purple';
+  document.documentElement.dataset.theme = value;
+  document.body.classList.remove('theme-light','theme-dark','theme-purple');
+  document.body.classList.add('theme-' + value);
 }
+function writePrefs(){
+  const data = {};
+  fields.forEach(id => { const el = $(id); if (!el) return; data[id] = el.type === 'checkbox' ? el.checked : el.value; });
+  localStorage.setItem(PREF_KEY, JSON.stringify(data));
+  applyThemeSetting(data.appTheme || 'purple');
+  $('settingsStatus').textContent = 'Settings saved on this device.';
+}
+function loadPrefs(){ const p = readPrefs(); if (!p.appTheme) p.appTheme = localStorage.getItem('itineraryTrackerV2.theme') || 'purple'; fields.forEach(id => { const el = $(id); if (!el || p[id] === undefined) return; if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id]; }); applyThemeSetting(p.appTheme || 'purple'); }
+async function loadProfile(){
+  const { data } = await client.auth.getSession();
+  const user = data?.session?.user;
+  if (!user) return;
+  const meta = user.user_metadata || {};
+  $('profileName').textContent = firstName(meta, user.email?.split('@')[0]);
+  $('profileEmail').textContent = user.email || 'Signed in';
+  const avatar = meta.avatar_url || meta.picture;
+  if (avatar) $('profileAvatarWrap').outerHTML = `<img src="${avatar}" alt="Profile avatar" />`;
+}
+$('saveSettingsBtn').addEventListener('click', writePrefs);
+$('clearLocalBtn').addEventListener('click', () => { localStorage.removeItem(PREF_KEY); sessionStorage.clear(); $('settingsStatus').textContent = 'Local settings/cache cleared on this device.'; loadPrefs(); });
+$('settingsLogoutBtn').addEventListener('click', async () => { await client.auth.signOut(); location.href = './'; });
+loadPrefs(); loadProfile();
+</script>
+</body>
+</html>

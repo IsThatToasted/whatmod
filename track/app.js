@@ -2846,3 +2846,133 @@ async function deletePackingItem(id) {
   };
   setTimeout(() => { renderTravelerStrip(); refreshFunLockVisibility(); }, 900);
 })();
+
+
+/* v2.1.15 Traveler Passport profile polish */
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const STYLE_OPTIONS = ['Relaxed','Packed schedule','Early riser','Night owl','Budget-friendly','Splurge sometimes','Needs breaks','Kid-friendly','Outdoor focused','Indoor focused','Foodie','Photo moments'];
+  function esc(v){ return typeof escapeHtml === 'function' ? escapeHtml(v == null ? '' : String(v)) : String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+  function firstName(name){ return String(name || 'Traveler').trim().split(/\s+/)[0] || 'Traveler'; }
+  function memberById(userId){ return (window.members || members || []).find(m => m.user_id === userId); }
+  function displayName(m){ return m?.display_name || (typeof memberLabel === 'function' ? memberLabel(m?.user_id || '') : '') || 'Traveler'; }
+  function avatarUrl(m){ return m?.avatar_url || ''; }
+  function splitList(value){ return String(value || '').split(/[\n,;]+/).map(s => s.trim()).filter(Boolean).slice(0,24); }
+  function chipList(value, opts={}){ const items = Array.isArray(value) ? value : splitList(value); if (!items.length) return `<span class="passport-empty">Not added yet.</span>`; return `<div class="passport-chip-cloud">${items.map(x => `<span class="passport-chip ${opts.className||''}">${opts.prefix||''}${esc(x)}</span>`).join('')}</div>`; }
+  function boolVal(v){ return String(v || '').trim(); }
+  function completion(m){
+    const keys = ['display_name','trip_role','favorite_foods','foods_to_avoid','favorite_activities','personal_interests','shopping_interests','rainy_day_favorites','outdoor_favorites','travel_style','budget_comfort','preferred_wake_time','logistics_notes','profile_notes'];
+    const done = keys.filter(k => boolVal(m?.[k])).length;
+    return Math.max(8, Math.round((done / keys.length) * 100));
+  }
+  function roleText(m){ return m?.trip_role || (m?.role === 'owner' ? 'Trip Owner' : 'Traveler'); }
+  function budgetText(m){ return m?.budget_comfort || 'Not set'; }
+  function renderPassportViewer(m, isSelf){
+    const pct = completion(m);
+    const styles = splitList(m?.travel_style);
+    return `
+      <div class="passport-body" id="passportViewerV2">
+        <div class="passport-section-grid">
+          <section class="passport-section"><h3>🍽 Food</h3>${chipList(m?.favorite_foods,{className:'good'})}<h3 style="margin-top:14px">🚫 Avoids</h3>${chipList(m?.foods_to_avoid,{className:'avoid'})}</section>
+          <section class="passport-section"><h3>🎢 Activities</h3>${chipList(m?.favorite_activities)}<h3 style="margin-top:14px">🛍 Shopping interests</h3>${chipList(m?.shopping_interests)}</section>
+          <section class="passport-section"><h3>🌧 Rainy-day picks</h3>${chipList(m?.rainy_day_favorites)}</section>
+          <section class="passport-section"><h3>🌲 Outdoor favorites</h3>${chipList(m?.outdoor_favorites,{className:'good'})}</section>
+          <section class="passport-section"><h3>🚗 Travel style</h3>${chipList(styles,{className:'muted'})}<div class="passport-chip-cloud" style="margin-top:10px"><span class="passport-chip">💵 ${esc(budgetText(m))}</span>${m?.preferred_wake_time ? `<span class="passport-chip">⏰ ${esc(m.preferred_wake_time)}</span>` : ''}</div></section>
+          <section class="passport-section"><h3>🧳 Logistics</h3><p class="passport-note">${esc(m?.logistics_notes || 'No logistics notes yet.')}</p></section>
+          <section class="passport-section full"><h3>💬 Good to know</h3><p class="passport-note">${esc(m?.profile_notes || m?.notes || 'No trip notes yet.')}</p></section>
+        </div>
+      </div>`;
+  }
+  function editorHtml(m){
+    const selectedStyles = new Set(splitList(m?.travel_style));
+    return `
+      <div class="passport-editor" id="passportEditorV2">
+        <div class="passport-editor-grid">
+          <label>Display name<input id="profileDisplayNameV2" maxlength="80" value="${esc(m?.display_name || displayName(m))}" placeholder="Your name" /></label>
+          <label>Nickname<input id="profileNicknameV2" maxlength="60" value="${esc(m?.nickname || '')}" placeholder="Optional nickname" /></label>
+          <label>Trip role<select id="profileTripRoleV2">
+            ${['Traveler','Trip Owner','Planner','Driver','Passenger','Parent','Photographer','Food Scout','Budget Keeper'].map(r => `<option ${roleText(m)===r?'selected':''}>${r}</option>`).join('')}
+          </select></label>
+          <label>Budget comfort<select id="profileBudgetComfortV2">
+            ${['Not set','Budget-friendly','Moderate','Splurge sometimes','Ask before expensive activities'].map(r => `<option ${budgetText(m)===r?'selected':''}>${r}</option>`).join('')}
+          </select></label>
+          <label>Preferred wake-up time<input id="profileWakeTimeV2" type="time" value="${esc(m?.preferred_wake_time || '')}" /></label>
+          <label>Favorite foods<textarea id="profileFavoriteFoodsV2" placeholder="Coffee, seafood, burgers, ice cream...">${esc(m?.favorite_foods || '')}</textarea></label>
+          <label>Foods to avoid<textarea id="profileFoodsAvoidV2" placeholder="Spicy food, seafood, long waits...">${esc(m?.foods_to_avoid || '')}</textarea></label>
+          <label>Favorite activities<textarea id="profileFavoriteActivitiesV2" placeholder="Museums, beach, hiking, shopping...">${esc(m?.favorite_activities || '')}</textarea></label>
+          <label>Shopping interests<textarea id="profileShoppingInterestsV2" placeholder="Souvenirs, outlets, local markets...">${esc(m?.shopping_interests || '')}</textarea></label>
+          <label>Rainy-day favorites<textarea id="profileRainyFavoritesV2" placeholder="Arcades, movies, museums, cozy restaurants...">${esc(m?.rainy_day_favorites || '')}</textarea></label>
+          <label>Outdoor favorites<textarea id="profileOutdoorFavoritesV2" placeholder="Walks, lakes, beaches, scenic drives...">${esc(m?.outdoor_favorites || '')}</textarea></label>
+          <label class="full">Personal interests<textarea id="profileInterestsV2" placeholder="Anything helpful for planning a trip together...">${esc(m?.personal_interests || m?.interests || '')}</textarea></label>
+          <label class="full">Travel style<div class="style-chip-grid">${STYLE_OPTIONS.map(s => `<label><input type="checkbox" data-style-chip="${esc(s)}" ${selectedStyles.has(s)?'checked':''}/> ${esc(s)}</label>`).join('')}</div></label>
+          <label class="full">Logistics / accessibility notes<textarea id="profileLogisticsV2" placeholder="Needs breaks, motion sickness, quiet ride, accessibility notes...">${esc(m?.logistics_notes || '')}</textarea></label>
+          <label class="full">Good to know / trip notes<textarea id="profileNotesV2" placeholder="Helpful notes others should know when planning with you...">${esc(m?.profile_notes || m?.notes || '')}</textarea></label>
+        </div>
+        <div class="dialog-actions"><button id="cancelPassportEditBtn" class="ghost-btn" type="button">Cancel</button><button id="saveProfilePassportBtn" type="button">Save Traveler Passport</button></div>
+      </div>`;
+  }
+  function renderProfileDialogV2(m){
+    const dialog = $('profileDialog'); if (!dialog || !m) return;
+    const card = dialog.querySelector('.dialog-card') || dialog.firstElementChild;
+    if (!card) return;
+    card.classList.add('passport-card');
+    const isSelf = m.user_id === session?.user?.id;
+    const name = displayName(m);
+    const first = firstName(name);
+    const pct = completion(m);
+    const av = avatarUrl(m);
+    card.innerHTML = `
+      <div class="passport-hero">
+        <div class="passport-avatar-wrap">${av ? `<img src="${esc(av)}" alt="${esc(first)} avatar" />` : `<div class="passport-avatar-fallback">${esc(first.slice(0,1).toUpperCase())}</div>`}</div>
+        <div class="passport-title-block">
+          <p class="eyebrow">Traveler Passport</p>
+          <div class="passport-title-line"><h2>${isSelf ? 'Your Traveler Passport' : `${esc(first)}’s Passport`}</h2><span class="passport-role-chip">🧭 ${esc(roleText(m))}</span></div>
+          <p class="passport-sub">${esc(m?.nickname ? `${name} · “${m.nickname}”` : name)}</p>
+          <div class="passport-progress"><div class="passport-progress-row"><span>Profile completion</span><span>${pct}%</span></div><div class="passport-progress-bar"><div class="passport-progress-fill" style="width:${pct}%"></div></div></div>
+        </div>
+        <div class="passport-actions"><button value="cancel" class="ghost-btn" type="button" id="passportCloseBtn">Close</button>${isSelf ? `<button type="button" id="passportEditBtn">Edit Profile</button>` : ''}</div>
+      </div>
+      ${renderPassportViewer(m,isSelf)}
+      ${isSelf ? editorHtml(m) : ''}`;
+    dialog.dataset.userId = m.user_id;
+    $('passportCloseBtn')?.addEventListener('click', () => dialog.close());
+    $('passportEditBtn')?.addEventListener('click', () => { $('passportEditorV2')?.classList.add('is-open'); $('passportEditorV2')?.scrollIntoView({behavior:'smooth', block:'nearest'}); });
+    $('cancelPassportEditBtn')?.addEventListener('click', () => { $('passportEditorV2')?.classList.remove('is-open'); });
+    $('saveProfilePassportBtn')?.addEventListener('click', savePassportV2);
+  }
+  async function savePassportV2(){
+    const dialog = $('profileDialog');
+    if (!activeTripId || !session?.user?.id || dialog?.dataset?.userId !== session.user.id) return;
+    const styles = [...document.querySelectorAll('[data-style-chip]:checked')].map(x => x.getAttribute('data-style-chip')).filter(Boolean).join(', ');
+    const payload = {
+      display_name: ($('profileDisplayNameV2')?.value || '').trim() || (typeof currentUserFirstName === 'function' ? currentUserFirstName() : 'Traveler'),
+      nickname: ($('profileNicknameV2')?.value || '').trim(),
+      trip_role: ($('profileTripRoleV2')?.value || '').trim(),
+      favorite_foods: ($('profileFavoriteFoodsV2')?.value || '').trim(),
+      foods_to_avoid: ($('profileFoodsAvoidV2')?.value || '').trim(),
+      favorite_activities: ($('profileFavoriteActivitiesV2')?.value || '').trim(),
+      personal_interests: ($('profileInterestsV2')?.value || '').trim(),
+      shopping_interests: ($('profileShoppingInterestsV2')?.value || '').trim(),
+      rainy_day_favorites: ($('profileRainyFavoritesV2')?.value || '').trim(),
+      outdoor_favorites: ($('profileOutdoorFavoritesV2')?.value || '').trim(),
+      travel_style: styles,
+      budget_comfort: ($('profileBudgetComfortV2')?.value || '').trim(),
+      preferred_wake_time: ($('profileWakeTimeV2')?.value || '').trim() || null,
+      logistics_notes: ($('profileLogisticsV2')?.value || '').trim(),
+      profile_notes: ($('profileNotesV2')?.value || '').trim()
+    };
+    const { data, error } = await client.from('itinerary_trip_members').update(payload).eq('trip_id', activeTripId).eq('user_id', session.user.id).select().single();
+    if (error) return showDbError(error);
+    members = members.map(m => m.id === data.id ? data : m);
+    renderProfileDialogV2(data);
+    if (typeof renderTravelerStrip === 'function') { try { renderTravelerStrip(); } catch {} }
+    if (typeof showUndoToast === 'function') showUndoToast('Traveler Passport saved', null);
+  }
+  window.openTravelerProfile = function(userId){
+    if (!userId) return;
+    const m = memberById(userId) || (userId === session?.user?.id ? { user_id:userId, display_name:(typeof currentUserFirstName === 'function' ? currentUserFirstName() : 'Traveler'), avatar_url: session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture || '' } : null);
+    if (!m) return;
+    renderProfileDialogV2(m);
+    $('profileDialog')?.showModal();
+  };
+})();
