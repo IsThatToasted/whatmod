@@ -50,6 +50,7 @@
         <div class="top-actions">
           <div class="search-pill">🔎 <span>Search trips, activities...</span></div>
           <button class="icon-btn" type="button" aria-label="Notifications">🔔</button>
+          <button id="funLockBtn" class="icon-btn fun-lock-btn hidden" type="button" aria-label="Fun Ideas" title="Fun Ideas">🔒</button>
           <div class="auth-card" id="authArea">
             <button id="googleBtn" class="ghost-btn">Continue with Google</button>
             <div class="email-login">
@@ -322,6 +323,26 @@
       <label class="full">Notes<textarea id="itemNotes" rows="3" placeholder="Notes, confirmation numbers, tips..."></textarea></label>
       <label class="full rain-plan-field">Rain Plan ☔<textarea id="itemRainPlan" rows="3" placeholder="Indoor backup, alternate time, rainy-day notes..."></textarea></label>
       <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveItemBtn" value="default">Save item</button></div>
+    </form>
+  </dialog>
+
+
+  <dialog id="profileDialog" class="profile-dialog">
+    <form method="dialog" class="dialog-card profile-dialog-card">
+      <div class="profile-dialog-head">
+        <div class="profile-avatar-wrap"><img id="profileAvatarPreview" class="profile-avatar-preview hidden" alt="Profile avatar" /><div id="profileAvatarFallback" class="profile-avatar-fallback">T</div></div>
+        <div><p class="eyebrow">Traveler profile</p><h2 id="profileDialogTitle">Traveler</h2><p class="helper-text compact-help">Trip-friendly details for planning food, activities, and surprises.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <div id="profileViewer" class="profile-viewer hidden"></div>
+      <div id="profileEditor" class="profile-editor hidden">
+        <label>Display name<input id="profileDisplayName" maxlength="80" placeholder="Your name" /></label>
+        <label>Favorite foods<textarea id="profileFavoriteFoods" rows="3" placeholder="Coffee, seafood, spicy food, desserts..."></textarea></label>
+        <label>Favorite activities<textarea id="profileFavoriteActivities" rows="3" placeholder="Museums, beaches, hiking, shopping, relaxing..."></textarea></label>
+        <label>Personal interests<textarea id="profileInterests" rows="3" placeholder="Anything helpful for planning a trip together..."></textarea></label>
+        <label>Notes / trip preferences<textarea id="profileNotes" rows="3" placeholder="Early riser, needs downtime, budget preferences, accessibility notes..."></textarea></label>
+        <div class="dialog-actions"><button value="cancel" class="ghost-btn" type="submit">Cancel</button><button id="saveProfileBtn" type="button">Save profile</button></div>
+      </div>
     </form>
   </dialog>
 

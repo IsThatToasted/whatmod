@@ -2716,3 +2716,133 @@ async function deletePackingItem(id) {
   // Initial final render once this patch is installed.
   setTimeout(() => { try { renderCompletedTripExperience(); } catch (err) { console.warn(err); } }, 600);
 })();
+
+/* v2.1.14 traveler profiles + Fun Ideas lock access + activity/card polish */
+(function(){
+  const $ = (id) => document.getElementById(id);
+  function firstName(name){ return String(name || 'Traveler').trim().split(/\s+/)[0] || 'Traveler'; }
+  function memberById(userId){ return members.find(m => m.user_id === userId); }
+  function memberProfileName(m){ return firstName(m?.display_name || memberLabel(m?.user_id || '') || 'Traveler'); }
+  function avatarNodeHtml(m, sizeClass=''){
+    const name = memberProfileName(m);
+    const avatar = m?.avatar_url || '';
+    return avatar ? `<img class="${sizeClass}" src="${escapeHtml(avatar)}" alt="${escapeHtml(name)} avatar" />` : `<span class="traveler-avatar-fallback ${sizeClass}">${escapeHtml(name.slice(0,1).toUpperCase())}</span>`;
+  }
+  function ensureProfileDialog(){ return $('profileDialog'); }
+  function fillProfileDialog(member){
+    const dialog = ensureProfileDialog(); if (!dialog || !member) return;
+    const isSelf = member.user_id === session?.user?.id;
+    const name = member.display_name || memberLabel(member.user_id) || 'Traveler';
+    const first = firstName(name);
+    const img = $('profileAvatarPreview'); const fallback = $('profileAvatarFallback');
+    if (img) { img.src = member.avatar_url || ''; img.classList.toggle('hidden', !member.avatar_url); }
+    if (fallback) { fallback.textContent = first.slice(0,1).toUpperCase(); fallback.classList.toggle('hidden', !!member.avatar_url); }
+    if ($('profileDialogTitle')) $('profileDialogTitle').textContent = isSelf ? 'Your Profile' : `${first}'s Profile`;
+    const viewer = $('profileViewer'); const editor = $('profileEditor');
+    if (viewer) {
+      const rows = [
+        ['Favorite foods', member.favorite_foods],
+        ['Favorite activities', member.favorite_activities],
+        ['Personal interests', member.personal_interests || member.interests],
+        ['Trip notes', member.profile_notes || member.notes]
+      ];
+      viewer.innerHTML = rows.map(([label, val]) => `<div class="profile-row"><strong>${escapeHtml(label)}</strong><p>${escapeHtml(val || 'Not added yet.')}</p></div>`).join('');
+      viewer.classList.toggle('hidden', isSelf);
+    }
+    if (editor) {
+      $('profileDisplayName').value = member.display_name || name;
+      $('profileFavoriteFoods').value = member.favorite_foods || '';
+      $('profileFavoriteActivities').value = member.favorite_activities || '';
+      $('profileInterests').value = member.personal_interests || member.interests || '';
+      $('profileNotes').value = member.profile_notes || member.notes || '';
+      editor.classList.toggle('hidden', !isSelf);
+    }
+    dialog.dataset.userId = member.user_id;
+  }
+  window.openTravelerProfile = function(userId){
+    if (!userId) return;
+    const member = memberById(userId) || (userId === session?.user?.id ? { user_id:userId, display_name: currentUserFirstName(), avatar_url: session?.user?.user_metadata?.avatar_url || session?.user?.user_metadata?.picture || '' } : null);
+    if (!member) return;
+    fillProfileDialog(member);
+    $('profileDialog')?.showModal();
+  };
+  async function saveProfile(){
+    const dialog = $('profileDialog'); const userId = dialog?.dataset?.userId;
+    if (!activeTripId || !session?.user?.id || userId !== session.user.id) return;
+    const payload = {
+      display_name: ($('profileDisplayName')?.value || '').trim() || currentUserFirstName(),
+      favorite_foods: ($('profileFavoriteFoods')?.value || '').trim(),
+      favorite_activities: ($('profileFavoriteActivities')?.value || '').trim(),
+      personal_interests: ($('profileInterests')?.value || '').trim(),
+      profile_notes: ($('profileNotes')?.value || '').trim()
+    };
+    const { data, error } = await client.from('itinerary_trip_members').update(payload).eq('trip_id', activeTripId).eq('user_id', session.user.id).select().single();
+    if (error) return showDbError(error);
+    members = members.map(m => m.id === data.id ? data : m);
+    renderTravelerStrip();
+    dialog?.close();
+    if (typeof showUndoToast === 'function') showUndoToast('Profile saved', null);
+  }
+  $('saveProfileBtn')?.addEventListener('click', saveProfile);
+
+  function renderTravelerStrip(){
+    const title = $('plannerTitle'); if (!title) return;
+    let strip = $('travelerStrip');
+    if (!strip) {
+      strip = document.createElement('div'); strip.id = 'travelerStrip'; strip.className = 'traveler-strip';
+      title.insertAdjacentElement('afterend', strip);
+    }
+    if (!activeTripId || !members.length) { strip.classList.add('hidden'); strip.innerHTML=''; return; }
+    strip.classList.remove('hidden');
+    const sorted = [...members].sort((a,b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : 0));
+    const firstFive = sorted.slice(0,5);
+    strip.innerHTML = firstFive.map(m => `<button type="button" class="traveler-person" data-profile-user="${escapeHtml(m.user_id)}">${avatarNodeHtml(m)}<span>${escapeHtml(memberProfileName(m))}</span></button>`).join('') + (sorted.length > 5 ? `<button type="button" class="traveler-more" id="travelerMoreBtn">Show more</button>` : '');
+  }
+  document.addEventListener('click', e => {
+    const profileBtn = e.target.closest('[data-profile-user]');
+    if (profileBtn) { e.preventDefault(); openTravelerProfile(profileBtn.dataset.profileUser); return; }
+    if (e.target.closest('#travelerMoreBtn')) { e.preventDefault(); showAllTravelers(); }
+  });
+  function showAllTravelers(){
+    const list = [...members].sort((a,b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : 0));
+    const dialog = $('profileDialog'); if (!dialog) return;
+    if ($('profileDialogTitle')) $('profileDialogTitle').textContent = 'Travelers';
+    $('profileAvatarPreview')?.classList.add('hidden');
+    if ($('profileAvatarFallback')) { $('profileAvatarFallback').textContent = '👥'; $('profileAvatarFallback').classList.remove('hidden'); }
+    $('profileEditor')?.classList.add('hidden');
+    const viewer = $('profileViewer');
+    if (viewer) {
+      viewer.innerHTML = `<div class="traveler-full-list">${list.map(m => `<button type="button" class="traveler-full-row" data-profile-user="${escapeHtml(m.user_id)}">${avatarNodeHtml(m)}<span><strong>${escapeHtml(memberLabel(m.user_id))}</strong><em>${escapeHtml(m.role || 'editor')}</em></span></button>`).join('')}</div>`;
+      viewer.classList.remove('hidden');
+    }
+    dialog.showModal();
+  }
+
+  async function refreshFunLockVisibility(){
+    const lock = $('funLockBtn'); if (!lock) return;
+    if (!activeTripId || !session?.user?.id) { lock.classList.add('hidden'); return; }
+    try { if (!funPermissions.length && typeof loadFunPermissions === 'function') await loadFunPermissions(); } catch {}
+    const allowed = (typeof isTripOwner === 'function' && isTripOwner()) || (typeof canAccessFunIdeasLocal === 'function' && canAccessFunIdeasLocal());
+    lock.classList.toggle('hidden', !allowed);
+  }
+  $('funLockBtn')?.addEventListener('click', async (e) => { e.preventDefault(); e.stopPropagation(); await openFunIdeasDialog(); });
+  const oldAvatar = $('avatarFunBtn');
+  if (oldAvatar) {
+    oldAvatar.title = 'Edit profile';
+    oldAvatar.setAttribute('aria-label','Edit traveler profile');
+    oldAvatar.addEventListener('click', e => { e.preventDefault(); e.stopImmediatePropagation(); openTravelerProfile(session?.user?.id); }, true);
+  }
+
+  const oldRender = render;
+  render = function renderWithTravelerProfilePatch(){
+    oldRender?.();
+    renderTravelerStrip();
+    refreshFunLockVisibility();
+  };
+  const oldRenderDayTabs = renderDayTabs;
+  renderDayTabs = function renderDayTabsWithTravelers(){
+    oldRenderDayTabs?.();
+    renderTravelerStrip();
+  };
+  setTimeout(() => { renderTravelerStrip(); refreshFunLockVisibility(); }, 900);
+})();

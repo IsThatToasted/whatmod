@@ -142,3 +142,11 @@ This checkpoint adds a completed-trip memory mode and storage/performance harden
 - The schema avoids direct SQL deletion from `storage.objects`, because Supabase blocks that for safety.
 
 Run `schema.sql` once after deploying this version so the Storage delete policy and cleanup helpers are current.
+
+## V2.1.14 profile / UI polish patch
+- Activity Generator search input now gets its own row above radius/GPS/generate controls.
+- Desktop timeline action buttons have consistent compact spacing.
+- Traveler avatars appear beside the day planner title; click/tap a traveler to view their profile.
+- Clicking your own avatar opens your profile editor.
+- Fun Ideas moved from the profile avatar to a lock icon beside notifications. Owners see it; invited users see it only when Fun Ideas access is enabled.
+- `schema.sql` adds optional traveler profile preference fields on `itinerary_trip_members`.

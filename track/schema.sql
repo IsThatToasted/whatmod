@@ -47,6 +47,13 @@ create table if not exists public.itinerary_trip_members (
 alter table public.itinerary_trip_members add column if not exists display_name text;
 alter table public.itinerary_trip_members add column if not exists avatar_url text;
 
+-- v2.1.14 traveler profile fields for trip-friendly preferences
+alter table public.itinerary_trip_members add column if not exists favorite_foods text;
+alter table public.itinerary_trip_members add column if not exists favorite_activities text;
+alter table public.itinerary_trip_members add column if not exists personal_interests text;
+alter table public.itinerary_trip_members add column if not exists profile_notes text;
+
+
 create table if not exists public.itinerary_trip_invites (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
