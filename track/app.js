@@ -1492,7 +1492,7 @@ function renderPackingList() {
     .slice()
     .sort((a,b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map(item => `
-      <div class="packing-row ${item.packed ? 'done' : ''}" data-id="${escapeHtml(item.id)}" draggable="${editable ? 'true' : 'false'}">
+      <div class="packing-row ${item.packed ? 'done' : ''}" data-id="${escapeHtml(item.id)}" draggable="${editable && !isCoarsePointerDevice() ? 'true' : 'false'}">
         <button type="button" class="packing-drag ghost-btn" ${editable ? '' : 'disabled'} title="Drag to reorder">⋮⋮</button>
         <label>
           <input type="checkbox" ${item.packed ? 'checked' : ''} ${editable ? '' : 'disabled'} />
@@ -2395,7 +2395,7 @@ function renderShoppingListModal() {
             ${rows.map((x) => {
               const itemMeta = shoppingCategoryMeta(x.category);
               return `<article class="shopping-list-row ${x.completed ? 'is-complete' : ''}" data-id="${escapeHtml(x.id)}" draggable="${editable ? 'true' : 'false'}">
-                <button type="button" class="shopping-drag-handle" title="Drag to reorder" aria-label="Drag to reorder" ${editable ? '' : 'disabled'}>⋮⋮</button>
+                <button type="button" class="shopping-drag-handle" title="Drag to reorder" aria-label="Drag to reorder" ${editable && !isCoarsePointerDevice() ? '' : 'disabled'}>⋮⋮</button>
                 <label class="shopping-check"><input type="checkbox" class="shopping-complete" ${x.completed ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
                 <div class="shopping-row-main"><strong>${escapeHtml(x.label || 'Shopping item')}</strong><em><span class="shopping-category-chip">${itemMeta.emoji} ${escapeHtml(itemMeta.label)}</span> ${Number(x.quantity || 1)} needed${shoppingCostValue(x) ? ` · ${money(shoppingCostValue(x))}` : ''}${x.notes ? ` · ${escapeHtml(x.notes)}` : ''}</em></div>
                 <div class="shopping-row-actions"><button type="button" class="shopping-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="shopping-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button></div>
