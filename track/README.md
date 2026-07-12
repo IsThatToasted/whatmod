@@ -175,3 +175,29 @@ Run `schema.sql` after deploying if you have not already run the latest V2.1 sch
 - Cleaned up Fun Ideas permission rows so each traveler displays as a single avatar + name + role + toggle.
 - Removed duplicated/overlapping assignee chip rendering in the permissions panel.
 - No schema change required.
+
+
+## V2.2.8 Licensing / Premium Gates
+
+Run `schema.sql` once after deploying this version.
+
+Premium gates included in this build:
+
+- Free users: up to **5 events per day**.
+- Premium users: up to **25 events per day**.
+- Shopping List pill on shopping events only appears for Premium users.
+- Maps/routes are Premium-only.
+- Photo Memories and completed-trip recap/slideshow are Premium-only.
+
+To create a license key in Supabase SQL Editor:
+
+```sql
+insert into public.itinerary_license_keys(license_key, max_redemptions)
+values ('TEST-PREMIUM-123', 1);
+```
+
+A user can click the small Free/Premium badge in the app to redeem a key.
+
+## Fun Ideas reactions
+
+This build replaces fragile client upserts with the `upsert_trip_fun_reaction()` RPC helper. Slider movement updates the UI immediately, then saves once after the user pauses/releases the slider. It should feel live without repeatedly hammering Supabase.

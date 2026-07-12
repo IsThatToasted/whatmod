@@ -3397,3 +3397,44 @@ body.agenda-view .timeline-board{height:auto!important;min-height:0!important;pa
   .fun-reaction-row:first-of-type{border-top:0;}
   .fun-reaction-value{justify-self:start;}
 }
+
+
+/* === V2.2.8 Licensing gates and reaction polish === */
+.license-plan-badge{
+  border:1px solid rgba(124,92,255,.24);
+  background:rgba(255,255,255,.85);
+  color:#5f3bff;
+  border-radius:999px;
+  padding:9px 13px;
+  font-weight:900;
+  box-shadow:0 10px 28px rgba(94,70,190,.10);
+}
+.premium-map-gate{
+  min-height:240px;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  gap:8px;
+  padding:28px;
+  border-radius:24px;
+  background:linear-gradient(135deg,rgba(124,92,255,.10),rgba(255,123,205,.08));
+  color:#14204a;
+}
+.premium-map-gate span{font-size:42px;}
+.premium-map-gate strong{font-size:20px;}
+.premium-map-gate p{margin:0;color:#647099;font-weight:700;}
+.premium-note{
+  display:grid;
+  gap:3px;
+  padding:12px 14px;
+  margin-bottom:12px;
+  border:1px solid rgba(124,92,255,.18);
+  border-radius:18px;
+  background:rgba(124,92,255,.07);
+}
+.premium-note strong{color:#583dff;}
+.premium-note span{font-size:13px;color:#647099;font-weight:700;}
+.premium-locked-panel .memory-form-upgraded{opacity:.65;}
+.fun-reaction-row{--reaction-score:50%;}
+.fun-reaction-row.mine input[type="range"]{accent-color:#7c5cff;}
+.fun-reaction-value{min-width:112px;text-align:center;}

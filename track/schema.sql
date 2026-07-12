@@ -994,3 +994,145 @@ begin
   exception when duplicate_object then null;
   end;
 end $$;
+
+
+-- V2.2.8 Licensing + robust Fun Ideas reactions
+create table if not exists public.itinerary_user_entitlements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  plan text not null default 'premium' check (plan in ('free','premium')),
+  active boolean not null default true,
+  source text not null default 'manual',
+  license_key text,
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id, source, license_key)
+);
+
+create table if not exists public.itinerary_license_keys (
+  id uuid primary key default gen_random_uuid(),
+  license_key text not null unique,
+  plan text not null default 'premium' check (plan in ('premium')),
+  max_redemptions int not null default 1,
+  redemption_count int not null default 0,
+  active boolean not null default true,
+  expires_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.itinerary_user_entitlements enable row level security;
+alter table public.itinerary_license_keys enable row level security;
+
+grant select on public.itinerary_user_entitlements to authenticated;
+grant execute on function gen_random_uuid() to authenticated;
+
+drop policy if exists "users can view own entitlements" on public.itinerary_user_entitlements;
+create policy "users can view own entitlements" on public.itinerary_user_entitlements
+  for select using (user_id = auth.uid());
+
+-- Do not allow direct client reads of license keys. Redemption happens through SECURITY DEFINER.
+drop policy if exists "license keys hidden" on public.itinerary_license_keys;
+create policy "license keys hidden" on public.itinerary_license_keys
+  for select using (false);
+
+create or replace function public.get_itinerary_license_plan()
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select case when exists (
+    select 1 from public.itinerary_user_entitlements e
+    where e.user_id = auth.uid()
+      and e.active = true
+      and e.plan = 'premium'
+      and (e.expires_at is null or e.expires_at > now())
+  ) then 'premium' else 'free' end;
+$$;
+
+grant execute on function public.get_itinerary_license_plan() to authenticated;
+
+create or replace function public.redeem_itinerary_license(p_license_key text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_key public.itinerary_license_keys%rowtype;
+  v_clean text := trim(p_license_key);
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+  select * into v_key
+  from public.itinerary_license_keys
+  where license_key = v_clean
+    and active = true
+    and (expires_at is null or expires_at > now())
+  for update;
+  if not found then
+    raise exception 'Invalid or inactive license key';
+  end if;
+  if v_key.redemption_count >= v_key.max_redemptions then
+    raise exception 'This license key has already been redeemed';
+  end if;
+  insert into public.itinerary_user_entitlements(user_id, plan, active, source, license_key, expires_at)
+  values (auth.uid(), v_key.plan, true, 'license_key', v_clean, v_key.expires_at)
+  on conflict (user_id, source, license_key) do update set
+    active = true,
+    plan = excluded.plan,
+    expires_at = excluded.expires_at,
+    updated_at = now();
+  update public.itinerary_license_keys
+  set redemption_count = redemption_count + 1
+  where id = v_key.id;
+  return jsonb_build_object('plan', v_key.plan, 'active', true);
+end;
+$$;
+
+grant execute on function public.redeem_itinerary_license(text) to authenticated;
+
+-- Create license keys manually from SQL when needed, for example:
+-- insert into public.itinerary_license_keys(license_key, max_redemptions) values ('YOUR-KEY-HERE', 1);
+
+create or replace function public.upsert_trip_fun_reaction(p_trip_id uuid, p_fun_idea_id uuid, p_score int)
+returns public.trip_fun_reactions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.trip_fun_reactions;
+  v_score int := greatest(0, least(100, coalesce(p_score, 50)));
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+  if not exists (
+    select 1 from public.trip_fun_ideas i
+    where i.id = p_fun_idea_id and i.trip_id = p_trip_id
+  ) then
+    raise exception 'Fun idea not found';
+  end if;
+  if not (
+    public.current_user_trip_role(p_trip_id) = 'owner'
+    or exists (
+      select 1 from public.trip_fun_permissions p
+      where p.trip_id = p_trip_id and p.user_id = auth.uid() and p.can_access = true
+    )
+  ) then
+    raise exception 'No access to Fun Ideas';
+  end if;
+  insert into public.trip_fun_reactions(trip_id, fun_idea_id, user_id, score, updated_at)
+  values (p_trip_id, p_fun_idea_id, auth.uid(), v_score, now())
+  on conflict (fun_idea_id, user_id) do update set
+    score = excluded.score,
+    updated_at = now()
+  returning * into v_row;
+  return v_row;
+end;
+$$;
+
+grant execute on function public.upsert_trip_fun_reaction(uuid, uuid, int) to authenticated;

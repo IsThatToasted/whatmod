@@ -1224,7 +1224,7 @@ function renderItem(item, isTimed = false) {
   const mapQuery = itemMapLocation(item);
   const budget = Number(item.budget || 0);
   const assignee = memberAvatarHtml(item.assigned_to || '');
-  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a>` : ''}`;
+  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a>` : ''}`;
   tpl.querySelector('.item-notes').textContent = item.notes || '';
   const overlap = findOverlap(item);
   const softOverlap = !overlap ? findSoftOverlap(item) : null;
@@ -3384,3 +3384,281 @@ async function deletePackingItem(id) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.flushFunReactionSaves?.(); });
 })();
 
+
+
+/* === V2.2.8 Licensing + robust Fun Ideas reactions === */
+(function(){
+  const FREE_DAILY_EVENTS = 5;
+  const PREMIUM_DAILY_EVENTS = 25;
+  let licensePlan = 'free';
+  let licenseLoadedFor = '';
+  let licenseLoading = null;
+
+  function currentUserId(){ return session?.user?.id || ''; }
+  function normalizePlan(plan){ return String(plan || 'free').toLowerCase() === 'premium' ? 'premium' : 'free'; }
+  window.currentLicensePlan = function(){ return licensePlan; };
+  window.isPremiumUser = function(){ return licensePlan === 'premium'; };
+  window.dailyEventLimit = function(){ return window.isPremiumUser() ? PREMIUM_DAILY_EVENTS : FREE_DAILY_EVENTS; };
+
+  async function loadLicensePlan(force=false){
+    if (!client || !currentUserId()) { licensePlan = 'free'; return licensePlan; }
+    if (!force && licenseLoadedFor === currentUserId()) return licensePlan;
+    if (licenseLoading) return licenseLoading;
+    licenseLoading = (async () => {
+      try {
+        const { data, error } = await client.rpc('get_itinerary_license_plan');
+        if (error) throw error;
+        licensePlan = normalizePlan(data);
+      } catch (err) {
+        // Schema may not be run yet; fail closed to Free without breaking the app.
+        console.warn('License plan unavailable; defaulting to Free. Run schema.sql for licensing.', err);
+        licensePlan = 'free';
+      } finally {
+        licenseLoadedFor = currentUserId();
+        licenseLoading = null;
+      }
+      applyLicenseUI();
+      return licensePlan;
+    })();
+    return licenseLoading;
+  }
+  window.loadLicensePlan = loadLicensePlan;
+
+  function premiumMessage(feature){
+    const msg = `${feature} is a Premium feature. Free trips include up to ${FREE_DAILY_EVENTS} events per day.`;
+    if (typeof showToast === 'function') showToast(msg, 'info');
+    else alert(msg);
+  }
+  window.showPremiumGate = premiumMessage;
+
+  async function redeemPremiumLicense(){
+    const key = prompt('Enter your premium license key:');
+    if (!key) return;
+    try {
+      const { data, error } = await client.rpc('redeem_itinerary_license', { p_license_key: key.trim() });
+      if (error) throw error;
+      licensePlan = normalizePlan(data?.plan || 'premium');
+      licenseLoadedFor = currentUserId();
+      applyLicenseUI();
+      render?.();
+      showToast?.('Premium unlocked', 'success');
+    } catch (err) {
+      console.warn('License redeem failed', err);
+      alert(err.message || 'Could not redeem license.');
+    }
+  }
+  window.redeemPremiumLicense = redeemPremiumLicense;
+
+  function ensureUpgradeButton(container, feature){
+    if (!container || container.querySelector('.premium-upgrade-btn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ghost-btn premium-upgrade-btn';
+    btn.textContent = 'Unlock Premium';
+    btn.addEventListener('click', redeemPremiumLicense);
+    container.appendChild(btn);
+  }
+
+  function applyLicenseUI(){
+    document.body.classList.toggle('plan-premium', window.isPremiumUser());
+    document.body.classList.toggle('plan-free', !window.isPremiumUser());
+    document.querySelectorAll('[data-premium-only]').forEach(el => el.classList.toggle('premium-locked', !window.isPremiumUser()));
+    if (els.memoryPanel) {
+      els.memoryPanel.classList.toggle('premium-locked-panel', !window.isPremiumUser());
+      const existing = els.memoryPanel.querySelector('.premium-note');
+      if (!window.isPremiumUser()) {
+        if (!existing) {
+          const note = document.createElement('div');
+          note.className = 'premium-note';
+          note.innerHTML = '<strong>Premium Memories</strong><span>Photo memories and trip recaps are included with Premium.</span>';
+          els.memoryPanel.prepend(note);
+        }
+        ensureUpgradeButton(els.memoryPanel, 'Memories');
+      } else existing?.remove();
+    }
+  }
+
+  // Load licensing whenever trip data loads.
+  if (typeof loadTripData === 'function' && !loadTripData.__licensed) {
+    const originalLoadTripData = loadTripData;
+    loadTripData = async function(){
+      await loadLicensePlan();
+      return originalLoadTripData.apply(this, arguments);
+    };
+    loadTripData.__licensed = true;
+  }
+
+  // Premium map gate: show a clean upsell instead of loading Leaflet/OSRM on Free.
+  if (typeof renderDayMap === 'function' && !renderDayMap.__licensed) {
+    const originalRenderDayMap = renderDayMap;
+    renderDayMap = async function(){
+      if (!window.isPremiumUser()) {
+        if (els.dailyMapTitle) els.dailyMapTitle.textContent = 'Daily route';
+        if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Maps and route planning are Premium features.';
+        if (els.dailyDirectionsLink) els.dailyDirectionsLink.classList.add('hidden');
+        if (els.dailyMapLegend) els.dailyMapLegend.classList.add('hidden');
+        if (els.dailyMapStops) els.dailyMapStops.innerHTML = '';
+        if (els.dailyRouteMap) {
+          els.dailyRouteMap.innerHTML = `<div class="premium-map-gate"><span>🗺️</span><strong>Unlock maps and routes</strong><p>Premium includes daily route maps, pins, and directions.</p><button type="button" class="ghost-btn premium-upgrade-btn">Unlock Premium</button></div>`;
+          els.dailyRouteMap.querySelector('.premium-upgrade-btn')?.addEventListener('click', redeemPremiumLicense);
+        }
+        return;
+      }
+      return originalRenderDayMap.apply(this, arguments);
+    };
+    renderDayMap.__licensed = true;
+  }
+
+  // Event limit enforcement for Free/Premium.
+  if (typeof saveItemFromDialog === 'function' && !saveItemFromDialog.__licensed) {
+    const originalSaveItemFromDialog = saveItemFromDialog;
+    saveItemFromDialog = async function(e){
+      const id = els.editingItemId?.value;
+      if (!id) {
+        const targetDate = els.itemDate?.value || currentTrip()?.start_date || todayISO();
+        const count = (items || []).filter(i => i.item_date === targetDate).length;
+        const limit = window.dailyEventLimit();
+        if (count >= limit) {
+          e?.preventDefault?.();
+          if (window.isPremiumUser()) alert(`Premium allows up to ${limit} events per day.`);
+          else premiumMessage(`Free trips allow ${limit} events per day. Upgrade for up to ${PREMIUM_DAILY_EVENTS} per day`);
+          return;
+        }
+      }
+      return originalSaveItemFromDialog.apply(this, arguments);
+    };
+    saveItemFromDialog.__licensed = true;
+    els.saveItemBtn?.removeEventListener?.('click', originalSaveItemFromDialog);
+    els.saveItemBtn?.addEventListener?.('click', saveItemFromDialog);
+  }
+
+  // Premium-gate memories and recaps.
+  if (typeof startQuickMemoryCapture === 'function' && !startQuickMemoryCapture.__licensed) {
+    const originalStartQuickMemoryCapture = startQuickMemoryCapture;
+    startQuickMemoryCapture = function(){
+      if (!window.isPremiumUser()) return premiumMessage('Memories');
+      return originalStartQuickMemoryCapture.apply(this, arguments);
+    };
+    startQuickMemoryCapture.__licensed = true;
+  }
+  if (typeof addMemoryItem === 'function' && !addMemoryItem.__licensed) {
+    const originalAddMemoryItem = addMemoryItem;
+    addMemoryItem = async function(){
+      if (!window.isPremiumUser()) return premiumMessage('Memories');
+      return originalAddMemoryItem.apply(this, arguments);
+    };
+    addMemoryItem.__licensed = true;
+  }
+  if (typeof openMemorySlideshow === 'function' && !openMemorySlideshow.__licensed) {
+    const originalOpenMemorySlideshow = openMemorySlideshow;
+    openMemorySlideshow = function(){
+      if (!window.isPremiumUser()) return premiumMessage('Trip recap');
+      return originalOpenMemorySlideshow.apply(this, arguments);
+    };
+    openMemorySlideshow.__licensed = true;
+  }
+
+  // Shopping list is Premium only. Keep the click handler safe in case an old DOM remains.
+  if (typeof openShoppingListDialog === 'function' && !openShoppingListDialog.__licensed) {
+    const originalOpenShoppingListDialog = openShoppingListDialog;
+    openShoppingListDialog = async function(){
+      if (!window.isPremiumUser()) return premiumMessage('Shopping lists');
+      return originalOpenShoppingListDialog.apply(this, arguments);
+    };
+    openShoppingListDialog.__licensed = true;
+  }
+
+  // A minimal plan badge near the app top, plus license redemption.
+  function injectPlanBadge(){
+    if (document.getElementById('licensePlanBadge')) return;
+    const top = document.querySelector('.top-actions') || document.querySelector('.topbar') || document.querySelector('header');
+    if (!top) return;
+    const badge = document.createElement('button');
+    badge.id = 'licensePlanBadge';
+    badge.type = 'button';
+    badge.className = 'license-plan-badge';
+    badge.addEventListener('click', redeemPremiumLicense);
+    top.prepend(badge);
+  }
+  function updatePlanBadge(){
+    injectPlanBadge();
+    const badge = document.getElementById('licensePlanBadge');
+    if (badge) badge.textContent = window.isPremiumUser() ? '✨ Premium' : 'Free';
+  }
+  const oldApply = applyLicenseUI;
+  applyLicenseUI = function(){ oldApply(); updatePlanBadge(); };
+  document.addEventListener('DOMContentLoaded', () => { loadLicensePlan(); updatePlanBadge(); });
+
+  // Robust reactions: immediate UI, single debounced write, RPC save to avoid fragile client RLS/upsert problems.
+  const reactionTimers = new Map();
+  const reactionPending = new Map();
+  function reactionKey(ideaId){ return `${activeTripId || ''}:${ideaId || ''}:${currentUserId()}`; }
+  function cleanScore(score){ const n = Number(score); return Math.max(0, Math.min(100, Number.isFinite(n) ? Math.round(n) : 50)); }
+  function updateReactionInputUI(input){
+    if (!input) return;
+    const score = cleanScore(input.value);
+    input.value = String(score);
+    const row = input.closest('.fun-reaction-row');
+    const value = row?.querySelector('.fun-reaction-value');
+    if (value) value.textContent = `${reactionEmoji(score)} ${reactionLabel(score)}`;
+    row?.style.setProperty('--reaction-score', `${score}%`);
+  }
+  async function writeReactionNow(ideaId, score){
+    if (!client || !activeTripId || !currentUserId() || !ideaId || !canAccessFunIdeasLocal?.()) return;
+    score = cleanScore(score);
+    const local = { trip_id: activeTripId, fun_idea_id: ideaId, user_id: currentUserId(), score, updated_at: new Date().toISOString() };
+    const idx = funReactions.findIndex(r => r.fun_idea_id === ideaId && r.user_id === currentUserId());
+    if (idx >= 0) funReactions[idx] = { ...funReactions[idx], ...local }; else funReactions.push(local);
+    try {
+      const { data, error } = await client.rpc('upsert_trip_fun_reaction', { p_trip_id: activeTripId, p_fun_idea_id: ideaId, p_score: score });
+      if (error) throw error;
+      if (data) {
+        const saved = Array.isArray(data) ? data[0] : data;
+        if (saved) {
+          const j = funReactions.findIndex(r => r.fun_idea_id === ideaId && r.user_id === currentUserId());
+          if (j >= 0) funReactions[j] = { ...funReactions[j], ...saved }; else funReactions.push(saved);
+        }
+      }
+    } catch (rpcErr) {
+      console.warn('RPC reaction save failed; trying direct upsert', rpcErr);
+      const { error } = await client.from('trip_fun_reactions').upsert(local, { onConflict: 'fun_idea_id,user_id' });
+      if (error) { console.warn('Direct reaction save failed', error); showToast?.('Reaction could not save. Run schema.sql.', 'error'); }
+    }
+  }
+  window.handleFunReactionSlide = function(input){
+    updateReactionInputUI(input);
+    const ideaId = input?.dataset?.ideaId || input?.closest?.('.fun-reactions')?.dataset?.ideaId;
+    if (!ideaId) return;
+    const key = reactionKey(ideaId);
+    reactionPending.set(key, { ideaId, score: cleanScore(input.value) });
+    clearTimeout(reactionTimers.get(key));
+    reactionTimers.set(key, setTimeout(() => {
+      const payload = reactionPending.get(key);
+      reactionPending.delete(key);
+      writeReactionNow(payload.ideaId, payload.score);
+    }, 650));
+  };
+  window.commitFunReactionSlide = function(input){
+    updateReactionInputUI(input);
+    const ideaId = input?.dataset?.ideaId || input?.closest?.('.fun-reactions')?.dataset?.ideaId;
+    if (!ideaId) return;
+    const key = reactionKey(ideaId);
+    clearTimeout(reactionTimers.get(key));
+    reactionTimers.delete(key);
+    reactionPending.delete(key);
+    writeReactionNow(ideaId, input.value);
+  };
+  window.flushFunReactionSaves = async function(){
+    const pending = Array.from(reactionPending.values());
+    reactionPending.clear();
+    reactionTimers.forEach(t => clearTimeout(t));
+    reactionTimers.clear();
+    for (const p of pending) await writeReactionNow(p.ideaId, p.score);
+  };
+  document.addEventListener('input', (e) => { if (e.target?.matches?.('.fun-reaction-row.mine input[type="range"]')) window.handleFunReactionSlide(e.target); }, true);
+  document.addEventListener('change', (e) => { if (e.target?.matches?.('.fun-reaction-row.mine input[type="range"]')) window.commitFunReactionSlide(e.target); }, true);
+  document.addEventListener('pointerup', (e) => { if (e.target?.matches?.('.fun-reaction-row.mine input[type="range"]')) window.commitFunReactionSlide(e.target); }, true);
+  document.addEventListener('touchend', (e) => { if (e.target?.matches?.('.fun-reaction-row.mine input[type="range"]')) window.commitFunReactionSlide(e.target); }, true);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) window.flushFunReactionSaves(); });
+  window.addEventListener('pagehide', () => window.flushFunReactionSaves());
+})();
