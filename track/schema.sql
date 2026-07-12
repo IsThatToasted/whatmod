@@ -1,1334 +1,448 @@
--- Itinerary Tracker schema with signed-in collaborators + invite links
--- Safe to run more than once in Supabase SQL Editor.
-
-create extension if not exists pgcrypto;
-
-create table if not exists public.itinerary_trips (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  title text not null default 'New trip',
-  start_date date not null default current_date,
-  end_date date not null default current_date,
-  destination text default '',
-  notes text default '',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.itinerary_items (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  title text not null,
-  item_date date not null,
-  start_time time,
-  end_time time,
-  item_type text not null default 'event',
-  budget numeric(10,2) not null default 0,
-  location text default '',
-  notes text default '',
-  sort_order bigint not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.itinerary_trip_members (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  role text not null default 'editor' check (role in ('owner', 'editor', 'viewer')),
-  invite_token text,
-  display_name text,
-  avatar_url text,
-  created_at timestamptz not null default now(),
-  unique(trip_id, user_id)
-);
-
-alter table public.itinerary_trip_members add column if not exists display_name text;
-alter table public.itinerary_trip_members add column if not exists avatar_url text;
-
--- v2.1.14 traveler profile fields for trip-friendly preferences
-alter table public.itinerary_trip_members add column if not exists favorite_foods text;
-alter table public.itinerary_trip_members add column if not exists favorite_activities text;
-alter table public.itinerary_trip_members add column if not exists personal_interests text;
-alter table public.itinerary_trip_members add column if not exists profile_notes text;
-
-
-create table if not exists public.itinerary_trip_invites (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  created_by uuid not null references auth.users(id) on delete cascade,
-  token text not null unique default encode(gen_random_bytes(18), 'hex'),
-  role text not null default 'editor' check (role in ('editor', 'viewer')),
-  expires_at timestamptz,
-  revoked_at timestamptz,
-  created_at timestamptz not null default now()
-);
-
-create or replace function public.current_user_trip_role(target_trip_id uuid)
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select m.role
-  from public.itinerary_trip_members m
-  where m.trip_id = target_trip_id
-    and m.user_id = auth.uid()
-  limit 1;
-$$;
-
-grant execute on function public.current_user_trip_role(uuid) to authenticated;
-
-create or replace function public.user_can_view_trip(target_trip_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from public.itinerary_trip_members m
-    where m.trip_id = target_trip_id
-      and m.user_id = auth.uid()
-  );
-$$;
-
-grant execute on function public.user_can_view_trip(uuid) to authenticated;
-
-create or replace function public.user_can_edit_trip(target_trip_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1 from public.itinerary_trip_members m
-    where m.trip_id = target_trip_id
-      and m.user_id = auth.uid()
-      and m.role in ('owner', 'editor')
-  );
-$$;
-
-grant execute on function public.user_can_edit_trip(uuid) to authenticated;
-
-
-create or replace function public.create_itinerary_trip(
-  trip_title text default 'New trip',
-  trip_start_date date default current_date,
-  trip_end_date date default current_date
-)
-returns public.itinerary_trips
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  new_trip public.itinerary_trips%rowtype;
-begin
-  if auth.uid() is null then
-    raise exception 'You must be signed in to create a trip.';
-  end if;
-
-  insert into public.itinerary_trips (user_id, title, start_date, end_date, destination, notes)
-  values (
-    auth.uid(),
-    coalesce(nullif(trim(trip_title), ''), 'New trip'),
-    coalesce(trip_start_date, current_date),
-    coalesce(trip_end_date, coalesce(trip_start_date, current_date)),
-    '',
-    ''
-  )
-  returning * into new_trip;
-
-  insert into public.itinerary_trip_members (trip_id, user_id, role, display_name, avatar_url)
-  values (new_trip.id, auth.uid(), 'owner', coalesce(auth.jwt()->'user_metadata'->>'full_name', auth.jwt()->'user_metadata'->>'name', auth.jwt()->>'email'), coalesce(auth.jwt()->'user_metadata'->>'avatar_url', auth.jwt()->'user_metadata'->>'picture'))
-  on conflict (trip_id, user_id) do update set role = 'owner';
-
-  return new_trip;
-end;
-$$;
-
-grant execute on function public.create_itinerary_trip(text, date, date) to authenticated;
-
-create or replace function public.add_trip_owner_member()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.itinerary_trip_members (trip_id, user_id, role)
-  values (new.id, new.user_id, 'owner')
-  on conflict (trip_id, user_id) do update set role = 'owner';
-  return new;
-end;
-$$;
-
-drop trigger if exists itinerary_trip_owner_member_trigger on public.itinerary_trips;
-create trigger itinerary_trip_owner_member_trigger
-after insert on public.itinerary_trips
-for each row execute function public.add_trip_owner_member();
-
--- Backfill owner memberships for trips created before this update.
-insert into public.itinerary_trip_members (trip_id, user_id, role)
-select id, user_id, 'owner'
-from public.itinerary_trips
-on conflict (trip_id, user_id) do nothing;
-
-create or replace function public.accept_itinerary_invite(invite_token text)
-returns uuid
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  invite_row public.itinerary_trip_invites%rowtype;
-  accepted_trip_id uuid;
-begin
-  if auth.uid() is null then
-    raise exception 'You must be signed in to accept this invite.';
-  end if;
-
-  select * into invite_row
-  from public.itinerary_trip_invites
-  where token = invite_token
-    and revoked_at is null
-    and (expires_at is null or expires_at > now())
-  limit 1;
-
-  if not found then
-    raise exception 'Invite link is invalid, expired, or revoked.';
-  end if;
-
-  accepted_trip_id := invite_row.trip_id;
-
-  insert into public.itinerary_trip_members (trip_id, user_id, role, invite_token)
-  values (accepted_trip_id, auth.uid(), invite_row.role, invite_token)
-  on conflict (trip_id, user_id) do update
-    set role = case
-      when public.itinerary_trip_members.role = 'owner' then 'owner'
-      else excluded.role
-    end,
-    invite_token = excluded.invite_token;
-
-  return accepted_trip_id;
-end;
-$$;
-
-grant execute on function public.accept_itinerary_invite(text) to authenticated;
-
-alter table public.itinerary_trips enable row level security;
-alter table public.itinerary_items enable row level security;
-alter table public.itinerary_trip_members enable row level security;
-alter table public.itinerary_trip_invites enable row level security;
-
--- Clear old policy names and new policy names so reruns do not duplicate/conflict.
-drop policy if exists "Users can read own trips" on public.itinerary_trips;
-drop policy if exists "Users can insert own trips" on public.itinerary_trips;
-drop policy if exists "Users can update own trips" on public.itinerary_trips;
-drop policy if exists "Users can delete own trips" on public.itinerary_trips;
-drop policy if exists "Members can read trips" on public.itinerary_trips;
-drop policy if exists "Users can create trips" on public.itinerary_trips;
-drop policy if exists "Editors can update trips" on public.itinerary_trips;
-drop policy if exists "Owners can delete trips" on public.itinerary_trips;
-
-create policy "Members can read trips" on public.itinerary_trips
-for select using (public.user_can_view_trip(id));
-
-create policy "Users can create trips" on public.itinerary_trips
-for insert with check (auth.uid() = user_id);
-
-drop policy if exists "Authenticated can create trips through app" on public.itinerary_trips;
-create policy "Authenticated can create trips through app" on public.itinerary_trips
-for insert to authenticated
-with check (auth.uid() is not null and user_id = auth.uid());
-
-
-create policy "Editors can update trips" on public.itinerary_trips
-for update using (public.user_can_edit_trip(id)) with check (public.user_can_edit_trip(id));
-
-create policy "Owners can delete trips" on public.itinerary_trips
-for delete using (public.current_user_trip_role(id) = 'owner');
-
-drop policy if exists "Users can read own items" on public.itinerary_items;
-drop policy if exists "Users can insert own items" on public.itinerary_items;
-drop policy if exists "Users can update own items" on public.itinerary_items;
-drop policy if exists "Users can delete own items" on public.itinerary_items;
-drop policy if exists "Members can read items" on public.itinerary_items;
-drop policy if exists "Editors can insert items" on public.itinerary_items;
-drop policy if exists "Editors can update items" on public.itinerary_items;
-drop policy if exists "Editors can delete items" on public.itinerary_items;
-
-create policy "Members can read items" on public.itinerary_items
-for select using (public.user_can_view_trip(trip_id));
-
-create policy "Editors can insert items" on public.itinerary_items
-for insert with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
-
-create policy "Editors can update items" on public.itinerary_items
-for update using (public.user_can_edit_trip(trip_id)) with check (public.user_can_edit_trip(trip_id));
-
-create policy "Editors can delete items" on public.itinerary_items
-for delete using (public.user_can_edit_trip(trip_id));
-
-drop policy if exists "Members can read members" on public.itinerary_trip_members;
-drop policy if exists "Owners can manage members" on public.itinerary_trip_members;
-drop policy if exists "Users can see their own memberships" on public.itinerary_trip_members;
-drop policy if exists "Users can update own member profile" on public.itinerary_trip_members;
-
-create policy "Members can read members" on public.itinerary_trip_members
-for select using (public.user_can_view_trip(trip_id));
-
-create policy "Owners can manage members" on public.itinerary_trip_members
-for all using (public.current_user_trip_role(trip_id) = 'owner') with check (public.current_user_trip_role(trip_id) = 'owner');
-
-create policy "Users can update own member profile" on public.itinerary_trip_members
-for update using (auth.uid() = user_id and public.user_can_view_trip(trip_id))
-with check (auth.uid() = user_id and public.user_can_view_trip(trip_id));
-
-drop policy if exists "Members can read invites" on public.itinerary_trip_invites;
-drop policy if exists "Editors can create invites" on public.itinerary_trip_invites;
-drop policy if exists "Owners can update invites" on public.itinerary_trip_invites;
-
-create policy "Members can read invites" on public.itinerary_trip_invites
-for select using (public.user_can_view_trip(trip_id));
-
-create policy "Editors can create invites" on public.itinerary_trip_invites
-for insert with check (auth.uid() = created_by and public.user_can_edit_trip(trip_id));
-
-create policy "Owners can update invites" on public.itinerary_trip_invites
-for update using (public.current_user_trip_role(trip_id) = 'owner') with check (public.current_user_trip_role(trip_id) = 'owner');
-
-create index if not exists itinerary_trips_user_id_idx on public.itinerary_trips(user_id);
-create index if not exists itinerary_items_trip_id_idx on public.itinerary_items(trip_id);
-create index if not exists itinerary_items_user_id_idx on public.itinerary_items(user_id);
-create index if not exists itinerary_trip_members_trip_id_idx on public.itinerary_trip_members(trip_id);
-create index if not exists itinerary_trip_members_user_id_idx on public.itinerary_trip_members(user_id);
-create index if not exists itinerary_trip_invites_trip_id_idx on public.itinerary_trip_invites(trip_id);
-create index if not exists itinerary_trip_invites_token_idx on public.itinerary_trip_invites(token);
-
-
--- Per-user packing lists. Each traveler has their own list for the same trip.
-create table if not exists public.itinerary_packing_items (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  label text not null,
-  packed boolean not null default false,
-  sort_order bigint not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.itinerary_packing_items enable row level security;
-
-drop policy if exists "Members can read own packing items" on public.itinerary_packing_items;
-drop policy if exists "Editors can insert own packing items" on public.itinerary_packing_items;
-drop policy if exists "Editors can update own packing items" on public.itinerary_packing_items;
-drop policy if exists "Editors can delete own packing items" on public.itinerary_packing_items;
-
-create policy "Members can read own packing items" on public.itinerary_packing_items
-for select using (auth.uid() = user_id and public.user_can_view_trip(trip_id));
-
-create policy "Editors can insert own packing items" on public.itinerary_packing_items
-for insert with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
-
-create policy "Editors can update own packing items" on public.itinerary_packing_items
-for update using (auth.uid() = user_id and public.user_can_edit_trip(trip_id)) with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
-
-create policy "Editors can delete own packing items" on public.itinerary_packing_items
-for delete using (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
-
-create index if not exists itinerary_packing_items_trip_user_idx on public.itinerary_packing_items(trip_id, user_id);
-
--- v18 Rain Plan support for itinerary item card flip.
-alter table public.itinerary_items
-  add column if not exists rain_plan text default '';
-
-
--- v26 Shared Must Do Together list. This is trip-wide, not isolated per traveler.
-create table if not exists public.itinerary_must_do_items (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  created_by uuid not null references auth.users(id) on delete cascade,
-  assigned_to uuid references auth.users(id) on delete set null,
-  title text not null,
-  notes text default '',
-  location text default '',
-  priority text not null default 'want' check (priority in ('must','want','maybe')),
-  completed boolean not null default false,
-  completed_by uuid references auth.users(id) on delete set null,
-  completed_at timestamptz,
-  sort_order bigint not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.itinerary_must_do_items enable row level security;
-
-drop policy if exists "Members can read shared must do" on public.itinerary_must_do_items;
-drop policy if exists "Editors can insert shared must do" on public.itinerary_must_do_items;
-drop policy if exists "Editors can update shared must do" on public.itinerary_must_do_items;
-drop policy if exists "Editors can delete shared must do" on public.itinerary_must_do_items;
-
-create policy "Members can read shared must do" on public.itinerary_must_do_items
-for select using (public.user_can_view_trip(trip_id));
-
-create policy "Editors can insert shared must do" on public.itinerary_must_do_items
-for insert with check (auth.uid() = created_by and public.user_can_edit_trip(trip_id));
-
-create policy "Editors can update shared must do" on public.itinerary_must_do_items
-for update using (public.user_can_edit_trip(trip_id)) with check (public.user_can_edit_trip(trip_id));
-
-create policy "Editors can delete shared must do" on public.itinerary_must_do_items
-for delete using (public.user_can_edit_trip(trip_id));
-
-create index if not exists itinerary_must_do_trip_idx on public.itinerary_must_do_items(trip_id, completed, sort_order);
-
--- v26 Shared trip memories. Lightweight text notes; media URLs can be added later without breaking this table.
-create table if not exists public.itinerary_memories (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  note text not null,
-  location text default '',
-  memory_date date not null default current_date,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table public.itinerary_memories enable row level security;
-
-drop policy if exists "Members can read memories" on public.itinerary_memories;
-drop policy if exists "Editors can insert memories" on public.itinerary_memories;
-drop policy if exists "Editors can update own memories" on public.itinerary_memories;
-drop policy if exists "Editors can delete memories" on public.itinerary_memories;
-
-create policy "Members can read memories" on public.itinerary_memories
-for select using (public.user_can_view_trip(trip_id));
-
-create policy "Editors can insert memories" on public.itinerary_memories
-for insert with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
-
-create policy "Editors can update own memories" on public.itinerary_memories
-for update using (auth.uid() = user_id and public.user_can_edit_trip(trip_id)) with check (auth.uid() = user_id and public.user_can_edit_trip(trip_id));
-
-create policy "Editors can delete memories" on public.itinerary_memories
-for delete using (public.user_can_edit_trip(trip_id));
-
-create index if not exists itinerary_memories_trip_idx on public.itinerary_memories(trip_id, created_at desc);
-
--- v28 Budgeted Must Do items + trip gas calculator fields.
-alter table public.itinerary_must_do_items
-  add column if not exists budget numeric(10,2) not null default 0;
-
-alter table public.itinerary_trips
-  add column if not exists gas_miles numeric(10,1) not null default 0,
-  add column if not exists gas_mpg numeric(10,1) not null default 0,
-  add column if not exists gas_price numeric(10,2) not null default 0;
-
--- v31 Point-to-point routing and assignee support.
-alter table public.itinerary_items
-  add column if not exists from_location text default '',
-  add column if not exists to_location text default '',
-  add column if not exists assigned_to uuid references auth.users(id) on delete set null;
-
-create index if not exists itinerary_items_assigned_to_idx on public.itinerary_items(assigned_to);
-
-
--- v32 Card locking to prevent accidental edits/moves.
-alter table public.itinerary_items
-  add column if not exists locked boolean not null default false,
-  add column if not exists locked_by uuid references auth.users(id) on delete set null,
-  add column if not exists locked_at timestamptz;
-
-create index if not exists itinerary_items_locked_idx on public.itinerary_items(trip_id, locked);
-
-
--- v33 Shared packing progress counts only. Item labels remain private by RLS.
-create or replace function public.get_itinerary_packing_progress(target_trip_id uuid)
-returns table (
-  user_id uuid,
-  display_name text,
-  avatar_url text,
-  packed_count bigint,
-  total_count bigint
-)
-language sql
-security definer
-set search_path = public
-as $$
-  select
-    m.user_id,
-    coalesce(m.display_name, 'Traveler') as display_name,
-    coalesce(m.avatar_url, '') as avatar_url,
-    count(p.id) filter (where p.packed) as packed_count,
-    count(p.id) as total_count
-  from public.itinerary_trip_members m
-  left join public.itinerary_packing_items p
-    on p.trip_id = m.trip_id and p.user_id = m.user_id
-  where m.trip_id = target_trip_id
-    and public.user_can_view_trip(target_trip_id)
-  group by m.user_id, m.display_name, m.avatar_url, m.created_at
-  order by m.created_at;
-$$;
-
-grant execute on function public.get_itinerary_packing_progress(uuid) to authenticated;
-
--- v36 Hidden Fun Ideas + Photo Memories
-alter table public.itinerary_memories add column if not exists photo_url text default '';
-alter table public.itinerary_memories add column if not exists photo_path text default '';
-
-create table if not exists public.trip_fun_permissions (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  can_access boolean not null default false,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(trip_id, user_id)
-);
-
-
-create table if not exists public.trip_fun_categories (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  created_by uuid not null references auth.users(id) on delete cascade,
-  name text not null,
-  emoji text not null default '✨',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create table if not exists public.trip_fun_ideas (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  created_by uuid not null references auth.users(id) on delete cascade,
-  assigned_to uuid references auth.users(id) on delete set null,
-  category_id uuid references public.trip_fun_categories(id) on delete set null,
-  title text not null,
-  description text default '',
-  play_type text not null default 'private' check (play_type in ('private','public')),
-  visibility text not null default 'shared' check (visibility in ('shared','private')),
-  status text not null default 'planned' check (status in ('planned','maybe','completed')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-
-alter table public.trip_fun_ideas add column if not exists assigned_to uuid references auth.users(id) on delete set null;
-alter table public.trip_fun_ideas add column if not exists category_id uuid references public.trip_fun_categories(id) on delete set null;
-
-alter table public.trip_fun_permissions enable row level security;
-alter table public.trip_fun_categories enable row level security;
-alter table public.trip_fun_ideas enable row level security;
-
-drop policy if exists "fun permissions visible to trip members" on public.trip_fun_permissions;
-create policy "fun permissions visible to trip members" on public.trip_fun_permissions
-  for select using (public.user_can_view_trip(trip_id));
-
-drop policy if exists "owner manages fun permissions" on public.trip_fun_permissions;
-create policy "owner manages fun permissions" on public.trip_fun_permissions
-  for all using (public.current_user_trip_role(trip_id) = 'owner')
-  with check (public.current_user_trip_role(trip_id) = 'owner');
-
-
-drop policy if exists "fun categories visible to permitted users" on public.trip_fun_categories;
-create policy "fun categories visible to permitted users" on public.trip_fun_categories
-  for select using (
-    public.current_user_trip_role(trip_id) = 'owner'
-    or exists (
-      select 1 from public.trip_fun_permissions p
-      where p.trip_id = trip_fun_categories.trip_id and p.user_id = auth.uid() and p.can_access = true
-    )
-  );
-
-drop policy if exists "owner manages fun categories" on public.trip_fun_categories;
-drop policy if exists "permitted editors manage fun categories" on public.trip_fun_categories;
-create policy "permitted editors manage fun categories" on public.trip_fun_categories
-  for all using (
-    public.user_can_edit_trip(trip_id) and (
-      public.current_user_trip_role(trip_id) = 'owner'
-      or exists (select 1 from public.trip_fun_permissions p where p.trip_id = trip_fun_categories.trip_id and p.user_id = auth.uid() and p.can_access = true)
-    )
-  ) with check (
-    public.user_can_edit_trip(trip_id) and (
-      public.current_user_trip_role(trip_id) = 'owner'
-      or exists (select 1 from public.trip_fun_permissions p where p.trip_id = trip_fun_categories.trip_id and p.user_id = auth.uid() and p.can_access = true)
-    )
-  );
-
-drop policy if exists "fun ideas visible to permitted users" on public.trip_fun_ideas;
-create policy "fun ideas visible to permitted users" on public.trip_fun_ideas
-  for select using (
-    public.current_user_trip_role(trip_id) = 'owner'
-    or created_by = auth.uid()
-    or exists (
-      select 1 from public.trip_fun_permissions p
-      where p.trip_id = trip_fun_ideas.trip_id and p.user_id = auth.uid() and p.can_access = true
-    )
-  );
-
-drop policy if exists "permitted editors manage fun ideas" on public.trip_fun_ideas;
-create policy "permitted editors manage fun ideas" on public.trip_fun_ideas
-  for all using (
-    public.user_can_edit_trip(trip_id) and (
-      public.current_user_trip_role(trip_id) = 'owner'
-      or created_by = auth.uid()
-      or exists (select 1 from public.trip_fun_permissions p where p.trip_id = trip_fun_ideas.trip_id and p.user_id = auth.uid() and p.can_access = true)
-    )
-  ) with check (
-    public.user_can_edit_trip(trip_id) and (
-      public.current_user_trip_role(trip_id) = 'owner'
-      or created_by = auth.uid()
-      or exists (select 1 from public.trip_fun_permissions p where p.trip_id = trip_fun_ideas.trip_id and p.user_id = auth.uid() and p.can_access = true)
-    )
-  );
-
--- Public storage bucket for photo memories. Paths are still protected by object policies for upload/delete.
-insert into storage.buckets (id, name, public)
-values ('trip-memories', 'trip-memories', true)
-on conflict (id) do update set public = true;
-
-drop policy if exists "trip memory photos readable" on storage.objects;
-create policy "trip memory photos readable" on storage.objects
-  for select using (bucket_id = 'trip-memories');
-
-drop policy if exists "trip members upload memory photos" on storage.objects;
-create policy "trip members upload memory photos" on storage.objects
-  for insert with check (
-    bucket_id = 'trip-memories'
-    and auth.uid()::text = (storage.foldername(name))[2]
-    and public.user_can_edit_trip(((storage.foldername(name))[1])::uuid)
-  );
-
-drop policy if exists "trip members delete own memory photos" on storage.objects;
-create policy "trip members delete own memory photos" on storage.objects
-  for delete using (
-    bucket_id = 'trip-memories'
-    and auth.uid()::text = (storage.foldername(name))[2]
-    and public.user_can_edit_trip(((storage.foldername(name))[1])::uuid)
-  );
-
--- v37 Packing progress accuracy + realtime collaboration
--- Replaces the packing progress helper with a duplicate-safe version that counts ONLY
--- each traveler's own packing rows, without exposing item names.
-create or replace function public.get_itinerary_packing_progress(target_trip_id uuid)
-returns table (
-  user_id uuid,
-  display_name text,
-  avatar_url text,
-  packed_count bigint,
-  total_count bigint
-)
-language sql
-security definer
-set search_path = public
-as $$
-  with member_base as (
-    select distinct on (m.user_id)
-      m.user_id,
-      coalesce(nullif(m.display_name, ''), 'Traveler') as display_name,
-      coalesce(m.avatar_url, '') as avatar_url,
-      m.created_at
-    from public.itinerary_trip_members m
-    where m.trip_id = target_trip_id
-      and public.user_can_view_trip(target_trip_id)
-    order by m.user_id, m.created_at asc
-  ), packing_counts as (
-    select
-      p.user_id,
-      count(*) filter (where p.packed is true) as packed_count,
-      count(*) as total_count
-    from public.itinerary_packing_items p
-    where p.trip_id = target_trip_id
-    group by p.user_id
-  )
-  select
-    m.user_id,
-    m.display_name,
-    m.avatar_url,
-    coalesce(pc.packed_count, 0)::bigint as packed_count,
-    coalesce(pc.total_count, 0)::bigint as total_count
-  from member_base m
-  left join packing_counts pc on pc.user_id = m.user_id
-  order by m.created_at;
-$$;
-
-grant execute on function public.get_itinerary_packing_progress(uuid) to authenticated;
-
--- Try to enable Supabase Realtime for collaborative trip tables.
--- If a table is already in the publication, this safely skips it.
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'itinerary_items',
-    'itinerary_trip_members',
-    'itinerary_packing_items',
-    'itinerary_must_do',
-    'itinerary_memories',
-    'trip_fun_permissions',
-    'trip_fun_ideas',
-    'trip_fun_categories',
-    'itinerary_shopping_items',
-    'itinerary_shopping_permissions'
-  ] loop
-    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t)
-       and not exists (
-         select 1 from pg_publication_tables
-         where pubname = 'supabase_realtime'
-           and schemaname = 'public'
-           and tablename = t
-       ) then
-      execute format('alter publication supabase_realtime add table public.%I', t);
-    end if;
-  end loop;
-end $$;
-
-
--- v52 Shopping lists attached to Shopping itinerary events
-create table if not exists public.itinerary_shopping_items (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  itinerary_item_id uuid not null references public.itinerary_items(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  label text not null,
-  quantity numeric default 1,
-  notes text default '',
-  completed boolean default false,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create table if not exists public.itinerary_shopping_permissions (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  itinerary_item_id uuid not null references public.itinerary_items(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  can_access boolean default false,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique(itinerary_item_id, user_id)
-);
-
-alter table public.itinerary_shopping_items enable row level security;
-alter table public.itinerary_shopping_permissions enable row level security;
-
-create index if not exists itinerary_shopping_items_trip_item_idx on public.itinerary_shopping_items(trip_id, itinerary_item_id);
-create index if not exists itinerary_shopping_permissions_trip_item_idx on public.itinerary_shopping_permissions(trip_id, itinerary_item_id);
-
-create or replace function public.user_can_access_shopping_list(target_item_id uuid)
-returns boolean
-language sql
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.itinerary_items i
-    where i.id = target_item_id
-      and public.user_can_view_trip(i.trip_id)
-      and (
-        public.current_user_trip_role(i.trip_id) = 'owner'
-        or i.user_id = auth.uid()
-        or exists (
-          select 1 from public.itinerary_shopping_permissions p
-          where p.itinerary_item_id = target_item_id
-            and p.user_id = auth.uid()
-            and p.can_access = true
-        )
-      )
-  );
-$$;
-
-grant execute on function public.user_can_access_shopping_list(uuid) to authenticated;
-
-drop policy if exists "shopping list visible to permitted users" on public.itinerary_shopping_items;
-create policy "shopping list visible to permitted users" on public.itinerary_shopping_items
-  for select using (public.user_can_access_shopping_list(itinerary_item_id));
-
-drop policy if exists "shopping list editable by permitted editors" on public.itinerary_shopping_items;
-create policy "shopping list editable by permitted editors" on public.itinerary_shopping_items
-  for all using (public.user_can_edit_trip(trip_id) and public.user_can_access_shopping_list(itinerary_item_id))
-  with check (public.user_can_edit_trip(trip_id) and public.user_can_access_shopping_list(itinerary_item_id));
-
-drop policy if exists "shopping permissions visible to trip members" on public.itinerary_shopping_permissions;
-create policy "shopping permissions visible to trip members" on public.itinerary_shopping_permissions
-  for select using (public.user_can_view_trip(trip_id));
-
-drop policy if exists "shopping permissions managed by owner or event creator" on public.itinerary_shopping_permissions;
-create policy "shopping permissions managed by owner or event creator" on public.itinerary_shopping_permissions
-  for all using (
-    public.current_user_trip_role(trip_id) = 'owner'
-    or exists (select 1 from public.itinerary_items i where i.id = itinerary_item_id and i.user_id = auth.uid())
-  ) with check (
-    public.current_user_trip_role(trip_id) = 'owner'
-    or exists (select 1 from public.itinerary_items i where i.id = itinerary_item_id and i.user_id = auth.uid())
-  );
-
--- Add shopping tables to realtime if available.
-do $$
-declare
-  t text;
-begin
-  foreach t in array array['itinerary_shopping_items','itinerary_shopping_permissions'] loop
-    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t)
-       and not exists (
-         select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
-       ) then
-      execute format('alter publication supabase_realtime add table public.%I', t);
-    end if;
-  end loop;
-end $$;
-
--- v62 Final storage-safe cleanup + safer trip deletion
--- Supabase does not allow direct SQL deletes from storage.objects. Storage files are removed by the app through the Storage API.
--- These helpers only delete database rows and expose storage paths for safe client/API cleanup.
-
--- Let trip owners delete all memory photos for their trip through the Storage API.
-drop policy if exists "trip editors delete trip memory photos" on storage.objects;
-drop policy if exists "trip owners delete trip memory photos" on storage.objects;
-create policy "trip editors delete trip memory photos" on storage.objects
-  for delete using (
-    bucket_id = 'trip-memories'
-    and public.user_can_edit_trip(((storage.foldername(name))[1])::uuid)
-  );
-
-create or replace function public.delete_itinerary_trip_cascade(target_trip_id uuid)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if auth.uid() is null then
-    raise exception 'You must be signed in.';
-  end if;
-
-  if public.current_user_trip_role(target_trip_id) <> 'owner' then
-    raise exception 'Only the trip owner can delete this trip.';
-  end if;
-
-  -- Child app rows are removed by ON DELETE CASCADE.
-  -- Storage objects must be removed through the Supabase Storage API before/after calling this function.
-  delete from public.itinerary_trips
-  where id = target_trip_id;
-
-  return true;
-end;
-$$;
-
-grant execute on function public.delete_itinerary_trip_cascade(uuid) to authenticated;
-
-create or replace function public.cleanup_duplicate_empty_itinerary_starters()
-returns integer
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  removed_count integer := 0;
-begin
-  if auth.uid() is null then
-    return 0;
-  end if;
-
-  -- Remove duplicate empty starter trips for the signed-in user.
-  -- A starter is only considered empty if it has no itinerary items, must-do items,
-  -- memories, fun ideas, or shopping items. Personal starter packing rows are ignored
-  -- so old empty templates can still be cleaned up.
-  with user_trips as (
-    select t.id, t.created_at,
-      exists(select 1 from public.itinerary_items i where i.trip_id = t.id) as has_items,
-      exists(select 1 from public.itinerary_must_do_items m where m.trip_id = t.id) as has_must,
-      exists(select 1 from public.itinerary_memories mem where mem.trip_id = t.id) as has_memories,
-      exists(select 1 from public.trip_fun_ideas f where f.trip_id = t.id) as has_fun,
-      exists(select 1 from public.itinerary_shopping_items s where s.trip_id = t.id) as has_shopping
-    from public.itinerary_trips t
-    where t.user_id = auth.uid()
-      and lower(coalesce(t.title, '')) in ('my trip', 'new trip', 'untitled trip')
-  ), empty_starters as (
-    select id, created_at
-    from user_trips
-    where not (has_items or has_must or has_memories or has_fun or has_shopping)
-  ), real_trip_count as (
-    select count(*)::int as n
-    from public.itinerary_trips t
-    where t.user_id = auth.uid()
-      and not exists (select 1 from empty_starters e where e.id = t.id)
-  ), to_delete as (
-    select e.id
-    from empty_starters e, real_trip_count r
-    where r.n > 0
-       or e.id not in (select id from empty_starters order by created_at asc limit 1)
-  ), deleted as (
-    delete from public.itinerary_trips t
-    using to_delete d
-    where t.id = d.id
-    returning 1
-  )
-  select count(*)::integer into removed_count from deleted;
-
-  return coalesce(removed_count, 0);
-exception when undefined_table then
-  return 0;
-end;
-$$;
-
-grant execute on function public.cleanup_duplicate_empty_itinerary_starters() to authenticated;
-
-create or replace function public.list_my_orphaned_itinerary_storage()
-returns table(path text)
-language sql
-security definer
-set search_path = public, storage
-as $$
-  select o.name as path
-  from storage.objects o
-  where o.bucket_id = 'trip-memories'
-    and (storage.foldername(o.name))[2] = auth.uid()::text
-    and not exists (
-      select 1 from public.itinerary_trips t
-      where t.id::text = (storage.foldername(o.name))[1]
-    );
-$$;
-
-grant execute on function public.list_my_orphaned_itinerary_storage() to authenticated;
-
-create or replace function public.cleanup_my_orphaned_itinerary_storage()
-returns integer
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  -- Kept for backward compatibility. The app must delete returned paths through the Supabase Storage API.
-  return 0;
-end;
-$$;
-
-grant execute on function public.cleanup_my_orphaned_itinerary_storage() to authenticated;
-
-
--- v2.1.15 Traveler Passport profile fields
-alter table public.itinerary_trip_members add column if not exists nickname text;
-alter table public.itinerary_trip_members add column if not exists trip_role text;
-alter table public.itinerary_trip_members add column if not exists foods_to_avoid text;
-alter table public.itinerary_trip_members add column if not exists shopping_interests text;
-alter table public.itinerary_trip_members add column if not exists rainy_day_favorites text;
-alter table public.itinerary_trip_members add column if not exists outdoor_favorites text;
-alter table public.itinerary_trip_members add column if not exists travel_style text;
-alter table public.itinerary_trip_members add column if not exists budget_comfort text;
-alter table public.itinerary_trip_members add column if not exists preferred_wake_time text;
-alter table public.itinerary_trip_members add column if not exists logistics_notes text;
-
-comment on column public.itinerary_trip_members.nickname is 'Optional traveler nickname for Traveler Passport UI.';
-comment on column public.itinerary_trip_members.trip_role is 'Trip role such as Driver, Planner, Food Scout, Photographer, Parent, etc.';
-comment on column public.itinerary_trip_members.travel_style is 'Comma-separated travel style chips selected by traveler.';
-
--- V2.2.2 Fun Ideas reaction sliders
-create table if not exists public.trip_fun_reactions (
-  id uuid primary key default gen_random_uuid(),
-  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
-  fun_idea_id uuid not null references public.trip_fun_ideas(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  score int not null default 50 check (score between 0 and 100),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(fun_idea_id, user_id)
-);
-
-alter table public.trip_fun_reactions enable row level security;
-
-grant select, insert, update, delete on public.trip_fun_reactions to authenticated;
-create index if not exists idx_trip_fun_reactions_trip_id on public.trip_fun_reactions(trip_id);
-create index if not exists idx_trip_fun_reactions_idea_user on public.trip_fun_reactions(fun_idea_id, user_id);
-
-drop policy if exists "fun reactions visible to permitted users" on public.trip_fun_reactions;
-create policy "fun reactions visible to permitted users" on public.trip_fun_reactions
-  for select using (
-    public.current_user_trip_role(trip_id) = 'owner'
-    or exists (
-      select 1 from public.trip_fun_permissions p
-      where p.trip_id = trip_fun_reactions.trip_id
-        and p.user_id = auth.uid()
-        and p.can_access = true
-    )
-  );
-
-drop policy if exists "fun reactions editable by self" on public.trip_fun_reactions;
-create policy "fun reactions editable by self" on public.trip_fun_reactions
-  for all using (
-    user_id = auth.uid()
-    and (
-      public.current_user_trip_role(trip_id) = 'owner'
-      or exists (
-        select 1 from public.trip_fun_permissions p
-        where p.trip_id = trip_fun_reactions.trip_id
-          and p.user_id = auth.uid()
-          and p.can_access = true
-      )
-    )
-  ) with check (
-    user_id = auth.uid()
-    and (
-      public.current_user_trip_role(trip_id) = 'owner'
-      or exists (
-        select 1 from public.trip_fun_permissions p
-        where p.trip_id = trip_fun_reactions.trip_id
-          and p.user_id = auth.uid()
-          and p.can_access = true
-      )
-    )
-  );
-
-do $$
-begin
-  begin
-    alter publication supabase_realtime add table public.trip_fun_reactions;
-  exception when duplicate_object then null;
-  end;
-end $$;
-
-
--- V2.2.8 Licensing + robust Fun Ideas reactions
-create table if not exists public.itinerary_user_entitlements (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  plan text not null default 'premium' check (plan in ('free','premium')),
-  active boolean not null default true,
-  source text not null default 'manual',
-  license_key text,
-  expires_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique(user_id, source, license_key)
-);
-
-create table if not exists public.itinerary_license_keys (
-  id uuid primary key default gen_random_uuid(),
-  license_key text not null unique,
-  plan text not null default 'premium' check (plan in ('premium')),
-  max_redemptions int not null default 1,
-  redemption_count int not null default 0,
-  active boolean not null default true,
-  expires_at timestamptz,
-  created_at timestamptz not null default now()
-);
-
-alter table public.itinerary_user_entitlements enable row level security;
-alter table public.itinerary_license_keys enable row level security;
-
-grant select on public.itinerary_user_entitlements to authenticated;
-grant execute on function gen_random_uuid() to authenticated;
-
-drop policy if exists "users can view own entitlements" on public.itinerary_user_entitlements;
-create policy "users can view own entitlements" on public.itinerary_user_entitlements
-  for select using (user_id = auth.uid());
-
--- Do not allow direct client reads of license keys. Redemption happens through SECURITY DEFINER.
-drop policy if exists "license keys hidden" on public.itinerary_license_keys;
-create policy "license keys hidden" on public.itinerary_license_keys
-  for select using (false);
-
-create or replace function public.get_itinerary_license_plan()
-returns text
-language sql
-security definer
-set search_path = public
-as $$
-  select case when exists (
-    select 1 from public.itinerary_user_entitlements e
-    where e.user_id = auth.uid()
-      and e.active = true
-      and e.plan = 'premium'
-      and (e.expires_at is null or e.expires_at > now())
-  ) then 'premium' else 'free' end;
-$$;
-
-grant execute on function public.get_itinerary_license_plan() to authenticated;
-
-create or replace function public.redeem_itinerary_license(p_license_key text)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_key public.itinerary_license_keys%rowtype;
-  v_clean text := trim(p_license_key);
-begin
-  if auth.uid() is null then
-    raise exception 'Not signed in';
-  end if;
-  select * into v_key
-  from public.itinerary_license_keys
-  where license_key = v_clean
-    and active = true
-    and (expires_at is null or expires_at > now())
-  for update;
-  if not found then
-    raise exception 'Invalid or inactive license key';
-  end if;
-  if v_key.redemption_count >= v_key.max_redemptions then
-    raise exception 'This license key has already been redeemed';
-  end if;
-  insert into public.itinerary_user_entitlements(user_id, plan, active, source, license_key, expires_at)
-  values (auth.uid(), v_key.plan, true, 'license_key', v_clean, v_key.expires_at)
-  on conflict (user_id, source, license_key) do update set
-    active = true,
-    plan = excluded.plan,
-    expires_at = excluded.expires_at,
-    updated_at = now();
-  update public.itinerary_license_keys
-  set redemption_count = redemption_count + 1
-  where id = v_key.id;
-  return jsonb_build_object('plan', v_key.plan, 'active', true);
-end;
-$$;
-
-grant execute on function public.redeem_itinerary_license(text) to authenticated;
-
--- Create license keys manually from SQL when needed, for example:
--- insert into public.itinerary_license_keys(license_key, max_redemptions) values ('YOUR-KEY-HERE', 1);
-
-create or replace function public.upsert_trip_fun_reaction(p_trip_id uuid, p_fun_idea_id uuid, p_score int)
-returns public.trip_fun_reactions
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_row public.trip_fun_reactions;
-  v_score int := greatest(0, least(100, coalesce(p_score, 50)));
-begin
-  if auth.uid() is null then
-    raise exception 'Not signed in';
-  end if;
-  if not exists (
-    select 1 from public.trip_fun_ideas i
-    where i.id = p_fun_idea_id and i.trip_id = p_trip_id
-  ) then
-    raise exception 'Fun idea not found';
-  end if;
-  if not (
-    public.current_user_trip_role(p_trip_id) = 'owner'
-    or exists (
-      select 1 from public.trip_fun_permissions p
-      where p.trip_id = p_trip_id and p.user_id = auth.uid() and p.can_access = true
-    )
-  ) then
-    raise exception 'No access to Fun Ideas';
-  end if;
-  insert into public.trip_fun_reactions(trip_id, fun_idea_id, user_id, score, updated_at)
-  values (p_trip_id, p_fun_idea_id, auth.uid(), v_score, now())
-  on conflict (fun_idea_id, user_id) do update set
-    score = excluded.score,
-    updated_at = now()
-  returning * into v_row;
-  return v_row;
-end;
-$$;
-
-grant execute on function public.upsert_trip_fun_reaction(uuid, uuid, int) to authenticated;
-
--- =========================================================
--- V2.2.12 configurable licensing / user entitlements
--- Safe to run multiple times. This upgrades the earlier Premium-only license layer
--- into per-user adjustable limits and feature toggles.
--- =========================================================
-
-alter table if exists public.itinerary_user_entitlements
-  add column if not exists events_per_day int,
-  add column if not exists max_trips int,
-  add column if not exists enable_maps boolean,
-  add column if not exists enable_memories boolean,
-  add column if not exists enable_shopping_lists boolean,
-  add column if not exists enable_recaps boolean,
-  add column if not exists admin_notes text;
-
-alter table if exists public.itinerary_license_keys
-  add column if not exists events_per_day int default 25,
-  add column if not exists max_trips int default 25,
-  add column if not exists enable_maps boolean default true,
-  add column if not exists enable_memories boolean default true,
-  add column if not exists enable_shopping_lists boolean default true,
-  add column if not exists enable_recaps boolean default true;
-
-create or replace function public.get_itinerary_license_status()
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_ent public.itinerary_user_entitlements%rowtype;
-begin
-  if auth.uid() is null then
-    return jsonb_build_object(
-      'plan','free','active',false,
-      'events_per_day',5,'max_trips',1,
-      'enable_maps',false,'enable_memories',false,'enable_shopping_lists',false,'enable_recaps',false
-    );
-  end if;
-
-  select * into v_ent
-  from public.itinerary_user_entitlements e
-  where e.user_id = auth.uid()
-    and e.active = true
-    and (e.expires_at is null or e.expires_at > now())
-  order by case when e.plan = 'premium' then 0 else 1 end, e.updated_at desc nulls last, e.created_at desc
-  limit 1;
-
-  if not found or v_ent.plan <> 'premium' then
-    return jsonb_build_object(
-      'plan','free','active',false,
-      'events_per_day',5,'max_trips',1,
-      'enable_maps',false,'enable_memories',false,'enable_shopping_lists',false,'enable_recaps',false
-    );
-  end if;
-
-  return jsonb_build_object(
-    'plan','premium',
-    'active',true,
-    'events_per_day',coalesce(v_ent.events_per_day,25),
-    'max_trips',coalesce(v_ent.max_trips,25),
-    'enable_maps',coalesce(v_ent.enable_maps,true),
-    'enable_memories',coalesce(v_ent.enable_memories,true),
-    'enable_shopping_lists',coalesce(v_ent.enable_shopping_lists,true),
-    'enable_recaps',coalesce(v_ent.enable_recaps,true),
-    'expires_at',v_ent.expires_at
-  );
-end;
-$$;
-
-grant execute on function public.get_itinerary_license_status() to authenticated;
-
-create or replace function public.redeem_itinerary_license(p_license_key text)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_key public.itinerary_license_keys%rowtype;
-  v_clean text := trim(p_license_key);
-begin
-  if auth.uid() is null then
-    raise exception 'Not signed in';
-  end if;
-
-  select * into v_key
-  from public.itinerary_license_keys
-  where license_key = v_clean
-    and active = true
-    and (expires_at is null or expires_at > now())
-  for update;
-
-  if not found then
-    raise exception 'Invalid or inactive license key';
-  end if;
-
-  if v_key.redemption_count >= v_key.max_redemptions then
-    raise exception 'This license key has already been redeemed';
-  end if;
-
-  insert into public.itinerary_user_entitlements(
-    user_id, plan, active, source, license_key, expires_at,
-    events_per_day, max_trips, enable_maps, enable_memories, enable_shopping_lists, enable_recaps
-  ) values (
-    auth.uid(), v_key.plan, true, 'license_key', v_clean, v_key.expires_at,
-    coalesce(v_key.events_per_day,25), coalesce(v_key.max_trips,25),
-    coalesce(v_key.enable_maps,true), coalesce(v_key.enable_memories,true),
-    coalesce(v_key.enable_shopping_lists,true), coalesce(v_key.enable_recaps,true)
-  )
-  on conflict (user_id, source, license_key) do update set
-    active = true,
-    plan = excluded.plan,
-    expires_at = excluded.expires_at,
-    events_per_day = excluded.events_per_day,
-    max_trips = excluded.max_trips,
-    enable_maps = excluded.enable_maps,
-    enable_memories = excluded.enable_memories,
-    enable_shopping_lists = excluded.enable_shopping_lists,
-    enable_recaps = excluded.enable_recaps,
-    updated_at = now();
-
-  update public.itinerary_license_keys
-  set redemption_count = redemption_count + 1
-  where id = v_key.id;
-
-  return public.get_itinerary_license_status();
-end;
-$$;
-
-grant execute on function public.redeem_itinerary_license(text) to authenticated;
-
--- Admin helper for you from the Supabase SQL editor.
--- Do NOT grant this to authenticated users. Run it manually as project owner/postgres.
-create or replace function public.admin_set_itinerary_entitlement_by_email(
-  p_email text,
-  p_plan text default 'premium',
-  p_active boolean default true,
-  p_events_per_day int default 25,
-  p_max_trips int default 25,
-  p_enable_maps boolean default true,
-  p_enable_memories boolean default true,
-  p_enable_shopping_lists boolean default true,
-  p_enable_recaps boolean default true,
-  p_admin_notes text default null
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public, auth
-as $$
-declare
-  v_user uuid;
-begin
-  select id into v_user from auth.users where lower(email) = lower(p_email) limit 1;
-  if v_user is null then
-    raise exception 'No auth user found for %', p_email;
-  end if;
-
-  insert into public.itinerary_user_entitlements(
-    user_id, plan, active, source, license_key,
-    events_per_day, max_trips, enable_maps, enable_memories, enable_shopping_lists, enable_recaps, admin_notes
-  ) values (
-    v_user, case when p_plan = 'premium' then 'premium' else 'free' end, p_active, 'manual', 'manual:' || lower(p_email),
-    p_events_per_day, p_max_trips, p_enable_maps, p_enable_memories, p_enable_shopping_lists, p_enable_recaps, p_admin_notes
-  )
-  on conflict (user_id, source, license_key) do update set
-    plan = excluded.plan,
-    active = excluded.active,
-    events_per_day = excluded.events_per_day,
-    max_trips = excluded.max_trips,
-    enable_maps = excluded.enable_maps,
-    enable_memories = excluded.enable_memories,
-    enable_shopping_lists = excluded.enable_shopping_lists,
-    enable_recaps = excluded.enable_recaps,
-    admin_notes = excluded.admin_notes,
-    updated_at = now();
-
-  return jsonb_build_object('user_id', v_user, 'email', p_email, 'updated', true);
-end;
-$$;
-
--- Example: create a customizable license key
--- insert into public.itinerary_license_keys(
---   license_key, max_redemptions, events_per_day, max_trips,
---   enable_maps, enable_memories, enable_shopping_lists, enable_recaps
--- ) values (
---   'TOASTED-TEST-001', 1, 25, 25, true, true, true, true
--- );
-
--- Example: manually change a specific user's access from SQL editor
--- select public.admin_set_itinerary_entitlement_by_email(
---   'user@example.com', 'premium', true, 40, 10, true, true, false, true,
---   'Premium but shopping lists disabled for testing'
--- );
+<!doctype html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ItineraryTrackerV2.2 Production Stabilization</title>
+  <link rel="stylesheet" href="./styles.css?v=96" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <nav class="mobile-quick-nav" aria-label="Quick mobile navigation">
+    <button id="mobileNavHome" type="button"><span>🏠</span><strong>Home</strong></button>
+    <button id="mobileNavPlan" type="button"><span>🗓️</span><strong>Plan</strong></button>
+    <button id="mobileNavMemory" class="mobile-nav-memory" type="button"><span>📷</span><strong>Add Memory</strong></button>
+    <button id="mobileNavMustDo" type="button"><span>⭐</span><strong>Must Do</strong></button>
+    <button id="mobileNavPacking" type="button"><span>🎒</span><strong>Packing</strong></button>
+  </nav>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#">
+        <span class="brand-mark">⌁</span>
+        <span>Itinerary<br><b>Tracker</b></span>
+      </a>
+      <nav class="side-nav" aria-label="Main navigation">
+        <a class="active" href="#"><span>🏠</span>Dashboard</a>
+        <a href="#plannerTitle"><span>🧳</span>Trips</a>
+        <a href="#dayTabs"><span>📅</span>Calendar</a>
+        <a href="#totalBudget"><span>💳</span>Budget</a>
+        <a href="#gasPanel"><span>⛽</span>Gas</a>
+        <a href="#activityGeneratorPanel"><span>✨</span>Ideas</a>
+        <a href="#collabList"><span>👥</span>People</a>
+        <a href="./settings.html"><span>⚙️</span>Settings</a>
+      </nav>
+      <div class="new-trip-card">
+        <div class="mini-illustration">☁️🌴<br>🧳</div>
+        <h3>Summer adventures await! ✈️</h3>
+        <p>Plan your next trip with friends.</p>
+        <button id="sidebarNewTripBtn" type="button">+ New Trip</button>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <div>
+          <h1>Good morning, <span id="userName">Traveler</span>! ☀️</h1>
+          <p class="subtitle">Ready for your next adventure?</p>
+        </div>
+        <div class="top-actions">
+          <div class="search-pill">🔎 <span>Search trips, activities...</span></div>
+          <button class="icon-btn" type="button" aria-label="Notifications">🔔</button>
+          <button id="funLockBtn" class="icon-btn fun-lock-btn hidden" type="button" aria-label="Fun Ideas" title="Fun Ideas">🔒</button>
+          <div class="auth-card" id="authArea">
+            <button id="googleBtn" class="ghost-btn">Continue with Google</button>
+            <div class="email-login">
+              <input id="emailInput" type="email" placeholder="Email for magic link" />
+              <button id="emailBtn">Send link</button>
+            </div>
+            <button id="avatarFunBtn" class="avatar-fun-btn hidden" type="button" title="Fun Ideas"><img id="userAvatar" class="user-avatar hidden" alt="User avatar" /></button>
+            <button id="logoutBtn" class="ghost-btn hidden">Log out</button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section id="signedOut" class="hero-card">
+          <h2>Track trips, drives, events, stops, and budgets.</h2>
+          <p>Sign in to save your itinerary to Supabase and sync across devices.</p>
+          <div class="pill-row">
+            <span>Auto day generator</span><span>Shared editing</span><span>Invite links</span><span>Budget total</span>
+          </div>
+        </section>
+
+        <section id="appArea" class="hidden dashboard-grid">
+          <div class="content-column">
+            <section class="home-dashboard glass" id="homeDashboard">
+              <div class="home-orb orb-one"></div>
+              <div class="home-orb orb-two"></div>
+              <div class="home-main">
+                <p class="home-greeting" id="homeGreeting">☀ Good Morning, Traveler</p>
+                <div class="home-countdown"><strong id="homeDaysLeft">0</strong><span id="homeCountdownLabel">days until your trip</span></div>
+                <p class="home-countdown-detail" id="homeCountdownDetail">Add trip dates to start the countdown.</p>
+                <div class="home-progress"><span id="homeProgressBar"></span></div>
+                <button id="homeContinueBtn" type="button" class="home-continue">Continue Planning →</button>
+              </div>
+              <div class="home-planning-card">
+                <h3>Today's Planning</h3>
+                <ul>
+                  <li><span>⭐</span><strong id="homeMustDoLine">0 Must Dos</strong></li>
+                  <li><span>💰</span><strong id="homeBudgetLine">Budget 0%</strong></li>
+                  <li><span>👥</span><strong id="homeActivityLine">No recent activity yet</strong></li>
+                  <li><span>🌤️</span><strong id="homeWeatherLine">Weather loading</strong></li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="toolbar glass">
+              <div>
+                <label for="tripSelect">Trip</label>
+                <select id="tripSelect"></select>
+              </div>
+              <button id="newTripBtn">+ New trip</button>
+              <button id="deleteTripBtn" class="danger ghost-btn">Delete trip</button>
+              <span id="roleBadge" class="role-badge">Owner</span><span id="saveStatus" class="save-status">Ready</span>
+            </section>
+
+            <section class="trip-hero glass">
+              <div class="trip-photo"></div>
+              <div class="trip-copy">
+                <p class="eyebrow">Current trip</p>
+                <div class="trip-title-block">
+                  <label>Trip title</label>
+                  <input id="tripTitle" placeholder="Wisconsin Trip" />
+                </div>
+                <div class="date-row">
+                  <div class="field icon-field">
+                    <label>Start date</label>
+                    <input id="startDate" type="date" />
+                  </div>
+                  <div class="field icon-field">
+                    <label>End date</label>
+                    <input id="endDate" type="date" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Destination / address</label>
+                  <input id="destination" class="location-input" placeholder="Pewaukee, WI" autocomplete="off" />
+                  <div id="destinationSuggestions" class="suggestions hidden"></div>
+                  <div id="destinationMapLinks" class="map-links hidden"></div>
+                </div>
+              </div>
+              <div class="days-left-card"><strong id="heroDaysLeft">0</strong><span id="heroCountdownLabel">Days left</span><em id="heroCountdownDetail">Add trip dates</em></div>
+              <button id="viewItineraryBtn" class="hero-button" type="button">View Itinerary</button>
+            </section>
+
+            <section class="summary-grid">
+              <div class="metric glass budget"><span>Total Budget</span><strong id="totalBudget">$0</strong><em>of planned spend</em></div>
+              <div class="metric glass items"><span>Planned Items</span><strong id="stopCount">0</strong><em>activities & stops</em></div>
+              <div class="metric glass days"><span>Trip Days</span><strong id="dayCount">0</strong><em>days planned</em></div>
+              <div class="metric glass people"><span>Travelers</span><strong id="travelerCount">1</strong><em>people</em></div>
+            </section>
+
+            <section class="planner-panel glass">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Plan by day</p>
+                  <h2 id="plannerTitle">Your itinerary</h2>
+                </div>
+                <div class="planner-actions">
+                  <label class="snap-control">Snap
+                    <select id="snapMode">
+                      <option value="30">Half hour</option>
+                      <option value="60">Hourly</option>
+                    </select>
+                  </label>
+                  <button id="addAnyItemBtn">+ Add item</button>
+                </div>
+              </div>
+              <div id="dayTabs" class="day-tabs"></div>
+              <section id="timeline" class="timeline"></section>
+            </section>
+
+            <section class="daily-map-panel glass" id="dailyMapPanel">
+              <div class="panel-head compact">
+                <div>
+                  <p class="eyebrow">Daily route</p>
+                  <h2 id="dailyMapTitle">Route for selected day</h2>
+                </div>
+                <a id="dailyDirectionsLink" class="ghost-btn map-directions hidden" target="_blank" rel="noopener">Open directions</a>
+              </div>
+              <p id="dailyMapHelp" class="helper-text compact-help">Add locations to timed plans to see today’s pins and route.</p>
+              <div id="dailyMapLegend" class="daily-map-legend hidden"><span><i class="legend-dot drive"></i>Driving route</span><span><i class="legend-dot travel"></i>Flights / transit separate</span><label><input id="dailyShowTravel" type="checkbox" checked /> Show travel events</label></div>
+              <div id="dailyRouteMap" class="daily-route-map" aria-label="Map of selected day route"></div>
+              <div id="dailyMapStops" class="daily-map-stops"></div>
+            </section>
+
+            <section class="timeline-controls">
+              <button id="expandAllBtn" class="ghost-btn">Show all days</button>
+              <button id="collapseAllBtn" class="ghost-btn">Compact view</button>
+              <button id="exportBtn" class="ghost-btn">Export JSON</button>
+              <label class="import-label ghost-btn">Import JSON<input id="importInput" type="file" accept="application/json" /></label>
+            </section>
+          </div>
+
+          <aside class="right-column">
+            <section class="share-panel glass">
+              <div class="share-illo">👫✨</div>
+              <div>
+                <h2>Invite & Collaborate</h2>
+                <p class="helper-text">Share this trip and collaborate with your travel buddies!</p>
+              </div>
+              <div class="share-actions">
+                <select id="inviteRole" aria-label="Invite role">
+                  <option value="editor">Can edit</option>
+                  <option value="viewer">View only</option>
+                </select>
+                <button id="createInviteBtn">Invite People</button>
+              </div>
+              <div id="inviteOutput" class="invite-output hidden">
+                <input id="inviteLink" readonly />
+                <button id="copyInviteBtn" class="ghost-btn">Copy</button>
+              </div>
+              <div id="collabList" class="collab-list"></div>
+            </section>
+
+            <section class="details-panel glass">
+              <div class="panel-head compact"><h2>Trip Details</h2><span class="edit-chip">✏️ Edit</span></div>
+              <dl>
+                <dt>Destination</dt><dd id="detailsDestination">—</dd>
+                <dt>Start Date</dt><dd id="detailsStart">—</dd>
+                <dt>End Date</dt><dd id="detailsEnd">—</dd>
+                <dt>Trip Type</dt><dd><span class="leisure-chip">Leisure</span></dd>
+                <dt>Notes</dt><dd><textarea id="tripNotes" rows="3" placeholder="Add notes..."></textarea></dd>
+              </dl>
+            </section>
+
+            <section class="packing-panel glass" id="packingPanel">
+              <div class="packing-head"><h2>My Packing List</h2><span id="packingCount">0/0</span></div>
+              <p class="helper-text compact-help">Your item names stay private. Everyone only sees packed counts.</p>
+              <div id="packingProgressList" class="packing-progress-list"></div>
+              <div class="progress"><span id="packingProgress"></span></div>
+              <div id="packingList" class="packing-list"></div>
+              <form id="packingForm" class="packing-form">
+                <input id="packingInput" type="text" placeholder="Add item..." maxlength="80" />
+                <button id="addPackingBtn" type="submit">Add</button>
+              </form>
+              <button id="resetPackingBtn" type="button" class="ghost-btn small-btn">Reset starter list</button>
+            </section>
+
+            <section class="mustdo-panel glass" id="mustDoPanel">
+              <div class="packing-head"><h2>⭐ Must Do Together</h2><span id="mustDoCount">0/0</span></div>
+              <p class="helper-text compact-help">Shared with everyone on this trip. Great for quick goals, food stops, photos, and non-scheduled ideas.</p>
+              <div class="progress mustdo-progress"><span id="mustDoProgress"></span></div>
+              <div id="mustDoList" class="shared-list"></div>
+              <form id="mustDoForm" class="packing-form shared-form">
+                <input id="mustDoInput" type="text" placeholder="Add a must-do..." maxlength="100" />
+                <input id="mustDoBudget" type="number" min="0" step="0.01" placeholder="Budget $" />
+                <select id="mustDoPriority" aria-label="Priority"><option value="must">Must</option><option value="want" selected>Want</option><option value="maybe">Maybe</option></select>
+                <button id="addMustDoBtn" type="submit">Add</button>
+              </form>
+            </section>
+
+            <section class="gas-panel glass" id="gasPanel">
+              <div class="packing-head"><h2>⛽ Gas Calculator</h2><span id="gasEstimate">$0.00</span></div>
+              <p class="helper-text compact-help">Estimate trip fuel from total miles, vehicle MPG, and average fuel price.</p>
+              <div class="gas-grid">
+                <label>Total miles<input id="gasMiles" type="number" min="0" step="1" placeholder="1014" /></label>
+                <label>MPG<input id="gasMpg" type="number" min="1" step="0.1" placeholder="30" /></label>
+                <label>$/gal<input id="gasPrice" type="number" min="0" step="0.01" placeholder="3.60" /></label>
+              </div>
+              <p id="gasBreakdown" class="helper-text compact-help">Add values to calculate fuel cost.</p>
+            </section>
+
+            <section class="activity-generator-panel glass" id="activityGeneratorPanel">
+              <div class="packing-head"><h2>✨ Activity Generator</h2><span id="activityResultCount">0</span></div>
+              <p class="helper-text compact-help">Find nearby public places from open map data, then add ideas to Must Do or schedule them.</p>
+              <div class="activity-generator-form">
+                <input id="activitySearch" type="text" placeholder="coffee, park, museum, beach..." />
+                <select id="activityRadius"><option value="1500">Nearby</option><option value="5000" selected>Within 5 km</option><option value="15000">Within 15 km</option></select>
+                <button id="activityUseGps" type="button" class="ghost-btn">Use GPS</button>
+                <button id="activityGenerateBtn" type="button">Generate</button>
+              </div>
+              <div id="activityGeneratorStatus" class="helper-text compact-help">Uses your selected trip destination unless GPS is selected.</div>
+              <div id="activityResults" class="activity-results"></div>
+            </section>
+
+            <section class="memory-panel glass" id="memoryPanel">
+              <div class="packing-head"><h2>💜 Memories</h2><span id="memoryCount">0</span></div>
+              <p class="helper-text compact-help">Save trip moments as notes or photo memories. Photo memories become a soft slideshow after the trip.</p>
+              <div id="memoryList" class="shared-list memory-list memory-gallery"></div>
+              <form id="memoryForm" class="packing-form shared-form memory-form-upgraded">
+                <input id="memoryInput" type="text" placeholder="Caption or memory note..." maxlength="180" />
+                <input id="memoryPhotoInput" class="hidden" type="file" accept="image/*" capture="environment" />
+                <button id="memoryPhotoBtn" type="button" class="ghost-btn">📷 Add photo</button>
+                <button id="addMemoryBtn" type="submit">Save</button>
+              </form>
+              <button id="memorySlideshowBtn" type="button" class="ghost-btn memory-slideshow-btn">▶ View slideshow</button>
+            </section>
+
+            <section class="progress-panel glass">
+              <div class="packing-head"><h2>🌅 Trip Progress</h2><span id="tripProgressText">0% trip progress</span></div>
+              <div class="progress trip-progress"><span id="tripProgress"></span></div>
+              <p class="helper-text compact-help">Progress blends planned events, shared must-dos, personal packing, and memories.</p>
+            </section>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </div>
+  <a class="mobile-settings-footer" href="./settings.html"><span>⚙️</span><strong>Settings</strong><em>Profile, theme, maps, and account</em></a>
+
+  <dialog id="tripDialog">
+    <form method="dialog" class="dialog-card">
+      <h2>Create trip</h2>
+      <label>Trip title<input id="dialogTripTitle" placeholder="New trip" /></label>
+      <label>Start date<input id="dialogStartDate" type="date" /></label>
+      <label>End date<input id="dialogEndDate" type="date" /></label>
+      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="createTripConfirm" value="default">Create</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="itemDialog">
+    <form method="dialog" class="dialog-card item-dialog-card">
+      <h2 id="itemDialogTitle">Add itinerary item</h2>
+      <input id="editingItemId" type="hidden" />
+      <label class="full">Title<input id="itemTitle" placeholder="Dinner, hotel check-in, drive block..." /></label>
+      <div class="dialog-grid">
+        <label>Date<input id="itemDate" type="date" /></label>
+        <label>Type<select id="itemType"><option value="event">Event</option><option value="sightseeing">Sightseeing</option><option value="activity">Activity</option><option value="flight">Flight</option><option value="train">Train</option><option value="ferry">Ferry / Boat</option><option value="cruise">Cruise</option><option value="drive">Drive block</option><option value="transport">Transit / Pickup</option><option value="food">Food</option><option value="hotel">Hotel / Check-in</option><option value="gas">Gas stop</option><option value="shopping">Shopping</option><option value="rest">Rest / Downtime</option><option value="toddler">Toddler-friendly</option><option value="todo">To-do / Reminder</option></select></label>
+        <label>Start time<input id="itemTime" type="time" /></label>
+        <label>End time<input id="itemEndTime" type="time" /></label>
+        <label>Budget $<input id="itemBudget" type="number" min="0" step="0.01" placeholder="0" /></label>
+        <label>Assigned to<select id="itemAssignedTo"><option value="">Everyone / shared</option></select></label>
+        <label class="route-field">From<input id="itemFromLocation" class="location-input" placeholder="Starting address for drives/pickups" autocomplete="off" /></label>
+        <label class="route-field">To<input id="itemToLocation" class="location-input" placeholder="Destination address" autocomplete="off" /></label>
+        <div id="itemFromSuggestions" class="suggestions hidden"></div>
+        <div id="itemToSuggestions" class="suggestions hidden"></div>
+        <label>Location<input id="itemLocation" class="location-input" placeholder="Address / location" autocomplete="off" /></label>
+        <div id="itemLocationSuggestions" class="suggestions hidden"></div>
+        <div id="itemLocationMapLinks" class="map-links hidden"></div>
+      </div>
+      <label class="full">Notes<textarea id="itemNotes" rows="3" placeholder="Notes, confirmation numbers, tips..."></textarea></label>
+      <label class="full rain-plan-field">Rain Plan ☔<textarea id="itemRainPlan" rows="3" placeholder="Indoor backup, alternate time, rainy-day notes..."></textarea></label>
+      <div class="dialog-actions"><button value="cancel" class="ghost-btn">Cancel</button><button id="saveItemBtn" value="default">Save item</button></div>
+    </form>
+  </dialog>
+
+
+  <dialog id="profileDialog" class="profile-dialog">
+    <form method="dialog" class="dialog-card profile-dialog-card">
+      <div class="profile-dialog-head">
+        <div class="profile-avatar-wrap"><img id="profileAvatarPreview" class="profile-avatar-preview hidden" alt="Profile avatar" /><div id="profileAvatarFallback" class="profile-avatar-fallback">T</div></div>
+        <div><p class="eyebrow">Traveler profile</p><h2 id="profileDialogTitle">Traveler</h2><p class="helper-text compact-help">Trip-friendly details for planning food, activities, and surprises.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <div id="profileViewer" class="profile-viewer hidden"></div>
+      <div id="profileEditor" class="profile-editor hidden">
+        <label>Display name<input id="profileDisplayName" maxlength="80" placeholder="Your name" /></label>
+        <label>Favorite foods<textarea id="profileFavoriteFoods" rows="3" placeholder="Coffee, seafood, spicy food, desserts..."></textarea></label>
+        <label>Favorite activities<textarea id="profileFavoriteActivities" rows="3" placeholder="Museums, beaches, hiking, shopping, relaxing..."></textarea></label>
+        <label>Personal interests<textarea id="profileInterests" rows="3" placeholder="Anything helpful for planning a trip together..."></textarea></label>
+        <label>Notes / trip preferences<textarea id="profileNotes" rows="3" placeholder="Early riser, needs downtime, budget preferences, accessibility notes..."></textarea></label>
+        <div class="dialog-actions"><button value="cancel" class="ghost-btn" type="submit">Cancel</button><button id="saveProfileBtn" type="button">Save profile</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="funIdeasDialog" class="fun-dialog">
+    <form method="dialog" class="dialog-card fun-dialog-card">
+      <div class="fun-dialog-head">
+        <div><p class="eyebrow">Hidden trip list</p><h2>💕 Fun Ideas</h2><p class="helper-text compact-help">Private, owner-controlled ideas for this trip.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <div id="funAccessPanel" class="fun-access-panel hidden">
+        <h3>Access</h3>
+        <p class="helper-text compact-help">Only selected travelers can open this hidden popup from their avatar.</p>
+        <div id="funPermissionList" class="fun-permission-list"></div>
+      </div>
+      <div class="fun-board-toolbar">
+        <div id="funCategoryFilter" class="fun-category-filter"></div>
+        <div class="fun-toolbar-actions">
+          <button id="funCategoryManageBtn" type="button" class="ghost-btn">Categories</button>
+          <button id="funNewIdeaBtn" type="button" class="fun-add-btn">+ Add Idea</button>
+        </div>
+      </div>
+      <div id="funCategoryEditor" class="fun-category-editor hidden">
+        <div class="fun-category-add-row">
+          <input id="funCategoryEmoji" maxlength="4" value="✨" aria-label="Category emoji" />
+          <input id="funCategoryName" placeholder="New category name..." maxlength="40" />
+          <button id="funAddCategoryBtn" type="button">Add category</button>
+        </div>
+        <div id="funCategoryList" class="fun-category-list"></div>
+      </div>
+      <div id="funIdeasList" class="fun-ideas-list"></div>
+      <div class="fun-editor hidden">
+        <input id="funIdeaId" type="hidden" />
+        <div class="fun-editor-head"><h3>Add / Edit Idea</h3><button id="funCancelEditorBtn" type="button" class="ghost-btn">Close</button></div>
+        <label>Idea / fantasy / activity<input id="funIdeaTitle" placeholder="Private idea name..." maxlength="120" /></label>
+        <label>Description<textarea id="funIdeaDescription" rows="3" placeholder="Optional notes, boundaries, location, timing, etc."></textarea></label>
+        <div class="dialog-grid compact-grid fun-grid">
+          <label>Category<select id="funIdeaCategory"><option value="">No category</option></select></label>
+          <label>Play style<select id="funIdeaPlayType"><option value="private">Private play</option><option value="public">Public / playful</option></select></label>
+          <label>Visibility<select id="funIdeaVisibility"><option value="shared">Shared with access list</option><option value="private">Private draft</option></select></label>
+          <label>Assigned to<select id="funIdeaAssignedTo"><option value="">Anyone / shared</option></select></label>
+        </div>
+        <div class="dialog-actions"><button id="funClearBtn" type="button" class="ghost-btn">Clear</button><button id="funSaveBtn" type="button">Save idea</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="shoppingListDialog" class="shopping-dialog">
+    <form method="dialog" class="dialog-card shopping-dialog-card">
+      <div class="shopping-dialog-head">
+        <div><p class="eyebrow">Shared shopping</p><h2 id="shoppingListTitle">Shopping List</h2><p class="helper-text compact-help">A shared list for everyone on this trip attached to this shopping event.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <div id="shoppingPermissionPanel" class="shopping-permission-panel hidden" aria-hidden="true"></div>
+      <div class="shopping-list-toolbar">
+        <span class="shopping-count">0/0 complete</span>
+        <button id="shoppingNewBtn" type="button" class="fun-add-btn">+ Add Item</button>
+      </div>
+      <div id="shoppingListBody" class="shopping-list-body"></div>
+      <div id="shoppingEditor" class="shopping-editor hidden">
+        <input id="shoppingItemId" type="hidden" />
+        <div class="fun-editor-head"><h3>Add / Edit Shopping Item</h3><button id="shoppingCancelEditorBtn" type="button" class="ghost-btn">Close</button></div>
+        <label>Item name<input id="shoppingItemName" placeholder="Snacks, sunscreen, drinks..." maxlength="120" /></label>
+        <div class="dialog-grid compact-grid">
+          <label>Quantity<input id="shoppingItemQty" type="number" min="1" step="1" value="1" /></label>
+          <label>Notes<input id="shoppingItemNotes" placeholder="Brand, size, who needs it..." maxlength="180" /></label>
+        </div>
+        <div class="dialog-actions"><button id="shoppingSaveBtn" type="button">Save item</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="memorySlideshowDialog" class="slideshow-dialog">
+    <form method="dialog" class="dialog-card slideshow-card">
+      <div class="slideshow-head"><h2>💜 Trip Memories</h2><button value="cancel" class="ghost-btn">Close</button></div>
+      <div id="memorySlideshowStage" class="memory-slideshow-stage"></div>
+      <div class="dialog-actions"><button id="memoryPrevBtn" type="button" class="ghost-btn">← Prev</button><button id="memoryNextBtn" type="button">Next →</button></div>
+    </form>
+  </dialog>
+
+  <template id="itemTemplate">
+    <article class="item-card" draggable="true">
+      <div class="card-face card-front">
+        <button class="resize-handle resize-start" type="button" aria-label="Adjust start time"></button>
+        <div class="time-chip"></div>
+        <div class="item-main"><div class="item-type"></div><div><h3></h3><p class="item-meta"></p><p class="item-notes"></p><p class="overlap-warning hidden"></p></div></div>
+        <div class="item-actions"><button class="shift earlier ghost-btn" type="button">-30</button><button class="shift later ghost-btn" type="button">+30</button><button class="lock-toggle ghost-btn" type="button" title="Lock this card">🔓 Lock</button><button class="rain-toggle ghost-btn" type="button">☔ Rain</button><button class="edit ghost-btn" type="button">Edit</button><button class="delete danger ghost-btn" type="button">Delete</button></div>
+        <button class="resize-handle resize-end" type="button" aria-label="Adjust end time"></button>
+      </div>
+      <div class="card-face rain-back">
+        <div class="rain-back-head"><span>☔ Rain Plan</span><button class="rain-close ghost-btn" type="button">Back</button></div>
+        <p class="rain-plan-text"></p>
+        <div class="rain-back-actions"><button class="edit-rain ghost-btn" type="button">Edit rain plan</button><button class="reset-rain danger ghost-btn" type="button">Reset rain plan</button></div>
+      </div>
+    </article>
+  </template>
+  <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="./app.js?v=96"></script>
+</body>
+</html>
