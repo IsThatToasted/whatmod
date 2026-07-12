@@ -1257,6 +1257,7 @@ function renderItem(item, isTimed = false) {
   editRainBtn?.addEventListener('click', () => openRainEditor(item));
   resetRainBtn?.addEventListener('click', () => resetRainPlan(item.id));
   attachRainLongPress(card, item);
+  attachCardExpandToggle(card, item);
   delBtn.addEventListener('click', () => deleteItem(item.id));
   earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
   laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
@@ -1266,6 +1267,55 @@ function renderItem(item, isTimed = false) {
     card.addEventListener('pointerdown', e => startTimelinePointer(e, item, card));
   }
   return tpl;
+}
+
+
+function shouldIgnoreCardExpandTarget(target) {
+  return !!target.closest('button, a, input, textarea, select, label, .resize-handle, .item-actions, .shopping-list-pill, .map-links');
+}
+function collapseExpandedCards(exceptCard) {
+  document.querySelectorAll('.item-card.expanded').forEach(card => {
+    if (card !== exceptCard) card.classList.remove('expanded');
+  });
+}
+function attachCardExpandToggle(card, item) {
+  if (!card) return;
+  card.setAttribute('title', 'Tap/click to expand details. Tap again to collapse.');
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-expanded', 'false');
+  let pressTimer = null;
+  let startX = 0;
+  let startY = 0;
+  const toggle = (force) => {
+    collapseExpandedCards(card);
+    const next = typeof force === 'boolean' ? force : !card.classList.contains('expanded');
+    card.classList.toggle('expanded', next);
+    card.setAttribute('aria-expanded', next ? 'true' : 'false');
+  };
+  card.addEventListener('click', (e) => {
+    if (shouldIgnoreCardExpandTarget(e.target)) return;
+    // A normal click/tap expands/collapses details, even for locked cards.
+    e.preventDefault();
+    toggle();
+  });
+  card.addEventListener('pointerdown', (e) => {
+    if (shouldIgnoreCardExpandTarget(e.target)) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => toggle(true), 520);
+  }, { passive: true });
+  card.addEventListener('pointermove', (e) => {
+    if (!pressTimer) return;
+    if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  }, { passive: true });
+  ['pointerup','pointercancel','mouseleave'].forEach(evt => card.addEventListener(evt, () => {
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }, { passive: true }));
 }
 
 async function toggleItemLock(item) {

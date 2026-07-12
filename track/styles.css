@@ -3191,3 +3191,90 @@ body.agenda-view .timeline-board{height:auto!important;min-height:0!important;pa
   .fun-permission-row .permission-person{grid-template-columns:32px minmax(0,1fr)!important;}
   .fun-permission-row .permission-avatar{width:32px!important;height:32px!important;min-width:32px!important;}
 }
+
+
+/* v63: click/long-press card detail expansion.
+   Locked cards can still expand for reading, but editing/moving remains locked. */
+.item-card.timeline-item.expanded,
+.item-card.expanded{
+  z-index:120 !important;
+  height:auto !important;
+  min-height:148px !important;
+  overflow:visible !important;
+  box-shadow:0 24px 60px rgba(30,42,90,.18) !important;
+}
+.item-card.timeline-item.expanded > .card-front,
+.item-card.expanded > .card-front{
+  align-items:flex-start !important;
+}
+.item-card.timeline-item.expanded .time-chip{
+  align-self:flex-start !important;
+}
+.item-card.timeline-item.expanded .item-main,
+.item-card.expanded .item-main,
+.item-card.timeline-item.expanded .item-main > div:last-child,
+.item-card.expanded .item-main > div:last-child{
+  align-items:flex-start !important;
+  overflow:visible !important;
+  min-width:0 !important;
+}
+.item-card.timeline-item.expanded .item-main h3,
+.item-card.expanded .item-main h3{
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  display:block !important;
+  -webkit-line-clamp:unset !important;
+  -webkit-box-orient:unset !important;
+  line-height:1.2 !important;
+}
+.item-card.timeline-item.expanded .item-meta,
+.item-card.expanded .item-meta{
+  display:flex !important;
+  flex-wrap:wrap !important;
+  gap:6px !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  max-width:100% !important;
+}
+.item-card.timeline-item.expanded .item-notes,
+.item-card.expanded .item-notes,
+.item-card.timeline-item.expanded .overlap-warning,
+.item-card.expanded .overlap-warning{
+  display:block !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  -webkit-line-clamp:unset !important;
+  -webkit-box-orient:unset !important;
+  max-width:100% !important;
+  line-height:1.35 !important;
+  margin-top:6px !important;
+}
+.item-card.timeline-item.expanded .location-link,
+.item-card.expanded .location-link{
+  flex:1 0 100% !important;
+  display:block !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  max-width:100% !important;
+  line-height:1.25 !important;
+}
+.item-card.timeline-item.expanded .item-actions{
+  align-self:flex-start !important;
+}
+.item-card.timeline-item.expanded.compact-time-card{
+  min-height:148px !important;
+}
+@media(max-width:760px){
+  .item-card.timeline-item.expanded,
+  .item-card.expanded{
+    min-height:160px !important;
+  }
+  .item-card.timeline-item.expanded .item-actions,
+  .item-card.expanded .item-actions{
+    margin-top:4px !important;
+  }
+}
