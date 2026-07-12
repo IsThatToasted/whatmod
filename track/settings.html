@@ -1,308 +1,132 @@
-# ItineraryTrackerV2.2 — Production Stabilization
-
-# ItineraryTrackerV2.1 Production UI
-
-Checkpoint build focused on PC/tablet display polish, mobile quick navigation, and camera-first memories.
-
-Static app intended for: `https://whatmod.com/track/`
-
-## What this version adds
-- Signed-in collaborator access
-- Owner/editor/viewer trip roles
-- Invite links like `https://whatmod.com/track/?invite=...`
-- Invited users must sign in before the trip is added to their account
-- Editors can update trip details and itinerary items
-- Viewers can see the itinerary but cannot edit
-
-## Files
-- `index.html` — app shell
-- `styles.css` — responsive dark UI
-- `app.js` — Supabase auth, invite acceptance, shared CRUD logic
-- `schema.sql` — Supabase tables, RLS policies, invite RPC function
-
-## Supabase setup/update
-1. Open Supabase SQL Editor.
-2. Paste and run the full `schema.sql` file.
-3. This is safe to rerun. It backfills owner memberships for existing trips.
-4. Go to Authentication → URL Configuration.
-5. Set Site URL to `https://whatmod.com/track/`.
-6. Add Redirect URLs:
-   - `https://whatmod.com/track/`
-   - `https://whatmod.com/track`
-   - `https://whatmod.com/track/?invite=*`
-7. Enable Google provider or magic-link email login.
-
-## GitHub Pages deployment
-Place these files in a `/track` folder in your GitHub Pages repository so the final URL is:
-
-`https://whatmod.com/track/`
-
-The Supabase URL and publishable key are already configured in `app.js`.
-
-## How invites work
-1. Trip owner/editor signs in.
-2. Opens the trip.
-3. Chooses `Can edit` or `View only`.
-4. Clicks `Create invite link`.
-5. Sends the copied link to the other user.
-6. The invited user opens the link and signs in.
-7. The app accepts the invite and adds that trip to their trip list.
-
-### v18 Rain Plan update
-Run `schema.sql` again in Supabase to add the optional `rain_plan` field to itinerary items. The app will still load without it, but rain plans will only sync between users after the schema update is applied.
-
-Rain Plan behavior:
-- Tap the `☔ Rain` button on any itinerary card to flip it.
-- On mobile, long-press a card to flip to the rain plan view.
-- Use `Edit rain plan` or the normal item editor to add/update the rainy-day backup.
-
-
-## Trip creation RLS fix
-If you see `new row violates row-level security policy for table itinerary_trips`, rerun the included `schema.sql`. This version adds `create_itinerary_trip(...)`, a secure Supabase RPC used by the app to create the trip and owner membership together.
-
-
-## Latest update: smarter overlaps + new categories
-
-This version adds more event types (Sightseeing, Activity, Flight, Transit/Pickup, Shopping, Rest/Downtime, Toddler-friendly) and changes overlap handling so logistics/travel blocks like flights, drives, pickups, hotel check-ins, gas stops, rest blocks, and reminders do not trigger red conflict warnings when they overlap normal plans. They show a softer informational same-time note instead.
-
-## v31 Production polish notes
-
-This version keeps the existing Supabase structure and adds mostly frontend polish:
-
-- Polished event cards with icon, category pill, cost pill, rain-plan badge, assignee/everyone badge, and cleaner map-location row.
-- Live weather provider layer using Open-Meteo when the trip is within the available forecast window.
-- Weather chips on day tabs and a selected-day weather summary card.
-- Weather data is cached in the browser for about 45 minutes to avoid unnecessary requests.
-- No required schema change for weather in this version.
-
-Weather note: forecasts only appear when the trip dates are close enough for live forecast data. For far-future trips, the app shows a friendly “forecast unlocks” message instead of failing.
-
-## v32 Home dashboard + card locks
-
-Run `schema.sql` once after uploading this version. It adds `locked`, `locked_by`, and `locked_at` to itinerary cards.
-
-Locked cards can still be viewed, but cannot be dragged, resized, shifted, edited, deleted, or have rain plans changed until an owner/editor taps Unlock on that card.
-
-
-## ItineraryTrackerV2 settings patch
-- Added `settings.html` as a real standalone settings page instead of a sidebar anchor that scrolls the planner.
-- Sidebar Settings now opens `settings.html`.
-- Desktop/tablet card action dock spacing was tightened so buttons stay inside the right side of event cards.
-- No Supabase schema change is required for this patch.
-
-
-## ItineraryTrackerV2 mobile nav patch
-
-This patch updates the mobile quick nav to: Home, Must Do, Add Memory, and Packing. Add Memory opens the camera/photo picker flow directly. The nav stays sticky at the top, fades after 10 seconds of inactivity while scrolled, and wakes back up when the user scrolls/touches the page.
-
-
-## V2.1 Production UI Revamp
-
-This checkpoint focuses on moving the app from feature-complete prototype toward a product-ready interface.
-
-### Added / polished
-- Three selectable themes: Purple Glow, Clean Light, and Night Mode.
-- Theme picker in the top bar and Settings page.
-- Unified glass-card design system with consistent shadows, radii, spacing, and color tokens.
-- Reworked dashboard/home card styling.
-- Polished trip hero, summary metrics, day tabs, side panels, modals, and route panel.
-- Rebuilt desktop/tablet event-card layout so short and tall cards use the same contained action dock.
-- Preserved the mobile quick nav and existing Supabase/data functionality.
-
-No new Supabase schema is required for the UI revamp.
-
-
-## v52 patch
-
-- Mobile Settings shortcut appears near the bottom of the app on phones.
-- Shopping itinerary cards now show a **List** pill.
-- Shopping lists are shared per shopping event with item add/edit/delete/complete.
-- Shopping lists are now public to all trip collaborators, so there is no per-user access UI to maintain.
-- Run `schema.sql` once to add the shopping list tables and realtime support.
-
-## v60 Cleanup tightening
-
-This build adds:
-- Safer trip deletion through `delete_itinerary_trip_cascade()`.
-- Automatic cleanup of duplicate empty `My Trip` / `New trip` starter records for the signed-in user.
-- Storage cleanup for memory photos when a trip is deleted.
-- No automatic creation of a new `My Trip` after deleting the last trip; the app now prompts you to create one instead.
-
-Run `schema.sql` once in Supabase SQL Editor before testing deletion/cleanup.
-
-
-## V2.1 Final Polish Notes
-
-This checkpoint adds a completed-trip memory mode and storage/performance hardening.
-
-- Completed trips automatically show a Memories recap panel instead of the active planner.
-- The recap uses saved photo memories with soft transitions and an optional generated ambient audio button. Browsers require a tap before audio can play.
-- The planner is still available from the completed-trip panel with **Open planner**.
-- Memory uploads are compressed client-side where possible before upload to reduce Supabase Storage usage.
-- Memory deletion now also attempts to remove the associated file from the `trip-memories` Storage bucket.
-- Trip deletion attempts to remove memory photo files through the Supabase Storage API before deleting the trip/database rows.
-- The schema avoids direct SQL deletion from `storage.objects`, because Supabase blocks that for safety.
-
-Run `schema.sql` once after deploying this version so the Storage delete policy and cleanup helpers are current.
-
-## V2.1.14 profile / UI polish patch
-- Activity Generator search input now gets its own row above radius/GPS/generate controls.
-- Desktop timeline action buttons have consistent compact spacing.
-- Traveler avatars appear beside the day planner title; click/tap a traveler to view their profile.
-- Clicking your own avatar opens your profile editor.
-- Fun Ideas moved from the profile avatar to a lock icon beside notifications. Owners see it; invited users see it only when Fun Ideas access is enabled.
-- `schema.sql` adds optional traveler profile preference fields on `itinerary_trip_members`.
-
-
-## V2.1.15 Traveler Passport
-
-Adds a polished Traveler Passport profile modal with trip role, nickname, food preferences, foods to avoid, activity preferences, rainy-day picks, outdoor favorites, shopping interests, travel style chips, budget comfort, wake-up time, logistics notes, and trip notes. Run `schema.sql` once to add the optional profile fields.
-
-
-## V2.2 stabilization additions
-
-- Agenda view is now available and defaults on for a cleaner production planning experience. Timeline view remains available for detailed drag/drop planning.
-- Universal toast/status messages for saves, updates, sync events, and recoverable errors.
-- Silent live-sync fallback refreshes trip data periodically, on visibility return, and after realtime broadcasts without interrupting open dialogs/forms.
-- No-trip empty state instead of silently creating duplicate starter trips.
-- Completed-trip memory recap/slideshow and storage-safe deletion behavior preserved from V2.1.
-- Hidden diagnostics panel: press Ctrl/Cmd + Shift + D to view current user/trip/sync state while testing.
-
-Run `schema.sql` after deploying if you have not already run the latest V2.1 schema. No new required schema changes were added specifically for V2.2 UI stabilization.
-
-
-## V2.2.1 patch
-- Cleaned up Fun Ideas permission rows so each traveler displays as a single avatar + name + role + toggle.
-- Removed duplicated/overlapping assignee chip rendering in the permissions panel.
-- No schema change required.
-
-
-## V2.2.8 Licensing / Premium Gates
-
-Run `schema.sql` once after deploying this version.
-
-Premium gates included in this build:
-
-- Free users: up to **5 events per day**.
-- Premium users: up to **25 events per day**.
-- Shopping List pill on shopping events only appears for Premium users.
-- Maps/routes are Premium-only.
-- Photo Memories and completed-trip recap/slideshow are Premium-only.
-
-To create a license key in Supabase SQL Editor:
-
-```sql
-insert into public.itinerary_license_keys(license_key, max_redemptions)
-values ('TEST-PREMIUM-123', 1);
-```
-
-A user can click the small Free/Premium badge in the app to redeem a key.
-
-## Fun Ideas reactions
-
-This build replaces fragile client upserts with the `upsert_trip_fun_reaction()` RPC helper. Slider movement updates the UI immediately, then saves once after the user pauses/releases the slider. It should feel live without repeatedly hammering Supabase.
-
-
-## V2.2.11 toast/license/memory gate fix
-- Fixes `showToast is not defined` during license redemption.
-- Blocks Free users from opening Add Memory/camera before Premium is redeemed.
-- Bumps app/styles cache to v94 and build badge to V2.2.11.
-
-## V2.2.12 Licensing / Entitlements
-
-This build upgrades licensing from a simple Free/Premium switch to configurable per-user entitlements.
-
-Run `schema.sql` once after uploading this build.
-
-### Default behavior
-
-Free users:
-- 5 events per day
-- 1 trip
-- Maps disabled
-- Shopping lists disabled
-- Photo memories disabled
-- Completed-trip recap disabled
-
-Premium users by default:
-- 25 events per day
-- 25 trips
-- Maps enabled
-- Shopping lists enabled
-- Photo memories enabled
-- Completed-trip recap enabled
-
-### Create a customizable license key
-
-```sql
-insert into public.itinerary_license_keys(
-  license_key,
-  max_redemptions,
-  events_per_day,
-  max_trips,
-  enable_maps,
-  enable_memories,
-  enable_shopping_lists,
-  enable_recaps
-) values (
-  'TOASTED-ADMIN-001',
-  1,
-  25,
-  25,
-  true,
-  true,
-  true,
-  true
-);
-```
-
-### Manually adjust a user's Premium access
-
-Run this from Supabase SQL Editor as the project owner:
-
-```sql
-select public.admin_set_itinerary_entitlement_by_email(
-  'user@example.com',
-  'premium',
-  true,
-  40,   -- events per day
-  10,   -- max trips
-  true, -- maps
-  true, -- memories
-  false,-- shopping lists
-  true, -- recaps
-  'Manual adjustment'
-);
-```
-
-You do not need a Windows licensing app for the first version. Supabase can store and enforce the license status now. Later, this can become a small admin dashboard or Stripe webhook/Edge Function.
-
-
-## License key generator helper
-
-This package includes a small local Python helper at:
-
-```text
-tools/license_key_generator.py
-```
-
-On Windows, open the `tools` folder and double-click:
-
-```text
-run_license_generator_windows.bat
-```
-
-Or run from a terminal:
-
-```bash
-cd tools
-python license_key_generator.py
-```
-
-The helper does not connect to Supabase and does not need any secrets. It only generates SQL commands that you can paste into the Supabase SQL Editor for:
-
-- New license keys
-- Custom events-per-day limits
-- Custom max-trip limits
-- Feature toggles for maps, memories, shopping lists, and recaps
-- Direct entitlement grants to a user email
+<!doctype html>
+<html lang="en">
+<head>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ItineraryTrackerV2.2 Settings</title>
+  <link rel="stylesheet" href="./styles.css?v=96" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="settings-page">
+  <div class="settings-shell">
+    <header class="settings-top">
+      <div>
+        <p class="eyebrow">ItineraryTrackerV2</p>
+        <h1>Settings</h1>
+        <p class="subtitle">General app preferences, profile status, and local defaults.</p>
+      </div>
+      <a class="settings-back" href="./">← Back to tracker</a>
+    </header>
+
+    <section class="settings-grid">
+      <article class="settings-card">
+        <h2>Profile</h2>
+        <p>Your Google profile is used for avatars, first names, assignments, and collaboration labels.</p>
+        <div class="settings-profile">
+          <div id="profileAvatarWrap" class="avatar-placeholder">👤</div>
+          <div>
+            <strong id="profileName">Not signed in</strong><br />
+            <span id="profileEmail" class="helper-text compact-help">Open the tracker and sign in to sync trips.</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="settings-card">
+        <h2>Display</h2>
+        <form id="displayForm" class="settings-form">
+          <label>Theme
+            <select id="appTheme"><option value="purple">Purple Glow</option><option value="light">Clean Light</option><option value="dark">Night Mode</option></select>
+          </label>
+          <label>Weather unit
+            <select id="weatherUnit"><option value="F">Fahrenheit</option><option value="C">Celsius</option></select>
+          </label>
+          <label>Timeline density
+            <select id="timelineDensity"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select>
+          </label>
+          <label class="settings-toggle"><span>Reduce extra animations</span><input id="reduceMotion" type="checkbox" /></label>
+        </form>
+      </article>
+
+      <article class="settings-card">
+        <h2>Trip Defaults</h2>
+        <form id="tripDefaultsForm" class="settings-form">
+          <label>Default day start
+            <input id="defaultDayStart" type="time" value="06:00" />
+          </label>
+          <label>Default day end
+            <input id="defaultDayEnd" type="time" value="23:00" />
+          </label>
+          <label>Vehicle MPG
+            <input id="defaultMpg" type="number" min="1" step="0.1" placeholder="30" />
+          </label>
+          <label>Average gas price
+            <input id="defaultGasPrice" type="number" min="0" step="0.01" placeholder="3.60" />
+          </label>
+        </form>
+      </article>
+
+      <article class="settings-card">
+        <h2>Map & Collaboration</h2>
+        <form id="mapForm" class="settings-form">
+          <label class="settings-toggle"><span>Show travel events on maps by default</span><input id="showTravelDefault" type="checkbox" checked /></label>
+          <label class="settings-toggle"><span>Show subtle live update messages</span><input id="showLiveToasts" type="checkbox" checked /></label>
+          <label class="settings-toggle"><span>Mobile drag requires long press</span><input id="mobileLongPress" type="checkbox" checked /></label>
+        </form>
+      </article>
+
+      <article class="settings-card danger-zone">
+        <h2>Local Data</h2>
+        <p>This only clears local browser preferences/cache on this device. It does not delete trips from Supabase.</p>
+        <div class="settings-actions">
+          <button id="saveSettingsBtn" type="button">Save settings</button>
+          <button id="clearLocalBtn" type="button" class="ghost-btn">Clear local cache</button>
+          <button id="settingsLogoutBtn" type="button" class="danger ghost-btn">Log out</button>
+        </div>
+        <p id="settingsStatus" class="settings-status"></p>
+      </article>
+    </section>
+  </div>
+
+<script>
+const SUPABASE_URL = 'https://cuhbzgeqvgzshwwfkpdm.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo';
+const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const PREF_KEY = 'itineraryTrackerV2.settings';
+const $ = id => document.getElementById(id);
+const fields = ['appTheme','weatherUnit','timelineDensity','reduceMotion','defaultDayStart','defaultDayEnd','defaultMpg','defaultGasPrice','showTravelDefault','showLiveToasts','mobileLongPress'];
+function firstName(meta = {}, fallback = 'Traveler') { return String(meta.full_name || meta.name || meta.display_name || fallback || 'Traveler').trim().split(/\s+/)[0] || 'Traveler'; }
+function readPrefs(){ try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch { return {}; } }
+function applyThemeSetting(theme){
+  const value = ['light','dark','purple'].includes(theme) ? theme : 'purple';
+  document.documentElement.dataset.theme = value;
+  document.body.classList.remove('theme-light','theme-dark','theme-purple');
+  document.body.classList.add('theme-' + value);
+}
+function writePrefs(){
+  const data = {};
+  fields.forEach(id => { const el = $(id); if (!el) return; data[id] = el.type === 'checkbox' ? el.checked : el.value; });
+  localStorage.setItem(PREF_KEY, JSON.stringify(data));
+  applyThemeSetting(data.appTheme || 'purple');
+  $('settingsStatus').textContent = 'Settings saved on this device.';
+}
+function loadPrefs(){ const p = readPrefs(); if (!p.appTheme) p.appTheme = localStorage.getItem('itineraryTrackerV2.theme') || 'purple'; fields.forEach(id => { const el = $(id); if (!el || p[id] === undefined) return; if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id]; }); applyThemeSetting(p.appTheme || 'purple'); }
+async function loadProfile(){
+  const { data } = await client.auth.getSession();
+  const user = data?.session?.user;
+  if (!user) return;
+  const meta = user.user_metadata || {};
+  $('profileName').textContent = firstName(meta, user.email?.split('@')[0]);
+  $('profileEmail').textContent = user.email || 'Signed in';
+  const avatar = meta.avatar_url || meta.picture;
+  if (avatar) $('profileAvatarWrap').outerHTML = `<img src="${avatar}" alt="Profile avatar" />`;
+}
+$('saveSettingsBtn').addEventListener('click', writePrefs);
+$('clearLocalBtn').addEventListener('click', () => { localStorage.removeItem(PREF_KEY); sessionStorage.clear(); $('settingsStatus').textContent = 'Local settings/cache cleared on this device.'; loadPrefs(); });
+$('settingsLogoutBtn').addEventListener('click', async () => { await client.auth.signOut(); location.href = './'; });
+loadPrefs(); loadProfile();
+</script>
+</body>
+</html>
