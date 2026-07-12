@@ -153,7 +153,7 @@ function syncRouteFieldVisibility() {
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], shoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false, starterCleanupChecked = false;
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funReactions = [], funReactionSaveTimers = {}, shoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false, starterCleanupChecked = false;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -277,7 +277,7 @@ async function loadWeatherForTrip(force=false){
 
 function escapeHtml(str) { return String(str || '').replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
 function isMissingRainPlanColumn(error) { return /rain_plan|schema cache|column/i.test(String(error?.message || '')); }
-function isMissingSharedTable(error) { return /itinerary_must_do_items|itinerary_memories|trip_fun_ideas|trip_fun_permissions|itinerary_shopping_items|itinerary_shopping_permissions|schema cache|relation|does not exist/i.test(String(error?.message || '')); }
+function isMissingSharedTable(error) { return /itinerary_must_do_items|itinerary_memories|trip_fun_ideas|trip_fun_permissions|trip_fun_reactions|itinerary_shopping_items|itinerary_shopping_permissions|schema cache|relation|does not exist/i.test(String(error?.message || '')); }
 
 function shortLocationLabel(location) {
   let value = String(location || '').replace(/\s+/g, ' ').trim();
@@ -754,6 +754,7 @@ function setupRealtimeSync() {
     'trip_fun_permissions',
     'trip_fun_ideas',
     'trip_fun_categories',
+    'trip_fun_reactions',
     'itinerary_shopping_items'
   ];
   let channel = client.channel(`trip-live-${activeTripId}`);
@@ -787,7 +788,7 @@ function handleRealtimePayload(table, payload) {
       : table === 'itinerary_items' ? 'Itinerary updated'
       : table === 'itinerary_memories' ? 'Memories updated'
       : table === 'itinerary_must_do' ? 'Must Do updated'
-      : table === 'trip_fun_ideas' || table === 'trip_fun_permissions' || table === 'trip_fun_categories' ? 'Private list updated'
+      : table === 'trip_fun_ideas' || table === 'trip_fun_permissions' || table === 'trip_fun_categories' || table === 'trip_fun_reactions' ? 'Private list updated'
       : table === 'itinerary_shopping_items' ? 'Shopping list updated'
       : 'Trip updated';
     setStatus(label);
@@ -1883,7 +1884,71 @@ async function loadFunIdeas() {
   const { data, error } = await client.from('trip_fun_ideas').select('*').eq('trip_id', activeTripId).order('created_at', { ascending: false });
   if (error) { console.warn('Fun Ideas table unavailable. Run schema.sql.', error); return; }
   funIdeas = data || [];
+  await loadFunReactions();
 }
+
+async function loadFunReactions() {
+  funReactions = [];
+  if (!activeTripId || !session?.user?.id || !canAccessFunIdeasLocal()) return;
+  const { data, error } = await client.from('trip_fun_reactions').select('*').eq('trip_id', activeTripId);
+  if (error) { console.warn('Fun Ideas reactions unavailable. Run schema.sql.', error); return; }
+  funReactions = data || [];
+}
+
+function funReactionFor(ideaId, userId) {
+  return funReactions.find(r => r.fun_idea_id === ideaId && r.user_id === userId);
+}
+function reactionEmoji(value) {
+  const v = Number(value || 50);
+  if (v <= 20) return '🙈';
+  if (v <= 40) return '🤔';
+  if (v <= 60) return '🙂';
+  if (v <= 80) return '😍';
+  return '🔥';
+}
+function reactionLabel(value) {
+  const v = Number(value || 50);
+  if (v <= 20) return 'No thanks';
+  if (v <= 40) return 'Maybe later';
+  if (v <= 60) return 'Curious';
+  if (v <= 80) return 'Yes';
+  return 'YES PLEASE';
+}
+function renderFunReactionRows(idea) {
+  const visibleMembers = members.filter(m => isTripOwner() || m.user_id === session?.user?.id || funPermissions.some(p => p.user_id === m.user_id && p.can_access));
+  const rows = visibleMembers.length ? visibleMembers : members;
+  return `<div class="fun-reactions" data-idea-id="${escapeHtml(idea.id)}">
+    <div class="fun-reaction-scale-labels"><span>No Thanks</span><span>YES PLEASE</span></div>
+    ${rows.map(m => {
+      const label = m.user_id === session?.user?.id ? 'Me' : memberLabel(m.user_id);
+      const pic = m.user_id === session?.user?.id ? session.user.user_metadata?.avatar_url : (m.avatar_url || '');
+      const initial = String(memberLabel(m.user_id) || 'U').trim().slice(0,1).toUpperCase() || 'U';
+      const avatar = pic ? `<img src="${escapeHtml(pic)}" alt="">` : `<span>${escapeHtml(initial)}</span>`;
+      const reaction = funReactionFor(idea.id, m.user_id);
+      const score = Number(reaction?.score ?? 50);
+      const canSlide = m.user_id === session?.user?.id;
+      return `<div class="fun-reaction-row ${canSlide ? 'mine' : ''}" data-user-id="${escapeHtml(m.user_id)}">
+        <div class="fun-reaction-person"><span class="fun-reaction-avatar">${avatar}</span><strong>${escapeHtml(label)}</strong></div>
+        <input type="range" min="0" max="100" step="5" value="${score}" ${canSlide ? '' : 'disabled'} aria-label="Reaction for ${escapeHtml(label)}">
+        <span class="fun-reaction-value">${reactionEmoji(score)} ${escapeHtml(reactionLabel(score))}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+async function saveFunReaction(ideaId, score) {
+  if (!activeTripId || !session?.user?.id || !canAccessFunIdeasLocal()) return;
+  score = Math.max(0, Math.min(100, Number(score || 50)));
+  const idx = funReactions.findIndex(r => r.fun_idea_id === ideaId && r.user_id === session.user.id);
+  const local = { trip_id: activeTripId, fun_idea_id: ideaId, user_id: session.user.id, score, updated_at: new Date().toISOString() };
+  if (idx >= 0) funReactions[idx] = { ...funReactions[idx], ...local }; else funReactions.push(local);
+  clearTimeout(funReactionSaveTimers[ideaId]);
+  funReactionSaveTimers[ideaId] = setTimeout(async () => {
+    const { error } = await client.from('trip_fun_reactions').upsert(local, { onConflict: 'fun_idea_id,user_id' });
+    if (error) { console.warn('Could not save Fun Ideas reaction.', error); if (typeof showToast === 'function') showToast('Could not save reaction', 'error'); return; }
+    broadcastTripChange('Private list reaction updated');
+  }, 750);
+}
+
 async function openFunIdeasDialog() {
   if (!activeTripId || !session?.user?.id) return;
   await loadFunIdeas();
@@ -2004,9 +2069,9 @@ function renderFunIdeasModal() {
       const pic = m.user_id === session?.user?.id ? session.user.user_metadata?.avatar_url : (m.avatar_url || '');
       const initial = String(label || 'U').trim().slice(0, 1).toUpperCase() || 'U';
       const avatar = pic
-        ? `<img class="permission-avatar" src="${escapeHtml(pic)}" alt="">`
-        : `<em class="permission-avatar fallback">${escapeHtml(initial)}</em>`;
-      return `<label class="fun-permission-row"><span class="permission-person">${avatar}<span class="permission-copy"><strong>${escapeHtml(label)}</strong><em>${escapeHtml(m.role || 'editor')}</em></span></span><input type="checkbox" data-user-id="${escapeHtml(m.user_id)}" ${allowed ? 'checked' : ''} ${isOwnerMember ? 'disabled' : ''}></label>`;
+        ? `<img class="permission-avatar" src="${escapeHtml(pic)}" alt="${escapeHtml(label)}" title="${escapeHtml(label)}">`
+        : `<em class="permission-avatar fallback" title="${escapeHtml(label)}">${escapeHtml(initial)}</em>`;
+      return `<label class="fun-permission-row avatar-only" title="${escapeHtml(label)}">${avatar}<input type="checkbox" data-user-id="${escapeHtml(m.user_id)}" ${allowed ? 'checked' : ''} ${isOwnerMember ? 'disabled' : ''}></label>`;
     }).join('') || '<p class="helper-text">Invite a traveler to share access.</p>';
   }
   if (els.funIdeasList) {
@@ -2024,6 +2089,7 @@ function renderFunIdeasModal() {
         </button>
         <div class="fun-card-details">
           ${hasDescription ? `<p>${escapeHtml(i.description || '')}</p>` : '<p class="muted">No extra notes added.</p>'}
+          ${renderFunReactionRows(i)}
           <div class="fun-card-actions"><button type="button" class="fun-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="fun-delete danger ghost-btn" ${editable ? '' : 'disabled'}>Delete</button></div>
         </div>
       </article>`;
@@ -2067,6 +2133,7 @@ function editFunIdea(id) {
 async function deleteFunIdea(id) {
   if (!canEdit() || !canAccessFunIdeasLocal()) return;
   if (!confirm('Remove this Fun Idea?')) return;
+  await client.from('trip_fun_reactions').delete().eq('fun_idea_id', id);
   const { error } = await client.from('trip_fun_ideas').delete().eq('id', id);
   if (error) { showDbError(error); return; }
   await loadFunIdeas(); renderFunIdeasModal(); broadcastTripChange('Private list updated');
