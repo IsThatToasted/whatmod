@@ -1,3 +1,5 @@
+# ItineraryTrackerV2.2 — Production Stabilization
+
 # ItineraryTrackerV2.1 Production UI
 
 Checkpoint build focused on PC/tablet display polish, mobile quick navigation, and camera-first memories.
@@ -155,3 +157,15 @@ Run `schema.sql` once after deploying this version so the Storage delete policy 
 ## V2.1.15 Traveler Passport
 
 Adds a polished Traveler Passport profile modal with trip role, nickname, food preferences, foods to avoid, activity preferences, rainy-day picks, outdoor favorites, shopping interests, travel style chips, budget comfort, wake-up time, logistics notes, and trip notes. Run `schema.sql` once to add the optional profile fields.
+
+
+## V2.2 stabilization additions
+
+- Agenda view is now available and defaults on for a cleaner production planning experience. Timeline view remains available for detailed drag/drop planning.
+- Universal toast/status messages for saves, updates, sync events, and recoverable errors.
+- Silent live-sync fallback refreshes trip data periodically, on visibility return, and after realtime broadcasts without interrupting open dialogs/forms.
+- No-trip empty state instead of silently creating duplicate starter trips.
+- Completed-trip memory recap/slideshow and storage-safe deletion behavior preserved from V2.1.
+- Hidden diagnostics panel: press Ctrl/Cmd + Shift + D to view current user/trip/sync state while testing.
+
+Run `schema.sql` after deploying if you have not already run the latest V2.1 schema. No new required schema changes were added specifically for V2.2 UI stabilization.

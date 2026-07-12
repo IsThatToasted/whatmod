@@ -2976,3 +2976,161 @@ async function deletePackingItem(id) {
     $('profileDialog')?.showModal();
   };
 })();
+
+
+/* v2.2 production stabilization patch: agenda default, toasts, silent refresh fallback, QA helpers */
+(function productionStabilizationV22(){
+  const $ = id => document.getElementById(id);
+  const PREF_VIEW = 'itineraryTrackerV2.planViewMode';
+  const PREF_TOASTS = 'itineraryTrackerV2.showToasts';
+  const LIVE_POLL_MS = 45000;
+  let silentPollTimer = null;
+  let lastToastAt = 0;
+  function ensureToastHost(){
+    let host = $('toastHost');
+    if (host) return host;
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    host.className = 'toast-host';
+    host.setAttribute('aria-live','polite');
+    document.body.appendChild(host);
+    return host;
+  }
+  window.showAppToast = function showAppToast(message, type='info', timeout=3200){
+    const prefs = (() => { try { return JSON.parse(localStorage.getItem('itineraryTrackerV2.settings') || '{}'); } catch { return {}; } })();
+    if (prefs.showLiveToasts === false || localStorage.getItem(PREF_TOASTS) === '0') return;
+    const host = ensureToastHost();
+    const now = Date.now();
+    if (now - lastToastAt < 350 && host.lastElementChild?.textContent === String(message || '')) return;
+    lastToastAt = now;
+    const toast = document.createElement('div');
+    toast.className = `app-toast ${type}`;
+    toast.innerHTML = `<span>${type === 'error' ? '⚠️' : type === 'success' ? '✅' : '✨'}</span><strong>${escapeHtml(String(message || 'Updated'))}</strong>`;
+    host.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 260); }, timeout);
+  };
+  const oldSetStatus = typeof setStatus === 'function' ? setStatus : null;
+  if (oldSetStatus && !oldSetStatus._v22Wrapped) {
+    const wrapped = function setStatusV22(msg){
+      oldSetStatus(msg);
+      const text = String(msg || '').trim();
+      if (!text || ['Ready','Loading...','Live sync on'].includes(text)) return;
+      if (/error|failed|needed|unavailable/i.test(text)) showAppToast(text, 'error');
+      else if (/saved|updated|added|deleted|locked|unlocked|accepted|created|cleaned/i.test(text)) showAppToast(text, 'success');
+    };
+    wrapped._v22Wrapped = true;
+    setStatus = wrapped;
+  }
+  const oldShowDbError = typeof showDbError === 'function' ? showDbError : null;
+  showDbError = function showDbErrorV22(error){
+    console.error(error);
+    const message = error?.message || String(error || 'Something went wrong');
+    showAppToast(message, 'error', 6500);
+    if (oldSetStatus) oldSetStatus('Database action failed');
+  };
+  function dialogsOpen(){
+    return !!document.querySelector('dialog[open]');
+  }
+  function isTyping(){
+    const el = document.activeElement;
+    return !!el && ['INPUT','TEXTAREA','SELECT'].includes(el.tagName);
+  }
+  window.silentRefreshTripData = async function silentRefreshTripData(label='Synced changes'){
+    if (!activeTripId || !session?.user?.id) return;
+    if (dialogsOpen() || isTyping()) return;
+    try {
+      await refreshLiveTripData();
+      if (label) showAppToast(label, 'info', 1800);
+    } catch (err) { console.warn('Silent refresh failed', err); }
+  };
+  function startSilentPoll(){
+    clearInterval(silentPollTimer);
+    silentPollTimer = setInterval(() => silentRefreshTripData(''), LIVE_POLL_MS);
+  }
+  startSilentPoll();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) silentRefreshTripData('Trip refreshed'); });
+
+  function ensurePlanViewControls(){
+    const panel = document.querySelector('.planner-panel');
+    const head = panel?.querySelector('.panel-head');
+    if (!panel || !head || $('planViewToggle')) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'plan-view-toggle';
+    wrap.id = 'planViewToggle';
+    wrap.innerHTML = `<button type="button" data-view="agenda">Agenda</button><button type="button" data-view="timeline">Timeline</button>`;
+    head.appendChild(wrap);
+    wrap.addEventListener('click', e => {
+      const btn = e.target.closest('[data-view]');
+      if (!btn) return;
+      setPlanView(btn.dataset.view);
+    });
+  }
+  function setPlanView(mode){
+    const view = mode === 'timeline' ? 'timeline' : 'agenda';
+    document.body.classList.toggle('agenda-view', view === 'agenda');
+    document.body.classList.toggle('timeline-view', view === 'timeline');
+    localStorage.setItem(PREF_VIEW, view);
+    document.querySelectorAll('#planViewToggle [data-view]').forEach(btn => btn.classList.toggle('active', btn.dataset.view === view));
+    try { renderTimeline(); } catch {}
+  }
+  const oldRender = typeof render === 'function' ? render : null;
+  render = function renderV22(){
+    if (oldRender) oldRender();
+    ensurePlanViewControls();
+    const view = localStorage.getItem(PREF_VIEW) || 'agenda';
+    setTimeout(() => setPlanView(view), 0);
+  };
+
+  // Improve event feedback without disturbing current save flow.
+  const oldBroadcast = typeof broadcastTripChange === 'function' ? broadcastTripChange : null;
+  if (oldBroadcast && !oldBroadcast._v22Wrapped) {
+    const wrappedBroadcast = function(label='Trip updated'){
+      oldBroadcast(label);
+      if (/locked|unlocked|updated|added|deleted|moved|saved/i.test(label)) showAppToast(label, 'success', 1800);
+    };
+    wrappedBroadcast._v22Wrapped = true;
+    broadcastTripChange = wrappedBroadcast;
+  }
+
+  // Better empty-state copy for no-trip users without auto-generating starter trips.
+  function ensureNoTripEmptyState(){
+    const app = $('appArea');
+    if (!app || activeTripId || trips.length) return;
+    const existing = $('noTripsState');
+    if (existing) return;
+    const section = document.createElement('section');
+    section.id = 'noTripsState';
+    section.className = 'no-trips-state glass';
+    section.innerHTML = `<span>🧳</span><h2>Start your first trip</h2><p>Create a trip, invite your people, then add plans, packing, memories, and must-dos.</p><button type="button" id="noTripsCreateBtn">Create Trip</button>`;
+    app.prepend(section);
+    $('noTripsCreateBtn')?.addEventListener('click', () => openTripDialog?.());
+  }
+  const oldLoadTrips = typeof loadTrips === 'function' ? loadTrips : null;
+  if (oldLoadTrips && !oldLoadTrips._v22Wrapped) {
+    const wrappedLoadTrips = async function loadTripsV22(){
+      await oldLoadTrips();
+      ensureNoTripEmptyState();
+      startSilentPoll();
+    };
+    wrappedLoadTrips._v22Wrapped = true;
+    loadTrips = wrappedLoadTrips;
+  }
+
+  // Lightweight production debug: Ctrl/⌘ + Shift + D toggles current sync diagnostics.
+  document.addEventListener('keydown', e => {
+    if (!(e.shiftKey && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd')) return;
+    let panel = $('debugSyncPanel');
+    if (!panel) {
+      panel = document.createElement('aside');
+      panel.id = 'debugSyncPanel';
+      panel.className = 'debug-sync-panel';
+      document.body.appendChild(panel);
+    }
+    panel.classList.toggle('open');
+    panel.innerHTML = `<strong>ItineraryTrackerV2.2 Diagnostics</strong><p>User: ${escapeHtml(session?.user?.email || 'not signed in')}</p><p>Trip: ${escapeHtml(activeTripId || 'none')}</p><p>Items: ${items?.length || 0}</p><p>Members: ${members?.length || 0}</p><p>Realtime: ${realtimeChannel ? 'initialized' : 'off'}</p><p>Last sync: ${new Date().toLocaleTimeString()}</p>`;
+  });
+
+  window.addEventListener('online', () => silentRefreshTripData('Back online — refreshed'));
+  window.addEventListener('offline', () => showAppToast('Offline — changes may not sync until connection returns', 'error', 4500));
+})();
