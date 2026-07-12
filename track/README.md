@@ -336,7 +336,7 @@ This patch adds shopping-list item drag/drop ordering and an estimated-cost fiel
 - Planned Budget now excludes all travel-type event budgets: flight, train, ferry, cruise, drive, transport, gas, hotel, and lodging.
 - Travel Expense includes explicit flight/drive fields plus travel-type event budget fallback values.
 
-## V2.3.4 Shopping Aisles / Grocery Categories
+## V2.3.5 Shopping Aisles / Grocery Categories
 
 Shopping lists now support grocery-style categories so users can shop in aisle order. Added categories include Produce, Meat & Seafood, Dairy & Eggs, Bakery, Pantry, Frozen, Snacks, Drinks, Household, Personal Care, Baby/Toddler, Pet, Pharmacy, and Other.
 
@@ -352,3 +352,10 @@ Each shopping item has:
 Shopping list estimated costs still roll into the trip's planned budget.
 
 Run `schema.sql` once to add the `category` column/index.
+
+
+## V2.3.5 Mobile Overflow Lock
+
+- Locked unintended horizontal page scrolling across the app.
+- Shopping List modal now scrolls vertically only and wraps category/item rows cleanly on mobile.
+- Preserved intentional horizontal day-tab navigation.
