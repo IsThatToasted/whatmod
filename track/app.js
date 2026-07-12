@@ -3133,18 +3133,15 @@ async function deletePackingItem(id) {
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 260); }, timeout);
   };
+  // setStatus is declared as a const in the base app, so do NOT reassign it here.
+  // Reassigning it caused `Assignment to constant variable` and stopped licensing/reaction code.
   const oldSetStatus = typeof setStatus === 'function' ? setStatus : null;
-  if (oldSetStatus && !oldSetStatus._v22Wrapped) {
-    const wrapped = function setStatusV22(msg){
-      oldSetStatus(msg);
-      const text = String(msg || '').trim();
-      if (!text || ['Ready','Loading...','Live sync on'].includes(text)) return;
-      if (/error|failed|needed|unavailable/i.test(text)) showAppToast(text, 'error');
-      else if (/saved|updated|added|deleted|locked|unlocked|accepted|created|cleaned/i.test(text)) showAppToast(text, 'success');
-    };
-    wrapped._v22Wrapped = true;
-    setStatus = wrapped;
-  }
+  window.v22StatusToast = function v22StatusToast(msg){
+    const text = String(msg || '').trim();
+    if (!text || ['Ready','Loading...','Live sync on'].includes(text)) return;
+    if (/error|failed|needed|unavailable/i.test(text)) showAppToast(text, 'error');
+    else if (/saved|updated|added|deleted|locked|unlocked|accepted|created|cleaned/i.test(text)) showAppToast(text, 'success');
+  };
   const oldShowDbError = typeof showDbError === 'function' ? showDbError : null;
   showDbError = function showDbErrorV22(error){
     console.error(error);
@@ -3666,7 +3663,7 @@ async function deletePackingItem(id) {
 
 /* === V2.2.9 hard cache/license/reaction stabilization === */
 (function(){
-  const BUILD = 'V2.2.9-cache-license-reactions-2026-07-12-1735';
+  const BUILD = 'V2.2.10-constfix-license-reactions-2026-07-12-1748';
   window.ITINERARY_TRACKER_BUILD = BUILD;
   try {
     document.documentElement.setAttribute('data-build', BUILD);
