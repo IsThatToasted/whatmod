@@ -335,3 +335,20 @@ This patch adds shopping-list item drag/drop ordering and an estimated-cost fiel
 - Hotel/lodging event budget values now count under Travel Expense instead of Planned Budget.
 - Planned Budget now excludes all travel-type event budgets: flight, train, ferry, cruise, drive, transport, gas, hotel, and lodging.
 - Travel Expense includes explicit flight/drive fields plus travel-type event budget fallback values.
+
+## V2.3.4 Shopping Aisles / Grocery Categories
+
+Shopping lists now support grocery-style categories so users can shop in aisle order. Added categories include Produce, Meat & Seafood, Dairy & Eggs, Bakery, Pantry, Frozen, Snacks, Drinks, Household, Personal Care, Baby/Toddler, Pet, Pharmacy, and Other.
+
+Each shopping item has:
+- item name
+- quantity
+- estimated cost
+- category
+- notes
+- completion state
+- drag/reorder support
+
+Shopping list estimated costs still roll into the trip's planned budget.
+
+Run `schema.sql` once to add the `category` column/index.

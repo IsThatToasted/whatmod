@@ -24,7 +24,7 @@ const els = {
   destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingProgressList: document.getElementById('packingProgressList'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
-  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funIdeaCategory: document.getElementById('funIdeaCategory'), funCategoryFilter: document.getElementById('funCategoryFilter'), funCategoryManageBtn: document.getElementById('funCategoryManageBtn'), funCategoryEditor: document.getElementById('funCategoryEditor'), funCategoryName: document.getElementById('funCategoryName'), funCategoryEmoji: document.getElementById('funCategoryEmoji'), funAddCategoryBtn: document.getElementById('funAddCategoryBtn'), funCategoryList: document.getElementById('funCategoryList'), funNewIdeaBtn: document.getElementById('funNewIdeaBtn'), funCancelEditorBtn: document.getElementById('funCancelEditorBtn'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'), shoppingListDialog: document.getElementById('shoppingListDialog'), shoppingListTitle: document.getElementById('shoppingListTitle'), shoppingPermissionPanel: document.getElementById('shoppingPermissionPanel'), shoppingPermissionList: document.getElementById('shoppingPermissionList'), shoppingListBody: document.getElementById('shoppingListBody'), shoppingNewBtn: document.getElementById('shoppingNewBtn'), shoppingEditor: document.getElementById('shoppingEditor'), shoppingItemId: document.getElementById('shoppingItemId'), shoppingItemName: document.getElementById('shoppingItemName'), shoppingItemQty: document.getElementById('shoppingItemQty'), shoppingItemCost: document.getElementById('shoppingItemCost'), shoppingItemNotes: document.getElementById('shoppingItemNotes'), shoppingCancelEditorBtn: document.getElementById('shoppingCancelEditorBtn'), shoppingSaveBtn: document.getElementById('shoppingSaveBtn'),
+  memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funIdeaCategory: document.getElementById('funIdeaCategory'), funCategoryFilter: document.getElementById('funCategoryFilter'), funCategoryManageBtn: document.getElementById('funCategoryManageBtn'), funCategoryEditor: document.getElementById('funCategoryEditor'), funCategoryName: document.getElementById('funCategoryName'), funCategoryEmoji: document.getElementById('funCategoryEmoji'), funAddCategoryBtn: document.getElementById('funAddCategoryBtn'), funCategoryList: document.getElementById('funCategoryList'), funNewIdeaBtn: document.getElementById('funNewIdeaBtn'), funCancelEditorBtn: document.getElementById('funCancelEditorBtn'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'), shoppingListDialog: document.getElementById('shoppingListDialog'), shoppingListTitle: document.getElementById('shoppingListTitle'), shoppingPermissionPanel: document.getElementById('shoppingPermissionPanel'), shoppingPermissionList: document.getElementById('shoppingPermissionList'), shoppingListBody: document.getElementById('shoppingListBody'), shoppingNewBtn: document.getElementById('shoppingNewBtn'), shoppingEditor: document.getElementById('shoppingEditor'), shoppingItemId: document.getElementById('shoppingItemId'), shoppingItemName: document.getElementById('shoppingItemName'), shoppingItemQty: document.getElementById('shoppingItemQty'), shoppingItemCategory: document.getElementById('shoppingItemCategory'), shoppingItemCost: document.getElementById('shoppingItemCost'), shoppingItemNotes: document.getElementById('shoppingItemNotes'), shoppingCancelEditorBtn: document.getElementById('shoppingCancelEditorBtn'), shoppingSaveBtn: document.getElementById('shoppingSaveBtn'),
   snapMode: document.getElementById('snapMode'), undoToast: document.getElementById('undoToast'), undoToastText: document.getElementById('undoToastText'), undoBtn: document.getElementById('undoBtn')
 };
 
@@ -2260,6 +2260,46 @@ function shoppingCostValue(row) {
 function calcShoppingCost() {
   return (allShoppingListItems || []).reduce((sum, row) => sum + shoppingCostValue(row), 0);
 }
+
+const SHOPPING_CATEGORIES = [
+  ['produce','🥬','Produce'],
+  ['meat_seafood','🥩','Meat & Seafood'],
+  ['dairy_eggs','🥛','Dairy & Eggs'],
+  ['bakery','🥖','Bakery'],
+  ['pantry','🥫','Pantry / Dry Goods'],
+  ['frozen','🧊','Frozen'],
+  ['snacks','🍿','Snacks'],
+  ['drinks','🥤','Drinks'],
+  ['household','🧻','Household'],
+  ['personal_care','🧴','Personal Care'],
+  ['baby_toddler','🧸','Baby / Toddler'],
+  ['pet','🐾','Pet'],
+  ['pharmacy','💊','Pharmacy'],
+  ['other','🧺','Other']
+];
+const SHOPPING_CATEGORY_MAP = Object.fromEntries(SHOPPING_CATEGORIES.map(([key, emoji, label], order) => [key, { key, emoji, label, order }]));
+function normalizeShoppingCategory(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return SHOPPING_CATEGORY_MAP[key] ? key : 'other';
+}
+function shoppingCategoryMeta(value) {
+  return SHOPPING_CATEGORY_MAP[normalizeShoppingCategory(value)] || SHOPPING_CATEGORY_MAP.other;
+}
+function sortedShoppingItemsForDisplay(rows) {
+  return [...(rows || [])].sort((a,b) => {
+    const ca = shoppingCategoryMeta(a.category).order;
+    const cb = shoppingCategoryMeta(b.category).order;
+    if (ca !== cb) return ca - cb;
+    const sa = Number(a.sort_order ?? 9999);
+    const sb = Number(b.sort_order ?? 9999);
+    if (sa !== sb) return sa - sb;
+    return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+  });
+}
+function shoppingCategoryOptions(selected='other') {
+  const current = normalizeShoppingCategory(selected);
+  return SHOPPING_CATEGORIES.map(([key, emoji, label]) => `<option value="${escapeHtml(key)}" ${key === current ? 'selected' : ''}>${emoji} ${escapeHtml(label)}</option>`).join('');
+}
 async function loadAllShoppingItems() {
   allShoppingListItems = [];
   if (!activeTripId || !session?.user?.id) return;
@@ -2316,6 +2356,7 @@ function clearShoppingForm() {
   if (els.shoppingItemId) els.shoppingItemId.value = '';
   if (els.shoppingItemName) els.shoppingItemName.value = '';
   if (els.shoppingItemQty) els.shoppingItemQty.value = '1';
+  if (els.shoppingItemCategory) els.shoppingItemCategory.value = 'other';
   if (els.shoppingItemCost) els.shoppingItemCost.value = '';
   if (els.shoppingItemNotes) els.shoppingItemNotes.value = '';
 }
@@ -2334,13 +2375,36 @@ function renderShoppingListModal() {
   if (els.shoppingPermissionList) els.shoppingPermissionList.innerHTML = '';
   const done = shoppingListItems.filter(x => x.completed).length;
   if (els.shoppingListBody) {
-    els.shoppingListBody.innerHTML = shoppingListItems.length ? shoppingListItems.map((x, idx) => `
-      <article class="shopping-list-row ${x.completed ? 'is-complete' : ''}" data-id="${escapeHtml(x.id)}" draggable="${editable ? 'true' : 'false'}">
-        <button type="button" class="shopping-drag-handle" title="Drag to reorder" aria-label="Drag to reorder" ${editable ? '' : 'disabled'}>⋮⋮</button>
-        <label class="shopping-check"><input type="checkbox" class="shopping-complete" ${x.completed ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
-        <div class="shopping-row-main"><strong>${escapeHtml(x.label || 'Shopping item')}</strong><em>${Number(x.quantity || 1)} needed${shoppingCostValue(x) ? ` · ${money(shoppingCostValue(x))}` : ''}${x.notes ? ` · ${escapeHtml(x.notes)}` : ''}</em></div>
-        <div class="shopping-row-actions"><button type="button" class="shopping-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="shopping-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button></div>
-      </article>`).join('') : '<div class="packing-empty">No shopping items yet. Add what everyone should grab.</div>';
+    if (!shoppingListItems.length) {
+      els.shoppingListBody.innerHTML = '<div class="packing-empty">No shopping items yet. Add what everyone should grab.</div>';
+    } else {
+      const ordered = sortedShoppingItemsForDisplay(shoppingListItems);
+      const groups = new Map();
+      ordered.forEach(row => {
+        const key = normalizeShoppingCategory(row.category);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(row);
+      });
+      els.shoppingListBody.innerHTML = [...groups.entries()].map(([key, rows]) => {
+        const meta = shoppingCategoryMeta(key);
+        const groupDone = rows.filter(x => x.completed).length;
+        const groupCost = rows.reduce((sum, row) => sum + shoppingCostValue(row), 0);
+        return `<section class="shopping-category-group" data-category="${escapeHtml(key)}">
+          <div class="shopping-category-head"><strong>${meta.emoji} ${escapeHtml(meta.label)}</strong><span>${groupDone}/${rows.length}${groupCost ? ` · ${money(groupCost)}` : ''}</span></div>
+          <div class="shopping-category-items">
+            ${rows.map((x) => {
+              const itemMeta = shoppingCategoryMeta(x.category);
+              return `<article class="shopping-list-row ${x.completed ? 'is-complete' : ''}" data-id="${escapeHtml(x.id)}" draggable="${editable ? 'true' : 'false'}">
+                <button type="button" class="shopping-drag-handle" title="Drag to reorder" aria-label="Drag to reorder" ${editable ? '' : 'disabled'}>⋮⋮</button>
+                <label class="shopping-check"><input type="checkbox" class="shopping-complete" ${x.completed ? 'checked' : ''} ${editable ? '' : 'disabled'}><span></span></label>
+                <div class="shopping-row-main"><strong>${escapeHtml(x.label || 'Shopping item')}</strong><em><span class="shopping-category-chip">${itemMeta.emoji} ${escapeHtml(itemMeta.label)}</span> ${Number(x.quantity || 1)} needed${shoppingCostValue(x) ? ` · ${money(shoppingCostValue(x))}` : ''}${x.notes ? ` · ${escapeHtml(x.notes)}` : ''}</em></div>
+                <div class="shopping-row-actions"><button type="button" class="shopping-edit ghost-btn" ${editable ? '' : 'disabled'}>Edit</button><button type="button" class="shopping-delete danger ghost-btn" ${editable ? '' : 'disabled'}>×</button></div>
+              </article>`;
+            }).join('')}
+          </div>
+        </section>`;
+      }).join('');
+    }
   }
   const count = els.shoppingListDialog?.querySelector('.shopping-count');
   if (count) { const totalCost = shoppingListItems.reduce((sum, row) => sum + shoppingCostValue(row), 0); count.textContent = `${done}/${shoppingListItems.length} complete${totalCost ? ` · ${money(totalCost)} est.` : ''}`; }
@@ -2359,6 +2423,7 @@ async function saveShoppingItem() {
     label,
     quantity: Math.max(1, Number(els.shoppingItemQty?.value || 1)),
     estimated_cost: Math.max(0, Number(els.shoppingItemCost?.value || 0)),
+    category: normalizeShoppingCategory(els.shoppingItemCategory?.value || 'other'),
     notes: (els.shoppingItemNotes?.value || '').trim(),
     updated_at: new Date().toISOString()
   };
@@ -2375,6 +2440,7 @@ function editShoppingItem(id) {
   if (els.shoppingItemName) els.shoppingItemName.value = row.label || '';
   if (els.shoppingItemQty) els.shoppingItemQty.value = String(row.quantity || 1);
   if (els.shoppingItemCost) els.shoppingItemCost.value = shoppingCostValue(row) ? String(shoppingCostValue(row)) : '';
+  if (els.shoppingItemCategory) els.shoppingItemCategory.value = normalizeShoppingCategory(row.category);
   if (els.shoppingItemNotes) els.shoppingItemNotes.value = row.notes || '';
   showShoppingEditor(true);
 }
@@ -3778,7 +3844,7 @@ async function deletePackingItem(id) {
 
 /* === V2.2.9 hard cache/license/reaction stabilization === */
 (function(){
-  const BUILD = 'V2.3.2-hotel-travel-expense-2026-07-12';
+  const BUILD = 'V2.3.4-shopping-aisles-budget-2026-07-12';
   window.ITINERARY_TRACKER_BUILD = BUILD;
   try {
     document.documentElement.setAttribute('data-build', BUILD);
@@ -4012,7 +4078,7 @@ async function deletePackingItem(id) {
    Fixes showToast missing during license redemption and blocks Premium-only
    memory capture before the file picker/camera can open on Free accounts. */
 (function toastLicenseMemoryGateFix(){
-  const BUILD = 'V2.3.2-hotel-travel-expense-2026-07-12';
+  const BUILD = 'V2.3.4-shopping-aisles-budget-2026-07-12';
   window.ITINERARY_TRACKER_BUILD = BUILD;
   try { document.documentElement.setAttribute('data-build', BUILD); } catch (_) {}
 
@@ -4153,7 +4219,7 @@ async function deletePackingItem(id) {
 
 /* === V2.2.12 configurable licensing / entitlements === */
 (function(){
-  const BUILD = 'V2.3.2-hotel-travel-expense-2026-07-12';
+  const BUILD = 'V2.3.4-shopping-aisles-budget-2026-07-12';
   const DEFAULT_FREE = {
     plan: 'free', active: false,
     events_per_day: 5, max_trips: 1,

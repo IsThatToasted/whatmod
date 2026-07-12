@@ -1384,3 +1384,14 @@ select
   coalesce((select sum(coalesce(i.budget,0)) from public.itinerary_items i where i.trip_id = t.id),0) as event_budget,
   coalesce((select sum(coalesce(i.flight_ticket_cost,0)+coalesce(i.flight_baggage_cost,0)+coalesce(i.flight_other_cost,0)+coalesce(i.drive_gas_cost,0)+coalesce(i.travel_other_cost,0)) from public.itinerary_items i where i.trip_id = t.id),0) as travel_expenses
 from public.itinerary_trips t;
+
+-- V2.3.4 Shopping aisle/category expansion
+alter table public.itinerary_shopping_items
+  add column if not exists category text default 'other';
+
+update public.itinerary_shopping_items
+set category = 'other'
+where category is null or trim(category) = '';
+
+create index if not exists itinerary_shopping_items_category_idx
+  on public.itinerary_shopping_items(trip_id, itinerary_item_id, category, sort_order, created_at);
