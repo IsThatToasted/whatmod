@@ -1,3 +1,13 @@
+# ItineraryTrackerV2.3 UI Redesign
+
+Production UI redesign checkpoint based on the latest stable V2.2 licensing/mobile-layout build.
+
+This is primarily a UI/layout pass. Existing Supabase auth, trip data, licensing/entitlements, memories, maps, Fun Ideas, shopping lists, Traveler Passport, and collaboration logic are preserved. No new schema is required for the UI redesign itself.
+
+Deploy `index.html`, `settings.html`, `app.js`, `styles.css`, `schema.sql`, `assets/`, `content/`, and `tools/` to your `/track` GitHub Pages path.
+
+Build marker: `V2.3.0-ui-redesign-2026-07-12` / cache version `v=230`.
+
 # ItineraryTrackerV2.2 — Production Stabilization
 
 # ItineraryTrackerV2.1 Production UI

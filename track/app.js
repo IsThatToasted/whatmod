@@ -3668,7 +3668,7 @@ async function deletePackingItem(id) {
 
 /* === V2.2.9 hard cache/license/reaction stabilization === */
 (function(){
-  const BUILD = 'V2.2.13-license-tools-mobile-dock-2026-07-12-1748';
+  const BUILD = 'V2.3.0-ui-redesign-2026-07-12';
   window.ITINERARY_TRACKER_BUILD = BUILD;
   try {
     document.documentElement.setAttribute('data-build', BUILD);
@@ -3902,7 +3902,7 @@ async function deletePackingItem(id) {
    Fixes showToast missing during license redemption and blocks Premium-only
    memory capture before the file picker/camera can open on Free accounts. */
 (function toastLicenseMemoryGateFix(){
-  const BUILD = 'V2.2.13-license-tools-mobile-dock-2026-07-12';
+  const BUILD = 'V2.3.0-ui-redesign-2026-07-12';
   window.ITINERARY_TRACKER_BUILD = BUILD;
   try { document.documentElement.setAttribute('data-build', BUILD); } catch (_) {}
 
@@ -4043,7 +4043,7 @@ async function deletePackingItem(id) {
 
 /* === V2.2.12 configurable licensing / entitlements === */
 (function(){
-  const BUILD = 'V2.2.13-license-tools-mobile-dock-2026-07-12';
+  const BUILD = 'V2.3.0-ui-redesign-2026-07-12';
   const DEFAULT_FREE = {
     plan: 'free', active: false,
     events_per_day: 5, max_trips: 1,
