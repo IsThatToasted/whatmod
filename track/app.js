@@ -1950,7 +1950,13 @@ function renderFunIdeasModal() {
     els.funPermissionList.innerHTML = members.map(m => {
       const isOwnerMember = m.role === 'owner';
       const allowed = isOwnerMember || funPermissions.some(p => p.user_id === m.user_id && p.can_access);
-      return `<label class="fun-permission-row"><span>${memberAvatarHtml(m.user_id)}<strong>${escapeHtml(memberLabel(m.user_id))}</strong><em>${escapeHtml(m.role || 'editor')}</em></span><input type="checkbox" data-user-id="${escapeHtml(m.user_id)}" ${allowed ? 'checked' : ''} ${isOwnerMember ? 'disabled' : ''}></label>`;
+      const label = memberLabel(m.user_id);
+      const pic = m.user_id === session?.user?.id ? session.user.user_metadata?.avatar_url : (m.avatar_url || '');
+      const initial = String(label || 'U').trim().slice(0, 1).toUpperCase() || 'U';
+      const avatar = pic
+        ? `<img class="permission-avatar" src="${escapeHtml(pic)}" alt="">`
+        : `<em class="permission-avatar fallback">${escapeHtml(initial)}</em>`;
+      return `<label class="fun-permission-row"><span class="permission-person">${avatar}<span class="permission-copy"><strong>${escapeHtml(label)}</strong><em>${escapeHtml(m.role || 'editor')}</em></span></span><input type="checkbox" data-user-id="${escapeHtml(m.user_id)}" ${allowed ? 'checked' : ''} ${isOwnerMember ? 'disabled' : ''}></label>`;
     }).join('') || '<p class="helper-text">Invite a traveler to share access.</p>';
   }
   if (els.funIdeasList) {

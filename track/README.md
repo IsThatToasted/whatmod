@@ -169,3 +169,9 @@ Adds a polished Traveler Passport profile modal with trip role, nickname, food p
 - Hidden diagnostics panel: press Ctrl/Cmd + Shift + D to view current user/trip/sync state while testing.
 
 Run `schema.sql` after deploying if you have not already run the latest V2.1 schema. No new required schema changes were added specifically for V2.2 UI stabilization.
+
+
+## V2.2.1 patch
+- Cleaned up Fun Ideas permission rows so each traveler displays as a single avatar + name + role + toggle.
+- Removed duplicated/overlapping assignee chip rendering in the permissions panel.
+- No schema change required.
