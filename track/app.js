@@ -1929,8 +1929,8 @@ function renderFunReactionRows(idea) {
       const canSlide = m.user_id === session?.user?.id;
       return `<div class="fun-reaction-row ${canSlide ? 'mine' : ''}" data-user-id="${escapeHtml(m.user_id)}">
         <div class="fun-reaction-person"><span class="fun-reaction-avatar">${avatar}</span><strong>${escapeHtml(label)}</strong></div>
-        <input type="range" min="0" max="100" step="5" value="${score}" ${canSlide ? '' : 'disabled'} aria-label="Reaction for ${escapeHtml(label)}">
-        <span class="fun-reaction-value">${reactionEmoji(score)} ${escapeHtml(reactionLabel(score))}</span>
+        <input type="range" min="0" max="100" step="5" value="${score}" ${canSlide ? '' : 'disabled'} aria-label="Reaction for ${escapeHtml(label)}" data-idea-id="${escapeHtml(idea.id)}" data-score="${score}" oninput="window.handleFunReactionSlide && window.handleFunReactionSlide(this)" onchange="window.commitFunReactionSlide && window.commitFunReactionSlide(this)" onpointerup="window.commitFunReactionSlide && window.commitFunReactionSlide(this)" ontouchend="window.commitFunReactionSlide && window.commitFunReactionSlide(this)">
+        <span class="fun-reaction-value" data-score="${score}">${reactionEmoji(score)} ${escapeHtml(reactionLabel(score))}</span>
       </div>`;
     }).join('')}
   </div>`;
@@ -3258,10 +3258,12 @@ async function deletePackingItem(id) {
   window.addEventListener('offline', () => showAppToast('Offline — changes may not sync until connection returns', 'error', 4500));
 })();
 
-/* === V2.2 patch: Fun Ideas reaction sliders autosave/live labels === */
+/* === V2.2.4 patch: efficient Fun Ideas reaction autosave + live labels === */
 (function(){
   const pendingReactionPayloads = {};
   const pendingReactionTimers = {};
+  const pendingSavedScores = {};
+  let saveInFlight = false;
 
   function clampReactionScore(score){
     const n = Number(score);
@@ -3269,40 +3271,79 @@ async function deletePackingItem(id) {
     return Math.max(0, Math.min(100, Math.round(n)));
   }
 
+  function reactionKey(ideaId, userId){ return `${ideaId}:${userId}`; }
+
   function updateReactionRowDisplay(input){
     if (!input) return;
     const row = input.closest('.fun-reaction-row');
     const value = row?.querySelector('.fun-reaction-value');
-    if (!value) return;
     const score = clampReactionScore(input.value);
-    value.textContent = `${reactionEmoji(score)} ${reactionLabel(score)}`;
-    value.dataset.score = String(score);
+    input.value = String(score);
+    input.dataset.score = String(score);
+    if (value) {
+      value.textContent = `${reactionEmoji(score)} ${reactionLabel(score)}`;
+      value.dataset.score = String(score);
+    }
     row?.style.setProperty('--reaction-score', `${score}%`);
   }
 
-  async function persistFunReactionNow(ideaId){
-    if (!ideaId || !pendingReactionPayloads[ideaId]) return;
-    clearTimeout(pendingReactionTimers[ideaId]);
-    const payload = pendingReactionPayloads[ideaId];
-    delete pendingReactionPayloads[ideaId];
+  async function persistFunReactionKey(key){
+    const payload = pendingReactionPayloads[key];
+    if (!payload || !client) return;
+    clearTimeout(pendingReactionTimers[key]);
+    delete pendingReactionTimers[key];
+
+    const savedKey = reactionKey(payload.fun_idea_id, payload.user_id);
+    if (pendingSavedScores[savedKey] === payload.score) {
+      delete pendingReactionPayloads[key];
+      return;
+    }
+
     try {
-      const { error } = await client.from('trip_fun_reactions').upsert(payload, { onConflict: 'fun_idea_id,user_id' });
+      const { error } = await client
+        .from('trip_fun_reactions')
+        .upsert(payload, { onConflict: 'fun_idea_id,user_id' });
       if (error) throw error;
-      broadcastTripChange?.('Private list reaction updated');
+      pendingSavedScores[savedKey] = payload.score;
+      delete pendingReactionPayloads[key];
+      // Do not broadcast on every slider move; realtime table update is enough when enabled.
     } catch (err) {
       console.warn('Could not save Fun Ideas reaction.', err);
-      showToast?.('Could not save reaction', 'error');
-      pendingReactionPayloads[ideaId] = payload;
+      showToast?.('Could not save reaction. Check schema/RLS.', 'error');
+      // Keep pending so another release/close can retry without creating extra rows.
+      pendingReactionPayloads[key] = payload;
     }
   }
 
-  window.flushFunReactionSaves = async function flushFunReactionSaves(){
-    const ids = Object.keys(pendingReactionPayloads);
-    await Promise.all(ids.map(id => persistFunReactionNow(id)));
+  async function persistAllPending(){
+    if (saveInFlight) return;
+    saveInFlight = true;
+    try {
+      const keys = Object.keys(pendingReactionPayloads);
+      for (const key of keys) await persistFunReactionKey(key);
+    } finally {
+      saveInFlight = false;
+    }
+  }
+
+  window.flushFunReactionSaves = persistAllPending;
+
+  window.handleFunReactionSlide = function handleFunReactionSlide(input){
+    if (!input) return;
+    updateReactionRowDisplay(input);
+    const ideaId = input.dataset.ideaId || input.closest('.fun-reactions')?.dataset.ideaId;
+    window.saveFunReaction?.(ideaId, input.value, false);
   };
 
-  window.saveFunReaction = function saveFunReactionAutosave(ideaId, score){
-    if (!activeTripId || !session?.user?.id || !canAccessFunIdeasLocal?.()) return;
+  window.commitFunReactionSlide = function commitFunReactionSlide(input){
+    if (!input) return;
+    updateReactionRowDisplay(input);
+    const ideaId = input.dataset.ideaId || input.closest('.fun-reactions')?.dataset.ideaId;
+    window.saveFunReaction?.(ideaId, input.value, true);
+  };
+
+  window.saveFunReaction = function saveFunReactionAutosave(ideaId, score, forceNow=false){
+    if (!ideaId || !activeTripId || !session?.user?.id || !canAccessFunIdeasLocal?.()) return;
     const cleanScore = clampReactionScore(score);
     const local = {
       trip_id: activeTripId,
@@ -3315,47 +3356,31 @@ async function deletePackingItem(id) {
     if (idx >= 0) funReactions[idx] = { ...funReactions[idx], ...local };
     else funReactions.push(local);
 
-    pendingReactionPayloads[ideaId] = local;
-    clearTimeout(pendingReactionTimers[ideaId]);
-    pendingReactionTimers[ideaId] = setTimeout(() => persistFunReactionNow(ideaId), 450);
+    const key = reactionKey(ideaId, session.user.id);
+    pendingReactionPayloads[key] = local;
+    clearTimeout(pendingReactionTimers[key]);
+    if (forceNow) persistFunReactionKey(key);
+    else pendingReactionTimers[key] = setTimeout(() => persistFunReactionKey(key), 900);
   };
 
-  function handleReactionInput(e){
+  function delegatedInput(e){
     const input = e.target?.matches?.('.fun-reaction-row.mine input[type="range"]') ? e.target : null;
-    if (!input) return;
-    const box = input.closest('.fun-reactions');
-    const ideaId = box?.dataset.ideaId;
-    if (!ideaId) return;
-    updateReactionRowDisplay(input);
-    window.saveFunReaction(ideaId, input.value);
+    if (input) window.handleFunReactionSlide(input);
+  }
+  function delegatedCommit(e){
+    const input = e.target?.matches?.('.fun-reaction-row.mine input[type="range"]') ? e.target : null;
+    if (input) window.commitFunReactionSlide(input);
   }
 
-  function handleReactionCommit(e){
-    const input = e.target?.matches?.('.fun-reaction-row.mine input[type="range"]') ? e.target : null;
-    if (!input) return;
-    const ideaId = input.closest('.fun-reactions')?.dataset.ideaId;
-    if (ideaId) persistFunReactionNow(ideaId);
-  }
-
-  document.addEventListener('input', handleReactionInput, true);
-  document.addEventListener('change', handleReactionInput, true);
-  document.addEventListener('pointerup', handleReactionCommit, true);
-  document.addEventListener('touchend', handleReactionCommit, true);
-  document.addEventListener('keyup', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') handleReactionCommit(e);
+  document.addEventListener('input', delegatedInput, true);
+  document.addEventListener('change', delegatedCommit, true);
+  document.addEventListener('pointerup', delegatedCommit, true);
+  document.addEventListener('touchend', delegatedCommit, true);
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') delegatedCommit(e);
   }, true);
-
   els.funIdeasDialog?.addEventListener('close', () => { window.flushFunReactionSaves?.(); });
-  window.addEventListener('beforeunload', () => {
-    Object.keys(pendingReactionPayloads).forEach(id => {
-      const payload = pendingReactionPayloads[id];
-      try {
-        const body = JSON.stringify(payload);
-        // sendBeacon cannot set Supabase auth headers, so this is only a best-effort fallback.
-        // Normal close/blur handling above performs the real authenticated save.
-      } catch (_) {}
-    });
-  });
   window.addEventListener('pagehide', () => { window.flushFunReactionSaves?.(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.flushFunReactionSaves?.(); });
 })();
+

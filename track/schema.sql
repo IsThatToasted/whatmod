@@ -945,6 +945,10 @@ create table if not exists public.trip_fun_reactions (
 
 alter table public.trip_fun_reactions enable row level security;
 
+grant select, insert, update, delete on public.trip_fun_reactions to authenticated;
+create index if not exists idx_trip_fun_reactions_trip_id on public.trip_fun_reactions(trip_id);
+create index if not exists idx_trip_fun_reactions_idea_user on public.trip_fun_reactions(fun_idea_id, user_id);
+
 drop policy if exists "fun reactions visible to permitted users" on public.trip_fun_reactions;
 create policy "fun reactions visible to permitted users" on public.trip_fun_reactions
   for select using (
