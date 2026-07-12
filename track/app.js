@@ -3662,3 +3662,235 @@ async function deletePackingItem(id) {
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.flushFunReactionSaves(); });
   window.addEventListener('pagehide', () => window.flushFunReactionSaves());
 })();
+
+
+/* === V2.2.9 hard cache/license/reaction stabilization === */
+(function(){
+  const BUILD = 'V2.2.9-cache-license-reactions-2026-07-12-1735';
+  window.ITINERARY_TRACKER_BUILD = BUILD;
+  try {
+    document.documentElement.setAttribute('data-build', BUILD);
+    window.addEventListener('DOMContentLoaded', () => {
+      let badge = document.getElementById('buildVersionBadge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'buildVersionBadge';
+        badge.className = 'build-version-badge';
+        badge.textContent = BUILD;
+        document.body.appendChild(badge);
+      }
+    });
+  } catch (_) {}
+
+  function premiumReady(){ return typeof window.isPremiumUser === 'function' && window.isPremiumUser(); }
+  function hidePremiumFeaturesIfFree(){
+    const premium = premiumReady();
+    document.body.classList.toggle('plan-premium', premium);
+    document.body.classList.toggle('plan-free', !premium);
+
+    // Shopping list pills must be invisible on Free even if rendered from cached/old DOM.
+    document.querySelectorAll('.shopping-list-pill').forEach(el => {
+      el.hidden = !premium;
+      el.style.display = premium ? '' : 'none';
+    });
+
+    // Maps/routes must fail closed for Free users. If a map was already rendered before the license wrapper loaded,
+    // replace it immediately with the Premium gate.
+    const map = els?.dailyRouteMap;
+    if (!premium && map) {
+      if (els.dailyMapTitle) els.dailyMapTitle.textContent = 'Daily route';
+      if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Maps and route planning are Premium features.';
+      if (els.dailyDirectionsLink) { els.dailyDirectionsLink.classList.add('hidden'); els.dailyDirectionsLink.removeAttribute('href'); }
+      if (els.dailyMapLegend) els.dailyMapLegend.classList.add('hidden');
+      if (els.dailyMapStops) els.dailyMapStops.innerHTML = '';
+      if (!map.querySelector('.premium-map-gate')) {
+        map.innerHTML = `<div class="premium-map-gate"><span>🗺️</span><strong>Premium maps</strong><p>Daily route maps, route pins, and directions unlock with Premium.</p><button type="button" class="ghost-btn premium-upgrade-btn">Unlock Premium</button></div>`;
+        map.querySelector('.premium-upgrade-btn')?.addEventListener('click', () => window.redeemPremiumLicense?.());
+      }
+    }
+
+    // Memories/recap visible section can stay visible, but actions should gate through functions.
+    const badge = document.getElementById('licensePlanBadge');
+    if (badge) badge.textContent = premium ? '✨ Premium' : 'Free';
+  }
+  window.enforcePremiumDom = hidePremiumFeaturesIfFree;
+
+  // Ensure licensing is loaded, then redraw/gate. This fixes the "old map still visible" case caused by render running before license hooks.
+  async function forceLicenseRefreshAndGate(){
+    try { await window.loadLicensePlan?.(true); } catch(e) { console.warn('License refresh failed; defaulting to Free UI.', e); }
+    hidePremiumFeaturesIfFree();
+    try { renderDayMap?.(); } catch(e) { console.warn('Map gate refresh failed', e); }
+  }
+  window.addEventListener('DOMContentLoaded', () => setTimeout(forceLicenseRefreshAndGate, 250));
+  setTimeout(forceLicenseRefreshAndGate, 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) forceLicenseRefreshAndGate(); });
+
+  // Wrap render so stale DOM cannot expose Premium controls after any UI redraw.
+  if (typeof render === 'function' && !render.__v229LicensedGate) {
+    const originalRender = render;
+    render = function(){
+      const result = originalRender.apply(this, arguments);
+      setTimeout(hidePremiumFeaturesIfFree, 0);
+      return result;
+    };
+    render.__v229LicensedGate = true;
+  }
+
+  // ----- Reliable, low-write Fun Ideas reactions -----
+  const LOCAL_PREFIX = 'itinerary_fun_reactions_v2:';
+  const timers = new Map();
+  const pending = new Map();
+  let lastReactionErrorAt = 0;
+
+  function uid(){ return session?.user?.id || ''; }
+  function tripId(){ return activeTripId || ''; }
+  function scoreClean(v){ const n = Number(v); return Math.max(0, Math.min(100, Number.isFinite(n) ? Math.round(n) : 50)); }
+  function localKey(){ return `${LOCAL_PREFIX}${tripId()}:${uid()}`; }
+  function readLocal(){ try { return JSON.parse(localStorage.getItem(localKey()) || '{}') || {}; } catch { return {}; } }
+  function writeLocal(obj){ try { localStorage.setItem(localKey(), JSON.stringify(obj || {})); } catch {} }
+  function setLocalScore(ideaId, score){ const obj = readLocal(); obj[ideaId] = { score: scoreClean(score), updated_at: new Date().toISOString() }; writeLocal(obj); }
+  function getLocalScore(ideaId){ const obj = readLocal(); return obj?.[ideaId]?.score; }
+
+  // Make render use local optimistic scores if the database row has not loaded yet.
+  if (typeof funReactionFor === 'function' && !funReactionFor.__v229LocalMerge) {
+    const originalFunReactionFor = funReactionFor;
+    funReactionFor = function(ideaId, userId){
+      const dbRow = originalFunReactionFor.apply(this, arguments);
+      if (userId === uid()) {
+        const localScore = getLocalScore(ideaId);
+        if (localScore !== undefined && localScore !== null) {
+          // Prefer local for the current user because it represents the most recent gesture, and it prevents the value snapping back.
+          return { ...(dbRow || {}), trip_id: tripId(), fun_idea_id: ideaId, user_id: userId, score: scoreClean(localScore) };
+        }
+      }
+      return dbRow;
+    };
+    funReactionFor.__v229LocalMerge = true;
+  }
+
+  // After loading DB reactions, keep local in sync but do not erase a newer local pending gesture.
+  if (typeof loadFunReactions === 'function' && !loadFunReactions.__v229LocalMerge) {
+    const originalLoadFunReactions = loadFunReactions;
+    loadFunReactions = async function(){
+      const result = await originalLoadFunReactions.apply(this, arguments);
+      const mine = (funReactions || []).filter(r => r.user_id === uid());
+      const obj = readLocal();
+      mine.forEach(r => { if (!obj[r.fun_idea_id]) obj[r.fun_idea_id] = { score: scoreClean(r.score), updated_at: r.updated_at || new Date().toISOString() }; });
+      writeLocal(obj);
+      return result;
+    };
+    loadFunReactions.__v229LocalMerge = true;
+  }
+
+  function updateReactionVisual(input){
+    if (!input) return;
+    const score = scoreClean(input.value);
+    input.value = String(score);
+    input.setAttribute('data-score', String(score));
+    const row = input.closest('.fun-reaction-row');
+    row?.style.setProperty('--reaction-score', `${score}%`);
+    const value = row?.querySelector('.fun-reaction-value');
+    if (value) {
+      const emoji = typeof reactionEmoji === 'function' ? reactionEmoji(score) : '🙂';
+      const label = typeof reactionLabel === 'function' ? reactionLabel(score) : 'Curious';
+      value.textContent = `${emoji} ${label}`;
+      value.setAttribute('data-score', String(score));
+    }
+  }
+
+  async function saveReactionToSupabase(ideaId, score){
+    if (!client || !tripId() || !uid() || !ideaId) return false;
+    score = scoreClean(score);
+    const now = new Date().toISOString();
+    const localRow = { trip_id: tripId(), fun_idea_id: ideaId, user_id: uid(), score, updated_at: now };
+
+    // Keep in-memory state correct immediately.
+    try {
+      const idx = (funReactions || []).findIndex(r => r.fun_idea_id === ideaId && r.user_id === uid());
+      if (idx >= 0) funReactions[idx] = { ...funReactions[idx], ...localRow };
+      else funReactions.push(localRow);
+    } catch (_) {}
+
+    try {
+      // RPC is preferred because it centralizes permission checks and avoids inconsistent client-side RLS/upsert behavior.
+      const { error } = await client.rpc('upsert_trip_fun_reaction', {
+        p_trip_id: tripId(),
+        p_fun_idea_id: ideaId,
+        p_score: score
+      });
+      if (error) throw error;
+      return true;
+    } catch (rpcErr) {
+      console.warn('Reaction RPC save failed; trying direct upsert.', rpcErr);
+      try {
+        const { error } = await client
+          .from('trip_fun_reactions')
+          .upsert(localRow, { onConflict: 'fun_idea_id,user_id' });
+        if (error) throw error;
+        return true;
+      } catch (upsertErr) {
+        console.warn('Reaction direct save failed.', upsertErr);
+        const nowMs = Date.now();
+        if (nowMs - lastReactionErrorAt > 5000) {
+          lastReactionErrorAt = nowMs;
+          showToast?.('Reaction saved on this device, but Supabase save failed. Re-run schema.sql.', 'error');
+        }
+        return false;
+      }
+    }
+  }
+
+  function scheduleReactionSave(input, immediate=false){
+    if (!input) return;
+    const ideaId = input.dataset.ideaId || input.closest('.fun-reactions')?.dataset.ideaId;
+    if (!ideaId) return;
+    const score = scoreClean(input.value);
+    updateReactionVisual(input);
+    setLocalScore(ideaId, score);
+    const key = `${tripId()}:${uid()}:${ideaId}`;
+    pending.set(key, { ideaId, score });
+    clearTimeout(timers.get(key));
+    const run = () => {
+      const p = pending.get(key);
+      pending.delete(key);
+      timers.delete(key);
+      if (p) saveReactionToSupabase(p.ideaId, p.score);
+    };
+    if (immediate) run();
+    else timers.set(key, setTimeout(run, 900));
+  }
+
+  window.handleFunReactionSlide = function(input){ scheduleReactionSave(input, false); };
+  window.commitFunReactionSlide = function(input){ scheduleReactionSave(input, true); };
+  window.flushFunReactionSaves = async function(){
+    const rows = Array.from(pending.values());
+    pending.clear();
+    timers.forEach(t => clearTimeout(t));
+    timers.clear();
+    for (const p of rows) await saveReactionToSupabase(p.ideaId, p.score);
+  };
+
+  document.addEventListener('input', e => {
+    const input = e.target?.matches?.('.fun-reaction-row.mine input[type="range"]') ? e.target : null;
+    if (input) scheduleReactionSave(input, false);
+  }, true);
+  document.addEventListener('change', e => {
+    const input = e.target?.matches?.('.fun-reaction-row.mine input[type="range"]') ? e.target : null;
+    if (input) scheduleReactionSave(input, true);
+  }, true);
+  document.addEventListener('pointerup', e => {
+    const input = e.target?.matches?.('.fun-reaction-row.mine input[type="range"]') ? e.target : null;
+    if (input) scheduleReactionSave(input, true);
+  }, true);
+  document.addEventListener('touchend', e => {
+    const input = e.target?.matches?.('.fun-reaction-row.mine input[type="range"]') ? e.target : null;
+    if (input) scheduleReactionSave(input, true);
+  }, true);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) window.flushFunReactionSaves?.(); });
+  window.addEventListener('pagehide', () => window.flushFunReactionSaves?.());
+
+  // If the Fun Ideas dialog closes, flush immediately.
+  window.addEventListener('DOMContentLoaded', () => {
+    els?.funIdeasDialog?.addEventListener?.('close', () => window.flushFunReactionSaves?.());
+  });
+})();
