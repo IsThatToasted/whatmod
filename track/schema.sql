@@ -779,14 +779,24 @@ begin
   end loop;
 end $$;
 
--- v60 Database cleanup + safer trip deletion
--- Fixes old empty starter-trip buildup and makes trip deletion clean up related rows/storage metadata.
+-- v62 Final storage-safe cleanup + safer trip deletion
+-- Supabase does not allow direct SQL deletes from storage.objects. Storage files are removed by the app through the Storage API.
+-- These helpers only delete database rows and expose storage paths for safe client/API cleanup.
+
+-- Let trip owners delete all memory photos for their trip through the Storage API.
+drop policy if exists "trip editors delete trip memory photos" on storage.objects;
+drop policy if exists "trip owners delete trip memory photos" on storage.objects;
+create policy "trip editors delete trip memory photos" on storage.objects
+  for delete using (
+    bucket_id = 'trip-memories'
+    and public.user_can_edit_trip(((storage.foldername(name))[1])::uuid)
+  );
 
 create or replace function public.delete_itinerary_trip_cascade(target_trip_id uuid)
 returns boolean
 language plpgsql
 security definer
-set search_path = public, storage
+set search_path = public
 as $$
 begin
   if auth.uid() is null then
@@ -797,19 +807,8 @@ begin
     raise exception 'Only the trip owner can delete this trip.';
   end if;
 
-  -- Remove memory photo objects whose storage path starts with trip_id/user_id/...
-  -- This keeps Supabase Storage from growing after a trip is deleted.
-  begin
-    delete from storage.objects
-    where bucket_id = 'trip-memories'
-      and (storage.foldername(name))[1] = target_trip_id::text;
-  exception when others then
-    -- Keep the trip deletion working even if Storage is not configured yet.
-    null;
-  end;
-
-  -- Most app tables already have ON DELETE CASCADE from itinerary_trips.
-  -- Deleting the trip is the source of truth and cascades child data.
+  -- Child app rows are removed by ON DELETE CASCADE.
+  -- Storage objects must be removed through the Supabase Storage API before/after calling this function.
   delete from public.itinerary_trips
   where id = target_trip_id;
 
@@ -823,7 +822,7 @@ create or replace function public.cleanup_duplicate_empty_itinerary_starters()
 returns integer
 language plpgsql
 security definer
-set search_path = public, storage
+set search_path = public
 as $$
 declare
   removed_count integer := 0;
@@ -860,12 +859,6 @@ begin
     from empty_starters e, real_trip_count r
     where r.n > 0
        or e.id not in (select id from empty_starters order by created_at asc limit 1)
-  ), deleted_storage as (
-    delete from storage.objects o
-    using to_delete d
-    where o.bucket_id = 'trip-memories'
-      and (storage.foldername(o.name))[1] = d.id::text
-    returning 1
   ), deleted as (
     delete from public.itinerary_trips t
     using to_delete d
@@ -882,34 +875,32 @@ $$;
 
 grant execute on function public.cleanup_duplicate_empty_itinerary_starters() to authenticated;
 
+create or replace function public.list_my_orphaned_itinerary_storage()
+returns table(path text)
+language sql
+security definer
+set search_path = public, storage
+as $$
+  select o.name as path
+  from storage.objects o
+  where o.bucket_id = 'trip-memories'
+    and (storage.foldername(o.name))[2] = auth.uid()::text
+    and not exists (
+      select 1 from public.itinerary_trips t
+      where t.id::text = (storage.foldername(o.name))[1]
+    );
+$$;
+
+grant execute on function public.list_my_orphaned_itinerary_storage() to authenticated;
+
 create or replace function public.cleanup_my_orphaned_itinerary_storage()
 returns integer
 language plpgsql
 security definer
-set search_path = public, storage
+set search_path = public
 as $$
-declare
-  removed_count integer := 0;
 begin
-  if auth.uid() is null then
-    return 0;
-  end if;
-
-  -- Clean old memory photo objects for this user where the trip no longer exists.
-  with deleted as (
-    delete from storage.objects o
-    where o.bucket_id = 'trip-memories'
-      and (storage.foldername(o.name))[2] = auth.uid()::text
-      and not exists (
-        select 1 from public.itinerary_trips t
-        where t.id::text = (storage.foldername(o.name))[1]
-      )
-    returning 1
-  )
-  select count(*)::integer into removed_count from deleted;
-
-  return coalesce(removed_count, 0);
-exception when others then
+  -- Kept for backward compatibility. The app must delete returned paths through the Supabase Storage API.
   return 0;
 end;
 $$;

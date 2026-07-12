@@ -127,3 +127,18 @@ This build adds:
 - No automatic creation of a new `My Trip` after deleting the last trip; the app now prompts you to create one instead.
 
 Run `schema.sql` once in Supabase SQL Editor before testing deletion/cleanup.
+
+
+## V2.1 Final Polish Notes
+
+This checkpoint adds a completed-trip memory mode and storage/performance hardening.
+
+- Completed trips automatically show a Memories recap panel instead of the active planner.
+- The recap uses saved photo memories with soft transitions and an optional generated ambient audio button. Browsers require a tap before audio can play.
+- The planner is still available from the completed-trip panel with **Open planner**.
+- Memory uploads are compressed client-side where possible before upload to reduce Supabase Storage usage.
+- Memory deletion now also attempts to remove the associated file from the `trip-memories` Storage bucket.
+- Trip deletion attempts to remove memory photo files through the Supabase Storage API before deleting the trip/database rows.
+- The schema avoids direct SQL deletion from `storage.objects`, because Supabase blocks that for safety.
+
+Run `schema.sql` once after deploying this version so the Storage delete policy and cleanup helpers are current.

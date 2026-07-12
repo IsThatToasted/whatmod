@@ -2456,3 +2456,263 @@ async function deletePackingItem(id) {
   renderPackingProgressSummary();
   broadcastTripChange?.('Packing updated');
 }
+
+
+/* v2.1.12 final polish: storage-safe memories, completed-trip story mode, and cleanup hardening */
+(function finalPolishStorageAndCompletedMode(){
+  let originalRender = typeof render === 'function' ? render : null;
+  let storyTimer = null;
+  let storyIndex = 0;
+  let ambientCtx = null;
+  let ambientNodes = [];
+  let plannerOverride = false;
+
+  function localDateTimeTitle(){
+    try {
+      return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date());
+    } catch { return new Date().toLocaleString(); }
+  }
+  function tripEnded(trip){
+    if (!trip?.end_date) return false;
+    const end = new Date(`${trip.end_date}T23:59:59`);
+    return Number.isFinite(end.getTime()) && Date.now() > end.getTime();
+  }
+  function tripStarted(trip){
+    if (!trip?.start_date) return false;
+    const start = new Date(`${trip.start_date}T00:00:00`);
+    return Number.isFinite(start.getTime()) && Date.now() >= start.getTime();
+  }
+  function completedStorageKey(){ return `itineraryTrackerV2.completedPlannerOpen:${activeTripId || 'none'}`; }
+  function readPlannerOverride(){
+    try { return localStorage.getItem(completedStorageKey()) === '1'; } catch { return false; }
+  }
+  function writePlannerOverride(value){
+    plannerOverride = !!value;
+    try { localStorage.setItem(completedStorageKey(), plannerOverride ? '1' : '0'); } catch {}
+    renderCompletedTripExperience();
+  }
+  function memoryPhotos(){ return (memoryItems || []).filter(m => m && m.photo_url); }
+  function ensureCompletedTripStory(){
+    let el = document.getElementById('completedTripStory');
+    if (el) return el;
+    el = document.createElement('section');
+    el.id = 'completedTripStory';
+    el.className = 'completed-trip-story glass hidden';
+    el.innerHTML = `
+      <div class="completed-story-bg"><span></span><span></span><span></span></div>
+      <div class="completed-story-copy">
+        <p class="eyebrow">Trip complete</p>
+        <h2 id="completedStoryTitle">Your memories are ready</h2>
+        <p id="completedStorySub">Relive the best moments from this trip.</p>
+        <div class="completed-story-stats" id="completedStoryStats"></div>
+        <div class="completed-story-actions">
+          <button type="button" id="completedAddMemoryBtn">📷 Add Memory</button>
+          <button type="button" id="completedViewSlideshowBtn" class="ghost-btn">▶ Full Slideshow</button>
+          <button type="button" id="completedAmbientBtn" class="ghost-btn">♪ Ambience</button>
+          <button type="button" id="completedPlannerToggleBtn" class="ghost-btn">Open planner</button>
+        </div>
+      </div>
+      <div class="completed-story-stage" id="completedStoryStage"></div>`;
+    const home = document.getElementById('homeDashboard');
+    if (home?.parentNode) home.parentNode.insertBefore(el, home.nextSibling);
+    else document.querySelector('main')?.prepend(el);
+    el.querySelector('#completedAddMemoryBtn')?.addEventListener('click', () => {
+      if (typeof startQuickMemoryCapture === 'function') startQuickMemoryCapture();
+      else els.memoryPhotoInput?.click();
+    });
+    el.querySelector('#completedViewSlideshowBtn')?.addEventListener('click', () => openMemorySlideshow?.());
+    el.querySelector('#completedAmbientBtn')?.addEventListener('click', toggleAmbientMemorySound);
+    el.querySelector('#completedPlannerToggleBtn')?.addEventListener('click', () => writePlannerOverride(!plannerOverride));
+    return el;
+  }
+  function renderCompletedTripExperience(){
+    const trip = currentTrip?.();
+    const el = ensureCompletedTripStory();
+    plannerOverride = readPlannerOverride();
+    const complete = !!trip && tripEnded(trip);
+    document.body.classList.toggle('trip-complete-mode', complete);
+    document.body.classList.toggle('trip-planner-override', complete && plannerOverride);
+    el.classList.toggle('hidden', !complete);
+    if (!complete) { stopStoryTimer(); return; }
+
+    const photos = memoryPhotos();
+    const title = el.querySelector('#completedStoryTitle');
+    const sub = el.querySelector('#completedStorySub');
+    const stats = el.querySelector('#completedStoryStats');
+    const toggle = el.querySelector('#completedPlannerToggleBtn');
+    if (title) title.textContent = `${trip.title || 'Trip'} Memories`;
+    if (sub) sub.textContent = photos.length ? 'A soft slideshow from the moments you saved.' : 'Add photo memories to build your trip recap.';
+    if (stats) stats.innerHTML = `<span>📸 ${photos.length} photos</span><span>💜 ${memoryItems?.length || 0} memories</span><span>🗓 ${fmtShortDate?.(trip.start_date) || trip.start_date || ''} – ${fmtShortDate?.(trip.end_date) || trip.end_date || ''}</span>`;
+    if (toggle) toggle.textContent = plannerOverride ? 'Return to memories' : 'Open planner';
+    renderCompletedStorySlide();
+    startStoryTimer();
+  }
+  function renderCompletedStorySlide(){
+    const stage = document.getElementById('completedStoryStage');
+    if (!stage) return;
+    const photos = memoryPhotos();
+    if (!photos.length) {
+      stage.innerHTML = `<div class="completed-empty-memory"><span>📷</span><strong>No photo memories yet</strong><p>Tap Add Memory to capture the first photo recap for this trip.</p></div>`;
+      return;
+    }
+    storyIndex = ((storyIndex % photos.length) + photos.length) % photos.length;
+    const mem = photos[storyIndex];
+    const next = photos[(storyIndex + 1) % photos.length];
+    stage.innerHTML = `
+      <figure class="completed-slide-card" key="${escapeHtml(mem.id)}">
+        <img src="${escapeHtml(mem.photo_url)}" alt="Trip memory" loading="eager" />
+        <figcaption><strong>${escapeHtml(mem.note || localDateTimeTitle())}</strong><span>${escapeHtml(fmtShortDate?.(mem.memory_date) || mem.memory_date || '')} • ${storyIndex + 1}/${photos.length}</span></figcaption>
+      </figure>
+      ${next && photos.length > 1 ? `<img class="completed-next-preload" src="${escapeHtml(next.photo_url)}" alt="" loading="lazy" />` : ''}`;
+  }
+  function startStoryTimer(){
+    const photos = memoryPhotos();
+    stopStoryTimer();
+    if (!document.body.classList.contains('trip-complete-mode') || photos.length < 2) return;
+    storyTimer = setInterval(() => { storyIndex += 1; renderCompletedStorySlide(); }, 5200);
+  }
+  function stopStoryTimer(){ if (storyTimer) clearInterval(storyTimer); storyTimer = null; }
+  function toggleAmbientMemorySound(){
+    const btn = document.getElementById('completedAmbientBtn');
+    if (ambientCtx) { stopAmbientMemorySound(); if (btn) btn.textContent = '♪ Ambience'; return; }
+    try {
+      ambientCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const master = ambientCtx.createGain(); master.gain.value = 0.025; master.connect(ambientCtx.destination);
+      [196, 246.94, 329.63].forEach((freq, idx) => {
+        const osc = ambientCtx.createOscillator();
+        const gain = ambientCtx.createGain();
+        osc.type = idx === 0 ? 'sine' : 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.12 / (idx + 1);
+        osc.connect(gain); gain.connect(master); osc.start();
+        ambientNodes.push(osc, gain);
+      });
+      if (btn) btn.textContent = 'Pause ambience';
+    } catch { alert('Ambient audio is not available in this browser.'); }
+  }
+  function stopAmbientMemorySound(){
+    try { ambientNodes.forEach(n => { if (typeof n.stop === 'function') n.stop(); }); } catch {}
+    try { ambientCtx?.close?.(); } catch {}
+    ambientNodes = []; ambientCtx = null;
+  }
+
+  async function optimizeMemoryImage(file){
+    if (!file || !/^image\//i.test(file.type || '') || /svg/i.test(file.type || '')) return file;
+    const maxDim = 1600;
+    const quality = 0.82;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+      if (scale >= 0.98 && file.size < 900000) return file;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const ctx = canvas.getContext('2d', { alpha: false });
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+      bitmap.close?.();
+      if (!blob || blob.size >= file.size) return file;
+      const safeName = (file.name || 'memory.jpg').replace(/\.[^.]+$/, '') + '.jpg';
+      return new File([blob], safeName, { type: 'image/jpeg', lastModified: Date.now() });
+    } catch (err) {
+      console.warn('Memory image optimization skipped.', err);
+      return file;
+    }
+  }
+
+  uploadMemoryPhoto = async function uploadMemoryPhotoFinal(file){
+    if (!file) return { photo_url: '', photo_path: '' };
+    const optimized = await optimizeMemoryImage(file);
+    const ext = ((optimized.name || '').split('.').pop() || (optimized.type === 'image/jpeg' ? 'jpg' : 'jpg')).toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const path = `${activeTripId}/${session.user.id}/${Date.now()}-${Math.random().toString(16).slice(2)}.${ext}`;
+    const { error } = await client.storage.from('trip-memories').upload(path, optimized, { cacheControl: '31536000', upsert: false, contentType: optimized.type || 'image/jpeg' });
+    if (error) throw error;
+    const { data } = client.storage.from('trip-memories').getPublicUrl(path);
+    return { photo_url: data?.publicUrl || '', photo_path: path };
+  };
+
+  async function removeMemoryPhotoPaths(paths){
+    const clean = [...new Set((paths || []).filter(Boolean))];
+    if (!clean.length) return;
+    for (let i = 0; i < clean.length; i += 50) {
+      const batch = clean.slice(i, i + 50);
+      const { error } = await client.storage.from('trip-memories').remove(batch);
+      if (error) console.warn('Some memory photos could not be removed from storage.', error);
+    }
+  }
+
+  deleteMemoryItem = async function deleteMemoryItemFinal(id){
+    if (!canEdit()) return;
+    const mem = memoryItems.find(i => i.id === id);
+    const label = mem?.note || (mem?.photo_url ? 'this photo memory' : 'this memory');
+    if (!confirm(`Delete "${label}"? This cannot be undone.`)) return;
+    const prev = memoryItems.slice();
+    memoryItems = memoryItems.filter(i => i.id !== id);
+    renderMemoryList();
+    const { error } = await client.from('itinerary_memories').delete().eq('id', id);
+    if (error) { memoryItems = prev; renderMemoryList(); showDbError(error); return; }
+    if (mem?.photo_path) await removeMemoryPhotoPaths([mem.photo_path]);
+    await loadMemoryItems();
+    renderMemoryList(); renderCompletedTripExperience();
+    renderHomeDashboard?.(); renderTripProgress?.();
+    broadcastTripChange?.('Memory deleted');
+  };
+
+  const originalDeleteTrip = typeof deleteTrip === 'function' ? deleteTrip : null;
+  deleteTrip = async function deleteTripFinal(){
+    if (!activeTripId || !canDeleteTrip()) return alert('Only the trip owner can delete the trip.');
+    const trip = currentTrip();
+    if (!confirm(`Delete "${trip?.title || 'this trip'}" and all of its itinerary data? This cannot be undone.`)) return;
+    const deletedId = activeTripId;
+    let photoPaths = [];
+    try {
+      const { data } = await client.from('itinerary_memories').select('photo_path').eq('trip_id', deletedId);
+      photoPaths = (data || []).map(x => x.photo_path).filter(Boolean);
+    } catch (err) { console.warn('Could not list memory photo paths before trip delete.', err); }
+    try { await removeMemoryPhotoPaths(photoPaths); } catch (err) { console.warn('Storage cleanup before trip delete skipped.', err); }
+
+    let error = null;
+    try {
+      const res = await client.rpc('delete_itinerary_trip_cascade', { target_trip_id: deletedId });
+      error = res.error;
+    } catch (rpcError) { error = rpcError; }
+    if (error) {
+      console.warn('delete_itinerary_trip_cascade unavailable, falling back to direct delete.', error);
+      const fallback = await client.from('itinerary_trips').delete().eq('id', deletedId);
+      error = fallback.error;
+    }
+    if (error) return showDbError(error);
+
+    trips = trips.filter(t => t.id !== deletedId);
+    if (localStorage.getItem('activeTripId') === deletedId) localStorage.removeItem('activeTripId');
+    activeTripId = trips[0]?.id || null;
+    try { localStorage.removeItem(`itineraryTrackerV2.completedPlannerOpen:${deletedId}`); } catch {}
+    if (!activeTripId) {
+      items = []; members = []; packingItems = []; packingProgressByUser = []; mustDoItems = []; memoryItems = [];
+      funIdeas = []; funPermissions = []; funCategories = []; shoppingListItems = []; shoppingListPermissions = [];
+      setStatus('Trip deleted. Create a new trip when ready.');
+      stopAmbientMemorySound();
+      render();
+      return;
+    }
+    localStorage.setItem('activeTripId', activeTripId);
+    setStatus('Trip deleted');
+    await loadTripData();
+  };
+
+  render = function renderFinalPolish(){
+    originalRender?.();
+    renderCompletedTripExperience();
+  };
+
+  // Rebind trip delete with capture so this fixed path wins even if older listeners exist.
+  els.deleteTripBtn?.addEventListener('click', (event) => {
+    event.preventDefault(); event.stopImmediatePropagation(); deleteTrip();
+  }, true);
+
+  // Live refresh completed story when slideshow dialog closes/changes and when visibility changes.
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopStoryTimer(); else renderCompletedTripExperience(); });
+
+  // Initial final render once this patch is installed.
+  setTimeout(() => { try { renderCompletedTripExperience(); } catch (err) { console.warn(err); } }, 600);
+})();
