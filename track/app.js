@@ -1,3 +1,8 @@
+var showToast = window.showToast || function(message, type, timeout){
+  if (window.showAppToast) return window.showAppToast(message, type, timeout);
+  try { console.log('[toast]', message); } catch (_) {}
+};
+window.showToast = showToast;
 const SUPABASE_URL = 'https://cuhbzgeqvgzshwwfkpdm.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo';
 const REDIRECT_TO = location.origin.includes('localhost') || location.protocol === 'file:' ? location.href : 'https://whatmod.com/track/';
@@ -3890,4 +3895,408 @@ async function deletePackingItem(id) {
   window.addEventListener('DOMContentLoaded', () => {
     els?.funIdeasDialog?.addEventListener?.('close', () => window.flushFunReactionSaves?.());
   });
+})();
+
+
+/* === V2.2.11 toast/license/memory gate fix ===
+   Fixes showToast missing during license redemption and blocks Premium-only
+   memory capture before the file picker/camera can open on Free accounts. */
+(function toastLicenseMemoryGateFix(){
+  const BUILD = 'V2.2.11-toast-memory-gate-2026-07-12';
+  window.ITINERARY_TRACKER_BUILD = BUILD;
+  try { document.documentElement.setAttribute('data-build', BUILD); } catch (_) {}
+
+  function safeToast(message, type='info', timeout=3200){
+    try {
+      if (window.showAppToast) return window.showAppToast(message, type, timeout);
+      const text = String(message || 'Updated');
+      const host = document.getElementById('toastHost') || (() => {
+        const h = document.createElement('div');
+        h.id = 'toastHost';
+        h.className = 'toast-host';
+        document.body.appendChild(h);
+        return h;
+      })();
+      const el = document.createElement('div');
+      el.className = `app-toast ${type}`;
+      el.innerHTML = `<span>${type === 'error' ? '⚠️' : type === 'success' ? '✅' : '✨'}</span><strong>${text.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}</strong>`;
+      host.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 260); }, timeout);
+    } catch (_) {
+      try { console.log(message); } catch (__) {}
+    }
+  }
+  // Existing code calls both showToast(...) and showToast?.(...). Define both forms.
+  window.showToast = safeToast;
+  try { showToast = safeToast; } catch (_) {}
+
+  function isPremium(){ return typeof window.isPremiumUser === 'function' && window.isPremiumUser(); }
+  function memoryLockedMessage(){
+    const msg = 'Photo Memories are a Premium feature. Redeem a Premium key to add memory photos and recaps.';
+    if (typeof window.showPremiumGate === 'function') window.showPremiumGate('Memories');
+    else safeToast(msg, 'info', 4500);
+  }
+  function blockMemoryIfFree(event){
+    if (isPremium()) return;
+    event?.preventDefault?.();
+    event?.stopImmediatePropagation?.();
+    if (event) event.cancelBubble = true;
+    if (els?.memoryPhotoInput) els.memoryPhotoInput.value = '';
+    memoryLockedMessage();
+    return false;
+  }
+  function applyMemoryGateUI(){
+    const locked = !isPremium();
+    const selectors = ['#memoryPhotoBtn', '#mobileNavMemory', '#completedAddMemoryBtn'];
+    selectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(btn => {
+        btn.classList.toggle('premium-action-locked', locked);
+        btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
+        btn.title = locked ? 'Premium Memories required' : '';
+      });
+    });
+    document.querySelectorAll('.memory-delete, #memorySlideshowBtn, #completedViewSlideshowBtn').forEach(btn => {
+      btn.classList.toggle('premium-action-locked', locked);
+      btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    });
+  }
+  // Capture phase: stop old file-picker click handlers before they open the picker.
+  document.addEventListener('click', event => {
+    const target = event.target?.closest?.('#memoryPhotoBtn, #mobileNavMemory, #completedAddMemoryBtn, #memorySlideshowBtn, #completedViewSlideshowBtn');
+    if (target) blockMemoryIfFree(event);
+  }, true);
+  document.addEventListener('submit', event => {
+    if (event.target?.closest?.('#memoryForm')) blockMemoryIfFree(event);
+  }, true);
+  document.addEventListener('change', event => {
+    if (event.target?.matches?.('#memoryPhotoInput') && !isPremium()) {
+      event.preventDefault?.();
+      event.stopImmediatePropagation?.();
+      event.target.value = '';
+      memoryLockedMessage();
+    }
+  }, true);
+
+  // Patch wrappers again in case old direct references are still reachable.
+  const wrapPremium = (name, feature) => {
+    const fn = window[name] || (typeof globalThis !== 'undefined' ? globalThis[name] : null);
+    if (typeof fn !== 'function' || fn.__v2211MemoryGate) return;
+    const wrapped = function(){
+      if (!isPremium()) { memoryLockedMessage(); return; }
+      return fn.apply(this, arguments);
+    };
+    wrapped.__v2211MemoryGate = true;
+    try { window[name] = wrapped; globalThis[name] = wrapped; } catch (_) {}
+  };
+  wrapPremium('startQuickMemoryCapture', 'Memories');
+  wrapPremium('addMemoryItem', 'Memories');
+  wrapPremium('openMemorySlideshow', 'Trip recap');
+
+  // Make redeem feedback safe and force UI gates to re-apply after license changes.
+  if (typeof window.redeemPremiumLicense === 'function' && !window.redeemPremiumLicense.__v2211SafeToast) {
+    const oldRedeem = window.redeemPremiumLicense;
+    window.redeemPremiumLicense = async function(){
+      const before = isPremium();
+      const result = await oldRedeem.apply(this, arguments);
+      applyMemoryGateUI();
+      window.enforcePremiumDom?.();
+      if (!before && isPremium()) safeToast('Premium unlocked', 'success');
+      return result;
+    };
+    window.redeemPremiumLicense.__v2211SafeToast = true;
+  }
+
+  const oldEnforce = window.enforcePremiumDom;
+  window.enforcePremiumDom = function(){
+    const result = oldEnforce?.apply(this, arguments);
+    applyMemoryGateUI();
+    return result;
+  };
+  const oldRender = typeof render === 'function' ? render : null;
+  if (oldRender && !oldRender.__v2211MemoryGate) {
+    render = function(){
+      const result = oldRender.apply(this, arguments);
+      setTimeout(applyMemoryGateUI, 0);
+      return result;
+    };
+    render.__v2211MemoryGate = true;
+  }
+
+  function refreshBuildBadge(){
+    let badge = document.getElementById('buildVersionBadge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'buildVersionBadge';
+      badge.className = 'build-version-badge';
+      document.body.appendChild(badge);
+    }
+    badge.textContent = BUILD;
+  }
+  window.addEventListener('DOMContentLoaded', () => {
+    refreshBuildBadge();
+    setTimeout(applyMemoryGateUI, 100);
+    setTimeout(applyMemoryGateUI, 1200);
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(applyMemoryGateUI, 50); });
+})();
+
+/* === V2.2.12 configurable licensing / entitlements === */
+(function(){
+  const BUILD = 'V2.2.12-entitlement-admin-gates-2026-07-12';
+  const DEFAULT_FREE = {
+    plan: 'free', active: false,
+    events_per_day: 5, max_trips: 1,
+    enable_maps: false,
+    enable_memories: false,
+    enable_shopping_lists: false,
+    enable_recaps: false
+  };
+  const DEFAULT_PREMIUM = {
+    plan: 'premium', active: true,
+    events_per_day: 25, max_trips: 25,
+    enable_maps: true,
+    enable_memories: true,
+    enable_shopping_lists: true,
+    enable_recaps: true
+  };
+  let entitlementState = { ...DEFAULT_FREE };
+  let entitlementLoadedFor = '';
+  let entitlementLoading = null;
+
+  function uid(){ return session?.user?.id || ''; }
+  function mergedEntitlement(row){
+    const plan = String(row?.plan || 'free').toLowerCase() === 'premium' ? 'premium' : 'free';
+    const base = plan === 'premium' ? DEFAULT_PREMIUM : DEFAULT_FREE;
+    return {
+      ...base,
+      ...(row || {}),
+      plan,
+      active: plan === 'premium' ? row?.active !== false : false,
+      events_per_day: Number(row?.events_per_day ?? base.events_per_day),
+      max_trips: Number(row?.max_trips ?? base.max_trips),
+      enable_maps: Boolean(row?.enable_maps ?? base.enable_maps),
+      enable_memories: Boolean(row?.enable_memories ?? base.enable_memories),
+      enable_shopping_lists: Boolean(row?.enable_shopping_lists ?? base.enable_shopping_lists),
+      enable_recaps: Boolean(row?.enable_recaps ?? base.enable_recaps)
+    };
+  }
+  function isPremiumLike(){ return entitlementState.plan === 'premium' && entitlementState.active !== false; }
+  function featureEnabled(name){
+    if (!isPremiumLike()) return false;
+    if (name === 'maps') return !!entitlementState.enable_maps;
+    if (name === 'memories') return !!entitlementState.enable_memories;
+    if (name === 'shopping_lists') return !!entitlementState.enable_shopping_lists;
+    if (name === 'recaps') return !!entitlementState.enable_recaps;
+    return isPremiumLike();
+  }
+  function safeToast2(msg, type='info'){
+    if (typeof showToast === 'function') return showToast(msg, type);
+    if (typeof window.showAppToast === 'function') return window.showAppToast(msg, type);
+    console.log(`[${type}] ${msg}`);
+  }
+  function premiumMsg(feature){
+    safeToast2(`${feature} is not enabled on your current plan.`, 'info');
+  }
+
+  window.getLicenseEntitlements = () => ({ ...entitlementState });
+  window.currentLicensePlan = () => entitlementState.plan || 'free';
+  window.isPremiumUser = () => isPremiumLike();
+  window.featureEnabled = featureEnabled;
+  window.dailyEventLimit = () => Number(entitlementState.events_per_day || 5);
+  window.tripLimit = () => Number(entitlementState.max_trips || 1);
+  window.showPremiumGate = premiumMsg;
+
+  async function loadLicenseEntitlements(force=false){
+    if (!client || !uid()) { entitlementState = { ...DEFAULT_FREE }; applyEntitlementUI(); return entitlementState; }
+    if (!force && entitlementLoadedFor === uid()) return entitlementState;
+    if (entitlementLoading) return entitlementLoading;
+    entitlementLoading = (async () => {
+      try {
+        const { data, error } = await client.rpc('get_itinerary_license_status');
+        if (error) throw error;
+        entitlementState = mergedEntitlement(data || DEFAULT_FREE);
+      } catch (err) {
+        console.warn('Entitlement status unavailable; falling back to legacy plan/free.', err);
+        try {
+          const { data, error } = await client.rpc('get_itinerary_license_plan');
+          if (error) throw error;
+          entitlementState = mergedEntitlement({ plan: data });
+        } catch (_) {
+          entitlementState = { ...DEFAULT_FREE };
+        }
+      } finally {
+        entitlementLoadedFor = uid();
+        entitlementLoading = null;
+      }
+      applyEntitlementUI();
+      return entitlementState;
+    })();
+    return entitlementLoading;
+  }
+  window.loadLicensePlan = loadLicenseEntitlements;
+  window.loadLicenseEntitlements = loadLicenseEntitlements;
+
+  async function redeemLicenseKey(){
+    const key = prompt('Enter your premium license key:');
+    if (!key) return;
+    try {
+      const { data, error } = await client.rpc('redeem_itinerary_license', { p_license_key: key.trim() });
+      if (error) throw error;
+      entitlementState = mergedEntitlement(data || { plan: 'premium' });
+      entitlementLoadedFor = uid();
+      applyEntitlementUI();
+      try { render?.(); } catch(_) {}
+      try { renderDayMap?.(); } catch(_) {}
+      safeToast2('Premium unlocked', 'success');
+    } catch (err) {
+      console.warn('License redeem failed', err);
+      alert(err.message || 'Could not redeem license.');
+    }
+  }
+  window.redeemPremiumLicense = redeemLicenseKey;
+
+  function gateMarkup(feature, emoji='✨'){
+    return `<div class="premium-map-gate"><span>${emoji}</span><strong>${feature}</strong><p>This feature is not enabled on your current plan.</p><button type="button" class="ghost-btn premium-upgrade-btn">Unlock Premium</button></div>`;
+  }
+
+  function applyEntitlementUI(){
+    const premium = isPremiumLike();
+    document.documentElement.setAttribute('data-build', BUILD);
+    document.body.classList.toggle('plan-premium', premium);
+    document.body.classList.toggle('plan-free', !premium);
+    document.body.dataset.plan = entitlementState.plan || 'free';
+
+    let badge = document.getElementById('licensePlanBadge');
+    if (badge) {
+      badge.textContent = premium ? '✨ Premium' : 'Free';
+      badge.title = premium
+        ? `Premium active • ${entitlementState.events_per_day} events/day • ${entitlementState.max_trips} trips`
+        : 'Free plan';
+      badge.onclick = premium
+        ? () => alert(`Premium active\n\nEvents/day: ${entitlementState.events_per_day}\nTrips allowed: ${entitlementState.max_trips}\nMaps: ${featureEnabled('maps') ? 'on' : 'off'}\nMemories: ${featureEnabled('memories') ? 'on' : 'off'}\nShopping lists: ${featureEnabled('shopping_lists') ? 'on' : 'off'}\nRecaps: ${featureEnabled('recaps') ? 'on' : 'off'}`)
+        : redeemLicenseKey;
+    }
+
+    // Hide upgrade prompts/buttons as soon as a user is premium or the specific feature is enabled.
+    document.querySelectorAll('.premium-upgrade-btn').forEach(btn => {
+      if (premium) btn.remove();
+    });
+    if (premium) document.querySelectorAll('.premium-note').forEach(n => n.remove());
+
+    // Shopping list pill is controlled by its own entitlement.
+    document.querySelectorAll('.shopping-list-pill').forEach(el => {
+      const on = featureEnabled('shopping_lists');
+      el.hidden = !on;
+      el.style.display = on ? '' : 'none';
+    });
+
+    // Memory actions should not be clickable unless memories are enabled.
+    const memOn = featureEnabled('memories');
+    [els?.memoryPhotoBtn, els?.mobileNavMemory, document.getElementById('completedAddMemoryBtn')].forEach(el => {
+      if (!el) return;
+      el.classList.toggle('premium-disabled', !memOn);
+      el.setAttribute('aria-disabled', memOn ? 'false' : 'true');
+      el.title = memOn ? '' : 'Premium Memories required';
+    });
+    if (els?.memoryPanel) {
+      els.memoryPanel.classList.toggle('premium-locked-panel', !memOn);
+    }
+
+    // If maps are not enabled, fail closed even if an older render already created Leaflet.
+    if (!featureEnabled('maps') && els?.dailyRouteMap) {
+      if (els.dailyMapTitle) els.dailyMapTitle.textContent = 'Daily route';
+      if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Maps and route planning are Premium features.';
+      if (els.dailyDirectionsLink) { els.dailyDirectionsLink.classList.add('hidden'); els.dailyDirectionsLink.removeAttribute('href'); }
+      if (els.dailyMapLegend) els.dailyMapLegend.classList.add('hidden');
+      if (els.dailyMapStops) els.dailyMapStops.innerHTML = '';
+      if (!els.dailyRouteMap.querySelector('.premium-map-gate')) {
+        els.dailyRouteMap.innerHTML = gateMarkup('Premium maps', '🗺️');
+        els.dailyRouteMap.querySelector('.premium-upgrade-btn')?.addEventListener('click', redeemLicenseKey);
+      }
+    }
+
+    let buildBadge = document.getElementById('buildVersionBadge');
+    if (!buildBadge) {
+      buildBadge = document.createElement('div');
+      buildBadge.id = 'buildVersionBadge';
+      buildBadge.className = 'build-version-badge';
+      document.body.appendChild(buildBadge);
+    }
+    buildBadge.textContent = BUILD;
+  }
+  window.applyEntitlementUI = applyEntitlementUI;
+  window.enforcePremiumDom = applyEntitlementUI;
+
+  // Strong feature gates. These protect against buttons/functions that were bound before licensing loaded.
+  function wrapFeature(name, feature, label){
+    const fn = window[name] || globalThis[name];
+    if (typeof fn !== 'function' || fn.__entitlementWrapped) return;
+    const wrapped = function(){
+      if (!featureEnabled(feature)) { premiumMsg(label); return; }
+      return fn.apply(this, arguments);
+    };
+    wrapped.__entitlementWrapped = true;
+    try { window[name] = wrapped; globalThis[name] = wrapped; } catch(_) {}
+  }
+  wrapFeature('startQuickMemoryCapture', 'memories', 'Memories');
+  wrapFeature('addMemoryItem', 'memories', 'Memories');
+  wrapFeature('openMemorySlideshow', 'recaps', 'Trip recap');
+  wrapFeature('openShoppingListDialog', 'shopping_lists', 'Shopping lists');
+
+  // Gate map rendering by maps entitlement, not just plan name.
+  if (typeof renderDayMap === 'function' && !renderDayMap.__entitlementWrapped) {
+    const oldMap = renderDayMap;
+    renderDayMap = function(){
+      if (!featureEnabled('maps')) { applyEntitlementUI(); return; }
+      return oldMap.apply(this, arguments);
+    };
+    renderDayMap.__entitlementWrapped = true;
+  }
+
+  // Gate memory picker before the browser opens camera/file chooser.
+  document.addEventListener('click', event => {
+    const target = event.target?.closest?.('#memoryPhotoBtn, #mobileNavMemory, #completedAddMemoryBtn');
+    if (target && !featureEnabled('memories')) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      premiumMsg('Memories');
+    }
+  }, true);
+
+  // Gate trip creation using adjustable entitlement max_trips.
+  if (typeof createTrip === 'function' && !createTrip.__entitlementWrapped) {
+    const oldCreateTrip = createTrip;
+    createTrip = async function(input){
+      await loadLicenseEntitlements();
+      const limit = window.tripLimit();
+      const owned = (trips || []).filter(t => (t.user_id || t.created_by || t.owner_id) === uid() || true).length;
+      if (Number.isFinite(limit) && limit > 0 && owned >= limit) {
+        premiumMsg(`Trip limit reached (${limit})`);
+        return;
+      }
+      return oldCreateTrip.apply(this, arguments);
+    };
+    createTrip.__entitlementWrapped = true;
+  }
+
+  // Re-apply after each render so old DOM cannot expose disabled features.
+  if (typeof render === 'function' && !render.__entitlementWrapped) {
+    const oldRender = render;
+    render = function(){
+      const out = oldRender.apply(this, arguments);
+      setTimeout(applyEntitlementUI, 0);
+      return out;
+    };
+    render.__entitlementWrapped = true;
+  }
+
+  // Load as soon as possible and refresh after sign-in / visibility.
+  window.addEventListener('DOMContentLoaded', () => {
+    loadLicenseEntitlements(true);
+    setTimeout(applyEntitlementUI, 250);
+    setTimeout(applyEntitlementUI, 1500);
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadLicenseEntitlements(true); });
 })();

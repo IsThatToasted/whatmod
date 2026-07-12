@@ -201,3 +201,78 @@ A user can click the small Free/Premium badge in the app to redeem a key.
 ## Fun Ideas reactions
 
 This build replaces fragile client upserts with the `upsert_trip_fun_reaction()` RPC helper. Slider movement updates the UI immediately, then saves once after the user pauses/releases the slider. It should feel live without repeatedly hammering Supabase.
+
+
+## V2.2.11 toast/license/memory gate fix
+- Fixes `showToast is not defined` during license redemption.
+- Blocks Free users from opening Add Memory/camera before Premium is redeemed.
+- Bumps app/styles cache to v94 and build badge to V2.2.11.
+
+## V2.2.12 Licensing / Entitlements
+
+This build upgrades licensing from a simple Free/Premium switch to configurable per-user entitlements.
+
+Run `schema.sql` once after uploading this build.
+
+### Default behavior
+
+Free users:
+- 5 events per day
+- 1 trip
+- Maps disabled
+- Shopping lists disabled
+- Photo memories disabled
+- Completed-trip recap disabled
+
+Premium users by default:
+- 25 events per day
+- 25 trips
+- Maps enabled
+- Shopping lists enabled
+- Photo memories enabled
+- Completed-trip recap enabled
+
+### Create a customizable license key
+
+```sql
+insert into public.itinerary_license_keys(
+  license_key,
+  max_redemptions,
+  events_per_day,
+  max_trips,
+  enable_maps,
+  enable_memories,
+  enable_shopping_lists,
+  enable_recaps
+) values (
+  'TOASTED-ADMIN-001',
+  1,
+  25,
+  25,
+  true,
+  true,
+  true,
+  true
+);
+```
+
+### Manually adjust a user's Premium access
+
+Run this from Supabase SQL Editor as the project owner:
+
+```sql
+select public.admin_set_itinerary_entitlement_by_email(
+  'user@example.com',
+  'premium',
+  true,
+  40,   -- events per day
+  10,   -- max trips
+  true, -- maps
+  true, -- memories
+  false,-- shopping lists
+  true, -- recaps
+  'Manual adjustment'
+);
+```
+
+You do not need a Windows licensing app for the first version. Supabase can store and enforce the license status now. Later, this can become a small admin dashboard or Stripe webhook/Edge Function.

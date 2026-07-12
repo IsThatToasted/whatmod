@@ -3438,3 +3438,24 @@ body.agenda-view .timeline-board{height:auto!important;min-height:0!important;pa
 .fun-reaction-row{--reaction-score:50%;}
 .fun-reaction-row.mine input[type="range"]{accent-color:#7c5cff;}
 .fun-reaction-value{min-width:112px;text-align:center;}
+
+
+/* V2.2.11 Premium action lock polish */
+.premium-action-locked {
+  opacity: .58;
+  filter: grayscale(.25);
+  position: relative;
+}
+.premium-action-locked::after {
+  content: '🔒';
+  margin-left: .25rem;
+  font-size: .85em;
+}
+
+/* V2.2.12 entitlement UI cleanup */
+.plan-premium .premium-upgrade-btn,
+.plan-premium .premium-note { display: none !important; }
+.premium-disabled { opacity: .55; filter: grayscale(.15); }
+.license-plan-badge { white-space: nowrap; }
+.build-version-badge { position: fixed; right: 8px; bottom: 8px; z-index: 9999; font-size: 10px; opacity: .55; background: rgba(255,255,255,.75); color: #5b5470; border: 1px solid rgba(120,110,150,.22); border-radius: 999px; padding: 4px 8px; backdrop-filter: blur(10px); }
+.theme-dark .build-version-badge, [data-theme="dark"] .build-version-badge { background: rgba(28,24,45,.75); color: #e9ddff; }

@@ -1136,3 +1136,199 @@ end;
 $$;
 
 grant execute on function public.upsert_trip_fun_reaction(uuid, uuid, int) to authenticated;
+
+-- =========================================================
+-- V2.2.12 configurable licensing / user entitlements
+-- Safe to run multiple times. This upgrades the earlier Premium-only license layer
+-- into per-user adjustable limits and feature toggles.
+-- =========================================================
+
+alter table if exists public.itinerary_user_entitlements
+  add column if not exists events_per_day int,
+  add column if not exists max_trips int,
+  add column if not exists enable_maps boolean,
+  add column if not exists enable_memories boolean,
+  add column if not exists enable_shopping_lists boolean,
+  add column if not exists enable_recaps boolean,
+  add column if not exists admin_notes text;
+
+alter table if exists public.itinerary_license_keys
+  add column if not exists events_per_day int default 25,
+  add column if not exists max_trips int default 25,
+  add column if not exists enable_maps boolean default true,
+  add column if not exists enable_memories boolean default true,
+  add column if not exists enable_shopping_lists boolean default true,
+  add column if not exists enable_recaps boolean default true;
+
+create or replace function public.get_itinerary_license_status()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ent public.itinerary_user_entitlements%rowtype;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object(
+      'plan','free','active',false,
+      'events_per_day',5,'max_trips',1,
+      'enable_maps',false,'enable_memories',false,'enable_shopping_lists',false,'enable_recaps',false
+    );
+  end if;
+
+  select * into v_ent
+  from public.itinerary_user_entitlements e
+  where e.user_id = auth.uid()
+    and e.active = true
+    and (e.expires_at is null or e.expires_at > now())
+  order by case when e.plan = 'premium' then 0 else 1 end, e.updated_at desc nulls last, e.created_at desc
+  limit 1;
+
+  if not found or v_ent.plan <> 'premium' then
+    return jsonb_build_object(
+      'plan','free','active',false,
+      'events_per_day',5,'max_trips',1,
+      'enable_maps',false,'enable_memories',false,'enable_shopping_lists',false,'enable_recaps',false
+    );
+  end if;
+
+  return jsonb_build_object(
+    'plan','premium',
+    'active',true,
+    'events_per_day',coalesce(v_ent.events_per_day,25),
+    'max_trips',coalesce(v_ent.max_trips,25),
+    'enable_maps',coalesce(v_ent.enable_maps,true),
+    'enable_memories',coalesce(v_ent.enable_memories,true),
+    'enable_shopping_lists',coalesce(v_ent.enable_shopping_lists,true),
+    'enable_recaps',coalesce(v_ent.enable_recaps,true),
+    'expires_at',v_ent.expires_at
+  );
+end;
+$$;
+
+grant execute on function public.get_itinerary_license_status() to authenticated;
+
+create or replace function public.redeem_itinerary_license(p_license_key text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_key public.itinerary_license_keys%rowtype;
+  v_clean text := trim(p_license_key);
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+
+  select * into v_key
+  from public.itinerary_license_keys
+  where license_key = v_clean
+    and active = true
+    and (expires_at is null or expires_at > now())
+  for update;
+
+  if not found then
+    raise exception 'Invalid or inactive license key';
+  end if;
+
+  if v_key.redemption_count >= v_key.max_redemptions then
+    raise exception 'This license key has already been redeemed';
+  end if;
+
+  insert into public.itinerary_user_entitlements(
+    user_id, plan, active, source, license_key, expires_at,
+    events_per_day, max_trips, enable_maps, enable_memories, enable_shopping_lists, enable_recaps
+  ) values (
+    auth.uid(), v_key.plan, true, 'license_key', v_clean, v_key.expires_at,
+    coalesce(v_key.events_per_day,25), coalesce(v_key.max_trips,25),
+    coalesce(v_key.enable_maps,true), coalesce(v_key.enable_memories,true),
+    coalesce(v_key.enable_shopping_lists,true), coalesce(v_key.enable_recaps,true)
+  )
+  on conflict (user_id, source, license_key) do update set
+    active = true,
+    plan = excluded.plan,
+    expires_at = excluded.expires_at,
+    events_per_day = excluded.events_per_day,
+    max_trips = excluded.max_trips,
+    enable_maps = excluded.enable_maps,
+    enable_memories = excluded.enable_memories,
+    enable_shopping_lists = excluded.enable_shopping_lists,
+    enable_recaps = excluded.enable_recaps,
+    updated_at = now();
+
+  update public.itinerary_license_keys
+  set redemption_count = redemption_count + 1
+  where id = v_key.id;
+
+  return public.get_itinerary_license_status();
+end;
+$$;
+
+grant execute on function public.redeem_itinerary_license(text) to authenticated;
+
+-- Admin helper for you from the Supabase SQL editor.
+-- Do NOT grant this to authenticated users. Run it manually as project owner/postgres.
+create or replace function public.admin_set_itinerary_entitlement_by_email(
+  p_email text,
+  p_plan text default 'premium',
+  p_active boolean default true,
+  p_events_per_day int default 25,
+  p_max_trips int default 25,
+  p_enable_maps boolean default true,
+  p_enable_memories boolean default true,
+  p_enable_shopping_lists boolean default true,
+  p_enable_recaps boolean default true,
+  p_admin_notes text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_user uuid;
+begin
+  select id into v_user from auth.users where lower(email) = lower(p_email) limit 1;
+  if v_user is null then
+    raise exception 'No auth user found for %', p_email;
+  end if;
+
+  insert into public.itinerary_user_entitlements(
+    user_id, plan, active, source, license_key,
+    events_per_day, max_trips, enable_maps, enable_memories, enable_shopping_lists, enable_recaps, admin_notes
+  ) values (
+    v_user, case when p_plan = 'premium' then 'premium' else 'free' end, p_active, 'manual', 'manual:' || lower(p_email),
+    p_events_per_day, p_max_trips, p_enable_maps, p_enable_memories, p_enable_shopping_lists, p_enable_recaps, p_admin_notes
+  )
+  on conflict (user_id, source, license_key) do update set
+    plan = excluded.plan,
+    active = excluded.active,
+    events_per_day = excluded.events_per_day,
+    max_trips = excluded.max_trips,
+    enable_maps = excluded.enable_maps,
+    enable_memories = excluded.enable_memories,
+    enable_shopping_lists = excluded.enable_shopping_lists,
+    enable_recaps = excluded.enable_recaps,
+    admin_notes = excluded.admin_notes,
+    updated_at = now();
+
+  return jsonb_build_object('user_id', v_user, 'email', p_email, 'updated', true);
+end;
+$$;
+
+-- Example: create a customizable license key
+-- insert into public.itinerary_license_keys(
+--   license_key, max_redemptions, events_per_day, max_trips,
+--   enable_maps, enable_memories, enable_shopping_lists, enable_recaps
+-- ) values (
+--   'TOASTED-TEST-001', 1, 25, 25, true, true, true, true
+-- );
+
+-- Example: manually change a specific user's access from SQL editor
+-- select public.admin_set_itinerary_entitlement_by_email(
+--   'user@example.com', 'premium', true, 40, 10, true, true, false, true,
+--   'Premium but shopping lists disabled for testing'
+-- );
