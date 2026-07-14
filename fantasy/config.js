@@ -3,6 +3,7 @@
 // Keep OAuth redirects pointed here. No localhost values belong in production.
 window.FV_CONFIG = {
   APP_NAME: 'Afterglow',
+  BUILD_VERSION: '2026.07.13-production',
   APP_BASE_PATH: '/fantasy',
   APP_URL: 'https://whatmod.com/fantasy/',
   AUTH_REDIRECT_URL: 'https://whatmod.com/fantasy/',

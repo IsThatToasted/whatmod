@@ -99,17 +99,177 @@ function defaultProfileForAuth(user){
     avatarUrl: meta.avatar_url || meta.picture || ''
   };
 }
-function base(user=null){return {ageOk:false, userId: user?.id || getDeviceId(), profile: defaultProfileForAuth(user), ratings:{}, liked:[], passed:[], rewards:{glowCoins:0, streak:0, lastClaimDate:'', claimedToday:false}, updatedAt:new Date().toISOString()};}
+function base(user=null){
+  return {
+    ageOk:false,
+    userId:user?.id || getDeviceId(),
+    profile:defaultProfileForAuth(user),
+    ratings:{},
+    liked:[],
+    passed:[],
+    rewards:{glowCoins:0,streak:0,lastClaimDate:'',claimedToday:false},
+    inventory:{owned:[],equipped:{}},
+    weeklyGoals:{},
+    meta:{schemaVersion:2,clientId:getClientId(),lastSyncedAt:'',lastServerRevision:0,localRecordFound:false,serverRecordFound:false},
+    updatedAt:new Date().toISOString()
+  };
+}
 function getDeviceId(){let id=localStorage.getItem('fvDeviceId'); if(!id){id='local-'+crypto.randomUUID(); localStorage.setItem('fvDeviceId',id);} return id;}
+function getClientId(){let id=localStorage.getItem('afterglowClientId'); if(!id){id='client-'+crypto.randomUUID(); localStorage.setItem('afterglowClientId',id);} return id;}
 function userStorageKey(user=authUser){ return user?.id ? `${KEY}:${user.id}` : KEY; }
-function load(user=null){try{return {...base(user), ...(JSON.parse(localStorage.getItem(userStorageKey(user)))||{})}}catch{return base(user)}}
-function save(){state.updatedAt=new Date().toISOString(); localStorage.setItem(userStorageKey(), JSON.stringify(state)); renderVaultStats(); renderMatches(); renderChats(); debounceSync();}
+function backupStorageKey(user=authUser){ return `afterglowBackupsV2:${user?.id || 'guest'}`; }
+const RECOVERY_DB_NAME='afterglowRecoveryV2';
+const RECOVERY_DB_STORE='latestStates';
+let recoveryDbPromise=null;
+function openRecoveryDb(){
+  if(!window.indexedDB) return Promise.resolve(null);
+  if(recoveryDbPromise) return recoveryDbPromise;
+  recoveryDbPromise=new Promise(resolve=>{
+    try{
+      const req=indexedDB.open(RECOVERY_DB_NAME,1);
+      req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(RECOVERY_DB_STORE)) db.createObjectStore(RECOVERY_DB_STORE,{keyPath:'key'});};
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>resolve(null);
+      req.onblocked=()=>resolve(null);
+    }catch{resolve(null);}
+  });
+  return recoveryDbPromise;
+}
+async function mirrorStateToRecoveryDb(key,value){
+  try{
+    const db=await openRecoveryDb(); if(!db) return false;
+    return await new Promise(resolve=>{
+      const tx=db.transaction(RECOVERY_DB_STORE,'readwrite');
+      tx.objectStore(RECOVERY_DB_STORE).put({key,state:deepCopy(value),updatedAt:new Date().toISOString()});
+      tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); tx.onabort=()=>resolve(false);
+    });
+  }catch{return false;}
+}
+async function readStateFromRecoveryDb(key){
+  try{
+    const db=await openRecoveryDb(); if(!db) return null;
+    return await new Promise(resolve=>{
+      const tx=db.transaction(RECOVERY_DB_STORE,'readonly');
+      const req=tx.objectStore(RECOVERY_DB_STORE).get(key);
+      req.onsuccess=()=>resolve(req.result?.state||null); req.onerror=()=>resolve(null);
+    });
+  }catch{return null;}
+}
+function deepCopy(value){ try{return structuredClone(value);}catch{return JSON.parse(JSON.stringify(value));} }
+function normalizeArray(value){ return Array.isArray(value) ? [...new Set(value.map(String))] : []; }
+function isoWeekKey(value=new Date()){
+  const d=new Date(Date.UTC(value.getFullYear(),value.getMonth(),value.getDate()));
+  const day=d.getUTCDay()||7; d.setUTCDate(d.getUTCDate()+4-day);
+  const yearStart=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  const week=Math.ceil((((d-yearStart)/86400000)+1)/7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2,'0')}`;
+}
+function normalizeState(input={}, user=null){
+  const seed=base(user);
+  const next={...seed,...(input||{})};
+  next.profile={...seed.profile,...((input||{}).profile||{})};
+  next.ratings=((input||{}).ratings && typeof input.ratings==='object' && !Array.isArray(input.ratings)) ? input.ratings : {};
+  next.liked=normalizeArray((input||{}).liked);
+  next.passed=normalizeArray((input||{}).passed);
+  next.rewards={...seed.rewards,...((input||{}).rewards||{}),...(((input||{}).profile||{}).rewards||{})};
+  next.rewards.glowCoins=Math.max(0,Number(next.rewards.glowCoins||0));
+  next.rewards.streak=Math.max(0,Number(next.rewards.streak||0));
+  next.inventory={...seed.inventory,...(((input||{}).profile||{}).inventory||{}),...((input||{}).inventory||{})};
+  next.inventory.owned=normalizeArray(next.inventory.owned);
+  next.inventory.equipped=(next.inventory.equipped && typeof next.inventory.equipped==='object') ? next.inventory.equipped : {};
+  next.weeklyGoals={...(((input||{}).profile||{}).weeklyGoals||{}),...((input||{}).weeklyGoals||{})};
+  if(next.weeklyGoals.week && next.weeklyGoals.week!==isoWeekKey()) next.weeklyGoals={week:isoWeekKey(),completed:{}};
+  next.meta={...seed.meta,...((input||{}).meta||{}),schemaVersion:2,clientId:getClientId()};
+  next.updatedAt=(input||{}).updatedAt || new Date().toISOString();
+  next.userId=user?.id || next.userId || getDeviceId();
+  next.profile.rewards=next.rewards;
+  next.profile.inventory=next.inventory;
+  next.profile.weeklyGoals=next.weeklyGoals;
+  return next;
+}
+function load(user=null){
+  try{
+    const raw=localStorage.getItem(userStorageKey(user));
+    if(!raw) return base(user);
+    const loaded=normalizeState(JSON.parse(raw)||{},user);
+    loaded.meta.localRecordFound=true;
+    return loaded;
+  }catch{return base(user);}
+}
+function stateMetrics(value){
+  const s=normalizeState(value||{});
+  return {
+    ratings:Object.keys(s.ratings||{}).length,
+    profile:Object.values(s.profile||{}).filter(v=>typeof v==='string'?v.trim():v).length,
+    liked:(s.liked||[]).length,
+    passed:(s.passed||[]).length,
+    owned:(s.inventory?.owned||[]).length,
+    weekly:Object.keys(s.weeklyGoals?.completed||{}).length
+  };
+}
+function snapshotLocalState(value, reason='autosave', force=false){
+  try{
+    const source=normalizeState(value||state,authUser);
+    const list=JSON.parse(localStorage.getItem(backupStorageKey())||'[]');
+    const now=Date.now();
+    const last=list[0];
+    if(!force && last && now-new Date(last.createdAt).getTime()<5*60*1000) return;
+    const signature=JSON.stringify([source.updatedAt,stateMetrics(source),source.rewards?.glowCoins]);
+    if(last?.signature===signature) return;
+    list.unshift({id:crypto.randomUUID(),createdAt:new Date().toISOString(),reason,signature,state:source});
+    localStorage.setItem(backupStorageKey(),JSON.stringify(list.slice(0,25)));
+  }catch(err){ console.warn('Local snapshot skipped',err); }
+}
+let localSaveWarningShown=false;
+function persistStateLocalOnly(reason='local'){
+  state=normalizeState(state,authUser);
+  state.updatedAt=state.updatedAt || new Date().toISOString();
+  state.meta.lastLocalReason=reason;
+  state.meta.localRecordFound=true;
+  const key=userStorageKey();
+  const payload=JSON.stringify(state);
+  let saved=false;
+  try{ localStorage.setItem(key,payload); saved=true; }
+  catch(err){
+    // Quota pressure should never make a user action crash. Trim only old
+    // snapshots, preserve the live state, then retry once.
+    try{
+      const backups=JSON.parse(localStorage.getItem(backupStorageKey())||'[]');
+      if(Array.isArray(backups)) localStorage.setItem(backupStorageKey(),JSON.stringify(backups.slice(0,3)));
+      localStorage.setItem(key,payload); saved=true;
+    }catch(retryErr){
+      console.error('Afterglow local save failed',retryErr);
+      state.meta.localStorageErrorAt=new Date().toISOString();
+      if(!localSaveWarningShown){
+        localSaveWarningShown=true;
+        try{showToast('Browser storage is full. Your cloud sync and recovery database are still being attempted.');}catch{}
+      }
+    }
+  }
+  // IndexedDB is an independent second browser copy. It is intentionally not
+  // deleted by the normal local-cache reset, so it can act as a recovery layer.
+  mirrorStateToRecoveryDb(key,state);
+  return saved;
+}
+function save(reason='change'){
+  const key=userStorageKey();
+  let previous=null;
+  try{previous=JSON.parse(localStorage.getItem(key)||'null');}catch{}
+  if(previous){
+    const before=stateMetrics(previous), after=stateMetrics(state);
+    const destructive=after.ratings<before.ratings || after.owned<before.owned || after.weekly<before.weekly;
+    snapshotLocalState(previous,destructive?'before_destructive_change':'autosave',destructive);
+  }
+  state=normalizeState(state,authUser);
+  state.updatedAt=new Date().toISOString();
+  persistStateLocalOnly(reason);
+  renderVaultStats(); renderMatches(); renderChats();
+  debounceSync(reason);
+  window.dispatchEvent(new CustomEvent('afterglow:state-saved',{detail:{reason,updatedAt:state.updatedAt}}));
+}
 function repairProfileForAuth(profile={}, user){
   const defaults = defaultProfileForAuth(user);
   const fixed = {...defaults, ...(profile||{})};
-  // Migration guard: earlier prototype builds could accidentally copy Brian's local profile
-  // into a different Google account on the same browser. If that happened, prefer the
-  // signed-in Google name and remove the copied demo area.
   if((fixed.displayName || '').trim().toLowerCase() === 'brian' && (defaults.displayName || '').trim().toLowerCase() !== 'brian'){
     fixed.displayName = defaults.displayName;
     if((fixed.city || '').trim().toLowerCase() === 'york, pa') fixed.city = '';
@@ -123,54 +283,254 @@ function loadStateForAuthUser(user){
   next.ageOk = true;
   next.userId = user.id;
   next.profile = repairProfileForAuth(next.profile, user);
-  return next;
+  return normalizeState(next,user);
 }
-
-let syncTimer=null; function debounceSync(){clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncToSupabase(false),700);}
-
-async function syncToSupabase(show=true){
-  if(bootingRemote) return;
-  if(!supa){setSync('local fallback'); if(show) showToast('Supabase unavailable; saved locally.'); return;}
-  if(!authUser){setSync('local only — sign in to sync'); if(show) showToast('Sign in with Google before syncing.'); return;}
+function isoTime(value){ const n=Date.parse(value||''); return Number.isFinite(n)?n:0; }
+function mergeObjectPreservingValues(older={},newer={}){
+  const out={...(older||{})};
+  Object.entries(newer||{}).forEach(([key,val])=>{
+    if(val && typeof val==='object' && !Array.isArray(val) && out[key] && typeof out[key]==='object' && !Array.isArray(out[key])) out[key]=mergeObjectPreservingValues(out[key],val);
+    else if(val!=='' && val!==null && val!==undefined) out[key]=val;
+    else if(!(key in out)) out[key]=val;
+  });
+  return out;
+}
+function mergeRewards(a={},b={}){
+  const ad=String(a.lastClaimDate||''), bd=String(b.lastClaimDate||'');
+  const recent=bd>=ad?b:a;
+  return {...a,...b,...recent,glowCoins:Math.max(Number(a.glowCoins||0),Number(b.glowCoins||0)),streak:Number(recent.streak||0)};
+}
+function mergeDurableStates(localValue,remoteValue,user=authUser){
+  const local=normalizeState(localValue||{},user), remote=normalizeState(remoteValue||{},user);
+  const localDurable=!!(local.meta?.localRecordFound||local.meta?.serverRecordFound);
+  const remoteDurable=!!(remote.meta?.localRecordFound||remote.meta?.serverRecordFound);
+  const localNewer=localDurable!==remoteDurable ? localDurable : isoTime(local.updatedAt)>=isoTime(remote.updatedAt);
+  const newer=localNewer?local:remote, older=localNewer?remote:local;
+  const merged=normalizeState({...older,...newer},user);
+  merged.profile=repairProfileForAuth(mergeObjectPreservingValues(older.profile,newer.profile),user);
+  merged.ratings={...(older.ratings||{}),...(newer.ratings||{})};
+  merged.liked=normalizeArray([...(older.liked||[]),...(newer.liked||[])]);
+  merged.passed=normalizeArray([...(older.passed||[]),...(newer.passed||[])]);
+  (newer.liked||[]).forEach(id=>{merged.passed=merged.passed.filter(x=>x!==String(id));});
+  (newer.passed||[]).forEach(id=>{merged.liked=merged.liked.filter(x=>x!==String(id));});
+  merged.rewards=mergeRewards(older.rewards,newer.rewards);
+  merged.inventory={...older.inventory,...newer.inventory};
+  merged.inventory.owned=normalizeArray([...(older.inventory?.owned||[]),...(newer.inventory?.owned||[])]);
+  merged.inventory.equipped={...(older.inventory?.equipped||{}),...(newer.inventory?.equipped||{})};
+  merged.inventory.custom={...(older.inventory?.custom||{}),...(newer.inventory?.custom||{})};
+  const olderWeek=older.weeklyGoals?.week||'', newerWeek=newer.weeklyGoals?.week||'';
+  if(olderWeek && newerWeek && olderWeek===newerWeek){
+    const olderCompleted=older.weeklyGoals?.completed||{}, newerCompleted=newer.weeklyGoals?.completed||{};
+    merged.weeklyGoals={...older.weeklyGoals,...newer.weeklyGoals,completed:{...olderCompleted,...newerCompleted}};
+  }else if(newerWeek===isoWeekKey()) merged.weeklyGoals=deepCopy(newer.weeklyGoals);
+  else if(olderWeek===isoWeekKey()) merged.weeklyGoals=deepCopy(older.weeklyGoals);
+  else merged.weeklyGoals=deepCopy(newer.weeklyGoals||{week:isoWeekKey(),completed:{}});
+  merged.updatedAt=newer.updatedAt || new Date().toISOString();
+  merged.meta={...older.meta,...newer.meta,localRecordFound:!!(older.meta?.localRecordFound||newer.meta?.localRecordFound),serverRecordFound:!!(older.meta?.serverRecordFound||newer.meta?.serverRecordFound),lastServerRevision:Math.max(Number(older.meta?.lastServerRevision||0),Number(newer.meta?.lastServerRevision||0)),lastSyncedAt:(isoTime(older.meta?.lastSyncedAt)>=isoTime(newer.meta?.lastSyncedAt)?older.meta?.lastSyncedAt:newer.meta?.lastSyncedAt)||'',schemaVersion:2,clientId:getClientId()};
+  merged.profile.rewards=merged.rewards; merged.profile.inventory=merged.inventory; merged.profile.weeklyGoals=merged.weeklyGoals;
+  return normalizeState(merged,user);
+}
+function remoteRowToState(row,user=authUser){
+  if(!row) return base(user);
+  return normalizeState({
+    userId:row.user_id,
+    profile:row.profile||{},ratings:row.ratings||{},liked:row.liked||[],passed:row.passed||[],
+    inventory:row.inventory || row.profile?.inventory || {},
+    weeklyGoals:row.weekly_goals || row.profile?.weeklyGoals || {},
+    rewards:row.profile?.rewards || {},
+    updatedAt:row.client_updated_at || row.updated_at,
+    meta:{lastServerRevision:Number(row.sync_revision||0),lastSyncedAt:row.last_synced_at||row.updated_at||'',schemaVersion:Number(row.state_version||2),serverRecordFound:true}
+  },user);
+}
+function legacyLocalCandidate(user){
   try{
-    const payload={
-      user_id: authUser.id,
-      email: authUser.email || null,
-      profile:{...state.profile, rewards:state.rewards, inventory:state.inventory},
-      ratings:state.ratings,
-      liked:state.liked,
-      passed:state.passed,
-      updated_at:new Date().toISOString()
-    };
-    const {error}=await supa.from('fv_profiles').upsert(payload,{onConflict:'user_id'});
-    if(error) throw error;
-    setSync('synced to Supabase'); if(show) showToast('Synced to Supabase.');
-  }catch(err){setSync('local fallback — check schema/RLS'); if(show) showToast('Saved locally. Check Supabase schema/Auth setup.'); console.warn(err);}
+    const raw=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(!raw) return null;
+    const candidate=normalizeState(raw,user);
+    candidate.meta.localRecordFound=true;
+    const signedName=(defaultProfileForAuth(user).displayName||'').trim().toLowerCase();
+    const candidateName=(candidate.profile?.displayName||'').trim().toLowerCase();
+    if(isAdmin() || !candidateName || candidateName===signedName) return candidate;
+  }catch{}
+  return null;
+}
+function isMissingRpcError(err){ const text=`${err?.code||''} ${err?.message||''} ${err?.details||''}`.toLowerCase(); return text.includes('pgrst202')||text.includes('42883')||text.includes('could not find the function')||text.includes('does not exist'); }
+function isUuidValue(value){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value||'')); }
+let syncTimer=null, syncRetryTimer=null, syncInFlight=false, syncQueued=false, syncFailures=0;
+function debounceSync(reason='change'){
+  clearTimeout(syncTimer);
+  state.meta={...(state.meta||{}),pendingSyncReason:reason};
+  syncTimer=setTimeout(()=>syncToSupabase(false,reason),900);
+}
+function scheduleSyncRetry(){
+  clearTimeout(syncRetryTimer);
+  const delay=Math.min(60000,Math.max(2500,2500*Math.pow(2,Math.min(syncFailures,5))));
+  syncRetryTimer=setTimeout(()=>{ if(navigator.onLine!==false) syncToSupabase(false,'retry'); },delay);
+}
+function syncPayloadFromState(source=state){
+  const s=normalizeState(source,authUser);
+  const publicProfile={...s.profile}; delete publicProfile.rewards; delete publicProfile.inventory; delete publicProfile.weeklyGoals;
+  return {profile:publicProfile,ratings:s.ratings,liked:(s.liked||[]).filter(isUuidValue),passed:(s.passed||[]).filter(isUuidValue),inventory:s.inventory,weeklyGoals:s.weeklyGoals};
+}
+async function legacySafeSync(show=false){
+  const {data:remote,error:readError}=await supa.from('fv_profiles').select('*').eq('user_id',authUser.id).maybeSingle();
+  if(readError) throw readError;
+  if(remote) state=mergeDurableStates(state,remoteRowToState(remote,authUser),authUser);
+  const payload=syncPayloadFromState(state);
+  const legacyProfile={...payload.profile,rewards:state.rewards,inventory:state.inventory,weeklyGoals:state.weeklyGoals};
+  const {error}=await supa.from('fv_profiles').upsert({user_id:authUser.id,email:authUser.email||null,profile:legacyProfile,ratings:payload.ratings,liked:payload.liked,passed:payload.passed,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error) throw error;
+  state.meta.lastSyncedAt=new Date().toISOString(); persistStateLocalOnly('legacy_sync');
+  if(show) showToast('Synced using compatibility mode. Run the production SQL migration.');
+  setSync('synced — compatibility mode');
+}
+async function syncToSupabase(show=true,reason='sync',retrying=false){
+  if(bootingRemote) return;
+  if(!supa){setSync('offline-safe local save'); if(show) showToast('Saved safely on this device.'); return;}
+  if(!authUser){setSync('local only — sign in to sync'); if(show) showToast('Sign in with Google before syncing.'); return;}
+  if(syncInFlight){syncQueued=true; return;}
+  syncInFlight=true;
+  try{
+    const payload=syncPayloadFromState(state);
+    const {data,error}=await supa.rpc('fv_save_my_state',{
+      p_profile:payload.profile,p_ratings:payload.ratings,p_liked:payload.liked,p_passed:payload.passed,
+      p_inventory:payload.inventory,p_weekly_goals:payload.weeklyGoals,p_client_updated_at:state.updatedAt,
+      p_client_id:getClientId(),p_state_version:2,p_reason:String(reason||'sync').slice(0,80),p_base_revision:Number(state.meta?.lastServerRevision||0)
+    });
+    if(error){
+      if(isMissingRpcError(error)){ await legacySafeSync(show); return; }
+      throw error;
+    }
+    const result=Array.isArray(data)?data[0]:data;
+    if(result?.row){
+      const serverState=remoteRowToState(result.row,authUser);
+      if(result.status==='conflict' && !retrying){
+        snapshotLocalState(state,'before_cloud_conflict_merge',true);
+        state=mergeDurableStates(state,serverState,authUser);
+        state.updatedAt=new Date().toISOString(); persistStateLocalOnly('cloud_conflict_merge');
+        syncQueued=true;
+        return;
+      }
+      state.meta.lastServerRevision=Number(result.row.sync_revision||state.meta.lastServerRevision||0);
+      state.meta.lastSyncedAt=result.row.last_synced_at||new Date().toISOString();
+    }
+    syncFailures=0; clearTimeout(syncRetryTimer); persistStateLocalOnly('synced');
+    setSync('protected cloud sync'); if(show) showToast('Profile and Vault data are safely synced.');
+  }catch(err){
+    syncFailures++;
+    setSync('saved locally — cloud retry queued');
+    scheduleSyncRetry();
+    if(show) showToast('Saved on this device. Cloud sync will retry automatically.');
+    console.warn('Protected sync failed',err);
+  }finally{
+    syncInFlight=false;
+    if(syncQueued){syncQueued=false; setTimeout(()=>syncToSupabase(false,'queued'),50);}
+  }
+}
+let walletRecoveryRequestInFlight=false;
+async function requestLegacyWalletRecovery(localRewards,serverBalance,metrics){
+  if(walletRecoveryRequestInFlight || !supa || !authUser) return;
+  const requested=Math.max(0,Math.round(Number(localRewards?.glowCoins||0)));
+  if(requested<=Number(serverBalance||0)) return;
+  walletRecoveryRequestInFlight=true;
+  try{
+    const last=/^\d{4}-\d{2}-\d{2}$/.test(String(localRewards?.lastClaimDate||''))?localRewards.lastClaimDate:null;
+    const {data,error}=await supa.rpc('fv_request_wallet_recovery',{
+      p_requested_balance:requested,p_last_claim_date:last,p_streak:Math.max(0,Math.round(Number(localRewards?.streak||0))),
+      p_metrics:{...metrics,client_id:getClientId(),detected_at:new Date().toISOString()}
+    });
+    if(error){ if(isMissingRpcError(error)) return; throw error; }
+    const result=Array.isArray(data)?data[0]:data;
+    state.meta={...(state.meta||{}),walletRecovery:{
+      status:result?.status||'pending_review',requestedBalance:requested,serverBalance:Number(serverBalance||0),
+      request:result?.request||null,updatedAt:new Date().toISOString()
+    }};
+    persistStateLocalOnly('wallet_recovery_requested');
+    window.dispatchEvent(new CustomEvent('afterglow:wallet-recovery-updated'));
+  }catch(err){ console.warn('Wallet recovery request failed',err); }
+  finally{ walletRecoveryRequestInFlight=false; }
 }
 
+function applyEconomyPayload(payload,{persist=true,allowRecovery=false}={}){
+  const economy=payload?.economy||payload||{};
+  const wallet=economy.wallet||{};
+  const claimStatus=economy.claim_status||{};
+  const rows=Array.isArray(economy.inventory)?economy.inventory:[];
+  if(Object.keys(wallet).length){
+    const localRewards=deepCopy(state.rewards||{});
+    const serverBalance=Number(wallet.glow_coins||0);
+    if(allowRecovery && Number(localRewards.glowCoins||0)>serverBalance){
+      const metrics=stateMetrics(state);
+      snapshotLocalState(state,'wallet_mismatch_before_server_authority',true);
+      state.meta={...(state.meta||{}),walletRecovery:{status:'submitting',requestedBalance:Number(localRewards.glowCoins||0),serverBalance,detectedAt:new Date().toISOString()}};
+      requestLegacyWalletRecovery(localRewards,serverBalance,metrics);
+    }
+    state.rewards={...state.rewards,glowCoins:serverBalance,streak:Number(wallet.streak||0),lastClaimDate:wallet.last_claim_date||'',claimedToday:!!claimStatus.claimed_today,serverToday:claimStatus.today||'',timezone:claimStatus.timezone||wallet.timezone||state.rewards?.timezone||'',lastClaimedAt:wallet.last_claimed_at||'',lifetimeEarned:Number(wallet.lifetime_earned||0),lifetimeSpent:Number(wallet.lifetime_spent||0)};
+  }
+  if(rows.length || Array.isArray(economy.inventory)){
+    const priorCustom=state.inventory?.custom||{};
+    const owned=rows.map(r=>String(r.item_id));
+    const equipped={}; rows.filter(r=>r.equipped).forEach(r=>{if(r.item_type) equipped[r.item_type]=r.item_value;});
+    state.inventory={...(state.inventory||{}),owned,equipped,custom:priorCustom};
+  }
+  state.profile.rewards=state.rewards; state.profile.inventory=state.inventory;
+  if(persist) persistStateLocalOnly('economy_loaded');
+  try{renderDailyGift(); updateGlowCoinDisplays(); renderShop(); updateAvatar();}catch{}
+  return economy;
+}
+async function loadServerEconomy(){
+  if(!supa||!authUser) return false;
+  const {data,error}=await supa.rpc('fv_get_my_economy');
+  if(error){ if(isMissingRpcError(error)) return false; throw error; }
+  const firstAuthorityCheck=!state.meta?.walletAuthorityEstablishedAt;
+  applyEconomyPayload(data,{allowRecovery:firstAuthorityCheck});
+  state.meta={...(state.meta||{}),walletAuthorityEstablishedAt:state.meta?.walletAuthorityEstablishedAt||new Date().toISOString()};
+  try{
+    const recovery=await supa.from('fv_wallet_recovery_requests').select('id,status,requested_balance,server_balance_at_request,requested_at,updated_at,resolved_at,resolution_note').eq('user_id',authUser.id).maybeSingle();
+    if(!recovery.error && recovery.data){
+      state.meta.walletRecovery={...(state.meta.walletRecovery||{}),status:recovery.data.status,requestedBalance:Number(recovery.data.requested_balance||0),serverBalance:Number(recovery.data.server_balance_at_request||0),request:recovery.data,updatedAt:recovery.data.updated_at||new Date().toISOString()};
+    }
+  }catch{}
+  persistStateLocalOnly('wallet_authority_loaded');
+  return true;
+}
 async function loadRemoteProfile(){
   if(!supa || !authUser) return;
-  bootingRemote = true;
+  bootingRemote=true;
+  let shouldResync=false;
   try{
+    let local=normalizeState(state,authUser);
+    const indexedCandidate=await readStateFromRecoveryDb(userStorageKey(authUser));
+    if(indexedCandidate){
+      const recovered=normalizeState(indexedCandidate,authUser);
+      const localMetrics=stateMetrics(local), recoveredMetrics=stateMetrics(recovered);
+      if(recoveredMetrics.ratings>localMetrics.ratings || recoveredMetrics.owned>localMetrics.owned || isoTime(recovered.updatedAt)>isoTime(local.updatedAt)){
+        snapshotLocalState(recovered,'indexeddb_recovery',true);
+        local=mergeDurableStates(local,recovered,authUser);
+        state=local;
+        shouldResync=true;
+      }
+    }
+    const legacy=legacyLocalCandidate(authUser);
     const {data,error}=await supa.from('fv_profiles').select('*').eq('user_id',authUser.id).maybeSingle();
     if(error) throw error;
+    let merged=local;
+    if(legacy && stateMetrics(legacy).ratings>stateMetrics(merged).ratings){ merged=mergeDurableStates(merged,legacy,authUser); shouldResync=true; snapshotLocalState(legacy,'legacy_browser_recovery',true); }
     if(data){
-      state = {...state, profile: repairProfileForAuth({...state.profile,...(data.profile||{})}, authUser), rewards:(data.profile||{}).rewards || state.rewards || {glowCoins:0,streak:0,lastClaimDate:'',claimedToday:false}, ratings:data.ratings||{}, liked:data.liked||[], passed:data.passed||[], userId:authUser.id};
-      localStorage.setItem(userStorageKey(), JSON.stringify(state));
-      hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack();
-      setSync('loaded from Supabase');
-    }else{
-      // Brand-new account: start from the signed-in Google user, not old local data from another account.
-      state = loadStateForAuthUser(authUser);
-      hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack(); updateAvatar();
-      bootingRemote = false;
-      await syncToSupabase(false);
-      bootingRemote = true;
-    }
-  }catch(err){ console.warn(err); setSync('local fallback — could not load cloud profile'); }
-  finally{ bootingRemote = false; }
+      const remote=remoteRowToState(data,authUser);
+      const beforeRemote=stateMetrics(remote), beforeLocal=stateMetrics(merged);
+      merged=mergeDurableStates(merged,remote,authUser);
+      if(beforeLocal.ratings>beforeRemote.ratings || beforeLocal.owned>beforeRemote.owned || (local.meta?.localRecordFound && isoTime(local.updatedAt)>isoTime(remote.updatedAt))) shouldResync=true;
+      setSync('cloud data loaded and checked');
+    }else shouldResync=true;
+    state=normalizeState(merged,authUser); state.ageOk=true; state.userId=authUser.id;
+    persistStateLocalOnly('remote_merge');
+    try{await loadServerEconomy();}catch(err){console.warn('Economy load failed',err);}
+    hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack(); updateAvatar();
+  }catch(err){ console.warn('Protected profile load failed',err); setSync('using safe local copy — cloud retry queued'); scheduleSyncRetry(); }
+  finally{ bootingRemote=false; }
+  if(shouldResync) await syncToSupabase(false,'recovery_merge');
 }
-
 
 function isAdmin(){ return (authUser?.email || '').toLowerCase() === ADMIN_EMAIL; }
 
@@ -251,12 +611,62 @@ async function saveAdminConfig(seedDefaults=false){
   }catch(err){ console.warn(err); showToast('Admin save failed. Check JSON, schema, and RLS.'); }
 }
 
+async function compactImageDataUrl(file,maxDimension=1200){
+  if(!file) return '';
+  if(!window.createImageBitmap || !document.createElement){
+    if(file.size>1500000) throw new Error('Image is too large for an offline browser copy.');
+    return await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});
+  }
+  const bitmap=await createImageBitmap(file);
+  const scale=Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale)); canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  const ctx=canvas.getContext('2d',{alpha:false});
+  ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  bitmap.close?.();
+  let quality=.84;
+  let blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));
+  while(blob && blob.size>1200000 && quality>.5){quality-=.1;blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',quality));}
+  if(!blob) throw new Error('Could not prepare image preview.');
+  return await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob);});
+}
+function profilePhotoStoragePath(url){
+  if(!url || !authUser) return '';
+  try{
+    const parsed=new URL(String(url),location.href);
+    const marker='/storage/v1/object/public/fv-profile-photos/';
+    const at=parsed.pathname.indexOf(marker);
+    if(at<0) return '';
+    const path=decodeURIComponent(parsed.pathname.slice(at+marker.length));
+    return path.startsWith(`${authUser.id}/`)?path:'';
+  }catch{return '';}
+}
+async function deleteStoredProfilePhoto(url){
+  const path=profilePhotoStoragePath(url);
+  if(!path || !supa || !authUser) return false;
+  const {error}=await supa.storage.from('fv-profile-photos').remove([path]);
+  if(error) throw error;
+  return true;
+}
+async function removeAvatarPhoto(){
+  const previous=state.profile?.avatarUrl||'';
+  state.profile.avatarUrl=''; updateAvatar(); save('profile_photo_removed');
+  try{
+    if(supa&&authUser) await syncToSupabase(false,'profile_photo_removed');
+    await deleteStoredProfilePhoto(previous);
+    showToast('Photo removed.');
+  }catch(err){console.warn('Stored avatar cleanup failed',err);showToast('Photo removed from your profile; old storage cleanup will need retrying.');}
+}
 async function handleAvatarUpload(file){
   if(!file) return;
   if(!file.type.startsWith('image/')){ showToast('Please choose an image file.'); return; }
-  const localDataUrl = await new Promise((resolve,reject)=>{const r=new FileReader(); r.onload=()=>resolve(r.result); r.onerror=reject; r.readAsDataURL(file);});
+  if(file.size>8*1024*1024){showToast('Profile photos must be 8MB or smaller.');return;}
+  let localDataUrl='';
+  try{ localDataUrl=await compactImageDataUrl(file); }
+  catch(err){console.warn(err);showToast('That photo could not be prepared safely.');return;}
+  const previousCloudUrl=state.profile?.avatarUrl||'';
   state.profile.avatarUrl = localDataUrl;
-  updateAvatar(); save();
+  updateAvatar(); save('profile_photo_local_preview');
   if(!supa || !authUser){ showToast('Photo saved locally. Sign in to sync cloud photo.'); return; }
   try{
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
@@ -265,7 +675,10 @@ async function handleAvatarUpload(file){
     if(uploadError) throw uploadError;
     const {data}=supa.storage.from('fv-profile-photos').getPublicUrl(path);
     state.profile.avatarUrl = data.publicUrl;
-    updateAvatar(); save(); await syncToSupabase(false);
+    updateAvatar(); save('profile_photo_uploaded'); await syncToSupabase(false,'profile_photo_uploaded');
+    if(previousCloudUrl && previousCloudUrl!==data.publicUrl){
+      try{await deleteStoredProfilePhoto(previousCloudUrl);}catch(cleanupErr){console.warn('Previous avatar cleanup failed',cleanupErr);}
+    }
     showToast('Profile photo updated.');
   }catch(err){ console.warn(err); showToast('Photo saved locally. Create the storage bucket/policies to sync online.'); }
 }
@@ -325,7 +738,13 @@ async function loadPeopleDirectory(options={}){
   if(!supa || !authUser){ renderStack(); renderMatches(); renderChats(); return; }
   const currentKey = preserveIndex ? personKey(orderedPeople()[index]) : '';
   try{
-    const {data,error}=await supa.from('fv_profiles').select('id,user_id,email,profile,ratings,liked,updated_at').neq('user_id',authUser.id).order('updated_at',{ascending:false}).limit(80);
+    let data=null, error=null;
+    const rpcResult=await supa.rpc('fv_get_directory',{p_limit:80});
+    if(!rpcResult.error){ data=rpcResult.data; }
+    else if(isMissingRpcError(rpcResult.error)){
+      const fallback=await supa.from('fv_profiles').select('id,user_id,email,profile,ratings,liked,updated_at').neq('user_id',authUser.id).order('updated_at',{ascending:false}).limit(80);
+      data=fallback.data; error=fallback.error;
+    }else error=rpcResult.error;
     if(error) throw error;
     people=(data||[]).map(profileRowToPerson);
     directoryLoaded = true;
@@ -336,7 +755,7 @@ async function loadPeopleDirectory(options={}){
     console.warn('Directory load failed', err);
     directoryLoaded = false;
     people=[];
-    setSync('signed in — directory needs public profile policy');
+    setSync('signed in — directory migration or policy needs attention');
   }
   if(preserveIndex && currentKey){
     const nextIndex = orderedPeople().findIndex(p=>personKey(p)===currentKey);
@@ -457,20 +876,20 @@ function updateGateUi(){
 
 function canEnter(){ return !!authUser; }
 
-function resetLocalAppData(){
+async function resetLocalAppData(){
+  snapshotLocalState(state,'before_local_cache_reset',true);
   localStorage.removeItem(KEY);
   if(authUser) localStorage.removeItem(userStorageKey(authUser));
-  localStorage.removeItem('fvDeviceId');
-  state = authUser ? loadStateForAuthUser(authUser) : load();
-  hydrateProfileForm();
-  renderVault();
-  renderVaultStats();
-  renderMatches();
-  renderChats();
-  renderStack();
-  updateAuthUi();
-  closeApp();
-  showToast('Local app data reset. Your Google login was not deleted.');
+  if(authUser){
+    state=loadStateForAuthUser(authUser);
+    await loadRemoteProfile();
+    showToast('Local cache rebuilt from your protected cloud copy. A recovery snapshot was kept.');
+  }else{
+    localStorage.removeItem('fvDeviceId');
+    state=load();
+    hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack(); updateAuthUi(); closeApp();
+    showToast('Local guest cache reset. A recovery snapshot was kept.');
+  }
 }
 
 async function initAuth(){
@@ -480,7 +899,6 @@ async function initAuth(){
   updateAuthUi();
   if(authUser){
     state = loadStateForAuthUser(authUser);
-    localStorage.setItem(userStorageKey(), JSON.stringify(state));
     hydrateProfileForm(); updateAvatar();
     await loadRemoteProfile();
     await loadAdminConfig();
@@ -506,7 +924,7 @@ async function initAuth(){
   });
 }
 
-function setSync(text){const el=$('#syncStatus'); if(el) el.textContent=text;}
+function setSync(text){ state.meta={...(state.meta||{}),syncStatus:text}; const el=$('#syncStatus'); if(el) el.textContent=text; const live=document.querySelector('#afterglowSyncLive'); if(live) live.textContent=text; }
 async function saveProfileManually(){
   save();
   await syncToSupabase(true);
@@ -538,7 +956,7 @@ async function init(){
   const syncNow=$('#syncNow'); if(syncNow) syncNow.onclick=()=>syncToSupabase(true);
   const saveProfileBtn=$('#saveProfile'); if(saveProfileBtn) saveProfileBtn.onclick=saveProfileManually;
   const avatarUpload=$('#avatarUpload'); if(avatarUpload) avatarUpload.onchange=e=>handleAvatarUpload(e.target.files?.[0]);
-  const removeAvatar=$('#removeAvatar'); if(removeAvatar) removeAvatar.onclick=()=>{state.profile.avatarUrl=''; updateAvatar(); save(); showToast('Photo removed.');};
+  const removeAvatar=$('#removeAvatar'); if(removeAvatar) removeAvatar.onclick=removeAvatarPhoto;
   const adminSeed=$('#adminSeed'); if(adminSeed) adminSeed.onclick=()=>saveAdminConfig(true);
   const adminReload=$('#adminReload'); if(adminReload) adminReload.onclick=()=>loadAdminConfig();
   const adminSave=$('#adminSave'); if(adminSave) adminSave.onclick=()=>saveAdminConfig(false);
@@ -552,7 +970,7 @@ function closeApp(){ $('#app').classList.add('hidden'); $('#ageGate').classList.
 function showScreen(id){ $$('.screen').forEach(s=>s.classList.toggle('active-screen',s.id===id)); $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.screen===id)); }
 function updateAvatar(){
   const initial=(state.profile.displayName||'V').trim()[0]?.toUpperCase()||'V';
-  const url=state.profile.avatarUrl;
+  const url=safeImageUrl(state.profile.avatarUrl);
 
   const profileHero=$('.profile-avatar');
   const navAvatars=[$('#topProfileAvatar'), $('#bottomProfileAvatar')].filter(Boolean);
@@ -596,17 +1014,27 @@ function orderedPeople(){
   });
 }
 function renderPersonAvatar(p, className='fake-face'){
-  if(p.avatarUrl) return `<div class="${className} real-face" style="background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}')"></div>`;
-  return `<div class="${className}">${p.initial}</div>`;
+  const avatarUrl=safeImageUrl(p?.avatarUrl);
+  const safeClass=String(className||'fake-face').replace(/[^a-z0-9_-]/gi,'');
+  if(avatarUrl) return `<div class="${safeClass} real-face" style="background-image:url('${avatarUrl}')"></div>`;
+  return `<div class="${safeClass}">${escapeHtml(p?.initial||'M')}</div>`;
 }
 function renderStack(){
   const arr=orderedPeople(); if(index>=arr.length) index=0; const p=arr[index];
   if(!p){ $('#cardStack').innerHTML='<div class="empty-state"><h3>No profiles available yet</h3><p>When other signed-in members complete their profile, they will appear here automatically.</p></div>'; return; }
-  const age=p.age ? `, ${p.age}` : '';
+  const avatarUrl=safeImageUrl(p.avatarUrl);
+  const age=p.age ? `, ${escapeHtml(p.age)}` : '';
   const likeBadge = p.likesMe ? '<span class="liked-you-badge">❤️ Likes you</span>' : '';
+  const score=Math.max(0,Math.min(100,Number(p.score)||0));
+  const tags=(Array.isArray(p.tags)?p.tags:[]).map(t=>`<span class="chip">${escapeHtml(t)}</span>`).join('');
+  const mutual=(Array.isArray(p.mutual)?p.mutual:[]);
+  const signals=mutual.map(x=>escapeHtml(x)).join(' • ');
+  const photoBackground=avatarUrl
+    ? `linear-gradient(180deg,transparent 35%,rgba(0,0,0,.86)), url('${avatarUrl}') center/cover`
+    : `linear-gradient(145deg,${p.gradient[0]},${p.gradient[1]})`;
   $('#cardStack').innerHTML=`<article class="person-card">
-    <div class="person-photo ${p.avatarUrl?'has-profile-photo':''}" style="background:${p.avatarUrl ? `linear-gradient(180deg,transparent 35%,rgba(0,0,0,.86)), url('${String(p.avatarUrl).replace(/'/g,'%27')}') center/cover` : `linear-gradient(145deg,${p.gradient[0]},${p.gradient[1]})`}"><span class="distance">${p.distanceLabel || '📍 Nearby'}</span><span class="verified">✓ verified</span>${likeBadge}${p.avatarUrl?'':renderPersonAvatar(p)}</div>
-    <div class="person-info"><div class="name-row"><h2>${p.name}${age}</h2><strong>${p.score}%</strong></div><p class="headline">${p.vibe}</p><div class="chips">${p.tags.map(t=>`<span class="chip">${t}</span>`).join('')}</div><div class="mutual-box"><b>${p.mutual.length} Vault signal${p.mutual.length===1?'':'s'}:</b><br>${p.mutual.join(' • ')}</div></div>
+    <div class="person-photo ${avatarUrl?'has-profile-photo':''}" style="background:${photoBackground}"><span class="distance">${escapeHtml(p.distanceLabel || '📍 Nearby')}</span><span class="verified">✓ verified</span>${likeBadge}${avatarUrl?'':renderPersonAvatar(p)}</div>
+    <div class="person-info"><div class="name-row"><h2>${escapeHtml(p.name)}${age}</h2><strong>${score}%</strong></div><p class="headline">${escapeHtml(p.vibe)}</p><div class="chips">${tags}</div><div class="mutual-box"><b>${mutual.length} Vault signal${mutual.length===1?'':'s'}:</b><br>${signals}</div></div>
   </article>`;
 }
 function act(type){
@@ -682,18 +1110,19 @@ function renderVault(){
 }
 function renderVaultStats(){ const vals=Object.values(state.ratings); $('#ratedCount').textContent=vals.length; $('#limitCount').textContent=vals.filter(v=>v==='limit').length; $('#vaultPct').textContent=(vaultCards.length?Math.round(vals.length/vaultCards.length*100):0)+'%'; }
 function miniAvatarMarkup(p){
-  const bg = p.avatarUrl ? `background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}');background-size:cover;background-position:center` : `background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`;
-  return `<div class="mini-avatar" style="${bg}">${p.avatarUrl?'':p.initial}</div>`;
+  const avatarUrl=safeImageUrl(p?.avatarUrl);
+  const bg = avatarUrl ? `background-image:url('${avatarUrl}');background-size:cover;background-position:center` : `background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`;
+  return `<div class="mini-avatar" style="${bg}">${avatarUrl?'':escapeHtml(p?.initial||'M')}</div>`;
 }
 function renderMatches(){
   const incoming=incomingLikes();
   const matched=mutualMatches();
   let html='<div class="match-tools"><button class="ghost small-control" id="resetConnections">Reset likes & matches</button></div>';
   if(incoming.length){
-    html += `<div class="match-section"><h3>Liked you</h3>${incoming.map(p=>`<article class="match-card incoming-like">${miniAvatarMarkup(p)}<div><h3>${p.name}${p.age?`, ${p.age}`:''}</h3><p>${p.distanceLabel || 'Nearby'} • ${p.mutual[0] || 'Vault compatibility'}</p></div><div class="match-actions"><button class="primary match-action accept-like" data-key="${personKey(p)}">Like back</button><button class="ghost match-action ignore-like" data-key="${personKey(p)}">Ignore</button></div></article>`).join('')}</div>`;
+    html += `<div class="match-section"><h3>Liked you</h3>${incoming.map(p=>`<article class="match-card incoming-like">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h3><p>${escapeHtml(p.distanceLabel || 'Nearby')} • ${escapeHtml(p.mutual[0] || 'Vault compatibility')}</p></div><div class="match-actions"><button class="primary match-action accept-like" data-key="${personKey(p)}">Like back</button><button class="ghost match-action ignore-like" data-key="${personKey(p)}">Ignore</button></div></article>`).join('')}</div>`;
   }
   if(matched.length){
-    html += `<div class="match-section"><h3>Matches</h3>${matched.map(p=>`<article class="match-card">${miniAvatarMarkup(p)}<div><h3>${p.name}${p.age?`, ${p.age}`:''}</h3><p>${p.distanceLabel || 'Nearby'} • ${p.mutual[0] || 'Vault compatibility'}</p></div><div class="match-actions"><span class="score-badge">${p.score}%</span><button class="ghost match-action open-chat" data-key="${personKey(p)}">Chat</button><button class="danger match-action unmatch" data-key="${personKey(p)}">Unmatch</button></div></article>`).join('')}</div>`;
+    html += `<div class="match-section"><h3>Matches</h3>${matched.map(p=>`<article class="match-card">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h3><p>${escapeHtml(p.distanceLabel || 'Nearby')} • ${escapeHtml(p.mutual[0] || 'Vault compatibility')}</p></div><div class="match-actions"><span class="score-badge">${p.score}%</span><button class="ghost match-action open-chat" data-key="${personKey(p)}">Chat</button><button class="danger match-action unmatch" data-key="${personKey(p)}">Unmatch</button></div></article>`).join('')}</div>`;
   }
   if(!incoming.length && !matched.length){
     html += '<div class="empty-state"><h3>No matches yet</h3><p>When someone likes you, they will appear here. Like them back to open a chat.</p></div>';
@@ -708,7 +1137,7 @@ function renderMatches(){
 function renderChats(){
   const matched=mutualMatches();
   if(supa && authUser){ matched.forEach(p=>{ const k=personKey(p); if(!chatCache[k]) loadChatMessages(k, true).then(()=>renderChats()); }); }
-  $('#chatList').innerHTML= matched.length ? matched.map(p=>`<article class="chat-row" data-key="${personKey(p)}">${miniAvatarMarkup(p)}<div><h3>${p.name}</h3><p>${chatPreview(p)}</p></div></article>`).join('') : '<div class="empty-state"><h3>No conversations yet</h3><p>Chats appear only after both people like each other.</p></div>';
+  $('#chatList').innerHTML= matched.length ? matched.map(p=>`<article class="chat-row" data-key="${personKey(p)}">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(chatPreview(p))}</p></div></article>`).join('') : '<div class="empty-state"><h3>No conversations yet</h3><p>Chats appear only after both people like each other.</p></div>';
   $$('.chat-row').forEach(row=>row.onclick=()=>openChat(row.dataset.key));
 }
 
@@ -753,6 +1182,16 @@ async function deleteConversationMessages(key){
   try{
     const me=authUser.id;
     const other=String(key);
+    if(isUuidValue(other)){
+      const pathsResult=await supa.rpc('fv_my_conversation_media_paths',{p_other_id:other});
+      if(!pathsResult.error){
+        const paths=(pathsResult.data||[]).map(x=>typeof x==='string'?x:x?.path).filter(Boolean);
+        if(paths.length) await supa.storage.from(CHAT_MEDIA_BUCKET).remove(paths);
+      }else if(!isMissingRpcError(pathsResult.error)) throw pathsResult.error;
+      const deleted=await supa.rpc('fv_delete_my_conversation',{p_other_id:other});
+      if(!deleted.error) return;
+      if(!isMissingRpcError(deleted.error)) throw deleted.error;
+    }
     await supa.from('fv_messages')
       .delete()
       .or(`and(sender_id.eq.${me},recipient_id.eq.${other}),and(sender_id.eq.${other},recipient_id.eq.${me})`);
@@ -832,7 +1271,7 @@ async function openChat(key){
   if(!p || !isMutual(p)){ showToast('Chats open after you both like each other.'); return; }
   activeChatKey=String(key);
   const modal=ensureChatModal();
-  $('#chatPerson').innerHTML=`${miniAvatarMarkup(p)}<div><h3>${p.name}</h3><p>${p.distanceLabel || 'Matched'}</p></div>`;
+  $('#chatPerson').innerHTML=`${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(p.distanceLabel || 'Matched')}</p></div>`;
   modal.classList.remove('hidden');
   await loadChatMessages(activeChatKey, false);
   renderChatMessages();
@@ -845,7 +1284,7 @@ function renderChatMessages(){
   const p=people.find(x=>personKey(x)===String(activeChatKey));
   const msgs=getCachedChat(activeChatKey);
   const starter=p?.mutual?.[0] && !p.mutual[0].startsWith('Vault overlap') ? `You matched with ${p.name}. Shared signal: ${p.mutual[0]}.` : `You matched with ${p?.name || 'this person'}.`;
-  $('#chatMessages').innerHTML = `<div class="chat-bubble system">${starter}</div>` + msgs.map(m=>`<div class="chat-bubble ${m.from==='me'?'mine':'theirs'}">${escapeHtml(m.text)}<span>${new Date(m.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span></div>`).join('');
+  $('#chatMessages').innerHTML = `<div class="chat-bubble system">${escapeHtml(starter)}</div>` + msgs.map(m=>`<div class="chat-bubble ${m.from==='me'?'mine':'theirs'}">${escapeHtml(m.text)}<span>${new Date(m.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span></div>`).join('');
   const box=$('#chatMessages'); if(box) box.scrollTop=box.scrollHeight;
 }
 async function sendChatMessage(){
@@ -893,6 +1332,22 @@ function stopChatAutoRefresh(){
   chatRefreshTimer=null;
 }
 function escapeHtml(v){ return String(v ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch])); }
+function safeImageUrl(value,{allowData=true}={}){
+  const raw=String(value||'').trim();
+  if(!raw) return '';
+  if(allowData && /^data:image\/(?:png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(raw)) return raw;
+  try{
+    const u=new URL(raw,window.location.href);
+    const localHttp=(u.protocol==='http:' && ['localhost','127.0.0.1','::1'].includes(u.hostname));
+    if(u.protocol!=='https:' && !localHttp) return '';
+    if(u.username || u.password) return '';
+    const supabaseHost=(()=>{try{return new URL(CONFIG.SUPABASE_URL||'').hostname;}catch{return '';}})();
+    const allowed=u.origin===window.location.origin || u.hostname===supabaseHost || u.hostname.endsWith('.googleusercontent.com') || localHttp;
+    if(!allowed) return '';
+    // Encode characters that could escape an inline CSS url() or HTML attribute.
+    return u.href.replace(/[\s"'()\\]/g,ch=>encodeURIComponent(ch));
+  }catch{return '';}
+}
 
 // Real Admin Studio overrides: form-based Vault/category/answer management.
 let adminSelectedCardId = null;
@@ -1254,12 +1709,13 @@ function openMemberProfile(key){
   modal.dataset.key=personKey(p);
   const cmp=compareVaultWithPerson(p);
   const totalCompared=cmp.shared.length+cmp.curious.length+cmp.different.length+cmp.limits.length;
-  const avatarStyle=p.avatarUrl ? `background-image:url('${String(p.avatarUrl).replace(/'/g,'%27')}')` : `background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`;
-  const heroBg=p.avatarUrl ? `background:linear-gradient(180deg,rgba(10,6,16,.05),rgba(10,6,16,.88)), url('${String(p.avatarUrl).replace(/'/g,'%27')}') center/cover` : `background:radial-gradient(circle at 25% 20%,${p.gradient[0]},transparent 38%),linear-gradient(135deg,${p.gradient[1]},#150a25 72%)`;
+  const avatarUrl=safeImageUrl(p.avatarUrl);
+  const avatarStyle=avatarUrl ? `background-image:url('${avatarUrl}')` : `background:linear-gradient(135deg,${p.gradient[0]},${p.gradient[1]})`;
+  const heroBg=avatarUrl ? `background:linear-gradient(180deg,rgba(10,6,16,.05),rgba(10,6,16,.88)), url('${avatarUrl}') center/cover` : `background:radial-gradient(circle at 25% 20%,${p.gradient[0]},transparent 38%),linear-gradient(135deg,${p.gradient[1]},#150a25 72%)`;
   $('#memberProfileBody').innerHTML=`
     <div class="member-hero modern-member-hero" style="${heroBg}">
       <div class="member-hero-shade"></div>
-      <div class="member-avatar-large" style="${avatarStyle}">${p.avatarUrl?'':escapeHtml(p.initial)}</div>
+      <div class="member-avatar-large" style="${avatarStyle}">${avatarUrl?'':escapeHtml(p.initial)}</div>
       <div class="member-hero-text">
         <div class="member-name-row"><h2>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h2><span class="online-pill">Verified</span></div>
         <p>${escapeHtml(p.vibe||'Building their Afterglow profile.')}</p>
@@ -1347,9 +1803,19 @@ function renderChats(){
 }
 
 async function cleanupExpiredMessages(){
-  // Do not aggressively delete during normal reads; only prune rows already past expiry.
+  // Remove the current user's expired media bytes first, then prune expired rows.
   if(!supa || !authUser) return;
-  try{ await supa.from('fv_messages').delete().lt('expires_at', new Date(Date.now()-60000).toISOString()); }catch(err){ console.warn('Expired message cleanup failed', err); }
+  try{
+    const pathsResult=await supa.rpc('fv_my_expired_media_paths');
+    if(!pathsResult.error){
+      const paths=(pathsResult.data||[]).map(x=>typeof x==='string'?x:x?.path).filter(Boolean);
+      if(paths.length) await supa.storage.from(CHAT_MEDIA_BUCKET).remove(paths);
+      const cleanup=await supa.rpc('fv_cleanup_my_expired_messages');
+      if(!cleanup.error) return;
+      if(!isMissingRpcError(cleanup.error)) throw cleanup.error;
+    }else if(!isMissingRpcError(pathsResult.error)) throw pathsResult.error;
+    await supa.from('fv_messages').delete().lt('expires_at', new Date(Date.now()-60000).toISOString());
+  }catch(err){ console.warn('Expired message cleanup failed', err); }
 }
 
 
@@ -1456,7 +1922,10 @@ function ensureChatModal(){
 function mediaHtml(m){
   const items=Array.isArray(m.media) ? m.media : [];
   if(!items.length) return '';
-  return `<div class="private-media-grid ${items.length>1?'album':''}">${items.map(item=>item.signedUrl?`<a href="${item.signedUrl}" target="_blank" rel="noopener" class="private-media-thumb"><img src="${item.signedUrl}" alt="Private shared photo"><span>Expires ${timeUntil(item.expires_at || m.expiresAt)}</span></a>`:`<div class="private-media-thumb expired"><span>Photo unavailable</span></div>`).join('')}</div>`;
+  return `<div class="private-media-grid ${items.length>1?'album':''}">${items.map(item=>{
+    const url=safeImageUrl(item.signedUrl,{allowData:false});
+    return url?`<a href="${url}" target="_blank" rel="noopener noreferrer" class="private-media-thumb"><img src="${url}" alt="Private shared photo"><span>Expires ${escapeHtml(timeUntil(item.expires_at || m.expiresAt))}</span></a>`:`<div class="private-media-thumb expired"><span>Photo unavailable</span></div>`;
+  }).join('')}</div>`;
 }
 function timeUntil(value){
   const ms=new Date(value).getTime()-Date.now();
@@ -1516,9 +1985,9 @@ async function sendPrivatePhotos(files){
   const hours=MEDIA_EXPIRY_OPTIONS[expiryKey] || 72;
   const expiresAt=new Date(Date.now()+hours*60*60*1000).toISOString();
   const input=$('#chatPhotoInput');
+  const uploaded=[];
   try{
     const conv=conversationIdFor(activeChatKey).replace(/[^a-zA-Z0-9_-]/g,'_');
-    const uploaded=[];
     for(const file of files.slice(0,8)){
       if(!file.type.startsWith('image/')) continue;
       if(file.size > 8*1024*1024){ showToast('One photo was over 8MB and skipped.'); continue; }
@@ -1536,7 +2005,10 @@ async function sendPrivatePhotos(files){
     await loadChatMessages(activeChatKey, true);
     renderChatMessages(); renderChats();
     showToast(`Private photo${uploaded.length>1?'s':''} sent. Expires in ${expiryKey==='default'?'72h':$('#chatExpiry')?.selectedOptions?.[0]?.textContent || '72h'}.`);
-  }catch(err){ console.warn('Private photo send failed', err); showToast('Photo failed. Run updated SQL and create the private chat bucket.'); }
+  }catch(err){
+    if(uploaded.length){ try{ await supa.storage.from(CHAT_MEDIA_BUCKET).remove(uploaded.map(x=>x.path)); }catch{} }
+    console.warn('Private photo send failed', err); showToast('Photo failed. Uploaded files were rolled back.');
+  }
 }
 
 
@@ -1546,14 +2018,31 @@ async function sendPrivatePhotos(files){
    ========================================================= */
 
 const DAILY_GLOW_REWARDS = [5,10,15,15,20,20,50];
-function todayKey(){ return new Date().toISOString().slice(0,10); }
-function yesterdayKey(){ const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
+function localDateKey(offsetDays=0){ const d=new Date(); d.setDate(d.getDate()+offsetDays); const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+function dateKeyInTimezone(timeZone){
+  if(!timeZone) return localDateKey(0);
+  try{
+    const parts=Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    const map=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+    return `${map.year}-${map.month}-${map.day}`;
+  }catch{return localDateKey(0);}
+}
+function shiftDateKey(key,days){
+  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key||''));
+  if(!match) return localDateKey(days);
+  const d=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])+days));
+  return d.toISOString().slice(0,10);
+}
+function todayKey(){ return dateKeyInTimezone(state?.rewards?.timezone); }
+function yesterdayKey(){ return shiftDateKey(todayKey(),-1); }
 function ensureRewards(){
   if(!state.rewards || typeof state.rewards !== 'object') state.rewards = {glowCoins:0, streak:0, lastClaimDate:'', claimedToday:false};
   state.rewards.glowCoins = Number(state.rewards.glowCoins || 0);
   state.rewards.streak = Number(state.rewards.streak || 0);
   state.rewards.lastClaimDate = state.rewards.lastClaimDate || '';
-  state.rewards.claimedToday = state.rewards.lastClaimDate === todayKey();
+  const walletToday=dateKeyInTimezone(state.rewards.timezone);
+  state.rewards.serverToday=walletToday;
+  state.rewards.claimedToday = state.rewards.lastClaimDate === walletToday;
   return state.rewards;
 }
 function nextDailyReward(){
@@ -1569,24 +2058,42 @@ function renderDailyGift(){
   const title=$('#dailyGiftTitle'); if(title) title.textContent = r.claimedToday ? 'Gift claimed ✨' : `Claim ${nextDailyReward()} Glow Coins`;
   const text=$('#dailyGiftText'); if(text) text.textContent = r.claimedToday ? `You are on a ${r.streak || 1}-day streak. Come back tomorrow to keep your glow.` : 'Daily logins earn Glow Coins. Keep your streak alive for a 50 coin day-seven reward.';
   const row=$('#dailyStreakRow');
-  if(row){ row.innerHTML=DAILY_GLOW_REWARDS.map((n,i)=>`<span class="streak-dot ${(r.streak||0)>i?'done':''} ${(r.streak||0)===i+1?'current':''}"><b>${i+1}</b><small>${n}</small></span>`).join(''); }
+  if(row){ const shownDay=Math.min(Math.max(Number(r.streak||0),1),7); row.innerHTML=DAILY_GLOW_REWARDS.map((n,i)=>`<span class="streak-dot ${(r.streak||0)>i?'done':''} ${shownDay===i+1?'current':''}"><b>${i+1}</b><small>${n}</small></span>`).join(''); }
   const gift=$('#dailyGift'); if(gift){ gift.classList.toggle('claimable', !r.claimedToday); gift.title=`Glow Coins: ${r.glowCoins}`; }
 }
 async function claimDailyGift(){
   const r=ensureRewards();
   if(r.claimedToday){ showToast('Daily gift already claimed.'); return; }
+  if(supa && authUser){
+    try{
+      const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const {data,error}=await supa.rpc('fv_claim_daily_glow',{p_timezone:timezone});
+      if(error && !isMissingRpcError(error)) throw error;
+      if(!error){
+        const result=Array.isArray(data)?data[0]:data;
+        applyEconomyPayload(result);
+        ensureRewards().claimedToday=ensureRewards().lastClaimDate===todayKey();
+        persistStateLocalOnly('daily_reward');
+        renderDailyGift(); renderShop(); updateGlowCoinDisplays();
+        if(result?.status==='already_claimed') showToast('Daily gift already claimed.');
+        else showToast(`You earned ${Number(result?.reward||0)} Glow Coins.`);
+        return;
+      }
+    }catch(err){ console.warn('Server daily reward failed',err); showToast('Daily reward could not reach the secure wallet. Try again after sync reconnects.'); return; }
+  }
+  // Compatibility fallback for projects that have not run the production SQL yet.
   const last=r.lastClaimDate;
   const continuing = last === yesterdayKey();
-  r.streak = continuing ? Math.min((r.streak||0)+1, 7) : 1;
+  r.streak = continuing ? Number(r.streak||0)+1 : 1;
   const reward=DAILY_GLOW_REWARDS[Math.min(r.streak,7)-1];
   r.glowCoins += reward;
   r.lastClaimDate = todayKey();
   r.claimedToday = true;
   state.profile.rewards = r;
-  save();
+  save('daily_reward_compatibility');
   renderDailyGift();
-  await syncToSupabase(false);
-  showToast(`You earned ${reward} Glow Coins.`);
+  await syncToSupabase(false,'daily_reward_compatibility');
+  showToast(`You earned ${reward} Glow Coins. Run the production SQL to secure rewards server-side.`);
 }
 function openDailyGift(){ renderDailyGift(); $('#dailyModal')?.classList.remove('hidden'); }
 function closeDailyGift(){ $('#dailyModal')?.classList.add('hidden'); }
@@ -1876,7 +2383,7 @@ function init(){
   const syncNow=$('#syncNow'); if(syncNow) syncNow.onclick=()=>syncToSupabase(true);
   const saveProfileBtn=$('#saveProfile'); if(saveProfileBtn) saveProfileBtn.onclick=saveProfileManually;
   const avatarUpload=$('#avatarUpload'); if(avatarUpload) avatarUpload.onchange=e=>handleAvatarUpload(e.target.files?.[0]);
-  const removeAvatar=$('#removeAvatar'); if(removeAvatar) removeAvatar.onclick=()=>{state.profile.avatarUrl=''; updateAvatar(); save(); showToast('Photo removed.');};
+  const removeAvatar=$('#removeAvatar'); if(removeAvatar) removeAvatar.onclick=removeAvatarPhoto;
   const adminSeed=$('#adminSeed'); if(adminSeed) adminSeed.onclick=()=>saveAdminConfig(true);
   const adminReload=$('#adminReload'); if(adminReload) adminReload.onclick=()=>loadAdminConfig();
   const adminSave=$('#adminSave'); if(adminSave) adminSave.onclick=()=>saveAdminConfig(false);
@@ -1967,23 +2474,60 @@ async function buyShopItem(id){
   const item=SHOP_ITEMS.find(i=>i.id===id); if(!item) return;
   const {rewards, inventory}=ensureEconomy();
   if(isShopOwned(id)) return equipShopItem(id);
+  if(supa && authUser){
+    try{
+      const {data,error}=await supa.rpc('fv_purchase_shop_item',{p_item_id:id});
+      if(error && !isMissingRpcError(error)) throw error;
+      if(!error){
+        let result=Array.isArray(data)?data[0]:data;
+        applyEconomyPayload(result);
+        if(result?.status==='insufficient'){
+          showToast(`Not enough Glow Coins yet. You need ${Number(result.needed||0)} more.`);
+          return;
+        }
+        if(['avatarFrame','profileTheme','avatarEffect','profileEffect','colorway'].includes(item.type)){
+          const equipResult=await supa.rpc('fv_equip_shop_item',{p_item_id:id});
+          if(!equipResult.error){ result=Array.isArray(equipResult.data)?equipResult.data[0]:equipResult.data; applyEconomyPayload(result); }
+        }
+        state.profile.inventory=state.inventory;
+        persistStateLocalOnly('shop_purchase');
+        updateAvatar(); renderShop(); await syncToSupabase(false,'shop_purchase');
+        showToast(result?.status==='owned' ? `${item.title} is already unlocked.` : `Unlocked ${item.title}.`);
+        return;
+      }
+    }catch(err){ console.warn('Secure shop purchase failed',err); showToast('Purchase could not reach the secure wallet. No coins were removed.'); return; }
+  }
+  // Compatibility fallback until the production SQL migration is installed.
   if((rewards.glowCoins||0) < item.price) return showToast('Not enough Glow Coins yet. Claim daily gifts to earn more.');
   rewards.glowCoins -= item.price;
   inventory.owned.push(id);
-  if(['avatarFrame','profileTheme'].includes(item.type)) inventory.equipped[item.type]=item.value;
+  if(['avatarFrame','profileTheme','avatarEffect','profileEffect','colorway'].includes(item.type)) inventory.equipped[item.type]=item.value;
   state.profile.rewards=rewards; state.profile.inventory=inventory;
-  updateAvatar(); save(); renderShop();
-  await syncToSupabase(false);
-  showToast(`Unlocked ${item.title}.`);
+  updateAvatar(); save('shop_purchase_compatibility'); renderShop();
+  await syncToSupabase(false,'shop_purchase_compatibility');
+  showToast(`Unlocked ${item.title}. Run the production SQL to secure the wallet.`);
 }
 async function equipShopItem(id){
   const item=SHOP_ITEMS.find(i=>i.id===id); if(!item) return;
   const {inventory}=ensureEconomy();
   if(!isShopOwned(id)) return buyShopItem(id);
-  if(['avatarFrame','profileTheme'].includes(item.type)) inventory.equipped[item.type]=item.value;
+  if(supa && authUser){
+    try{
+      const {data,error}=await supa.rpc('fv_equip_shop_item',{p_item_id:id});
+      if(error && !isMissingRpcError(error)) throw error;
+      if(!error){
+        applyEconomyPayload(data);
+        state.profile.inventory=state.inventory;
+        persistStateLocalOnly('shop_equip');
+        updateAvatar(); renderShop(); await syncToSupabase(false,'shop_equip');
+        showToast(`${item.title} equipped.`); return;
+      }
+    }catch(err){ console.warn('Secure equip failed',err); showToast('Could not equip this item right now.'); return; }
+  }
+  inventory.equipped[item.type]=item.value;
   state.profile.inventory=inventory;
-  updateAvatar(); save(); renderShop();
-  await syncToSupabase(false);
+  updateAvatar(); save('shop_equip_compatibility'); renderShop();
+  await syncToSupabase(false,'shop_equip_compatibility');
   showToast(`${item.title} equipped.`);
 }
 function applyCosmetics(){
@@ -2029,6 +2573,7 @@ function adminUserName(row){
   return p.displayName || p.name || row?.email || 'Member';
 }
 function adminUserCoins(row){
+  if(row && row.glow_coins !== undefined && row.glow_coins !== null) return Number(row.glow_coins||0);
   const rewards=(row?.profile||{}).rewards || {};
   return Number(rewards.glowCoins || 0);
 }
@@ -2044,9 +2589,11 @@ function renderAdminUsers(){
     const name=adminEscape(adminUserName(row));
     const email=adminEscape(row.email||'No email');
     const coins=adminUserCoins(row);
-    return `<button class="admin-list-item ${row.user_id===adminSelectedUserId?'selected':''}" type="button" data-admin-user-id="${adminEscape(row.user_id)}">
-      <span class="admin-list-emoji">🪙</span>
-      <span><b>${name}</b><small>${email}</small></span>
+    const recovery=row?.profile?._walletRecovery;
+    const pending=recovery?.status==='pending';
+    return `<button class="admin-list-item ${row.user_id===adminSelectedUserId?'selected':''} ${pending?'has-recovery':''}" type="button" data-admin-user-id="${adminEscape(row.user_id)}">
+      <span class="admin-list-emoji">${pending?'⚠️':'🪙'}</span>
+      <span><b>${name}</b><small>${pending?`Wallet review: ${Number(recovery.requested_balance||0)} requested`:email}</small></span>
       <span class="admin-coin-badge">${coins}</span>
     </button>`;
   }).join('') || '<div class="admin-empty">No users found yet.</div>';
@@ -2059,7 +2606,11 @@ function renderAdminSelectedUser(){
   const row=(adminUsers||[]).find(r=>r.user_id===adminSelectedUserId);
   if(!row){ box.className='admin-selected-user empty'; box.textContent='Select a user to edit their Glow Coin balance.'; return; }
   box.className='admin-selected-user';
-  box.innerHTML=`<b>${adminEscape(adminUserName(row))}</b><span>${adminEscape(row.email||'No email')}</span><div class="admin-user-meta"><small>User ID: ${adminEscape(String(row.user_id||'').slice(0,8))}…</small></div><strong>${adminUserCoins(row)} Glow Coins</strong>`;
+  const recovery=row?.profile?._walletRecovery;
+  const recoveryHtml=recovery?.status==='pending' ? `<div class="admin-wallet-recovery"><b>Legacy wallet recovery requested</b><p>Browser backup: ${Number(recovery.requested_balance||0)} coins • Server at detection: ${Number(recovery.server_balance_at_request||0)} coins</p><div><button type="button" class="primary" id="approveWalletRecovery">Approve preserved balance</button><button type="button" class="ghost" id="rejectWalletRecovery">Reject</button></div></div>` : '';
+  box.innerHTML=`<b>${adminEscape(adminUserName(row))}</b><span>${adminEscape(row.email||'No email')}</span><div class="admin-user-meta"><small>User ID: ${adminEscape(String(row.user_id||'').slice(0,8))}…</small></div><strong>${adminUserCoins(row)} Glow Coins</strong>${recoveryHtml}`;
+  $('#approveWalletRecovery')?.addEventListener('click',()=>resolveAdminWalletRecovery(true));
+  $('#rejectWalletRecovery')?.addEventListener('click',()=>resolveAdminWalletRecovery(false));
 }
 function selectAdminUser(userId){
   adminSelectedUserId=userId;
@@ -2069,12 +2620,16 @@ async function loadAdminUsers(){
   if(!isAdmin()) return;
   if(!supa || !authUser){ showToast('Supabase unavailable.'); return; }
   try{
-    const {data,error}=await supa.from('fv_profiles').select('id,user_id,email,profile,updated_at').order('updated_at',{ascending:false}).limit(250);
-    if(error) throw error;
-    adminUsers=data||[];
+    const rpc=await supa.rpc('fv_admin_list_users',{p_limit:250});
+    if(!rpc.error){ adminUsers=rpc.data||[]; }
+    else if(isMissingRpcError(rpc.error)){
+      const fallback=await supa.from('fv_profiles').select('id,user_id,email,profile,updated_at').order('updated_at',{ascending:false}).limit(250);
+      if(fallback.error) throw fallback.error;
+      adminUsers=fallback.data||[];
+    }else throw rpc.error;
     if(adminSelectedUserId && !adminUsers.some(r=>r.user_id===adminSelectedUserId)) adminSelectedUserId=null;
     renderAdminUsers();
-  }catch(err){ console.warn('Admin users load failed',err); showToast('Could not load users. Run the updated SQL admin wallet policy.'); }
+  }catch(err){ console.warn('Admin users load failed',err); showToast('Could not load users. Run the production SQL migration.'); }
 }
 async function adjustAdminUserCoins({setExact=false}={}){
   if(!isAdmin()) return showToast('Admin access is restricted.');
@@ -2082,28 +2637,49 @@ async function adjustAdminUserCoins({setExact=false}={}){
   if(!row) return showToast('Select a user first.');
   const amount=Number($('#adminCoinAmount')?.value || 0);
   if(!Number.isFinite(amount)) return showToast('Enter a valid coin amount.');
-  const profile={...(row.profile||{})};
-  const rewards={...(profile.rewards||{})};
-  const current=Number(rewards.glowCoins||0);
-  rewards.glowCoins=Math.max(0, Math.round(setExact ? amount : current + amount));
-  rewards.adminLastAdjustment={
-    by:authUser.email,
-    amount:setExact ? rewards.glowCoins-current : amount,
-    mode:setExact?'set':'adjust',
-    reason:($('#adminCoinReason')?.value||'').trim(),
-    at:new Date().toISOString()
-  };
-  profile.rewards=rewards;
+  const reason=($('#adminCoinReason')?.value||'').trim();
   try{
+    const rpc=await supa.rpc('fv_admin_adjust_glow_coins',{p_user_id:row.user_id,p_amount:Math.round(amount),p_set_exact:!!setExact,p_reason:reason});
+    if(!rpc.error){
+      const result=Array.isArray(rpc.data)?rpc.data[0]:rpc.data;
+      const wallet=result?.economy?.wallet||{};
+      row.glow_coins=Number(wallet.glow_coins||0); row.streak=Number(wallet.streak||0); row.last_claim_date=wallet.last_claim_date||null;
+      if(row.user_id===authUser.id) applyEconomyPayload(result);
+      $('#adminCoinAmount').value=''; renderAdminUsers();
+      showToast(`${adminUserName(row)} now has ${row.glow_coins} Glow Coins.`); return;
+    }
+    if(!isMissingRpcError(rpc.error)) throw rpc.error;
+    // Compatibility fallback for an older schema.
+    const profile={...(row.profile||{})}; const rewards={...(profile.rewards||{})}; const current=Number(rewards.glowCoins||0);
+    rewards.glowCoins=Math.max(0,Math.round(setExact?amount:current+amount));
+    rewards.adminLastAdjustment={by:authUser.email,amount:setExact?rewards.glowCoins-current:amount,mode:setExact?'set':'adjust',reason,at:new Date().toISOString()};
+    profile.rewards=rewards;
     const {error}=await supa.from('fv_profiles').update({profile,updated_at:new Date().toISOString()}).eq('user_id',row.user_id);
     if(error) throw error;
-    row.profile=profile;
-    if(row.user_id===authUser.id){ state.rewards=rewards; state.profile.rewards=rewards; save(); updateGlowCoinDisplays(); renderDailyGift(); renderShop(); }
-    $('#adminCoinAmount').value='';
-    renderAdminUsers();
-    showToast(`${adminUserName(row)} now has ${rewards.glowCoins} Glow Coins.`);
-  }catch(err){ console.warn('Admin coin update failed',err); showToast('Coin update failed. Run updated SQL admin wallet policy.'); }
+    row.profile=profile; row.glow_coins=rewards.glowCoins;
+    if(row.user_id===authUser.id){state.rewards=rewards;state.profile.rewards=rewards;save('admin_wallet_compatibility');}
+    $('#adminCoinAmount').value=''; renderAdminUsers(); showToast(`${adminUserName(row)} now has ${rewards.glowCoins} Glow Coins. Run the production SQL migration.`);
+  }catch(err){ console.warn('Admin coin update failed',err); showToast('Coin update failed. No wallet change was applied.'); }
 }
+async function resolveAdminWalletRecovery(approve){
+  if(!isAdmin()) return showToast('Admin access is restricted.');
+  const row=(adminUsers||[]).find(r=>r.user_id===adminSelectedUserId);
+  const recovery=row?.profile?._walletRecovery;
+  if(!row || recovery?.status!=='pending') return showToast('No pending wallet recovery is selected.');
+  const action=approve?'approve':'reject';
+  if(!window.confirm(`${action[0].toUpperCase()+action.slice(1)} this wallet recovery request?`)) return;
+  try{
+    const note=($('#adminCoinReason')?.value||'').trim();
+    const {data,error}=await supa.rpc('fv_admin_resolve_wallet_recovery',{p_user_id:row.user_id,p_approve:!!approve,p_note:note});
+    if(error) throw error;
+    const result=Array.isArray(data)?data[0]:data;
+    row.profile={...(row.profile||{}),_walletRecovery:result?.request||{...recovery,status:approve?'approved':'rejected'}};
+    const wallet=result?.economy?.wallet||{}; row.glow_coins=Number(wallet.glow_coins||row.glow_coins||0);
+    if(row.user_id===authUser.id){ applyEconomyPayload(result); state.meta.walletRecovery={...(state.meta.walletRecovery||{}),status:approve?'approved':'rejected',request:result?.request||null,updatedAt:new Date().toISOString()}; persistStateLocalOnly('wallet_recovery_resolved'); }
+    renderAdminUsers(); showToast(approve?`Recovered wallet approved at ${row.glow_coins} Glow Coins.`:'Wallet recovery request rejected.');
+  }catch(err){console.warn('Wallet recovery resolution failed',err);showToast('Wallet recovery could not be resolved.');}
+}
+
 function bindAdminWalletTools(){
   const reload=$('#adminUsersReload'); if(reload && !reload.dataset.bound){ reload.dataset.bound='1'; reload.onclick=loadAdminUsers; }
   const search=$('#adminUserSearch'); if(search && !search.dataset.bound){ search.dataset.bound='1'; search.oninput=renderAdminUsers; }
@@ -2563,33 +3139,46 @@ renderAdminWorkspace = function(){
   function $all(sel){ return [...document.querySelectorAll(sel)]; }
   function safe(v){ return (typeof escapeHtml==='function') ? escapeHtml(v) : String(v??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
   function nowIso(){ return new Date().toISOString(); }
-  function weekKey(){
-    const d=new Date();
-    const onejan=new Date(d.getFullYear(),0,1);
-    const week=Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7);
-    return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
-  }
+  function weekKey(){ return isoWeekKey(); }
   function rewardsObj(){ if(typeof ensureRewards==='function') return ensureRewards(); state.rewards=state.rewards||{glowCoins:0}; return state.rewards; }
   function ensureWeekly(){
     if(!state.weeklyGoals || state.weeklyGoals.week !== weekKey()) state.weeklyGoals={week:weekKey(), completed:{}};
     return state.weeklyGoals;
   }
-  function awardWeeklyGoal(id){
+  const weeklyGoalPending=new Set();
+  async function awardWeeklyGoal(id){
     const wg=ensureWeekly();
-    if(wg.completed[id]) return false;
+    if(wg.completed[id] || weeklyGoalPending.has(id)) return false;
     const goal=WEEKLY_GOALS.find(g=>g.id===id);
     if(!goal) return false;
-    wg.completed[id]=nowIso();
-    const r=rewardsObj();
-    r.glowCoins=Number(r.glowCoins||0)+goal.coins;
-    state.profile=state.profile||{};
-    state.profile.weeklyGoals=wg;
-    state.profile.rewards=r;
-    if(typeof updateGlowCoinUi==='function') updateGlowCoinUi();
-    if(typeof renderWeeklyGoals==='function') renderWeeklyGoals();
-    if(typeof save==='function') save();
-    if(typeof showToast==='function') showToast(`+${goal.coins} Glow Coins: ${goal.title}`);
-    return true;
+    weeklyGoalPending.add(id);
+    try{
+      if(supa && authUser){
+        // Persist the action evidence before the server evaluates the claim.
+        if(typeof syncToSupabase==='function') await syncToSupabase(false,`weekly_evidence_${id}`);
+        const {data,error}=await supa.rpc('fv_claim_weekly_goal',{p_goal_id:id});
+        if(error && !isMissingRpcError(error)) throw error;
+        if(!error){
+          const result=Array.isArray(data)?data[0]:data;
+          applyEconomyPayload(result);
+          wg.week=result?.week_key||wg.week;
+          wg.completed[id]=nowIso();
+          state.weeklyGoals=wg; state.profile.weeklyGoals=wg; state.profile.rewards=state.rewards;
+          persistStateLocalOnly('weekly_goal');
+          renderWeeklyGoals();
+          if(result?.status==='claimed') showToast(`+${Number(result.coins||goal.coins)} Glow Coins: ${goal.title}`);
+          return true;
+        }
+      }
+      // Compatibility fallback until the production SQL migration is installed.
+      wg.completed[id]=nowIso();
+      const r=rewardsObj(); r.glowCoins=Number(r.glowCoins||0)+goal.coins;
+      state.profile=state.profile||{}; state.profile.weeklyGoals=wg; state.profile.rewards=r;
+      renderWeeklyGoals(); save('weekly_goal_compatibility');
+      showToast(`+${goal.coins} Glow Coins: ${goal.title}. Run the production SQL to secure rewards.`);
+      return true;
+    }catch(err){ console.warn('Weekly goal claim failed',err); return false; }
+    finally{ weeklyGoalPending.delete(id); }
   }
 
   function injectIntimacyUi(){
@@ -2661,8 +3250,9 @@ renderAdminWorkspace = function(){
     if(!authUser || !supa){ showToast('Sign in is required to upload private album photos.'); return; }
     const valid=files.filter(f=>f.type?.startsWith('image/')).slice(0,12);
     if(!valid.length) return;
+    const rows=[];
+    let metadataSaved=false;
     try{
-      const rows=[];
       for(const file of valid){
         if(file.size > 8*1024*1024){ showToast('One private photo was over 8MB and skipped.'); continue; }
         const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
@@ -2674,12 +3264,16 @@ renderAdminWorkspace = function(){
       if(rows.length){
         const {error}=await supa.from(PRIVATE_ALBUM_TABLE).insert(rows);
         if(error) throw error;
+        metadataSaved=true;
         awardWeeklyGoal('private_photo');
         await refreshMyPrivateAlbum();
         if(typeof syncToSupabase==='function') syncToSupabase(false);
         showToast(`${rows.length} private album photo${rows.length>1?'s':''} added.`);
       }
-    }catch(err){ console.warn('Private album upload failed',err); showToast('Private album upload failed. Run the updated SQL and storage bucket setup.'); }
+    }catch(err){
+      if(rows.length && !metadataSaved){ try{ await supa.storage.from(PRIVATE_ALBUM_BUCKET).remove(rows.map(x=>x.path)); }catch{} }
+      console.warn('Private album upload failed',err); showToast('Private album upload failed. Uploaded files were rolled back.');
+    }
   }
   async function refreshMyPrivateAlbum(){
     if(!authUser || !supa) return;
@@ -2698,7 +3292,7 @@ renderAdminWorkspace = function(){
   function renderOwnerPrivateAlbum(items){
     const count=$one('#privateAlbumCount'); if(count) count.textContent=`${items.length} photo${items.length===1?'':'s'}`;
     const grid=$one('#privateAlbumOwnerGrid'); if(!grid) return;
-    grid.innerHTML=items.length ? items.map(x=>`<div class="owner-private-photo"><img src="${x.signedUrl||''}" alt="Private album photo"><button type="button" class="danger delete-private-photo" data-id="${x.id}" data-path="${safe(x.path)}">Remove</button></div>`).join('') : '<div class="profile-empty-mini">No private photos yet. Add a few to give matches something to request.</div>';
+    grid.innerHTML=items.length ? items.map(x=>{const url=safeImageUrl(x.signedUrl,{allowData:false});return url?`<div class="owner-private-photo"><img src="${url}" alt="Private album photo"><button type="button" class="danger delete-private-photo" data-id="${safe(x.id)}" data-path="${safe(x.path)}">Remove</button></div>`:'';}).join('') : '<div class="profile-empty-mini">No private photos yet. Add a few to give matches something to request.</div>';
     $all('.delete-private-photo').forEach(btn=>btn.onclick=()=>deletePrivateAlbumPhoto(btn.dataset.id,btn.dataset.path));
   }
   async function deletePrivateAlbumPhoto(id,path){
@@ -2717,6 +3311,11 @@ renderAdminWorkspace = function(){
   async function fetchAlbumItems(ownerId, allowSigned=false){
     if(!supa || !authUser || !ownerId) return [];
     try{
+      if(!allowSigned && ownerId!==authUser.id){
+        const preview=await supa.rpc('fv_private_album_preview_count',{p_owner_id:ownerId});
+        if(!preview.error){ return Array.from({length:Number(preview.data||0)},(_,i)=>({id:`locked-${i}`,locked:true})); }
+        if(!isMissingRpcError(preview.error)) throw preview.error;
+      }
       const {data,error}=await supa.from(PRIVATE_ALBUM_TABLE).select('id,path,caption,created_at').eq('owner_id',ownerId).order('created_at',{ascending:false}).limit(24);
       if(error) throw error;
       if(!allowSigned) return data||[];
@@ -2731,17 +3330,17 @@ renderAdminWorkspace = function(){
     const cacheKey=`${ownerId}|${authUser.id}`;
     if(albumAccessCache[cacheKey] !== undefined) return albumAccessCache[cacheKey];
     try{
+      const access=await supa.from('fv_album_access').select('status').eq('owner_id',ownerId).eq('requester_id',authUser.id).maybeSingle();
+      if(!access.error){ const ok=access.data?.status==='accepted'; albumAccessCache[cacheKey]=ok; return ok; }
+      if(!isMissingRpcError(access.error) && access.error?.code!=='42P01') throw access.error;
+      // Compatibility fallback for legacy builds that stored approval in expiring messages.
       const me=authUser.id;
-      const {data,error}=await supa.from('fv_messages')
-        .select('id,media,created_at')
-        .eq('message_type',ALBUM_REQUEST_TYPE)
+      const {data,error}=await supa.from('fv_messages').select('id,media,created_at').eq('message_type',ALBUM_REQUEST_TYPE)
         .or(`and(sender_id.eq.${me},recipient_id.eq.${ownerId}),and(sender_id.eq.${ownerId},recipient_id.eq.${me})`)
-        .order('created_at',{ascending:false})
-        .limit(20);
+        .order('created_at',{ascending:false}).limit(20);
       if(error) throw error;
       const ok=(data||[]).some(m=>Array.isArray(m.media) && m.media.some(x=>x.kind==='album_request' && x.owner_id===ownerId && x.requester_id===me && x.status==='accepted'));
-      albumAccessCache[cacheKey]=ok;
-      return ok;
+      albumAccessCache[cacheKey]=ok; return ok;
     }catch(err){ console.warn('album access check failed',err); return false; }
   }
   async function requestAlbumAccess(ownerId){
@@ -2750,37 +3349,57 @@ renderAdminWorkspace = function(){
     const p=people.find(x=>String(personKey(x))===String(ownerId));
     if(p && !isMutual(p)) return showToast('Private album requests unlock after a match.');
     try{
-      const conv=conversationIdFor(ownerId);
-      const expiresAt=new Date(Date.now()+72*60*60*1000).toISOString();
-      const media=[{kind:'album_request',owner_id:ownerId,requester_id:authUser.id,status:'pending',created_at:nowIso()}];
-      const payload={sender_id:authUser.id,recipient_id:ownerId,conversation_id:conv,body:'🔒 Private album access request',message_type:ALBUM_REQUEST_TYPE,media,expires_at:expiresAt,retention_hours:72};
-      const {error}=await supa.from('fv_messages').insert(payload);
-      if(error) throw error;
+      const grant=await supa.rpc('fv_request_album_access',{p_owner_id:ownerId});
+      const compatibilityMode=!!grant.error && isMissingRpcError(grant.error);
+      if(grant.error && !compatibilityMode) throw grant.error;
+
+      // The production RPC creates the durable permission and visible request
+      // message atomically. Keep this branch only for pre-migration installs.
+      if(compatibilityMode){
+        const conv=conversationIdFor(ownerId);
+        const expiresAt=new Date(Date.now()+72*60*60*1000).toISOString();
+        const media=[{kind:'album_request',owner_id:ownerId,requester_id:authUser.id,status:'pending',created_at:nowIso()}];
+        const payload={sender_id:authUser.id,recipient_id:ownerId,conversation_id:conv,body:'🔒 Private album access request',message_type:ALBUM_REQUEST_TYPE,media,expires_at:expiresAt,retention_hours:72};
+        const {error}=await supa.from('fv_messages').insert(payload);
+        if(error) throw error;
+      }
+
+      albumAccessCache[`${ownerId}|${authUser.id}`]=false;
       if(typeof loadChatMessages==='function') await loadChatMessages(ownerId,true);
       if(typeof renderChats==='function') renderChats();
-      showToast('Private album request sent.');
-    }catch(err){ console.warn('request failed',err); showToast('Could not send request. Run the updated SQL.'); }
+      showToast(compatibilityMode?'Private album request sent. Run the production SQL migration.':'Private album request sent and saved atomically.');
+    }catch(err){ console.warn('request failed',err); showToast('Could not send request. Run the production SQL migration.'); }
   }
   async function respondAlbumRequest(messageId, ownerId, requesterId, status){
     if(!authUser || !supa || authUser.id!==ownerId) return showToast('Only the album owner can respond.');
     try{
-      const {data,error:readErr}=await supa.from('fv_messages').select('media,sender_id,recipient_id,conversation_id').eq('id',messageId).maybeSingle();
-      if(readErr) throw readErr;
-      const media=(data?.media||[]).map(x=>x.kind==='album_request'?{...x,status,responded_at:nowIso()}:x);
-      const {error}=await supa.from('fv_messages').update({media,body:status==='accepted'?'✅ Private album access approved':'🚫 Private album access denied'}).eq('id',messageId);
-      if(error) throw error;
-      const notify={sender_id:ownerId,recipient_id:requesterId,conversation_id:conversationIdFor(requesterId),body:status==='accepted'?'✅ Private album access approved':'🚫 Private album access denied',message_type:'text',media:[],expires_at:new Date(Date.now()+72*60*60*1000).toISOString()};
-      await supa.from('fv_messages').insert(notify);
+      const grant=await supa.rpc('fv_respond_album_access',{p_requester_id:requesterId,p_status:status});
+      const compatibilityMode=!!grant.error && isMissingRpcError(grant.error);
+      if(grant.error && !compatibilityMode) throw grant.error;
+
+      // Production updates the durable grant, request payload, and notification
+      // in one transaction. Direct message updates remain only for old schemas.
+      if(compatibilityMode){
+        const {data,error:readErr}=await supa.from('fv_messages').select('media,sender_id,recipient_id,conversation_id').eq('id',messageId).maybeSingle();
+        if(readErr) throw readErr;
+        const media=(data?.media||[]).map(x=>x.kind==='album_request'?{...x,status,responded_at:nowIso()}:x);
+        const {error}=await supa.from('fv_messages').update({media,body:status==='accepted'?'✅ Private album access approved':'🚫 Private album access denied'}).eq('id',messageId);
+        if(error) throw error;
+        const notify={sender_id:ownerId,recipient_id:requesterId,conversation_id:conversationIdFor(requesterId),body:status==='accepted'?'✅ Private album access approved':'🚫 Private album access denied',message_type:'text',media:[],expires_at:new Date(Date.now()+72*60*60*1000).toISOString()};
+        const sent=await supa.from('fv_messages').insert(notify);
+        if(sent.error) throw sent.error;
+      }
+
       albumAccessCache[`${ownerId}|${requesterId}`]=status==='accepted';
       if(activeChatKey===String(requesterId)){ await loadChatMessages(activeChatKey,true); renderChatMessages(); }
       if(typeof renderChats==='function') renderChats();
-      showToast(status==='accepted'?'Album access approved.':'Album access denied.');
-    }catch(err){ console.warn('album response failed',err); showToast('Could not update album request.'); }
+      showToast(status==='accepted'?'Album access approved and saved permanently.':'Album access denied.');
+    }catch(err){ console.warn('album response failed',err); showToast('Could not update album request. Run the production SQL migration.'); }
   }
 
   function albumRequestHtml(m){
     const req=(m.media||[]).find(x=>x.kind==='album_request') || {};
-    const status=req.status || 'pending';
+    const status=['accepted','denied'].includes(req.status)?req.status:'pending';
     const iAmOwner=authUser?.id && req.owner_id===authUser.id;
     const iAmRequester=authUser?.id && req.requester_id===authUser.id;
     let actions='';
@@ -2858,7 +3477,7 @@ renderAdminWorkspace = function(){
     if(!items.length){
       section.innerHTML=`<div class="section-heading"><h3>🔒 Private album</h3><span>Matched access</span></div><div class="profile-empty-mini">No private album photos have been added yet.</div>`;
     }else if(hasAccess){
-      section.innerHTML=`<div class="section-heading"><h3>🔓 Private album</h3><span>${items.length} unlocked</span></div><div class="member-private-grid unlocked">${items.map(i=>`<a href="${i.signedUrl}" target="_blank" rel="noopener"><img src="${i.signedUrl}" alt="Private album photo"></a>`).join('')}</div>`;
+      section.innerHTML=`<div class="section-heading"><h3>🔓 Private album</h3><span>${items.length} unlocked</span></div><div class="member-private-grid unlocked">${items.map(i=>{const url=safeImageUrl(i.signedUrl,{allowData:false});return url?`<a href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="Private album photo"></a>`:'';}).join('')}</div>`;
     }else{
       section.innerHTML=`<div class="section-heading"><h3>🔒 Private album</h3><span>${items.length} blurred preview${items.length===1?'':'s'}</span></div><div class="member-private-grid blurred">${items.slice(0,6).map(()=>`<div class="blurred-private-tile"><span>🔒</span></div>`).join('')}</div><button class="primary full request-private-album" data-owner="${safe(ownerId)}">Request access</button><p class="tiny-note">Requests are sent in your message thread. They can accept or deny.</p>`;
     }
@@ -2872,7 +3491,7 @@ renderAdminWorkspace = function(){
     const items=await fetchAlbumItems(ownerId,true);
     let modal=$one('#albumViewer');
     if(!modal){ modal=document.createElement('div'); modal.id='albumViewer'; modal.className='member-profile-modal hidden'; modal.innerHTML=`<div class="album-viewer-sheet glass"><div class="member-profile-top"><button class="ghost-mini round" id="closeAlbumViewer">←</button><b>Private Album</b><span></span></div><div id="albumViewerGrid" class="album-viewer-grid"></div></div>`; $one('.phone')?.appendChild(modal); $one('#closeAlbumViewer').onclick=()=>modal.classList.add('hidden'); }
-    $one('#albumViewerGrid').innerHTML=items.length?items.map(i=>`<a href="${i.signedUrl}" target="_blank" rel="noopener"><img src="${i.signedUrl}" alt="Private album photo"></a>`).join(''):'<div class="empty-state"><h3>No photos available</h3></div>';
+    $one('#albumViewerGrid').innerHTML=items.length?items.map(i=>{const url=safeImageUrl(i.signedUrl,{allowData:false});return url?`<a href="${url}" target="_blank" rel="noopener noreferrer"><img src="${url}" alt="Private album photo"></a>`:'';}).join(''):'<div class="empty-state"><h3>No photos available</h3></div>';
     modal.classList.remove('hidden');
   }
 
@@ -2962,20 +3581,7 @@ renderAdminWorkspace = function(){
     equipShopItem = async function(id){
       const item = itemBy(id);
       if(item && isEquippable(item)){
-        const inventory = inv();
-        if(!(inventory.owned||[]).includes(item.id)){
-          if(typeof buyShopItem === 'function') return buyShopItem(id);
-          return;
-        }
-        inventory.equipped[item.type] = item.value;
-        state.profile.inventory = inventory;
-        if(typeof updateAvatar === 'function') updateAvatar();
-        if(typeof applyCosmetics === 'function') applyCosmetics();
-        if(typeof save === 'function') save();
-        if(typeof renderShop === 'function') renderShop();
-        if(typeof syncToSupabase === 'function') await syncToSupabase(false);
-        if(typeof showToast === 'function') showToast(`${item.title} equipped.`);
-        return;
+        return baseEquipShopItem(id);
       }
       return baseEquipShopItem(id);
     };
@@ -3211,19 +3817,15 @@ renderAdminWorkspace = function(){
     equipShopItem = async function(id){
       const item=itemById(id);
       if(item?.type === 'colorway'){
-        const inv=inventory();
-        if(!ownedSet().has(item.id)){
-          if(typeof buyShopItem === 'function') return buyShopItem(id);
-          return;
+        await base(id);
+        if(ownedSet().has(item.id)){
+          const inv=inventory();
+          inv.custom = {...(inv.custom||{}), ...(item.colors||{})};
+          state.profile.inventory = inv;
+          if(typeof save === 'function') save('colorway_customization');
+          if(typeof applyCosmetics === 'function') applyCosmetics();
+          if(typeof renderShop === 'function') renderShop();
         }
-        inv.equipped.colorway = item.value;
-        inv.custom = {...(inv.custom||{}), ...(item.colors||{})};
-        state.profile.inventory = inv;
-        if(typeof save === 'function') save();
-        if(typeof applyCosmetics === 'function') applyCosmetics();
-        if(typeof renderShop === 'function') renderShop();
-        if(typeof syncToSupabase === 'function') await syncToSupabase(false);
-        if(typeof showToast === 'function') showToast(`${item.title} equipped.`);
         return;
       }
       return base(id);
@@ -3557,4 +4159,116 @@ renderAdminWorkspace = function(){
   const baseRenderAdmin = renderAdmin;
   renderAdmin = function(){ const r=baseRenderAdmin.apply(this, arguments); setTimeout(injectAdminTestTools,0); return r; };
   setTimeout(()=>{ mergeTestProfilesIntoDirectory(); renderStack(); renderMatches(); renderChats(); injectAdminTestTools(); }, 500);
+})();
+
+/* =========================================================
+   Afterglow production data-safety console
+   Local recovery snapshots, export/import, cloud revisions,
+   offline retry, and owner health checks.
+   ========================================================= */
+(function afterglowProductionSafetyConsole(){
+  const escSafe=v=>typeof escapeHtml==='function'?escapeHtml(v):String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  function backups(){ try{return JSON.parse(localStorage.getItem(backupStorageKey())||'[]');}catch{return [];} }
+  function safetySummary(){
+    const m=stateMetrics(state); const last=state.meta?.lastSyncedAt ? new Date(state.meta.lastSyncedAt).toLocaleString() : 'Not synced yet';
+    const walletReview=state.meta?.walletRecovery?.status;
+    const recoveryText=walletReview && !['not_needed','approved'].includes(walletReview) ? ` • Wallet recovery: ${walletReview.replaceAll('_',' ')}` : '';
+    return `${m.ratings} Vault answers • ${state.inventory?.owned?.length||0} unlocks • ${backups().length} local recovery copies • Last cloud sync: ${last}${recoveryText}`;
+  }
+  function renderSafetyStatus(){ const el=document.querySelector('#afterglowSafetyStatus'); if(el) el.textContent=safetySummary(); }
+  function downloadJson(name,value){
+    const blob=new Blob([JSON.stringify(value,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),500);
+  }
+  function exportProtectedBackup(){
+    snapshotLocalState(state,'manual_export',true);
+    downloadJson(`afterglow-backup-${todayKey()}.json`,{format:'afterglow-backup-v2',exportedAt:new Date().toISOString(),userId:authUser?.id||state.userId,state:normalizeState(state,authUser),localSnapshots:backups()});
+    showToast('Afterglow backup downloaded.'); renderSafetyStatus();
+  }
+  async function importProtectedBackup(file){
+    if(!file) return;
+    try{
+      const parsed=JSON.parse(await file.text()); const incoming=parsed?.state||parsed;
+      if(!incoming || typeof incoming!=='object') throw new Error('Invalid backup');
+      snapshotLocalState(state,'before_manual_import',true);
+      state=mergeDurableStates(state,incoming,authUser); state.updatedAt=new Date().toISOString();
+      persistStateLocalOnly('manual_import');
+      hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack(); updateAvatar();
+      await syncToSupabase(true,'manual_import'); renderSafetyStatus();
+    }catch(err){console.warn(err);showToast('That file is not a valid Afterglow backup.');}
+  }
+  async function restoreLatestLocal(){
+    const latest=backups()[0]; if(!latest?.state) return showToast('No local recovery snapshot is available yet.');
+    snapshotLocalState(state,'before_local_restore',true);
+    state=mergeDurableStates(state,latest.state,authUser); state.updatedAt=new Date().toISOString();
+    persistStateLocalOnly('local_restore'); hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack(); updateAvatar();
+    await syncToSupabase(true,'local_restore'); renderSafetyStatus();
+    showToast(`Recovered data from ${new Date(latest.createdAt).toLocaleString()}.`);
+  }
+  async function renderCloudRevisions(){
+    const box=document.querySelector('#afterglowCloudRevisions'); if(!box) return;
+    if(!supa||!authUser){box.innerHTML='<p class="tiny-note">Sign in to view cloud recovery points.</p>';return;}
+    box.innerHTML='<p class="tiny-note">Loading protected cloud revisions…</p>';
+    try{
+      const {data,error}=await supa.from('fv_profile_revisions').select('id,revision,reason,created_at,ratings,inventory').order('created_at',{ascending:false}).limit(12);
+      if(error){ if(isMissingRpcError(error)||error.code==='42P01'){box.innerHTML='<p class="tiny-note">Run the production SQL migration to enable cloud revision history.</p>';return;} throw error; }
+      box.innerHTML=(data||[]).map(r=>`<div class="safety-revision"><div><b>${new Date(r.created_at).toLocaleString()}</b><span>Revision ${Number(r.revision||0)} • ${Object.keys(r.ratings||{}).length} answers • ${(r.inventory?.owned||[]).length} unlocks</span><small>${escSafe(r.reason||'sync')}</small></div><button type="button" class="ghost-mini" data-restore-revision="${escSafe(r.id)}">Restore</button></div>`).join('')||'<p class="tiny-note">Cloud revisions begin after the production migration and the next protected sync.</p>';
+      box.querySelectorAll('[data-restore-revision]').forEach(btn=>btn.onclick=()=>restoreCloudRevision(btn.dataset.restoreRevision));
+    }catch(err){console.warn(err);box.innerHTML='<p class="tiny-note">Cloud revisions could not be loaded.</p>';}
+  }
+  async function restoreCloudRevision(id){
+    if(!supa||!authUser||!id) return;
+    try{
+      snapshotLocalState(state,'before_cloud_revision_restore',true);
+      const {data,error}=await supa.rpc('fv_restore_my_revision',{p_revision_id:id}); if(error) throw error;
+      const result=Array.isArray(data)?data[0]:data;
+      if(result?.row){
+        const restored=remoteRowToState(result.row,authUser); restored.rewards=state.rewards;
+        state=normalizeState(restored,authUser); await loadServerEconomy(); persistStateLocalOnly('cloud_revision_restore');
+        hydrateProfileForm(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); renderStack(); updateAvatar();
+        showToast('Cloud revision restored. Your wallet was left unchanged.'); renderSafetyStatus(); renderCloudRevisions();
+      }
+    }catch(err){console.warn(err);showToast('Cloud restore failed. No local recovery copy was removed.');}
+  }
+  async function loadOwnerHealth(){
+    const out=document.querySelector('#afterglowHealthOutput'); if(!out||!isAdmin()||!supa) return;
+    out.textContent='Checking…';
+    try{const {data,error}=await supa.rpc('fv_admin_health_summary');if(error)throw error;out.textContent=`${data.profiles||0} profiles • ${data.profiles_with_answers||0} with answers • ${data.wallets||0} wallets • ${data.pending_wallet_recoveries||0} wallet reviews • ${data.revision_backups||0} cloud backups • ${data.private_album_photos||0} private photos`;}
+    catch(err){console.warn(err);out.textContent='Health summary unavailable until the production SQL migration is installed.';}
+  }
+  async function downloadOwnerServerBackup(){
+    if(!isAdmin()||!supa) return showToast('Admin access is required.');
+    const out=document.querySelector('#afterglowHealthOutput'); if(out) out.textContent='Preparing server backup…';
+    try{
+      const {data,error}=await supa.rpc('fv_admin_export_backup'); if(error) throw error;
+      downloadJson(`afterglow-server-backup-${todayKey()}.json`,data);
+      if(out) out.textContent='Server backup downloaded. Storage photo bytes require a separate provider backup.';
+      showToast('Protected server backup downloaded.');
+    }catch(err){console.warn(err);if(out)out.textContent='Server backup unavailable until the production SQL migration is installed.';}
+  }
+  function injectSafetyPanel(){
+    const profile=document.querySelector('#profile'); if(!profile||document.querySelector('#afterglowDataSafety')) return;
+    const panel=document.createElement('div'); panel.id='afterglowDataSafety'; panel.className='profile-panel afterglow-data-safety';
+    panel.innerHTML=`<div class="panel-heading"><div><b>🛡️ Data Safety</b><p>Your answers save locally first, merge safely after downtime, and keep recovery copies.</p></div><span class="safety-live-dot">Protected</span></div><p id="afterglowSafetyStatus" class="tiny-note"></p><p class="tiny-note">Sync status: <b id="afterglowSyncLive">${escSafe(state.meta?.syncStatus||'checking…')}</b></p><div class="safety-actions"><button type="button" class="primary" id="afterglowExportBackup">Download Backup</button><label class="ghost safety-import">Import Backup<input type="file" id="afterglowImportBackup" accept="application/json,.json"></label><button type="button" class="ghost" id="afterglowRestoreLocal">Restore Latest Local Copy</button><button type="button" class="ghost" id="afterglowSyncNow">Sync Now</button><button type="button" class="ghost" id="afterglowRefreshRevisions">Cloud Recovery Points</button></div><div id="afterglowCloudRevisions" class="safety-revisions hidden"></div>${isAdmin()?'<div class="safety-health"><button type="button" class="ghost-mini" id="afterglowHealthCheck">Run Production Health Check</button><button type="button" class="ghost-mini" id="afterglowServerBackup">Download Server Backup</button><span id="afterglowHealthOutput"></span></div>':''}`;
+    const saveBtn=document.querySelector('#saveProfile'); if(saveBtn) profile.insertBefore(panel,saveBtn); else profile.appendChild(panel);
+    document.querySelector('#afterglowExportBackup').onclick=exportProtectedBackup;
+    document.querySelector('#afterglowImportBackup').onchange=e=>{importProtectedBackup(e.target.files?.[0]);e.target.value='';};
+    document.querySelector('#afterglowRestoreLocal').onclick=restoreLatestLocal;
+    document.querySelector('#afterglowSyncNow').onclick=()=>syncToSupabase(true,'manual_sync');
+    document.querySelector('#afterglowRefreshRevisions').onclick=()=>{const box=document.querySelector('#afterglowCloudRevisions');box.classList.toggle('hidden');if(!box.classList.contains('hidden'))renderCloudRevisions();};
+    document.querySelector('#afterglowHealthCheck')?.addEventListener('click',loadOwnerHealth);
+    document.querySelector('#afterglowServerBackup')?.addEventListener('click',downloadOwnerServerBackup);
+    renderSafetyStatus();
+  }
+  window.AfterglowDataSafety={exportBackup:exportProtectedBackup,restoreLatestLocal,renderCloudRevisions,snapshot:()=>snapshotLocalState(state,'manual_snapshot',true)};
+  window.addEventListener('online',()=>{setSync('connection restored — syncing');syncToSupabase(false,'online_reconnect');});
+  window.addEventListener('offline',()=>setSync('offline-safe local save'));
+  window.addEventListener('pagehide',()=>snapshotLocalState(state,'page_exit',false));
+  window.addEventListener('afterglow:state-saved',renderSafetyStatus);
+  window.addEventListener('afterglow:wallet-recovery-updated',renderSafetyStatus);
+  const baseOpen=typeof openApp==='function'?openApp:null;
+  if(baseOpen){openApp=function(){const r=baseOpen.apply(this,arguments);setTimeout(injectSafetyPanel,80);return r;};}
+  const baseHydrate=typeof hydrateProfileForm==='function'?hydrateProfileForm:null;
+  if(baseHydrate){hydrateProfileForm=function(){const r=baseHydrate.apply(this,arguments);setTimeout(injectSafetyPanel,50);return r;};}
+  setTimeout(injectSafetyPanel,1300);
 })();
