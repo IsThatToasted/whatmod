@@ -4476,3 +4476,268 @@ async function deletePackingItem(id) {
   });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadLicenseEntitlements(true); });
 })();
+
+/* === V2.3.8 final live collaboration + Fun Ideas reaction fix === */
+(function finalLiveReactionPatch(){
+  const BUILD = 'V2.3.8-live-reactions-2026-07-14';
+  window.ITINERARY_TRACKER_BUILD = BUILD;
+  try { document.documentElement.setAttribute('data-build', BUILD); } catch (_) {}
+  function updateBuildBadge(){
+    try {
+      let badge = document.querySelector('.build-version-badge');
+      if (!badge) { badge = document.createElement('div'); badge.className = 'build-version-badge'; document.body.appendChild(badge); }
+      badge.textContent = BUILD;
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', updateBuildBadge); else updateBuildBadge();
+
+  const reactionTimers = new Map();
+  const reactionPending = new Map();
+  let reactionRealtimeChannel = null;
+  let reactionPollTimer = null;
+  let savingNow = false;
+  const SAVE_DELAY = 650;
+  const POLL_MS = 4500;
+  const STORE_PREFIX = 'itinerary_fun_reaction_live_v238:';
+
+  function safeToast(msg, type){ try { if (typeof window.showToast === 'function') window.showToast(msg, type || 'info'); else if (typeof showToast === 'function') showToast(msg, type || 'info'); } catch (_) {} }
+  function uid(){ return window.session?.user?.id || (typeof session !== 'undefined' ? session?.user?.id : '') || ''; }
+  function tid(){ return window.activeTripId || (typeof activeTripId !== 'undefined' ? activeTripId : '') || ''; }
+  function clamp(v){ const n = Number(v); return Math.max(0, Math.min(100, Number.isFinite(n) ? Math.round(n) : 50)); }
+  function keyFor(ideaId, userId = uid()){ return `${tid()}:${ideaId || ''}:${userId || ''}`; }
+  function storageKey(){ return `${STORE_PREFIX}${tid()}:${uid()}`; }
+  function readStore(){ try { return JSON.parse(localStorage.getItem(storageKey()) || '{}') || {}; } catch { return {}; } }
+  function writeStore(data){ try { localStorage.setItem(storageKey(), JSON.stringify(data || {})); } catch (_) {} }
+  function setStoredScore(ideaId, score){ const data = readStore(); data[ideaId] = { score: clamp(score), at: Date.now() }; writeStore(data); }
+  function getStoredScore(ideaId){ const data = readStore(); return data?.[ideaId]?.score; }
+
+  function emojiFor(score){
+    if (typeof window.reactionEmoji === 'function') return window.reactionEmoji(score);
+    if (typeof reactionEmoji === 'function') return reactionEmoji(score);
+    score = clamp(score);
+    if (score <= 20) return '🙈';
+    if (score <= 40) return '🤔';
+    if (score <= 60) return '🙂';
+    if (score <= 80) return '😍';
+    return '🔥';
+  }
+  function labelFor(score){
+    if (typeof window.reactionLabel === 'function') return window.reactionLabel(score);
+    if (typeof reactionLabel === 'function') return reactionLabel(score);
+    score = clamp(score);
+    if (score <= 20) return 'No thanks';
+    if (score <= 40) return 'Maybe';
+    if (score <= 60) return 'Curious';
+    if (score <= 80) return 'Yes';
+    return 'YES PLEASE';
+  }
+
+  function patchFunReactionFor(){
+    if (typeof funReactionFor !== 'function' || funReactionFor.__v238LivePatched) return;
+    const original = funReactionFor;
+    funReactionFor = function(ideaId, userId){
+      const row = original.apply(this, arguments);
+      if (userId === uid()) {
+        const local = getStoredScore(ideaId);
+        if (local !== undefined && local !== null) return { ...(row || {}), trip_id: tid(), fun_idea_id: ideaId, user_id: userId, score: clamp(local) };
+      }
+      return row;
+    };
+    funReactionFor.__v238LivePatched = true;
+    try { window.funReactionFor = funReactionFor; } catch (_) {}
+  }
+
+  function updateRowVisual(inputOrRow, score){
+    const row = inputOrRow?.matches?.('.fun-reaction-row') ? inputOrRow : inputOrRow?.closest?.('.fun-reaction-row');
+    if (!row) return;
+    score = clamp(score ?? row.querySelector('input[type="range"]')?.value);
+    row.style.setProperty('--reaction-score', `${score}%`);
+    const input = row.querySelector('input[type="range"]');
+    if (input) { input.value = String(score); input.dataset.score = String(score); input.setAttribute('aria-valuenow', String(score)); }
+    const value = row.querySelector('.fun-reaction-value');
+    if (value) { value.dataset.score = String(score); value.textContent = `${emojiFor(score)} ${labelFor(score)}`; }
+  }
+
+  function updateReactionEverywhere(ideaId, userId, score){
+    score = clamp(score);
+    try {
+      const arr = (typeof funReactions !== 'undefined' && Array.isArray(funReactions)) ? funReactions : [];
+      const idx = arr.findIndex(r => r.fun_idea_id === ideaId && r.user_id === userId);
+      const row = { trip_id: tid(), fun_idea_id: ideaId, user_id: userId, score, updated_at: new Date().toISOString() };
+      if (idx >= 0) arr[idx] = { ...arr[idx], ...row }; else arr.push(row);
+      if (typeof funReactions !== 'undefined') funReactions = arr;
+    } catch (_) {}
+    document.querySelectorAll(`.fun-reactions[data-idea-id="${CSS.escape(String(ideaId))}"] .fun-reaction-row[data-user-id="${CSS.escape(String(userId))}"]`).forEach(row => updateRowVisual(row, score));
+  }
+
+  async function saveReaction(ideaId, score){
+    if (!ideaId || !uid() || !tid() || !window.client && typeof client === 'undefined') return false;
+    const c = window.client || client;
+    score = clamp(score);
+    const row = { trip_id: tid(), fun_idea_id: ideaId, user_id: uid(), score, updated_at: new Date().toISOString() };
+    updateReactionEverywhere(ideaId, uid(), score);
+    setStoredScore(ideaId, score);
+    try {
+      // RPC first: lowest surface area for RLS mistakes, one write per pause/release.
+      const rpc = await c.rpc('upsert_trip_fun_reaction', { p_trip_id: tid(), p_fun_idea_id: ideaId, p_score: score });
+      if (rpc?.error) throw rpc.error;
+      updateReactionEverywhere(ideaId, uid(), rpc.data?.score ?? score);
+      try { window.realtimeChannel?.send?.({ type: 'broadcast', event: 'trip-change', payload: { trip_id: tid(), actor: uid(), label: 'Reaction updated', table: 'trip_fun_reactions', fun_idea_id: ideaId, user_id: uid(), score, at: Date.now() } }); } catch (_) {}
+      return true;
+    } catch (rpcErr) {
+      console.warn('[Fun reactions] RPC save failed, trying direct upsert.', rpcErr);
+      try {
+        const direct = await c.from('trip_fun_reactions').upsert(row, { onConflict: 'fun_idea_id,user_id' }).select().single();
+        if (direct?.error) throw direct.error;
+        updateReactionEverywhere(ideaId, uid(), direct.data?.score ?? score);
+        return true;
+      } catch (err) {
+        console.warn('[Fun reactions] save failed.', err);
+        safeToast('Reaction could not save. Run schema.sql and confirm Fun Ideas access.', 'error');
+        return false;
+      }
+    }
+  }
+
+  function scheduleSave(input, immediate){
+    if (!input) return;
+    const ideaId = input.dataset.ideaId || input.closest('.fun-reactions')?.dataset.ideaId;
+    if (!ideaId) return;
+    const score = clamp(input.value);
+    updateRowVisual(input, score);
+    updateReactionEverywhere(ideaId, uid(), score);
+    setStoredScore(ideaId, score);
+    const key = keyFor(ideaId);
+    reactionPending.set(key, { ideaId, score });
+    clearTimeout(reactionTimers.get(key));
+    const run = async () => {
+      const payload = reactionPending.get(key);
+      reactionPending.delete(key);
+      reactionTimers.delete(key);
+      if (payload) await saveReaction(payload.ideaId, payload.score);
+    };
+    if (immediate) run(); else reactionTimers.set(key, setTimeout(run, SAVE_DELAY));
+  }
+
+  async function flushPendingReactions(){
+    if (savingNow) return;
+    savingNow = true;
+    try {
+      const rows = Array.from(reactionPending.values());
+      reactionPending.clear();
+      reactionTimers.forEach(t => clearTimeout(t));
+      reactionTimers.clear();
+      for (const r of rows) await saveReaction(r.ideaId, r.score);
+    } finally { savingNow = false; }
+  }
+
+  window.handleFunReactionSlide = input => scheduleSave(input, false);
+  window.commitFunReactionSlide = input => scheduleSave(input, true);
+  window.flushFunReactionSaves = flushPendingReactions;
+
+  function refreshFunReactionRowsFromState(){
+    document.querySelectorAll('.fun-reactions').forEach(block => {
+      const ideaId = block.dataset.ideaId;
+      block.querySelectorAll('.fun-reaction-row').forEach(row => {
+        const userId = row.dataset.userId;
+        let record = null;
+        try { record = (funReactions || []).find(r => r.fun_idea_id === ideaId && r.user_id === userId); } catch (_) {}
+        const local = userId === uid() ? getStoredScore(ideaId) : undefined;
+        const score = local !== undefined && local !== null ? local : (record?.score ?? 50);
+        updateRowVisual(row, score);
+      });
+    });
+  }
+
+  async function refreshReactionsOnly(renderRows = false){
+    if (!tid() || !uid()) return;
+    try {
+      if (typeof loadFunReactions === 'function') await loadFunReactions();
+      if (renderRows && typeof renderFunIdeasModal === 'function' && document.querySelector('#funIdeasDialog[open]')) renderFunIdeasModal();
+      refreshFunReactionRowsFromState();
+    } catch (e) { console.warn('[Fun reactions] refresh failed', e); }
+  }
+
+  function startReactionLiveSync(){
+    const c = window.client || (typeof client !== 'undefined' ? client : null);
+    if (!c || !tid() || reactionRealtimeChannel?.__tripId === tid()) return;
+    try { if (reactionRealtimeChannel) c.removeChannel(reactionRealtimeChannel); } catch (_) {}
+    const ch = c.channel(`fun-reactions-live-${tid()}-${uid()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trip_fun_reactions', filter: `trip_id=eq.${tid()}` }, payload => {
+        const row = payload.new || payload.old;
+        if (!row?.fun_idea_id || !row?.user_id) return;
+        if (payload.eventType === 'DELETE') {
+          try { funReactions = (funReactions || []).filter(r => !(r.fun_idea_id === row.fun_idea_id && r.user_id === row.user_id)); } catch (_) {}
+        } else {
+          updateReactionEverywhere(row.fun_idea_id, row.user_id, row.score ?? 50);
+        }
+        refreshFunReactionRowsFromState();
+      })
+      .on('broadcast', { event: 'trip-change' }, ({ payload }) => {
+        if (payload?.trip_id !== tid()) return;
+        if (payload?.table === 'trip_fun_reactions' && payload.fun_idea_id && payload.user_id) {
+          updateReactionEverywhere(payload.fun_idea_id, payload.user_id, payload.score ?? 50);
+          refreshFunReactionRowsFromState();
+        }
+      });
+    ch.__tripId = tid();
+    reactionRealtimeChannel = ch.subscribe(status => { if (status === 'SUBSCRIBED') console.info('[Fun reactions] live sync on'); });
+  }
+
+  function startSmartPolling(){
+    clearInterval(reactionPollTimer);
+    reactionPollTimer = setInterval(() => {
+      const open = !!document.querySelector('#funIdeasDialog[open]');
+      if (!open || document.hidden) return;
+      refreshReactionsOnly(false);
+    }, POLL_MS);
+  }
+
+  function patchOpenFunIdeas(){
+    if (typeof openFunIdeasDialog !== 'function' || openFunIdeasDialog.__v238Patched) return;
+    const original = openFunIdeasDialog;
+    openFunIdeasDialog = async function(){
+      patchFunReactionFor();
+      startReactionLiveSync();
+      await original.apply(this, arguments);
+      await refreshReactionsOnly(false);
+      setTimeout(refreshFunReactionRowsFromState, 80);
+    };
+    openFunIdeasDialog.__v238Patched = true;
+    try { window.openFunIdeasDialog = openFunIdeasDialog; } catch (_) {}
+  }
+
+  function attachListeners(){
+    if (document.__v238ReactionListeners) return;
+    document.__v238ReactionListeners = true;
+    document.addEventListener('input', e => {
+      const input = e.target?.closest?.('.fun-reaction-row.mine input[type="range"]');
+      if (input) scheduleSave(input, false);
+    }, true);
+    document.addEventListener('change', e => {
+      const input = e.target?.closest?.('.fun-reaction-row.mine input[type="range"]');
+      if (input) scheduleSave(input, true);
+    }, true);
+    document.addEventListener('pointerup', e => {
+      const input = e.target?.closest?.('.fun-reaction-row.mine input[type="range"]');
+      if (input) scheduleSave(input, true);
+    }, true);
+    document.addEventListener('touchend', e => {
+      const input = e.target?.closest?.('.fun-reaction-row.mine input[type="range"]');
+      if (input) scheduleSave(input, true);
+    }, true);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) flushPendingReactions(); else { startReactionLiveSync(); refreshReactionsOnly(false); } });
+    window.addEventListener('pagehide', flushPendingReactions);
+    document.addEventListener('close', e => { if (e.target?.id === 'funIdeasDialog') flushPendingReactions(); }, true);
+  }
+
+  function init(){
+    patchFunReactionFor();
+    patchOpenFunIdeas();
+    attachListeners();
+    startReactionLiveSync();
+    startSmartPolling();
+    setTimeout(() => { patchFunReactionFor(); patchOpenFunIdeas(); startReactionLiveSync(); refreshFunReactionRowsFromState(); }, 1200);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();

@@ -1395,3 +1395,116 @@ where category is null or trim(category) = '';
 
 create index if not exists itinerary_shopping_items_category_idx
   on public.itinerary_shopping_items(trip_id, itinerary_item_id, category, sort_order, created_at);
+
+-- =========================================================
+-- V2.3.8 live Fun Ideas reactions hardening
+-- Safe to run multiple times.
+-- =========================================================
+create table if not exists public.trip_fun_reactions (
+  id uuid primary key default gen_random_uuid(),
+  trip_id uuid not null references public.itinerary_trips(id) on delete cascade,
+  fun_idea_id uuid not null references public.trip_fun_ideas(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  score int not null default 50 check (score between 0 and 100),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(fun_idea_id, user_id)
+);
+
+alter table public.trip_fun_reactions enable row level security;
+grant select, insert, update, delete on public.trip_fun_reactions to authenticated;
+create index if not exists idx_trip_fun_reactions_trip_id_v238 on public.trip_fun_reactions(trip_id);
+create index if not exists idx_trip_fun_reactions_idea_user_v238 on public.trip_fun_reactions(fun_idea_id, user_id);
+alter table public.trip_fun_reactions replica identity full;
+
+drop policy if exists "fun reactions visible to permitted users" on public.trip_fun_reactions;
+create policy "fun reactions visible to permitted users" on public.trip_fun_reactions
+  for select using (
+    public.current_user_trip_role(trip_id) = 'owner'
+    or exists (
+      select 1 from public.trip_fun_permissions p
+      where p.trip_id = trip_fun_reactions.trip_id
+        and p.user_id = auth.uid()
+        and p.can_access = true
+    )
+  );
+
+drop policy if exists "fun reactions editable by self" on public.trip_fun_reactions;
+create policy "fun reactions editable by self" on public.trip_fun_reactions
+  for all using (
+    user_id = auth.uid()
+    and (
+      public.current_user_trip_role(trip_id) = 'owner'
+      or exists (
+        select 1 from public.trip_fun_permissions p
+        where p.trip_id = trip_fun_reactions.trip_id
+          and p.user_id = auth.uid()
+          and p.can_access = true
+      )
+    )
+  ) with check (
+    user_id = auth.uid()
+    and (
+      public.current_user_trip_role(trip_id) = 'owner'
+      or exists (
+        select 1 from public.trip_fun_permissions p
+        where p.trip_id = trip_fun_reactions.trip_id
+          and p.user_id = auth.uid()
+          and p.can_access = true
+      )
+    )
+  );
+
+create or replace function public.upsert_trip_fun_reaction(p_trip_id uuid, p_fun_idea_id uuid, p_score int)
+returns public.trip_fun_reactions
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.trip_fun_reactions;
+  v_score int := greatest(0, least(100, coalesce(p_score, 50)));
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+  if not exists (
+    select 1 from public.trip_fun_ideas i
+    where i.id = p_fun_idea_id and i.trip_id = p_trip_id
+  ) then
+    raise exception 'Fun idea not found';
+  end if;
+  if not (
+    public.current_user_trip_role(p_trip_id) = 'owner'
+    or exists (
+      select 1 from public.trip_fun_permissions p
+      where p.trip_id = p_trip_id and p.user_id = auth.uid() and p.can_access = true
+    )
+  ) then
+    raise exception 'No access to Fun Ideas';
+  end if;
+  insert into public.trip_fun_reactions(trip_id, fun_idea_id, user_id, score, updated_at)
+  values (p_trip_id, p_fun_idea_id, auth.uid(), v_score, now())
+  on conflict (fun_idea_id, user_id) do update set
+    score = excluded.score,
+    updated_at = now()
+  returning * into v_row;
+  return v_row;
+end;
+$$;
+
+grant execute on function public.upsert_trip_fun_reaction(uuid, uuid, int) to authenticated;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'trip_fun_reactions'
+  ) then
+    alter publication supabase_realtime add table public.trip_fun_reactions;
+  end if;
+exception when others then
+  raise notice 'Could not add trip_fun_reactions to supabase_realtime publication: %', sqlerrm;
+end $$;

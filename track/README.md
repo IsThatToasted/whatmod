@@ -366,3 +366,16 @@ Run `schema.sql` once to add the `category` column/index.
 - Removes bottom-sheet collapse behavior while scrolling.
 - Keeps entire dialog vertically scrollable and viewport-constrained.
 - Keeps horizontal overflow locked.
+
+## V2.3.8 live reactions patch
+
+This build hardens Fun Ideas reaction sliders:
+- Slider emoji/label updates immediately while dragging.
+- The viewer's own reaction is saved locally instantly, then synced to Supabase after a short pause/release.
+- Other travelers' reactions update through Supabase Realtime when available.
+- A lightweight 4.5-second poll runs only while the Fun Ideas popup is open as a fallback if Realtime is delayed.
+- Existing collaborative tables still use the app's realtime/fallback refresh behavior.
+
+Run `schema.sql` once after deploying to ensure `trip_fun_reactions`, the save RPC, RLS policies, indexes, and Realtime publication are in place.
+
+Build marker: `V2.3.8-live-reactions-2026-07-14`
