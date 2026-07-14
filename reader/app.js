@@ -40,6 +40,15 @@
     volume: $("#volumeRange"),
     volumeOutput: $("#volumeOutput"),
     previewVoiceButton: $("#previewVoiceButton"),
+    kokoroEngineButton: $("#kokoroEngineButton"),
+    browserEngineButton: $("#browserEngineButton"),
+    modelStatus: $("#modelStatus"),
+    modelStatusTitle: $("#modelStatusTitle"),
+    modelStatusDetail: $("#modelStatusDetail"),
+    modelProgress: $("#modelProgress"),
+    modelProgressBar: $("#modelProgressBar"),
+    voiceSettingNote: $("#voiceSettingNote"),
+    pitchSetting: $("#pitchSetting"),
     libraryModal: $("#libraryModal"),
     libraryList: $("#libraryList"),
     closeLibraryButton: $("#closeLibraryButton"),
@@ -81,7 +90,23 @@
     sleepUntil: null,
     sleepTimerInterval: null,
     currentMode: "edit",
-    selectedStartOffset: 0
+    selectedStartOffset: 0,
+    engine: localStorage.getItem("voxleaf.engine") || "kokoro",
+    selectedKokoroVoice: localStorage.getItem("voxleaf.kokoroVoice") || "bf_emma",
+    kokoroWorker: null,
+    kokoroPending: new Map(),
+    kokoroRequestId: 0,
+    kokoroInitPromise: null,
+    kokoroReady: false,
+    kokoroCache: new Map(),
+    playbackToken: 0,
+    audioContext: null,
+    gainNode: null,
+    kokoroSource: null,
+    kokoroCurrentData: null,
+    kokoroCurrentOffset: 0,
+    kokoroStartedAt: 0,
+    previewSource: null
   };
 
   const SAMPLE_TEXT = `The rain had been whispering against the library windows since dusk. Mara sat alone beneath the brass reading lamp, turning the final page of a book that had no title on its cover.
@@ -98,6 +123,13 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
     "https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"
   ];
+
+  const KOKORO_VOICES = Object.freeze([
+    { id: "bf_emma", name: "Emma", language: "British English", gender: "Female", description: "Warm, polished narration", grade: "B−" },
+    { id: "bf_isabella", name: "Isabella", language: "British English", gender: "Female", description: "Bright and clear", grade: "C" },
+    { id: "bf_alice", name: "Alice", language: "British English", gender: "Female", description: "Light and conversational", grade: "D" },
+    { id: "bf_lily", name: "Lily", language: "British English", gender: "Female", description: "Gentle and relaxed", grade: "D" }
+  ]);
 
   function uid() {
     return (crypto.randomUUID?.() || `doc-${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -389,8 +421,12 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     return later >= 0 ? later : Math.max(0, state.chunks.length - 1);
   }
 
-  function selectedVoice() {
-    return state.voices.find(v => v.voiceURI === state.selectedVoiceURI) || state.voices[0] || null;
+  function selectedBrowserVoice() {
+    return state.voices.find(voice => voice.voiceURI === state.selectedVoiceURI) || state.voices[0] || null;
+  }
+
+  function selectedKokoroVoice() {
+    return KOKORO_VOICES.find(voice => voice.id === state.selectedKokoroVoice) || KOKORO_VOICES[0];
   }
 
   function voiceDisplayName(voice) {
@@ -399,18 +435,36 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
   }
 
   function bestDefaultVoice(voices) {
+    const ukVoices = voices.filter(voice => /^en[-_]gb$/i.test(voice.lang || ""));
+    const ukFemalePattern = /female|sonia|libby|hazel|susan|serena|kate|stephanie|emily|emma|isabella|lily|alice/i;
+    const qualityPattern = /natural|enhanced|premium|neural|online/i;
+
+    const rankedUkFemale = ukVoices
+      .filter(voice => ukFemalePattern.test(voice.name))
+      .sort((a, b) => {
+        const qualityDifference = Number(qualityPattern.test(b.name)) - Number(qualityPattern.test(a.name));
+        if (qualityDifference) return qualityDifference;
+        const localDifference = Number(b.localService) - Number(a.localService);
+        if (localDifference) return localDifference;
+        return a.name.localeCompare(b.name);
+      });
+
+    if (rankedUkFemale.length) return rankedUkFemale[0];
+    const preferredUk = ukVoices.find(voice => qualityPattern.test(voice.name)) || ukVoices.find(voice => voice.localService) || ukVoices[0];
+    if (preferredUk) return preferredUk;
+
     const language = navigator.language || "en-US";
-    const localSameLang = voices.filter(v => v.localService && v.lang?.toLowerCase().startsWith(language.slice(0, 2).toLowerCase()));
-    const sameLang = voices.filter(v => v.lang?.toLowerCase().startsWith(language.slice(0, 2).toLowerCase()));
-    const preferredPattern = /aria|jenny|samantha|serena|daniel|google us english|natural|enhanced/i;
-    return localSameLang.find(v => preferredPattern.test(v.name)) || sameLang.find(v => preferredPattern.test(v.name)) || localSameLang[0] || sameLang[0] || voices.find(v => v.localService) || voices[0];
+    const localSameLang = voices.filter(voice => voice.localService && voice.lang?.toLowerCase().startsWith(language.slice(0, 2).toLowerCase()));
+    const sameLang = voices.filter(voice => voice.lang?.toLowerCase().startsWith(language.slice(0, 2).toLowerCase()));
+    const preferredPattern = /aria|jenny|samantha|serena|google us english|natural|enhanced|premium|neural/i;
+    return localSameLang.find(voice => preferredPattern.test(voice.name)) || sameLang.find(voice => preferredPattern.test(voice.name)) || localSameLang[0] || sameLang[0] || voices.find(voice => voice.localService) || voices[0];
   }
 
   function loadVoices() {
     if (!("speechSynthesis" in window)) {
-      refs.voiceLabel.textContent = "Speech not supported";
-      refs.readButton.disabled = true;
-      toast("This browser does not support text-to-speech. Try current Chrome, Edge, Safari, or Firefox.", "error");
+      state.voices = [];
+      updateVoiceUI();
+      renderVoiceList();
       return;
     }
     const voices = speechSynthesis.getVoices();
@@ -420,30 +474,118 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
       if (a.lang !== b.lang) return a.lang.localeCompare(b.lang);
       return a.name.localeCompare(b.name);
     });
-    if (!state.voices.some(v => v.voiceURI === state.selectedVoiceURI)) {
+    if (!state.voices.some(voice => voice.voiceURI === state.selectedVoiceURI)) {
       state.selectedVoiceURI = bestDefaultVoice(state.voices)?.voiceURI || "";
     }
     updateVoiceUI();
     renderVoiceList();
   }
 
+  function setModelStatus(kind, title, detail, progress = null) {
+    refs.modelStatus.classList.remove("loading", "ready", "error");
+    if (kind) refs.modelStatus.classList.add(kind);
+    refs.modelStatusTitle.textContent = title;
+    refs.modelStatusDetail.textContent = detail;
+    const showProgress = Number.isFinite(progress);
+    refs.modelProgress.hidden = !showProgress;
+    if (showProgress) refs.modelProgressBar.style.width = `${Math.max(2, Math.min(100, progress))}%`;
+  }
+
+  function updateEngineUI() {
+    const isKokoro = state.engine === "kokoro";
+    refs.kokoroEngineButton.classList.toggle("selected", isKokoro);
+    refs.browserEngineButton.classList.toggle("selected", !isKokoro);
+    refs.kokoroEngineButton.setAttribute("aria-pressed", String(isKokoro));
+    refs.browserEngineButton.setAttribute("aria-pressed", String(!isKokoro));
+    refs.modelStatus.hidden = !isKokoro;
+    refs.pitchSetting.classList.toggle("is-disabled", isKokoro);
+    refs.pitch.disabled = isKokoro;
+    refs.voiceSettingNote.textContent = isKokoro
+      ? "AI narration is generated on this device after the model is downloaded. Your reading text is not sent to a speech API."
+      : "Local voices stay on your device. Online voices may be processed by your browser or operating-system provider.";
+    refs.voiceSearch.placeholder = isKokoro ? "Search AI voices" : "Search name or language";
+  }
+
+  function setEngine(engine) {
+    const next = engine === "browser" ? "browser" : "kokoro";
+    if (next === "browser" && !("speechSynthesis" in window)) {
+      toast("Device voices are not supported in this browser. AI Narrator is still available.", "error");
+      return;
+    }
+    const changed = state.engine !== next;
+    state.engine = next;
+    localStorage.setItem("voxleaf.engine", state.engine);
+    updateEngineUI();
+    updateVoiceUI();
+    renderVoiceList();
+    if (changed && state.speaking) restartCurrentChunk();
+  }
+
   function updateVoiceUI() {
-    const voice = selectedVoice();
-    refs.voiceLabel.textContent = voiceDisplayName(voice);
-    refs.voiceAvatar.textContent = voiceDisplayName(voice).charAt(0).toUpperCase() || "V";
-    localStorage.setItem("voxleaf.voiceURI", state.selectedVoiceURI);
+    if (state.engine === "kokoro") {
+      const voice = selectedKokoroVoice();
+      refs.voiceLabel.textContent = `${voice.name} · AI Narrator`;
+      refs.voiceAvatar.textContent = voice.name.charAt(0).toUpperCase();
+      localStorage.setItem("voxleaf.kokoroVoice", state.selectedKokoroVoice);
+    } else {
+      const voice = selectedBrowserVoice();
+      refs.voiceLabel.textContent = voiceDisplayName(voice);
+      refs.voiceAvatar.textContent = voiceDisplayName(voice).charAt(0).toUpperCase() || "V";
+      localStorage.setItem("voxleaf.voiceURI", state.selectedVoiceURI);
+    }
+    updateEngineUI();
   }
 
   function renderVoiceList(filter = refs.voiceSearch.value.trim().toLowerCase()) {
     refs.voiceList.replaceChildren();
+
+    if (state.engine === "kokoro") {
+      const voices = KOKORO_VOICES.filter(voice => !filter || `${voice.name} ${voice.language} ${voice.description}`.toLowerCase().includes(filter));
+      voices.forEach(voice => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `voice-option${voice.id === state.selectedKokoroVoice ? " selected" : ""}`;
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", String(voice.id === state.selectedKokoroVoice));
+
+        const avatar = document.createElement("span");
+        avatar.className = "voice-avatar";
+        avatar.textContent = voice.name.charAt(0);
+
+        const copy = document.createElement("span");
+        copy.className = "voice-option-copy";
+        const strong = document.createElement("strong");
+        strong.textContent = voice.name;
+        const small = document.createElement("small");
+        small.textContent = `${voice.language} · ${voice.description}`;
+        copy.append(strong, small);
+
+        const badge = document.createElement("span");
+        badge.className = "voice-badge ai";
+        badge.textContent = "AI";
+
+        button.append(avatar, copy, badge);
+        button.addEventListener("click", () => {
+          state.selectedKokoroVoice = voice.id;
+          state.kokoroCache.clear();
+          updateVoiceUI();
+          renderVoiceList();
+          if (state.speaking) restartCurrentChunk();
+        });
+        refs.voiceList.append(button);
+      });
+      return;
+    }
+
     const voices = state.voices.filter(voice => !filter || `${voice.name} ${voice.lang}`.toLowerCase().includes(filter));
     if (!voices.length) {
       const empty = document.createElement("p");
       empty.className = "setting-note";
-      empty.textContent = state.voices.length ? "No voices match that search." : "Your browser is still loading its voice list…";
+      empty.textContent = state.voices.length ? "No voices match that search." : "No device voices are available in this browser.";
       refs.voiceList.append(empty);
       return;
     }
+
     voices.forEach(voice => {
       const button = document.createElement("button");
       button.type = "button";
@@ -478,33 +620,242 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     });
   }
 
-  function speakPreview() {
-    if (!("speechSynthesis" in window)) return;
-    speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance("This is how your reading will sound in Voxleaf.");
-    const voice = selectedVoice();
-    if (voice) utterance.voice = voice;
-    utterance.rate = Number(refs.rate.value);
-    utterance.pitch = Number(refs.pitch.value);
-    utterance.volume = Number(refs.volume.value);
-    speechSynthesis.speak(utterance);
+  async function ensureAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) throw new Error("This browser cannot play locally generated AI audio.");
+    if (!state.audioContext) {
+      state.audioContext = new AudioContextClass();
+      state.gainNode = state.audioContext.createGain();
+      state.gainNode.gain.value = Number(refs.volume.value);
+      state.gainNode.connect(state.audioContext.destination);
+    }
+    if (state.audioContext.state === "suspended") await state.audioContext.resume();
+    return state.audioContext;
   }
 
-  function speakCurrentChunk() {
-    if (!state.speaking || state.paused) return;
+  function ensureKokoroWorker() {
+    if (state.kokoroWorker) return state.kokoroWorker;
+    if (!("Worker" in window)) throw new Error("This browser does not support the AI narration worker.");
+
+    const worker = new Worker("./kokoro-worker.js", { type: "module" });
+    worker.addEventListener("message", event => {
+      const message = event.data || {};
+      if (message.type === "model-progress") {
+        const progress = Number(message.progress);
+        const file = String(message.file || "AI model").split("/").pop();
+        const status = String(message.status || "loading");
+        if (["progress", "download", "initiate"].includes(status)) {
+          setModelStatus("loading", "Downloading AI narrator…", file || "Preparing model files", Number.isFinite(progress) ? progress : 2);
+        } else if (status === "done") {
+          setModelStatus("loading", "Preparing AI narrator…", file || "Optimizing the model", 98);
+        }
+        return;
+      }
+      if (message.type === "model-ready") {
+        state.kokoroReady = true;
+        setModelStatus("ready", "AI narrator ready", "Kokoro is cached by your browser for future readings.");
+        return;
+      }
+      if (message.type === "response") {
+        const pending = state.kokoroPending.get(message.id);
+        if (!pending) return;
+        state.kokoroPending.delete(message.id);
+        if (message.ok) pending.resolve(message.result);
+        else pending.reject(new Error(message.error || "AI narrator request failed."));
+      }
+    });
+    worker.addEventListener("error", event => {
+      const error = new Error(event.message || "The AI narrator worker stopped.");
+      state.kokoroPending.forEach(pending => pending.reject(error));
+      state.kokoroPending.clear();
+      state.kokoroInitPromise = null;
+      state.kokoroReady = false;
+      setModelStatus("error", "AI narrator unavailable", error.message);
+    });
+    state.kokoroWorker = worker;
+    return worker;
+  }
+
+  function requestKokoro(type, payload = {}) {
+    const worker = ensureKokoroWorker();
+    const id = `kokoro-${++state.kokoroRequestId}`;
+    return new Promise((resolve, reject) => {
+      state.kokoroPending.set(id, { resolve, reject });
+      worker.postMessage({ type, id, ...payload });
+    });
+  }
+
+  async function ensureKokoroModel() {
+    if (state.kokoroReady) return;
+    if (state.kokoroInitPromise) return state.kokoroInitPromise;
+    setModelStatus("loading", "Starting AI narrator…", "Checking the local model cache", 2);
+    state.kokoroInitPromise = requestKokoro("init")
+      .then(() => {
+        state.kokoroReady = true;
+        setModelStatus("ready", "AI narrator ready", "Kokoro is cached by your browser for future readings.");
+      })
+      .catch(error => {
+        state.kokoroInitPromise = null;
+        state.kokoroReady = false;
+        setModelStatus("error", "AI narrator unavailable", error.message || "The model could not be loaded.");
+        throw error;
+      });
+    return state.kokoroInitPromise;
+  }
+
+  function kokoroCacheKey(index) {
+    const chunk = state.chunks[index];
+    return chunk ? `${state.lastTextHash}:${index}:${state.selectedKokoroVoice}:${Number(refs.rate.value).toFixed(2)}` : "";
+  }
+
+  async function generateKokoroChunk(index) {
+    const chunk = state.chunks[index];
+    if (!chunk) throw new Error("No text chunk is available.");
+    const key = kokoroCacheKey(index);
+    if (state.kokoroCache.has(key)) return state.kokoroCache.get(key);
+
+    const promise = (async () => {
+      await ensureKokoroModel();
+      const result = await requestKokoro("generate", {
+        text: chunk.text,
+        voice: state.selectedKokoroVoice,
+        speed: Number(refs.rate.value)
+      });
+      return {
+        samples: new Float32Array(result.samples),
+        samplingRate: Number(result.samplingRate) || 24000
+      };
+    })();
+
+    state.kokoroCache.set(key, promise);
+    promise.catch(() => state.kokoroCache.delete(key));
+    while (state.kokoroCache.size > 8) state.kokoroCache.delete(state.kokoroCache.keys().next().value);
+    return promise;
+  }
+
+  function prefetchKokoro(index) {
+    for (let offset = 1; offset <= 2; offset += 1) {
+      if (index + offset < state.chunks.length) generateKokoroChunk(index + offset).catch(() => {});
+    }
+  }
+
+  function stopPreview() {
+    if (!state.previewSource) return;
+    const source = state.previewSource;
+    state.previewSource = null;
+    try { source.stop(); } catch (_) { /* already stopped */ }
+  }
+
+  function stopKokoroSource(preserveOffset = false) {
+    const source = state.kokoroSource;
+    if (!source) return;
+    if (preserveOffset && state.audioContext && state.kokoroCurrentData) {
+      const elapsed = Math.max(0, state.audioContext.currentTime - state.kokoroStartedAt);
+      const duration = state.kokoroCurrentData.samples.length / state.kokoroCurrentData.samplingRate;
+      state.kokoroCurrentOffset = Math.min(duration, state.kokoroCurrentOffset + elapsed);
+    }
+    state.kokoroSource = null;
+    try { source.stop(); } catch (_) { /* already stopped */ }
+  }
+
+  async function playKokoroData(data, token, offset = 0) {
+    const context = await ensureAudioContext();
+    if (token !== state.playbackToken || !state.speaking || state.paused) return;
+    stopKokoroSource(false);
+
+    const buffer = context.createBuffer(1, data.samples.length, data.samplingRate);
+    buffer.copyToChannel(data.samples, 0);
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(state.gainNode);
+
+    const safeOffset = offset >= buffer.duration ? 0 : Math.max(0, offset);
+    state.kokoroSource = source;
+    state.kokoroCurrentData = data;
+    state.kokoroCurrentOffset = safeOffset;
+    state.kokoroStartedAt = context.currentTime;
+
+    source.addEventListener("ended", () => {
+      if (state.kokoroSource !== source) return;
+      state.kokoroSource = null;
+      state.kokoroCurrentData = null;
+      state.kokoroCurrentOffset = 0;
+      if (token !== state.playbackToken || !state.speaking || state.paused) return;
+      state.chunkIndex += 1;
+      if (state.chunkIndex >= state.chunks.length) finishSpeech();
+      else {
+        saveCurrentDocument();
+        speakCurrentChunk();
+      }
+    });
+
+    source.start(0, safeOffset);
+    if (!state.speechStartedAt) state.speechStartedAt = Date.now();
+    const voice = selectedKokoroVoice();
+    refs.playerStatus.textContent = `${voice.name} · AI Narrator`;
+    highlightChunk(true);
+    prefetchKokoro(state.chunkIndex);
+  }
+
+  async function speakPreview() {
+    if (state.engine === "browser") {
+      if (!("speechSynthesis" in window)) return;
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance("This is how your reading will sound in Voxleaf.");
+      const voice = selectedBrowserVoice();
+      if (voice) utterance.voice = voice;
+      utterance.rate = Number(refs.rate.value);
+      utterance.pitch = Number(refs.pitch.value);
+      utterance.volume = Number(refs.volume.value);
+      speechSynthesis.speak(utterance);
+      return;
+    }
+
+    const original = refs.previewVoiceButton.innerHTML;
+    refs.previewVoiceButton.disabled = true;
+    refs.previewVoiceButton.textContent = state.kokoroReady ? "Preparing preview…" : "Loading AI narrator…";
+    try {
+      const context = await ensureAudioContext();
+      stopPreview();
+      await ensureKokoroModel();
+      const result = await requestKokoro("generate", {
+        text: "The old house had been silent for years, until one winter evening when the music began.",
+        voice: state.selectedKokoroVoice,
+        speed: Number(refs.rate.value)
+      });
+      const samples = new Float32Array(result.samples);
+      const samplingRate = Number(result.samplingRate) || 24000;
+      const buffer = context.createBuffer(1, samples.length, samplingRate);
+      buffer.copyToChannel(samples, 0);
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(state.gainNode);
+      source.addEventListener("ended", () => { if (state.previewSource === source) state.previewSource = null; });
+      state.previewSource = source;
+      source.start();
+    } catch (error) {
+      console.error(error);
+      toast(`AI preview could not start: ${error.message}`, "error");
+    } finally {
+      refs.previewVoiceButton.disabled = false;
+      refs.previewVoiceButton.innerHTML = original;
+    }
+  }
+
+  function speakBrowserCurrentChunk() {
+    if (!("speechSynthesis" in window)) {
+      toast("Device speech is unavailable in this browser.", "error");
+      pauseSpeech();
+      return;
+    }
     const chunk = state.chunks[state.chunkIndex];
     if (!chunk) {
       finishSpeech();
       return;
     }
-    if (state.sleepUntil && Date.now() >= state.sleepUntil) {
-      toast("Sleep timer finished.");
-      finishSpeech();
-      return;
-    }
 
     const utterance = new SpeechSynthesisUtterance(chunk.text);
-    const voice = selectedVoice();
+    const voice = selectedBrowserVoice();
     if (voice) utterance.voice = voice;
     utterance.rate = Number(refs.rate.value);
     utterance.pitch = Number(refs.pitch.value);
@@ -517,7 +868,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
       highlightChunk(true);
     };
     utterance.onend = () => {
-      if (!state.speaking || state.intentionalCancel) return;
+      if (!state.speaking || state.intentionalCancel || state.engine !== "browser") return;
       state.chunkIndex += 1;
       if (state.chunkIndex >= state.chunks.length) finishSpeech();
       else {
@@ -528,10 +879,60 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     utterance.onerror = event => {
       if (["interrupted", "canceled"].includes(event.error) || state.intentionalCancel) return;
       console.error("Speech synthesis error:", event.error);
-      toast(`The selected voice stopped (${event.error || "unknown error"}). Try another voice.`, "error");
+      toast(`The selected device voice stopped (${event.error || "unknown error"}). Try another voice.`, "error");
       pauseSpeech();
     };
     speechSynthesis.speak(utterance);
+  }
+
+  async function speakKokoroCurrentChunk() {
+    const chunk = state.chunks[state.chunkIndex];
+    if (!chunk) {
+      finishSpeech();
+      return;
+    }
+    const token = state.playbackToken;
+    const voice = selectedKokoroVoice();
+    refs.playerStatus.textContent = state.kokoroReady ? `Preparing ${voice.name}…` : "Loading AI narrator…";
+    highlightChunk(true);
+
+    try {
+      const data = await generateKokoroChunk(state.chunkIndex);
+      if (token !== state.playbackToken || !state.speaking || state.paused || state.engine !== "kokoro") return;
+      await playKokoroData(data, token, state.kokoroCurrentOffset);
+    } catch (error) {
+      if (token !== state.playbackToken) return;
+      console.error(error);
+      setModelStatus("error", "AI narrator unavailable", error.message || "The model could not generate speech.");
+      if ("speechSynthesis" in window) {
+        toast("Kokoro could not start, so Voxleaf switched to the UK device voice.", "error");
+        setEngine("browser");
+      } else {
+        refs.playerStatus.textContent = "AI narrator unavailable";
+        state.paused = true;
+        refs.player.classList.add("paused");
+        refs.playPauseButton.setAttribute("aria-label", "Resume");
+      }
+    }
+  }
+
+  function speakCurrentChunk() {
+    if (!state.speaking || state.paused) return;
+    if (state.sleepUntil && Date.now() >= state.sleepUntil) {
+      toast("Sleep timer finished.");
+      finishSpeech();
+      return;
+    }
+    if (state.engine === "kokoro") speakKokoroCurrentChunk();
+    else speakBrowserCurrentChunk();
+  }
+
+  function cancelActivePlayback() {
+    state.intentionalCancel = true;
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    state.intentionalCancel = false;
+    stopKokoroSource(false);
+    stopPreview();
   }
 
   function startSpeech() {
@@ -547,9 +948,11 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     } else if (!state.currentDoc?.progressIndex && state.chunkIndex >= state.chunks.length) {
       state.chunkIndex = 0;
     }
-    state.intentionalCancel = true;
-    speechSynthesis.cancel();
-    state.intentionalCancel = false;
+
+    state.playbackToken += 1;
+    cancelActivePlayback();
+    state.kokoroCurrentData = null;
+    state.kokoroCurrentOffset = 0;
     state.speaking = true;
     state.paused = false;
     state.speechStartedAt = 0;
@@ -561,12 +964,14 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     showReader();
     updatePlayerUI();
     startProgressTimer();
+    if (state.engine === "kokoro") ensureAudioContext().catch(() => {});
     speakCurrentChunk();
   }
 
   function pauseSpeech() {
     if (!state.speaking || state.paused) return;
-    speechSynthesis.pause();
+    if (state.engine === "kokoro") stopKokoroSource(true);
+    else if ("speechSynthesis" in window) speechSynthesis.pause();
     state.paused = true;
     state.elapsedBeforeStart += state.speechStartedAt ? (Date.now() - state.speechStartedAt) / 1000 : 0;
     state.speechStartedAt = 0;
@@ -586,7 +991,11 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     state.speechStartedAt = Date.now();
     refs.player.classList.remove("paused");
     refs.playPauseButton.setAttribute("aria-label", "Pause");
-    if (speechSynthesis.paused) speechSynthesis.resume();
+
+    if (state.engine === "kokoro") {
+      if (state.kokoroCurrentData) playKokoroData(state.kokoroCurrentData, state.playbackToken, state.kokoroCurrentOffset);
+      else speakCurrentChunk();
+    } else if (speechSynthesis.paused) speechSynthesis.resume();
     else speakCurrentChunk();
     updatePlayerUI();
   }
@@ -594,21 +1003,23 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
   function restartCurrentChunk() {
     if (!state.speaking) return;
     const wasPaused = state.paused;
-    state.intentionalCancel = true;
-    speechSynthesis.cancel();
-    state.intentionalCancel = false;
+    state.playbackToken += 1;
+    cancelActivePlayback();
+    state.kokoroCurrentData = null;
+    state.kokoroCurrentOffset = 0;
     state.paused = wasPaused;
     if (!wasPaused) setTimeout(speakCurrentChunk, 40);
     updatePlayerUI();
   }
 
   function stopSpeech({ hidePlayer = true, preserveIndex = true } = {}) {
-    state.intentionalCancel = true;
-    if ("speechSynthesis" in window) speechSynthesis.cancel();
-    state.intentionalCancel = false;
+    state.playbackToken += 1;
+    cancelActivePlayback();
     state.speaking = false;
     state.paused = false;
     state.utterance = null;
+    state.kokoroCurrentData = null;
+    state.kokoroCurrentOffset = 0;
     state.speechStartedAt = 0;
     clearInterval(state.progressTimer);
     state.progressTimer = null;
@@ -639,9 +1050,10 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     saveCurrentDocument();
     if (state.speaking) {
       const shouldPlay = autoplay || !state.paused;
-      state.intentionalCancel = true;
-      speechSynthesis.cancel();
-      state.intentionalCancel = false;
+      state.playbackToken += 1;
+      cancelActivePlayback();
+      state.kokoroCurrentData = null;
+      state.kokoroCurrentOffset = 0;
       if (shouldPlay) {
         state.paused = false;
         setTimeout(speakCurrentChunk, 40);
@@ -655,7 +1067,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     let index;
     if (direction > 0) index = state.chunks.findIndex(chunk => chunk.paragraphIndex > currentParagraph);
     else {
-      for (let i = state.chunkIndex - 1; i >= 0; i--) {
+      for (let i = state.chunkIndex - 1; i >= 0; i -= 1) {
         if (state.chunks[i].paragraphIndex < currentParagraph) {
           const paragraph = state.chunks[i].paragraphIndex;
           index = state.chunks.findIndex(chunk => chunk.paragraphIndex === paragraph);
@@ -987,6 +1399,8 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     $$('[data-close-drawer]').forEach(node => node.addEventListener("click", closeVoiceDrawer));
     refs.voiceSearch.addEventListener("input", () => renderVoiceList());
     refs.previewVoiceButton.addEventListener("click", speakPreview);
+    refs.kokoroEngineButton.addEventListener("click", () => setEngine("kokoro"));
+    refs.browserEngineButton.addEventListener("click", () => setEngine("browser"));
 
     refs.rate.addEventListener("input", () => {
       refs.rateOutput.value = `${Number(refs.rate.value).toFixed(2).replace(/0$/, "")}×`;
@@ -994,17 +1408,25 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
       updateDocumentStats();
       updatePlayerUI();
     });
-    refs.rate.addEventListener("change", restartCurrentChunk);
+    refs.rate.addEventListener("change", () => {
+      state.kokoroCache.clear();
+      restartCurrentChunk();
+    });
     refs.pitch.addEventListener("input", () => {
       refs.pitchOutput.value = Number(refs.pitch.value).toFixed(2).replace(/0$/, "");
       localStorage.setItem("voxleaf.pitch", refs.pitch.value);
     });
-    refs.pitch.addEventListener("change", restartCurrentChunk);
+    refs.pitch.addEventListener("change", () => {
+      if (state.engine === "browser") restartCurrentChunk();
+    });
     refs.volume.addEventListener("input", () => {
       refs.volumeOutput.value = `${Math.round(Number(refs.volume.value) * 100)}%`;
       localStorage.setItem("voxleaf.volume", refs.volume.value);
+      if (state.gainNode) state.gainNode.gain.value = Number(refs.volume.value);
     });
-    refs.volume.addEventListener("change", restartCurrentChunk);
+    refs.volume.addEventListener("change", () => {
+      if (state.engine === "browser") restartCurrentChunk();
+    });
 
     refs.importButton.addEventListener("click", () => refs.fileInput.click());
     refs.fileInput.addEventListener("change", () => importFile(refs.fileInput.files[0]));
@@ -1069,6 +1491,9 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
         } catch (_) { /* best effort */ }
       }
       if ("speechSynthesis" in window) speechSynthesis.cancel();
+      stopKokoroSource(false);
+      stopPreview();
+      state.kokoroWorker?.terminate();
     });
   }
 
@@ -1079,15 +1504,19 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     if (rate) refs.rate.value = rate;
     if (pitch) refs.pitch.value = pitch;
     if (volume) refs.volume.value = volume;
+    if (!KOKORO_VOICES.some(voice => voice.id === state.selectedKokoroVoice)) state.selectedKokoroVoice = "bf_emma";
+    if (!["kokoro", "browser"].includes(state.engine)) state.engine = "kokoro";
     refs.rate.dispatchEvent(new Event("input"));
     refs.pitch.dispatchEvent(new Event("input"));
     refs.volume.dispatchEvent(new Event("input"));
+    updateVoiceUI();
+    setModelStatus("", "Ready when you are", "The first AI reading downloads an approximately 90 MB open-source model once.");
   }
 
   async function initialize() {
     initializeTheme();
-    restoreSettings();
     bindEvents();
+    restoreSettings();
     try {
       state.db = await openDB();
       await loadInitialDocument();
@@ -1106,7 +1535,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
       setTimeout(loadVoices, 1000);
     }
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-      navigator.serviceWorker.register("./sw.js").catch(error => console.warn("Service worker registration failed", error));
+      navigator.serviceWorker.register("./sw.js", { scope: "./", updateViaCache: "none" }).catch(error => console.warn("Service worker registration failed", error));
     }
   }
 

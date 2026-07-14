@@ -122,6 +122,27 @@
         <button class="icon-button" data-close-drawer aria-label="Close voice settings"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
 
+      <div class="setting-block engine-block">
+        <span class="setting-label">Narration engine</span>
+        <div class="engine-switch" role="group" aria-label="Narration engine">
+          <button type="button" id="kokoroEngineButton" class="engine-option selected" data-engine="kokoro" aria-pressed="true">
+            <span class="engine-icon" aria-hidden="true">✦</span>
+            <span><strong>AI Narrator</strong><small>Kokoro · natural and private</small></span>
+          </button>
+          <button type="button" id="browserEngineButton" class="engine-option" data-engine="browser" aria-pressed="false">
+            <span class="engine-icon" aria-hidden="true">◌</span>
+            <span><strong>Device Voice</strong><small>Instant browser speech</small></span>
+          </button>
+        </div>
+        <div class="model-status" id="modelStatus" aria-live="polite">
+          <div class="model-status-copy">
+            <span class="model-status-dot"></span>
+            <span><strong id="modelStatusTitle">Ready when you are</strong><small id="modelStatusDetail">The first AI reading downloads an approximately 90 MB open-source model once.</small></span>
+          </div>
+          <div class="model-progress" id="modelProgress" hidden><span id="modelProgressBar"></span></div>
+        </div>
+      </div>
+
       <div class="setting-block">
         <label for="voiceSearch">Choose a voice</label>
         <div class="search-field">
@@ -129,7 +150,7 @@
           <input id="voiceSearch" type="search" placeholder="Search name or language" autocomplete="off" />
         </div>
         <div class="voice-list" id="voiceList" role="listbox" aria-label="Available voices"></div>
-        <p class="setting-note"><span class="local-dot"></span> Local voices stay on your device. Online voices may be processed by your browser or operating-system provider.</p>
+        <p class="setting-note" id="voiceSettingNote"><span class="local-dot"></span> AI narration is generated on this device after the model is downloaded.</p>
       </div>
 
       <div class="setting-grid">
@@ -138,7 +159,7 @@
           <input id="rateRange" type="range" min="0.5" max="2" step="0.05" value="1" />
           <div class="range-marks"><span>Calm</span><span>Quick</span></div>
         </div>
-        <div class="range-setting">
+        <div class="range-setting" id="pitchSetting">
           <div class="range-label"><label for="pitchRange">Pitch</label><output id="pitchOutput">1.0</output></div>
           <input id="pitchRange" type="range" min="0.5" max="1.5" step="0.05" value="1" />
           <div class="range-marks"><span>Low</span><span>Bright</span></div>

@@ -1,60 +1,95 @@
-# Voxleaf
+# Voxleaf with Kokoro AI Narrator
 
-A polished, static text-to-speech web app designed for GitHub Pages. Paste text or import TXT, Markdown, HTML, and EPUB files, choose an installed voice, and listen with saved progress.
+Voxleaf is a polished, static reading app for GitHub Pages. Paste text or import TXT, Markdown, HTML, and EPUB files, then listen with either the open-source Kokoro neural narrator or the browser's built-in device voices.
 
-## What works without an API
+## No API key or backend is required
 
-Voxleaf uses the browser's built-in Web Speech API. There is no required account, server, database, or API key. Available voices depend on the device, browser, and operating system.
+The default **AI Narrator** mode runs Kokoro locally in a Web Worker using ONNX Runtime Web. The page itself remains a static GitHub Pages site.
 
-- Local voices are preferred and are marked **Local** in the voice picker.
-- Some browser/OS voices are marked **Online** and may be processed by that provider.
-- Chrome and Edge on Windows generally provide the broadest voice selection.
-- EPUB import loads the open-source JSZip and EPUB.js libraries from jsDelivr the first time it is used, then the service worker caches them when possible.
+- Default voice: **Emma (`bf_emma`)**, British female.
+- Other included British female choices: Isabella, Alice, and Lily.
+- Model quantization: `q4` on WebAssembly for broad browser compatibility.
+- First AI use downloads roughly 90 MB of model data plus supporting runtime files.
+- The model and voice assets are cached by the browser, so later sessions normally start much faster.
+- Reading text is processed inside the browser and is not sent to a paid speech API.
+- A network connection is still needed the first time the Kokoro model is downloaded.
+
+**Chrome or Edge on a modern desktop is recommended for the first test.** Kokoro can run without WebGPU, but older phones and low-memory devices may generate audio slowly. Voxleaf automatically retains the original Device Voice mode as a fast fallback.
 
 ## Features
 
-- Long-text speech chunking for improved reliability
-- Multiple installed voices with search and preview
-- Speed, pitch, and volume controls
+- Kokoro neural narration generated locally in a background worker
+- British female AI voices, with Emma selected by default
+- Device/browser voice fallback
+- Ahead-of-playback audio generation to reduce gaps
+- Long-text chunking and saved reading progress
+- Speed and volume controls for AI narration
+- Speed, pitch, and volume controls for device voices
 - Pause, resume, stop, paragraph skip, progress scrubber, and sleep timer
-- Reading view with current passage highlighting
-- Local IndexedDB library and saved reading position
+- Current passage highlighting
+- Local IndexedDB library
 - TXT, Markdown, HTML, and EPUB import
 - TXT export
-- Light/dark themes
-- Mobile-responsive design
-- Installable Progressive Web App with offline app-shell support
-- No backend and no build step
+- Responsive light/dark interface
+- Installable PWA app shell
+- No build process, account, database, or private API key
 
-## Deploy to GitHub Pages
+## Deploy at `/reader` in the WhatMod repository
 
-1. Create a new GitHub repository.
-2. Upload every file and folder from this package to the repository root.
-3. Open **Settings → Pages**.
-4. Under **Build and deployment**, select **Deploy from a branch**.
-5. Select your default branch and the `/ (root)` folder, then save.
-6. Open the GitHub Pages URL after deployment completes.
+Delete the old `reader` folder and upload this entire replacement folder to the root of the repository:
 
-All app paths are relative, so it works at either a custom domain or a repository subpath such as `username.github.io/voxleaf/`.
+```text
+reader/
+  index.html
+  app.js
+  styles.css
+  kokoro-worker.js
+  sw.js
+  manifest.webmanifest
+  .nojekyll
+  assets/
+    icon-192.png
+    icon-512.png
+  vendor/
+    kokoro.web.js
+    KOKORO-LICENSE.txt
+```
+
+Then open:
+
+```text
+https://whatmod.com/reader/
+```
+
+Use the trailing slash. After deploying, perform a hard refresh. When replacing an older PWA version, it may also help to unregister the old service worker and clear site data once.
+
+## What GitHub Pages hosts
+
+GitHub Pages hosts the application files, the Kokoro JavaScript runtime bundle, and the Web Worker. The large neural model is downloaded directly by the user's browser from the public Hugging Face model repository on first use. This avoids placing a roughly 90 MB binary in the WhatMod Git repository and avoids GitHub Pages bandwidth being used for every model download.
 
 ## Local testing
 
-Service workers do not run correctly when `index.html` is opened directly from disk. Start a local static server instead:
+Do not open `index.html` using a `file://` URL. Module workers and service workers require an HTTP origin.
+
+From the directory containing the `reader` folder:
 
 ```bash
 python -m http.server 8080
 ```
 
-Then open `http://localhost:8080`.
+Then open:
 
-## Optional premium voice API later
-
-A cloud TTS provider is only needed when you want the exact same high-end voices on every device, downloadable audio files, or server-side audiobook generation. GitHub Pages cannot safely hide a private API key, so that version should use a small serverless function (for example, Cloudflare Workers, Netlify Functions, Vercel Functions, or Supabase Edge Functions) as a protected proxy.
+```text
+http://localhost:8080/reader/
+```
 
 ## Open-source components
 
+- Kokoro.js 1.2.1 — Apache-2.0
+- Kokoro-82M-v1.0-ONNX model — Apache-2.0
+- Transformers.js / ONNX Runtime Web — browser inference dependencies bundled by Kokoro.js
 - JSZip 3.10.1 — MIT or GPL-3.0-or-later
 - EPUB.js 0.3.93 — FreeBSD/BSD-style license
-- DM Sans and Fraunces — SIL Open Font License via Google Fonts
+- DM Sans and Fraunces — SIL Open Font License
 
-The Voxleaf application code in this package is provided under the MIT License.
+The Voxleaf application code is provided under the MIT License. The Kokoro Apache-2.0 notice is included in `vendor/KOKORO-LICENSE.txt`.

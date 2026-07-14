@@ -1,9 +1,11 @@
-const CACHE_NAME = "voxleaf-v1.0.0";
+const CACHE_NAME = "voxleaf-v1.1.0-kokoro";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./kokoro-worker.js",
+  "./vendor/kokoro.web.js",
   "./manifest.webmanifest",
   "./assets/icon-192.png",
   "./assets/icon-512.png"
@@ -46,15 +48,7 @@ self.addEventListener("fetch", event => {
         return response;
       }))
     );
-    return;
   }
-
-  // Runtime-cache optional fonts and EPUB libraries after their first successful load.
-  event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-      return response;
-    }))
-  );
+  // Model, voice, font, and WASM files use their providers' normal browser caches.
+  // Avoid duplicating the large AI model inside the service-worker cache.
 });
