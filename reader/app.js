@@ -106,7 +106,8 @@
     kokoroCurrentData: null,
     kokoroCurrentOffset: 0,
     kokoroStartedAt: 0,
-    previewSource: null
+    previewSource: null,
+    kokoroWarmupScheduled: false
   };
 
   const SAMPLE_TEXT = `The rain had been whispering against the library windows since dusk. Mara sat alone beneath the brass reading lamp, turning the final page of a book that had no title on its cover.
@@ -244,6 +245,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     showEditor();
     updateDocumentStats();
     if (save) await saveCurrentDocument(true);
+    schedulePassageWarmup();
     if (focus) refs.text.focus();
   }
 
@@ -317,7 +319,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     return parts;
   }
 
-  function buildChunks(rawText, maxLength = 230) {
+  function buildChunks(rawText, maxLength = 170) {
     const text = normalizeText(rawText);
     if (!text) return [];
     const chunks = [];
@@ -518,6 +520,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     updateEngineUI();
     updateVoiceUI();
     renderVoiceList();
+    if (next === "kokoro") scheduleKokoroWarmup({ force: true });
     if (changed && state.speaking) restartCurrentChunk();
   }
 
@@ -570,6 +573,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
           state.kokoroCache.clear();
           updateVoiceUI();
           renderVoiceList();
+          schedulePassageWarmup();
           if (state.speaking) restartCurrentChunk();
         });
         refs.voiceList.append(button);
@@ -653,7 +657,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
       }
       if (message.type === "model-ready") {
         state.kokoroReady = true;
-        setModelStatus("ready", "AI narrator ready", "Kokoro is cached by your browser for future readings.");
+        setModelStatus("ready", "AI narrator ready", "The optimized 8-bit model is cached for future readings.");
         return;
       }
       if (message.type === "response") {
@@ -688,11 +692,11 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
   async function ensureKokoroModel() {
     if (state.kokoroReady) return;
     if (state.kokoroInitPromise) return state.kokoroInitPromise;
-    setModelStatus("loading", "Starting AI narrator…", "Checking the local model cache", 2);
+    setModelStatus("loading", "Preparing AI narrator…", "Checking the local 8-bit model cache", 2);
     state.kokoroInitPromise = requestKokoro("init")
       .then(() => {
         state.kokoroReady = true;
-        setModelStatus("ready", "AI narrator ready", "Kokoro is cached by your browser for future readings.");
+        setModelStatus("ready", "AI narrator ready", "The optimized 8-bit model is cached for future readings.");
       })
       .catch(error => {
         state.kokoroInitPromise = null;
@@ -734,9 +738,49 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
   }
 
   function prefetchKokoro(index) {
-    for (let offset = 1; offset <= 2; offset += 1) {
+    for (let offset = 1; offset <= 3; offset += 1) {
       if (index + offset < state.chunks.length) generateKokoroChunk(index + offset).catch(() => {});
     }
+  }
+
+  function connectionAllowsBackgroundAI() {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!connection) return true;
+    if (connection.saveData) return false;
+    return !["slow-2g", "2g"].includes(connection.effectiveType);
+  }
+
+  function prewarmCurrentPassage() {
+    if (state.engine !== "kokoro" || !state.kokoroReady || state.speaking) return;
+    ensureChunks();
+    if (!state.chunks.length) return;
+    const cursorIndex = refs.cursorStart.checked ? findChunkAtOffset(refs.text.selectionStart) : state.chunkIndex;
+    const index = Math.max(0, Math.min(cursorIndex, state.chunks.length - 1));
+    generateKokoroChunk(index)
+      .then(() => prefetchKokoro(index))
+      .catch(() => {});
+  }
+
+  const schedulePassageWarmup = debounce(prewarmCurrentPassage, 900);
+
+  function scheduleKokoroWarmup({ force = false } = {}) {
+    if (state.engine !== "kokoro" || state.kokoroReady || state.kokoroInitPromise || state.kokoroWarmupScheduled) {
+      if (state.kokoroReady) schedulePassageWarmup();
+      return;
+    }
+    if (!force && !connectionAllowsBackgroundAI()) return;
+
+    state.kokoroWarmupScheduled = true;
+    const begin = () => {
+      state.kokoroWarmupScheduled = false;
+      if (state.engine !== "kokoro") return;
+      ensureKokoroModel()
+        .then(() => schedulePassageWarmup())
+        .catch(error => console.warn("Background AI preparation failed", error));
+    };
+
+    if ("requestIdleCallback" in window) requestIdleCallback(begin, { timeout: 2200 });
+    else setTimeout(begin, 1100);
   }
 
   function stopPreview() {
@@ -1133,6 +1177,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     refs.drawer.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
     renderVoiceList();
+    if (state.engine === "kokoro") scheduleKokoroWarmup({ force: true });
     setTimeout(() => refs.voiceSearch.focus(), 260);
   }
 
@@ -1234,6 +1279,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     updateDocumentStats();
     saveCurrentDocument();
     closeDocumentMenu();
+    schedulePassageWarmup();
     refs.text.focus();
   }
 
@@ -1387,6 +1433,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
       updateDocumentStats();
       state.lastTextHash = "";
       scheduleSave();
+      schedulePassageWarmup();
     });
     refs.title.addEventListener("input", () => {
       refs.playerTitle.textContent = refs.title.value || "Untitled reading";
@@ -1410,6 +1457,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     });
     refs.rate.addEventListener("change", () => {
       state.kokoroCache.clear();
+      schedulePassageWarmup();
       restartCurrentChunk();
     });
     refs.pitch.addEventListener("input", () => {
@@ -1510,7 +1558,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     refs.pitch.dispatchEvent(new Event("input"));
     refs.volume.dispatchEvent(new Event("input"));
     updateVoiceUI();
-    setModelStatus("", "Ready when you are", "The first AI reading downloads an approximately 90 MB open-source model once.");
+    setModelStatus("", "Preparing in the background", "The optimized 8-bit model is about 92 MB and is cached after its first download.");
   }
 
   async function initialize() {
@@ -1537,6 +1585,7 @@ Then, from somewhere deep between the shelves, a voice softly read her name.`;
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
       navigator.serviceWorker.register("./sw.js", { scope: "./", updateViaCache: "none" }).catch(error => console.warn("Service worker registration failed", error));
     }
+    scheduleKokoroWarmup();
   }
 
   initialize();

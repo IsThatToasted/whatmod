@@ -8,8 +8,8 @@ The default **AI Narrator** mode runs Kokoro locally in a Web Worker using ONNX 
 
 - Default voice: **Emma (`bf_emma`)**, British female.
 - Other included British female choices: Isabella, Alice, and Lily.
-- Model quantization: `q4` on WebAssembly for broad browser compatibility.
-- First AI use downloads roughly 90 MB of model data plus supporting runtime files.
+- Model quantization: optimized `q8` on WebAssembly for broad browser compatibility.
+- First AI use downloads roughly 92 MB of model data plus supporting runtime files.
 - The model and voice assets are cached by the browser, so later sessions normally start much faster.
 - Reading text is processed inside the browser and is not sent to a paid speech API.
 - A network connection is still needed the first time the Kokoro model is downloaded.
@@ -21,7 +21,7 @@ The default **AI Narrator** mode runs Kokoro locally in a Web Worker using ONNX 
 - Kokoro neural narration generated locally in a background worker
 - British female AI voices, with Emma selected by default
 - Device/browser voice fallback
-- Ahead-of-playback audio generation to reduce gaps
+- Background model preparation and ahead-of-playback audio generation to reduce waiting and gaps
 - Long-text chunking and saved reading progress
 - Speed and volume controls for AI narration
 - Speed, pitch, and volume controls for device voices
@@ -65,7 +65,7 @@ Use the trailing slash. After deploying, perform a hard refresh. When replacing 
 
 ## What GitHub Pages hosts
 
-GitHub Pages hosts the application files, the Kokoro JavaScript runtime bundle, and the Web Worker. The large neural model is downloaded directly by the user's browser from the public Hugging Face model repository on first use. This avoids placing a roughly 90 MB binary in the WhatMod Git repository and avoids GitHub Pages bandwidth being used for every model download.
+GitHub Pages hosts the application files, the Kokoro JavaScript runtime bundle, and the Web Worker. The large neural model is downloaded directly by the user's browser from the public Hugging Face model repository on first use. This avoids placing a roughly 92 MB binary in the WhatMod Git repository and avoids GitHub Pages bandwidth being used for every model download.
 
 ## Local testing
 
@@ -93,3 +93,14 @@ http://localhost:8080/reader/
 - DM Sans and Fraunces — SIL Open Font License
 
 The Voxleaf application code is provided under the MIT License. The Kokoro Apache-2.0 notice is included in `vendor/KOKORO-LICENSE.txt`.
+
+
+## Performance changes in this build
+
+- Corrected the model choice from `q4` to `q8`. In this Kokoro ONNX repository, the `q4` file is about 305 MB, while the optimized 8-bit model is about 92 MB.
+- Begins downloading and initializing Kokoro during browser idle time on normal connections instead of waiting for Read Now.
+- Pre-generates the current passage after text settles and queues the next passages.
+- Uses shorter narration chunks for faster time-to-first-audio.
+- Serializes background generation to avoid multiple inference jobs fighting for the same CPU.
+- Keeps Data Saver and very slow connections from automatically downloading the model.
+- Fixes the document menu stacking order so it remains above the editor and reading text.

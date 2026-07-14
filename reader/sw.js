@@ -1,4 +1,4 @@
-const CACHE_NAME = "voxleaf-v1.1.0-kokoro";
+const CACHE_NAME = "voxleaf-v1.2.0-kokoro-fast";
 const APP_SHELL = [
   "./",
   "./index.html",

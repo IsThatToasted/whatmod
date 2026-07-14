@@ -1,10 +1,11 @@
 import { KokoroTTS } from "./vendor/kokoro.web.js";
 
 const MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
-const MODEL_OPTIONS = Object.freeze({ dtype: "q4", device: "wasm" });
+const MODEL_OPTIONS = Object.freeze({ dtype: "q8", device: "wasm" });
 
 let tts = null;
 let loadingPromise = null;
+let generationQueue = Promise.resolve();
 
 function send(message, transfer = []) {
   self.postMessage(message, transfer);
@@ -20,6 +21,12 @@ function normalizeProgress(progress = {}) {
     loaded,
     total
   };
+}
+
+function queueGeneration(task) {
+  const queued = generationQueue.then(task, task);
+  generationQueue = queued.catch(() => {});
+  return queued;
 }
 
 async function ensureModel() {
@@ -53,10 +60,10 @@ self.addEventListener("message", async event => {
 
     if (message.type === "generate") {
       const model = await ensureModel();
-      const audio = await model.generate(String(message.text || ""), {
+      const audio = await queueGeneration(() => model.generate(String(message.text || ""), {
         voice: message.voice || "bf_emma",
         speed: Math.max(0.5, Math.min(2, Number(message.speed) || 1))
-      });
+      }));
 
       const samples = audio.audio instanceof Float32Array ? audio.audio.slice() : new Float32Array(audio.audio);
       send({
