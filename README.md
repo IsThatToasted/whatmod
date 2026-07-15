@@ -1,53 +1,52 @@
-# WhatMod Website
+# Lights Out Audiobook Player
 
-Static sales page for WhatMod. Ready for GitHub Pages.
+This folder is ready to publish at:
 
-## File structure
+`https://whatmod.com/book/`
+
+## Repository layout
+
+The player is configured for this exact layout:
 
 ```text
 whatmod/
-├── index.html
-├── styles.css
-├── script.js
-├── README.md
-└── assets/
-    └── cover.png
+├── Lights Out - 01.mp3
+├── Lights Out - 02.mp3
+├── Lights Out - 03.mp3
+├── Lights Out - 04.mp3
+├── Lights Out - 05.mp3
+├── Lights Out - 06.mp3
+├── Lights Out - 07.mp3
+├── Lights Out - 08.mp3
+├── Lights Out - 09.mp3
+├── Lights Out - 10.mp3
+└── book/
+    ├── index.html
+    ├── styles.css
+    ├── app.js
+    └── cover.jpg
 ```
 
-## Stripe setup
+Place your real cover image in this folder and name it exactly `cover.jpg`.
+If the cover is missing, the page automatically shows a built-in “LIGHTS OUT” fallback cover.
 
-The Stripe dashboard product URL is private/admin-only and cannot be used as a checkout link.
+## Features
 
-Create a Stripe Payment Link for the existing WhatMod 1 Month / 30 Day subscription product, then open `script.js` and replace:
+- Play and pause
+- Drag through the current chapter
+- Skip backward or forward 15 seconds
+- Previous and next chapter buttons
+- Chapter list
+- Automatic transition to the next chapter
+- Playback speed control
+- Volume control
+- Saves chapter, position, speed, and volume in the browser
+- Lock-screen and hardware media controls where supported
+- Keyboard controls: Space to play/pause, left/right arrows to skip
+- Responsive mobile and desktop layout
 
-```js
-const STRIPE_PAYMENT_LINK = "PASTE_YOUR_STRIPE_PAYMENT_LINK_HERE";
-```
+## GitHub Pages
 
-with your public link, which should look like:
+Commit the `book` folder to the root of the same GitHub repository that contains the MP3 files. No build process is required.
 
-```js
-const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/...";
-```
-
-## GitHub Pages cache busting
-
-This version already uses cache-busting query strings:
-
-```html
-styles.css?v=20260509-2
-script.js?v=20260509-2
-assets/cover.png?v=20260509
-```
-
-When you update CSS or JS, change those version numbers in `index.html`, commit, wait for Pages to deploy, then hard refresh with Ctrl+Shift+R.
-
-## Important
-
-Make sure `index.html` starts with:
-
-```html
-<!doctype html>
-```
-
-If it starts with PNG/binary text, the image was accidentally uploaded over `index.html`.
+The MP3 filenames must match exactly, including spaces and capitalization.

@@ -1,20 +1,365 @@
-const $ = (sel, root=document) => root.querySelector(sel);
-const DATA_BASE = window.WHATMOD_DATA_BASE || './content/';
-async function loadJson(name){ const res = await fetch(`${DATA_BASE}${name}.json`, {cache:'no-store'}); if(!res.ok) throw new Error(`Could not load ${name}.json`); return res.json(); }
-function rel(path=''){ const depth = window.WHATMOD_PAGE_DEPTH || 0; if(/^https?:|mailto:|#/.test(path)) return path; return `${'../'.repeat(depth)}${path.replace(/^\.\//,'')}`; }
-function esc(v=''){ return String(v).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
-function para(v=''){ return esc(v).split('\n').filter(Boolean).map(x=>`<p>${x}</p>`).join(''); }
-function setTheme(site){ const t=site.theme||{}; [['--accent',t.accent],['--accent2',t.accent2],['--bg',t.background],['--ink',t.ink]].forEach(([k,v])=>v&&document.documentElement.style.setProperty(k,v)); document.title=site.brand||'WhatMod'; }
-function navHtml(site,nav){ return `<nav class="nav"><a class="brand" href="${rel('./')}"><span class="brand-mark">${esc(site.logoMark||'✦')}</span><span>${esc(site.brand||'WhatMod')}</span></a><div class="nav-links">${nav.map(n=>`<a href="${rel(n.href)}">${esc(n.label)}</a>`).join('')}</div></nav>`; }
-function btn(b, fallback='ghost'){ return `<a class="btn ${esc(b.style||fallback)}" href="${rel(b.href||'#')}">${esc(b.label||'Link')}</a>`; }
-function tagsHtml(tags=[]){return `<div class="tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>`}
-function projectCard(p){ const href=p.links?.[0]?.href||`apps/${p.slug}/`; return `<a class="project-card" href="${rel(href)}"><img src="${rel(p.image||'assets/project-whatdash.svg')}" alt="${esc(p.title)}"><div class="meta"><span class="status">${esc(p.status||'Project')}</span><span>→</span></div><h3>${esc(p.title)}</h3><p>${esc(p.summary)}</p>${tagsHtml(p.tags)}</a>`; }
-function sectionHead(s){ return `<div class="section-head"><div><span class="eyebrow">${esc(s.eyebrow||'')}</span><h2>${esc(s.title||'')}</h2><p>${esc(s.text||'')}</p></div>${s.buttonLabel?btn({label:s.buttonLabel,href:s.buttonHref,style:'ghost'}):''}</div>`; }
-function renderFeatures(s){ if(!s?.enabled) return ''; return `<section class="section wrap" id="features">${sectionHead(s)}<div class="feature-grid">${(s.cards||[]).map(c=>`<div class="soft-card"><div class="orb">✦</div><h3>${esc(c.title)}</h3><p>${esc(c.text)}</p></div>`).join('')}</div></section>`; }
-function renderStats(s){ if(!s?.enabled) return ''; return `<section class="stats wrap">${(s.items||[]).map(x=>`<div class="stat"><strong>${esc(x.value)}</strong><span>${esc(x.label)}</span></div>`).join('')}</section>`; }
-function renderAbout(s){ if(!s?.enabled) return ''; return `<section class="section wrap" id="about"><div class="about-card"><div><span class="eyebrow">${esc(s.eyebrow||'')}</span><h2>${esc(s.title||'')}</h2><p class="lead">${esc(s.text||'')}</p></div><div class="mini-list">${(s.bullets||[]).map(b=>`<div class="mini">${esc(b)}</div>`).join('')}</div></div></section>`; }
-function renderContact(s){ if(!s?.enabled) return ''; return `<section class="section wrap" id="contact"><div class="contact-card"><span class="eyebrow">${esc(s.eyebrow||'')}</span><h2>${esc(s.title||'')}</h2><p class="lead">${esc(s.text||'')}</p><div class="cta-row">${(s.buttons||[]).map(b=>btn(b,b.style||'ghost')).join('')}</div></div></section>`; }
-async function renderHome(){ const [site,nav,projects]=await Promise.all([loadJson('site'),loadJson('nav'),loadJson('projects')]); setTheme(site); const sec=site.sections||{}; $('#app').innerHTML=`${navHtml(site,nav)}<main><section class="hero wrap"><span class="bubble b1"></span><span class="bubble b2"></span><span class="bubble b3"></span><div class="hero-grid"><div><span class="pill">${esc(site.heroBadge||site.tagline||'')}</span><h1>${esc(site.headline||'')}</h1><p class="lead">${esc(site.subheadline||'')}</p><div class="cta-row">${btn(site.primaryCta||{label:'View Projects',href:'#projects'},'primary')}${btn(site.secondaryCta||{label:'About',href:'#about'},'ghost')}</div></div><div class="mascot-card"><img src="${rel(site.avatar||'assets/mascot.svg')}" alt="${esc(site.brand)} mascot"><div class="spark">${esc(site.heroNote||site.tagline||'')}</div></div></div></section>${renderStats(sec.stats)}${renderFeatures(sec.features)}${sec.projects?.enabled===false?'':`<section class="section wrap" id="projects">${sectionHead(sec.projects||{title:'Projects',text:''})}<div class="grid">${projects.map(projectCard).join('')}</div></section>`}${renderAbout(sec.about)}${renderContact(sec.contact)}</main><footer class="footer wrap">${esc(site.footer||'')}</footer>`; }
-async function renderProject(slug){ const [site,nav,projects]=await Promise.all([loadJson('site'),loadJson('nav'),loadJson('projects')]); setTheme(site); const p=projects.find(x=>x.slug===slug)||projects[0]; document.title=`${p.title} | ${site.brand}`; $('#app').innerHTML=`${navHtml(site,nav)}<main class="wrap"><section class="page-hero"><span class="pill">${esc(p.status||'Project')}</span><h1>${esc(p.title)}</h1><p class="lead">${esc(p.summary)}</p></section><article class="page-card"><img src="${rel(p.image||'assets/project-whatdash.svg')}" alt="${esc(p.title)}" class="page-image">${para(p.details||p.summary)}${tagsHtml(p.tags)}<div class="cta-row">${(p.links||[]).map(l=>btn(l,'primary')).join('')}<a class="btn ghost" href="${rel('./')}#projects">Back to projects</a></div></article></main><footer class="footer wrap">${esc(site.footer||'')}</footer>`; }
-async function renderPage(slug){ const [site,nav,pages]=await Promise.all([loadJson('site'),loadJson('nav'),loadJson('pages')]); setTheme(site); const p=pages.find(x=>x.slug===slug)||pages[0]; document.title=`${p.title} | ${site.brand}`; $('#app').innerHTML=`${navHtml(site,nav)}<main class="wrap"><section class="page-hero"><span class="pill">${esc(p.eyebrow||'Page')}</span><h1>${esc(p.title)}</h1><p class="lead">${esc(p.summary)}</p></section><article class="page-card">${para(p.body||'')}${(p.sections||[]).map(s=>`<div class="content-block"><h2>${esc(s.title)}</h2>${para(s.text)}</div>`).join('')}<div class="cta-row">${(p.links||[]).map(l=>btn(l,'primary')).join('')}<a class="btn ghost" href="${rel('./')}">Back home</a></div></article></main><footer class="footer wrap">${esc(site.footer||'')}</footer>`; }
-(async()=>{ try{ if(window.WHATMOD_PROJECT_SLUG) await renderProject(window.WHATMOD_PROJECT_SLUG); else if(window.WHATMOD_PAGE_SLUG) await renderPage(window.WHATMOD_PAGE_SLUG); else await renderHome(); }catch(err){ $('#app').innerHTML=`<main class="wrap"><section class="page-hero"><h1>Site loading issue</h1><p class="lead">${esc(err.message)}</p></section></main>`; console.error(err); }})();
+(() => {
+  "use strict";
+
+  // The MP3 files live in the repository root, one level above /book.
+  // Change this to "./" if you later move the MP3 files into the /book folder.
+  const AUDIO_BASE = "../";
+  const STORAGE_KEY = "lights-out-audiobook-progress-v1";
+
+  const chapters = Array.from({ length: 10 }, (_, index) => {
+    const number = String(index + 1).padStart(2, "0");
+    return {
+      title: `Chapter ${index + 1}`,
+      file: `Lights Out - ${number}.mp3`,
+    };
+  });
+
+  const audio = document.getElementById("audio");
+  const coverImage = document.getElementById("coverImage");
+  const chapterLabel = document.getElementById("chapterLabel");
+  const currentTitle = document.getElementById("currentTitle");
+  const seekBar = document.getElementById("seekBar");
+  const currentTime = document.getElementById("currentTime");
+  const duration = document.getElementById("duration");
+  const playButton = document.getElementById("playButton");
+  const playIcon = document.getElementById("playIcon");
+  const pauseIcon = document.getElementById("pauseIcon");
+  const previousButton = document.getElementById("previousButton");
+  const nextButton = document.getElementById("nextButton");
+  const backButton = document.getElementById("backButton");
+  const forwardButton = document.getElementById("forwardButton");
+  const speedSelect = document.getElementById("speedSelect");
+  const volumeBar = document.getElementById("volumeBar");
+  const chapterList = document.getElementById("chapterList");
+  const progressText = document.getElementById("progressText");
+
+  let currentChapter = 0;
+  let isSeeking = false;
+  let saveTimer = null;
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  function formatTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+    const wholeSeconds = Math.floor(seconds);
+    const hours = Math.floor(wholeSeconds / 3600);
+    const minutes = Math.floor((wholeSeconds % 3600) / 60);
+    const secs = wholeSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    return `${minutes}:${String(secs).padStart(2, "0")}`;
+  }
+
+  function chapterSource(index) {
+    return `${AUDIO_BASE}${encodeURIComponent(chapters[index].file).replaceAll("%2F", "/")}`;
+  }
+
+  function updateRangeVisual(input, percent) {
+    input.style.setProperty("--range-progress", `${clamp(percent, 0, 100)}%`);
+  }
+
+  function readSavedProgress() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if (!parsed || typeof parsed !== "object") return null;
+      return {
+        chapter: clamp(Number(parsed.chapter) || 0, 0, chapters.length - 1),
+        time: Math.max(0, Number(parsed.time) || 0),
+        speed: clamp(Number(parsed.speed) || 1, 0.75, 2),
+        volume: clamp(Number(parsed.volume) || 1, 0, 1),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function saveProgress() {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        chapter: currentChapter,
+        time: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+        speed: audio.playbackRate,
+        volume: audio.volume,
+        updatedAt: Date.now(),
+      })
+    );
+  }
+
+  function queueProgressSave() {
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(saveProgress, 250);
+  }
+
+  function renderChapterList() {
+    chapterList.replaceChildren(
+      ...chapters.map((chapter, index) => {
+        const item = document.createElement("li");
+        item.className = "chapter-item";
+
+        const button = document.createElement("button");
+        button.className = "chapter-button";
+        button.type = "button";
+        button.dataset.chapterIndex = String(index);
+        button.setAttribute("aria-label", `Play ${chapter.title}`);
+
+        const number = document.createElement("span");
+        number.className = "chapter-number";
+        number.textContent = String(index + 1).padStart(2, "0");
+
+        const name = document.createElement("span");
+        name.className = "chapter-name";
+        name.textContent = chapter.title;
+
+        const state = document.createElement("span");
+        state.className = "chapter-state";
+        state.textContent = index === currentChapter ? "Playing" : "Play";
+
+        button.append(number, name, state);
+        button.addEventListener("click", () => loadChapter(index, 0, true));
+        item.append(button);
+        return item;
+      })
+    );
+  }
+
+  function syncChapterListState() {
+    chapterList.querySelectorAll(".chapter-button").forEach((button, index) => {
+      const active = index === currentChapter;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-current", active ? "true" : "false");
+      const state = button.querySelector(".chapter-state");
+      if (state) state.textContent = active ? (audio.paused ? "Selected" : "Playing") : "Play";
+    });
+  }
+
+  function syncNavigationButtons() {
+    previousButton.disabled = currentChapter === 0;
+    nextButton.disabled = currentChapter === chapters.length - 1;
+  }
+
+  function syncPlayButton() {
+    const playing = !audio.paused && !audio.ended;
+    playIcon.classList.toggle("hidden", playing);
+    pauseIcon.classList.toggle("hidden", !playing);
+    playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
+    syncChapterListState();
+  }
+
+  function syncMediaSession() {
+    if (!("mediaSession" in navigator)) return;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: chapters[currentChapter].title,
+        artist: "Lights Out",
+        album: "Lights Out Audiobook",
+        artwork: [
+          { src: new URL("./cover.jpg", window.location.href).href, sizes: "512x512", type: "image/jpeg" },
+        ],
+      });
+    } catch {
+      // Some browsers reject metadata when the artwork cannot be loaded.
+    }
+  }
+
+  function updateNowPlaying() {
+    currentTitle.textContent = chapters[currentChapter].title;
+    chapterLabel.textContent = `Chapter ${currentChapter + 1} of ${chapters.length}`;
+    document.title = `${chapters[currentChapter].title} — Lights Out`;
+    syncNavigationButtons();
+    syncChapterListState();
+    syncMediaSession();
+  }
+
+  function loadChapter(index, startTime = 0, autoplay = false) {
+    currentChapter = clamp(index, 0, chapters.length - 1);
+    const desiredTime = Math.max(0, startTime);
+
+    audio.src = chapterSource(currentChapter);
+    audio.load();
+    updateNowPlaying();
+
+    const seekWhenReady = () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = Math.min(desiredTime, Math.max(0, audio.duration - 0.25));
+      } else {
+        audio.currentTime = desiredTime;
+      }
+      audio.removeEventListener("loadedmetadata", seekWhenReady);
+      updateTimeline();
+      queueProgressSave();
+
+      if (autoplay) {
+        audio.play().catch(() => syncPlayButton());
+      }
+    };
+
+    audio.addEventListener("loadedmetadata", seekWhenReady);
+  }
+
+  function updateTimeline() {
+    if (!isSeeking) {
+      const ratio = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.currentTime / audio.duration : 0;
+      seekBar.value = String(Math.round(ratio * 1000));
+      updateRangeVisual(seekBar, ratio * 100);
+    }
+
+    currentTime.textContent = formatTime(audio.currentTime);
+    duration.textContent = formatTime(audio.duration);
+  }
+
+  function togglePlayback() {
+    if (!audio.src) loadChapter(currentChapter, 0, false);
+
+    if (audio.paused || audio.ended) {
+      audio.play().catch((error) => {
+        console.error("Could not start audio playback:", error);
+        progressText.textContent = "Playback could not start. Check that the MP3 filenames match.";
+      });
+    } else {
+      audio.pause();
+    }
+  }
+
+  function skip(seconds) {
+    if (!Number.isFinite(audio.duration)) return;
+    audio.currentTime = clamp(audio.currentTime + seconds, 0, audio.duration);
+    updateTimeline();
+    queueProgressSave();
+  }
+
+  function moveChapter(direction) {
+    const target = currentChapter + direction;
+    if (target < 0 || target >= chapters.length) return;
+    loadChapter(target, 0, !audio.paused);
+  }
+
+  function setupMediaSessionActions() {
+    if (!("mediaSession" in navigator)) return;
+
+    const actions = {
+      play: () => audio.play(),
+      pause: () => audio.pause(),
+      previoustrack: () => moveChapter(-1),
+      nexttrack: () => moveChapter(1),
+      seekbackward: (details) => skip(-(details.seekOffset || 15)),
+      seekforward: (details) => skip(details.seekOffset || 15),
+      seekto: (details) => {
+        if (typeof details.seekTime === "number") {
+          audio.currentTime = clamp(details.seekTime, 0, audio.duration || details.seekTime);
+        }
+      },
+    };
+
+    Object.entries(actions).forEach(([action, handler]) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch {
+        // Browser does not support this media action.
+      }
+    });
+  }
+
+  coverImage.addEventListener("error", () => {
+    coverImage.style.display = "none";
+  });
+
+  playButton.addEventListener("click", togglePlayback);
+  previousButton.addEventListener("click", () => moveChapter(-1));
+  nextButton.addEventListener("click", () => moveChapter(1));
+  backButton.addEventListener("click", () => skip(-15));
+  forwardButton.addEventListener("click", () => skip(15));
+
+  seekBar.addEventListener("input", () => {
+    isSeeking = true;
+    const ratio = Number(seekBar.value) / 1000;
+    updateRangeVisual(seekBar, ratio * 100);
+    currentTime.textContent = formatTime((audio.duration || 0) * ratio);
+  });
+
+  seekBar.addEventListener("change", () => {
+    const ratio = Number(seekBar.value) / 1000;
+    if (Number.isFinite(audio.duration)) audio.currentTime = audio.duration * ratio;
+    isSeeking = false;
+    updateTimeline();
+    queueProgressSave();
+  });
+
+  volumeBar.addEventListener("input", () => {
+    audio.volume = Number(volumeBar.value);
+    updateRangeVisual(volumeBar, audio.volume * 100);
+    queueProgressSave();
+  });
+
+  speedSelect.addEventListener("change", () => {
+    audio.playbackRate = Number(speedSelect.value);
+    queueProgressSave();
+  });
+
+  audio.addEventListener("play", syncPlayButton);
+  audio.addEventListener("pause", syncPlayButton);
+  audio.addEventListener("loadedmetadata", updateTimeline);
+  audio.addEventListener("durationchange", updateTimeline);
+  audio.addEventListener("timeupdate", () => {
+    updateTimeline();
+    queueProgressSave();
+  });
+  audio.addEventListener("ratechange", queueProgressSave);
+  audio.addEventListener("volumechange", queueProgressSave);
+  audio.addEventListener("ended", () => {
+    if (currentChapter < chapters.length - 1) {
+      loadChapter(currentChapter + 1, 0, true);
+    } else {
+      syncPlayButton();
+      saveProgress();
+    }
+  });
+
+  audio.addEventListener("error", () => {
+    progressText.textContent = `Could not load ${chapters[currentChapter].file}. Confirm it is in the repository root.`;
+  });
+
+  window.addEventListener("beforeunload", saveProgress);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) saveProgress();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const isFormControl = target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement;
+    if (isFormControl) return;
+
+    if (event.code === "Space") {
+      event.preventDefault();
+      togglePlayback();
+    } else if (event.code === "ArrowLeft") {
+      event.preventDefault();
+      skip(-15);
+    } else if (event.code === "ArrowRight") {
+      event.preventDefault();
+      skip(15);
+    }
+  });
+
+  const saved = readSavedProgress();
+  if (saved) {
+    currentChapter = saved.chapter;
+    audio.playbackRate = saved.speed;
+    audio.volume = saved.volume;
+    speedSelect.value = String(saved.speed);
+    volumeBar.value = String(saved.volume);
+    updateRangeVisual(volumeBar, saved.volume * 100);
+    progressText.textContent = saved.time > 2 ? "Continuing from your last saved place." : "Your place is saved automatically.";
+  } else {
+    updateRangeVisual(volumeBar, 100);
+  }
+
+  renderChapterList();
+  setupMediaSessionActions();
+  loadChapter(currentChapter, saved?.time || 0, false);
+  syncPlayButton();
+})();
