@@ -4741,3 +4741,107 @@ async function deletePackingItem(id) {
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
+
+/* === V2.3.9 Fun Ideas shared reaction roster fix ===
+   Non-owner travelers must still see every traveler who can access Fun Ideas, including the owner.
+   Previous roster logic only showed the current user plus people with explicit permission rows,
+   which hid the owner when the owner did not need a permission row. */
+(function funIdeasReactionRosterFix(){
+  const BUILD = 'V2.3.9-fun-reaction-roster-2026-07-14';
+  window.ITINERARY_TRACKER_BUILD = BUILD;
+  try { document.documentElement.setAttribute('data-build', BUILD); } catch (_) {}
+  function updateBuildBadge(){
+    try {
+      let badge = document.querySelector('.build-version-badge');
+      if (!badge) { badge = document.createElement('div'); badge.className = 'build-version-badge'; document.body.appendChild(badge); }
+      badge.textContent = BUILD;
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', updateBuildBadge); else updateBuildBadge();
+
+  function firstNameForMember(m){
+    try {
+      if (m?.user_id === session?.user?.id) return 'Me';
+      const raw = m?.display_name || m?.nickname || m?.email || memberLabel?.(m?.user_id) || 'Traveler';
+      return String(raw).trim().split(/\s+/)[0] || 'Traveler';
+    } catch (_) { return 'Traveler'; }
+  }
+
+  function avatarForMember(m){
+    const name = firstNameForMember(m);
+    const pic = (m?.user_id === session?.user?.id ? session?.user?.user_metadata?.avatar_url : m?.avatar_url) || '';
+    const initial = String(name || 'U').trim().slice(0,1).toUpperCase() || 'U';
+    return pic ? `<img src="${escapeHtml(pic)}" alt="">` : `<span>${escapeHtml(initial)}</span>`;
+  }
+
+  function memberCanSeeFunIdeas(m){
+    if (!m?.user_id) return false;
+    if (m.role === 'owner') return true;
+    if (m.user_id === session?.user?.id) return true;
+    try { return (funPermissions || []).some(p => p.trip_id === activeTripId && p.user_id === m.user_id && p.can_access); } catch (_) { return false; }
+  }
+
+  window.funIdeasReactionRoster = function(){
+    const seen = new Set();
+    const rows = [];
+    try {
+      (members || []).forEach(m => {
+        if (!m?.user_id || seen.has(m.user_id)) return;
+        if (memberCanSeeFunIdeas(m)) { seen.add(m.user_id); rows.push(m); }
+      });
+      // Safety: if permissions reference someone not in the loaded member array, still show a fallback row.
+      (funPermissions || []).forEach(p => {
+        if (!p?.user_id || seen.has(p.user_id) || !p.can_access) return;
+        seen.add(p.user_id);
+        rows.push({ user_id: p.user_id, display_name: memberLabel?.(p.user_id) || 'Traveler', role: 'editor' });
+      });
+      // Final fallback: never show an empty reaction area for the viewer.
+      if (!rows.length && session?.user?.id) rows.push({ user_id: session.user.id, display_name: currentUserFirstName?.() || 'Me', avatar_url: session.user.user_metadata?.avatar_url || '', role: currentMembership?.()?.role || 'editor' });
+    } catch (_) {}
+    return rows;
+  };
+
+  function renderReactionValue(score){
+    score = Math.max(0, Math.min(100, Number(score || 50)));
+    const emoji = (typeof reactionEmoji === 'function' ? reactionEmoji(score) : (score <= 20 ? '🙈' : score <= 40 ? '🤔' : score <= 60 ? '🙂' : score <= 80 ? '😍' : '🔥'));
+    const label = (typeof reactionLabel === 'function' ? reactionLabel(score) : (score <= 20 ? 'No thanks' : score <= 40 ? 'Maybe later' : score <= 60 ? 'Curious' : score <= 80 ? 'Yes' : 'YES PLEASE'));
+    return `${emoji} ${escapeHtml(label)}`;
+  }
+
+  const oldRenderFunReactionRows = typeof renderFunReactionRows === 'function' ? renderFunReactionRows : null;
+  renderFunReactionRows = function renderFunReactionRowsRosterFixed(idea){
+    const rows = window.funIdeasReactionRoster();
+    return `<div class="fun-reactions" data-idea-id="${escapeHtml(idea.id)}">
+      <div class="fun-reaction-scale-labels"><span>No Thanks</span><span>YES PLEASE</span></div>
+      ${rows.map(m => {
+        const userId = m.user_id;
+        const label = firstNameForMember(m);
+        const reaction = typeof funReactionFor === 'function' ? funReactionFor(idea.id, userId) : null;
+        const score = Number(reaction?.score ?? 50);
+        const canSlide = userId === session?.user?.id;
+        return `<div class="fun-reaction-row ${canSlide ? 'mine' : ''}" data-user-id="${escapeHtml(userId)}" style="--reaction-score:${Math.max(0, Math.min(100, score))}%">
+          <div class="fun-reaction-person"><span class="fun-reaction-avatar">${avatarForMember(m)}</span><strong>${escapeHtml(label)}</strong></div>
+          <input type="range" min="0" max="100" step="5" value="${score}" ${canSlide ? '' : 'disabled'} aria-label="Reaction for ${escapeHtml(label)}" data-idea-id="${escapeHtml(idea.id)}" data-score="${score}" oninput="window.handleFunReactionSlide && window.handleFunReactionSlide(this)" onchange="window.commitFunReactionSlide && window.commitFunReactionSlide(this)" onpointerup="window.commitFunReactionSlide && window.commitFunReactionSlide(this)" ontouchend="window.commitFunReactionSlide && window.commitFunReactionSlide(this)">
+          <span class="fun-reaction-value" data-score="${score}">${renderReactionValue(score)}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  };
+  try { window.renderFunReactionRows = renderFunReactionRows; } catch (_) {}
+
+  // When the popup opens, reload permissions/members/reactions first so the roster is fresh.
+  if (typeof openFunIdeasDialog === 'function' && !openFunIdeasDialog.__v239RosterPatched) {
+    const originalOpen = openFunIdeasDialog;
+    openFunIdeasDialog = async function(){
+      try { if (typeof loadMembers === 'function') await loadMembers(); } catch (_) {}
+      try { if (typeof loadFunPermissions === 'function') await loadFunPermissions(); } catch (_) {}
+      try { if (typeof loadFunReactions === 'function') await loadFunReactions(); } catch (_) {}
+      await originalOpen.apply(this, arguments);
+      setTimeout(() => {
+        try { if (typeof refreshFunReactionRowsFromState === 'function') refreshFunReactionRowsFromState(); } catch (_) {}
+      }, 100);
+    };
+    openFunIdeasDialog.__v239RosterPatched = true;
+    try { window.openFunIdeasDialog = openFunIdeasDialog; } catch (_) {}
+  }
+})();
