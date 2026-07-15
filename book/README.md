@@ -13,8 +13,9 @@ whatmod/
 ├── Lights Out - 01.mp3   # Introduction
 ├── Lights Out - 02.mp3   # Chapter 1
 ├── ...
-├── Lights Out - 28.mp3   # Chapter 27
-├── Lights Out - 29.mp3   # Chapter 28
+├── Lights Out - 27.mp3   # Chapter 26
+├── Lights Out - 28.mp3   # Epilogue
+├── Lights Out - 29.mp3   # Outro
 └── book/
     ├── index.html
     ├── styles.css
@@ -50,4 +51,6 @@ The player contains 29 tracks total:
 
 - `Lights Out - 01.mp3` is displayed as **Introduction**.
 - `Lights Out - 02.mp3` is displayed as **Chapter 1**.
-- The numbering continues through `Lights Out - 29.mp3`, displayed as **Chapter 28**.
+- The chapter numbering continues through `Lights Out - 27.mp3`, displayed as **Chapter 26**.
+- `Lights Out - 28.mp3` is displayed as **Epilogue**.
+- `Lights Out - 29.mp3` is displayed as **Outro**.

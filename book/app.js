@@ -6,11 +6,19 @@
   const AUDIO_BASE = "../";
   const STORAGE_KEY = "lights-out-audiobook-progress-v1";
 
-  // Track 01 is the introduction. Tracks 02–29 are Chapters 1–28.
+  // Track 01 is the introduction, tracks 02–27 are Chapters 1–26,
+  // track 28 is the epilogue, and track 29 is the outro.
   const chapters = Array.from({ length: 29 }, (_, index) => {
     const fileNumber = String(index + 1).padStart(2, "0");
+
+    let title;
+    if (index === 0) title = "Introduction";
+    else if (index === 27) title = "Epilogue";
+    else if (index === 28) title = "Outro";
+    else title = `Chapter ${index}`;
+
     return {
-      title: index === 0 ? "Introduction" : `Chapter ${index}`,
+      title,
       file: `Lights Out - ${fileNumber}.mp3`,
     };
   });
@@ -169,9 +177,13 @@
 
   function updateNowPlaying() {
     currentTitle.textContent = chapters[currentChapter].title;
-    chapterLabel.textContent = currentChapter === 0
-      ? `Introduction • Track 1 of ${chapters.length}`
-      : `Chapter ${currentChapter} of ${chapters.length - 1}`;
+    if (currentChapter === 0) {
+      chapterLabel.textContent = `Introduction • Track 1 of ${chapters.length}`;
+    } else if (currentChapter <= 26) {
+      chapterLabel.textContent = `Chapter ${currentChapter} of 26`;
+    } else {
+      chapterLabel.textContent = `${chapters[currentChapter].title} • Track ${currentChapter + 1} of ${chapters.length}`;
+    }
     document.title = `${chapters[currentChapter].title} — Lights Out`;
     syncNavigationButtons();
     syncChapterListState();
