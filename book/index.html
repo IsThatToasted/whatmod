@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1018" />
+  <meta name="description" content="Listen to Lights Out online." />
+  <title>Lights Out — Audiobook</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="background-glow" aria-hidden="true"></div>
+
+  <main class="app-shell">
+    <section class="book-panel" aria-label="Audiobook player">
+      <div class="cover-column">
+        <div class="cover-wrap">
+          <img
+            id="coverImage"
+            class="cover"
+            src="./cover.jpg"
+            alt="Lights Out book cover"
+          />
+          <div class="cover-fallback" aria-hidden="true">
+            <span>LIGHTS</span>
+            <strong>OUT</strong>
+          </div>
+        </div>
+
+        <div class="book-copy">
+          <p class="eyebrow">Audiobook</p>
+          <h1>Lights Out</h1>
+          <p id="chapterLabel" class="chapter-label">Chapter 1 of 10</p>
+        </div>
+      </div>
+
+      <div class="player-column">
+        <audio id="audio" preload="metadata"></audio>
+
+        <div class="now-playing">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div>
+            <p class="now-playing-label">Now playing</p>
+            <h2 id="currentTitle">Chapter 1</h2>
+          </div>
+        </div>
+
+        <div class="timeline-block">
+          <input
+            id="seekBar"
+            class="range"
+            type="range"
+            min="0"
+            max="1000"
+            value="0"
+            aria-label="Seek through chapter"
+          />
+          <div class="time-row">
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+          </div>
+        </div>
+
+        <div class="primary-controls" aria-label="Playback controls">
+          <button id="previousButton" class="icon-button" type="button" aria-label="Previous chapter" title="Previous chapter">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6V5Zm3 7 9-7v14l-9-7Z"/></svg>
+          </button>
+
+          <button id="backButton" class="icon-button skip-button" type="button" aria-label="Go back 15 seconds" title="Back 15 seconds">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.3 4.1V1L6.8 5.5 11.3 10V6.2a6 6 0 1 1-5.1 2.8L4.5 7.8A8 8 0 1 0 11.3 4.1Z"/></svg>
+            <span>15</span>
+          </button>
+
+          <button id="playButton" class="play-button" type="button" aria-label="Play" title="Play or pause">
+            <svg id="playIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>
+            <svg id="pauseIcon" class="hidden" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z"/></svg>
+          </button>
+
+          <button id="forwardButton" class="icon-button skip-button" type="button" aria-label="Go forward 15 seconds" title="Forward 15 seconds">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.7 4.1V1l4.5 4.5-4.5 4.5V6.2A6 6 0 1 0 17.8 9l1.7-1.2a8 8 0 1 1-6.8-3.7Z"/></svg>
+            <span>15</span>
+          </button>
+
+          <button id="nextButton" class="icon-button" type="button" aria-label="Next chapter" title="Next chapter">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2V5ZM6 5l9 7-9 7V5Z"/></svg>
+          </button>
+        </div>
+
+        <div class="secondary-controls">
+          <label class="select-control">
+            <span>Speed</span>
+            <select id="speedSelect" aria-label="Playback speed">
+              <option value="0.75">0.75×</option>
+              <option value="1" selected>1×</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="1.75">1.75×</option>
+              <option value="2">2×</option>
+            </select>
+          </label>
+
+          <label class="volume-control">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Zm11.5 3a3.5 3.5 0 0 0-1.5-2.9v5.8a3.5 3.5 0 0 0 1.5-2.9Zm0-7v2.1a6 6 0 0 1 0 9.8V19a8 8 0 0 0 0-14Z"/></svg>
+            <input id="volumeBar" class="range volume-range" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapters-panel" aria-labelledby="chaptersHeading">
+      <div class="chapters-heading-row">
+        <div>
+          <p class="eyebrow">Contents</p>
+          <h2 id="chaptersHeading">Chapters</h2>
+        </div>
+        <p id="progressText" class="progress-text">Your place is saved automatically.</p>
+      </div>
+
+      <ol id="chapterList" class="chapter-list"></ol>
+    </section>
+  </main>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
