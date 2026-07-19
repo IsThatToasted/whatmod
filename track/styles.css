@@ -4418,3 +4418,131 @@ dialog{
     min-height: 0;
   }
 }
+
+/* WeTrack V1.7 — restore compact mobile/iOS account navigation */
+.user-avatar-fallback{
+  display:none;
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  place-items:center;
+  background:linear-gradient(135deg,#efe9ff,#fff2fa);
+  color:#6840d8;
+  font-size:1.15rem;
+  font-weight:900;
+  border:1px solid rgba(124,92,255,.18);
+}
+
+@media (max-width:760px){
+  /* V1.4 hid the first child, but the actions-only header now has only one child. */
+  .topbar.topbar-actions-only > .top-actions{
+    display:flex!important;
+  }
+  .topbar.topbar-actions-only{
+    position:sticky!important;
+    top:calc(env(safe-area-inset-top) + 6px)!important;
+    z-index:9000!important;
+    min-height:58px!important;
+    width:100%!important;
+    margin:6px 0 14px!important;
+    padding:8px 10px!important;
+    border:1px solid rgba(124,92,255,.16)!important;
+    border-radius:22px!important;
+    background:rgba(255,255,255,.9)!important;
+    box-shadow:0 12px 34px rgba(47,38,93,.13)!important;
+    backdrop-filter:blur(18px)!important;
+    -webkit-backdrop-filter:blur(18px)!important;
+  }
+  html[data-theme="dark"] .topbar.topbar-actions-only{
+    background:rgba(25,22,39,.9)!important;
+  }
+  .topbar.topbar-actions-only .top-actions{
+    width:100%!important;
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:0!important;
+    overflow:visible!important;
+  }
+  .topbar.topbar-actions-only .search-pill{display:none!important}
+  .topbar.topbar-actions-only .license-plan-badge{
+    margin-right:auto!important;
+    height:40px!important;
+    max-width:132px!important;
+    padding:0 12px!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .topbar.topbar-actions-only .icon-btn,
+  .topbar.topbar-actions-only .fun-lock-btn,
+  .topbar.topbar-actions-only .avatar-fun-btn,
+  .topbar.topbar-actions-only #logoutBtn{
+    display:inline-grid!important;
+    place-items:center!important;
+    flex:0 0 42px!important;
+    width:42px!important;
+    height:42px!important;
+    min-width:42px!important;
+    min-height:42px!important;
+    padding:0!important;
+    margin:0!important;
+    border-radius:50%!important;
+    line-height:1!important;
+  }
+  .topbar.topbar-actions-only .auth-card{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:8px!important;
+    width:auto!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .topbar.topbar-actions-only .avatar-fun-btn{
+    overflow:hidden!important;
+    background:rgba(255,255,255,.72)!important;
+    border:1px solid var(--line)!important;
+  }
+  .topbar.topbar-actions-only .user-avatar{
+    width:42px!important;
+    height:42px!important;
+    border-radius:50%!important;
+    object-fit:cover!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+  .topbar.topbar-actions-only .user-avatar-fallback:not(.hidden){display:grid!important}
+  .topbar.topbar-actions-only #logoutBtn{
+    font-size:0!important;
+    color:#53617e!important;
+    background:rgba(255,255,255,.72)!important;
+    border:1px solid var(--line)!important;
+  }
+  .topbar.topbar-actions-only #logoutBtn::before{
+    content:'↪';
+    display:block!important;
+    font-size:22px!important;
+    line-height:1!important;
+  }
+  .topbar.topbar-actions-only #logoutBtn::after{content:none!important;display:none!important}
+  .topbar.topbar-actions-only .email-login{display:none!important}
+  .topbar.topbar-actions-only #googleBtn:not(.hidden){
+    width:auto!important;
+    min-width:0!important;
+    height:42px!important;
+    padding:0 14px!important;
+    border-radius:999px!important;
+    white-space:nowrap!important;
+  }
+}

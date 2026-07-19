@@ -701,9 +701,14 @@ function refreshAuthUI() {
   if (els.userName) els.userName.textContent = displayName.split(' ')[0] || 'Traveler';
   if (els.userAvatar) {
     const avatar = meta.avatar_url || meta.picture || '';
+    const avatarFallback = document.getElementById('userAvatarFallback');
     els.userAvatar.src = avatar;
-    els.userAvatar.classList.toggle('hidden', !signedIn || !avatar); if (els.avatarFunBtn) els.avatarFunBtn.classList.toggle('hidden', !signedIn || !avatar);
+    els.userAvatar.classList.toggle('hidden', !signedIn || !avatar);
+    if (avatarFallback) avatarFallback.classList.toggle('hidden', !signedIn || !!avatar);
+    if (els.avatarFunBtn) els.avatarFunBtn.classList.toggle('hidden', !signedIn);
   }
+  const notificationsBtn = document.getElementById('notificationsBtn');
+  if (notificationsBtn) notificationsBtn.classList.toggle('hidden', !signedIn);
   els.signedOut.classList.toggle('hidden', signedIn);
   els.appArea.classList.toggle('hidden', !signedIn);
   els.googleBtn.classList.toggle('hidden', signedIn);
@@ -4940,7 +4945,7 @@ async function deletePackingItem(id) {
 
 /* === WeTrack V1.2 mobile traveler roster reliability patch === */
 (function weTrackMobileTravelerRosterPatch(){
-  const BUILD = 'WeTrack V1.6.0 / desktop-header-cleanup-2026-07-19';
+  const BUILD = 'WeTrack V1.7.0 / desktop-header-cleanup-2026-07-19';
   function safeFirstName(value){
     return String(value || 'Traveler').trim().split(/\s+/)[0] || 'Traveler';
   }

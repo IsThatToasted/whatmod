@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=306" />
+  <link rel="stylesheet" href="./styles.css?v=307" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -56,7 +56,7 @@
               <input id="emailInput" type="email" placeholder="Email for magic link" />
               <button id="emailBtn">Send link</button>
             </div>
-            <button id="avatarFunBtn" class="avatar-fun-btn hidden" type="button" title="Fun Ideas"><img id="userAvatar" class="user-avatar hidden" alt="User avatar" /></button>
+            <button id="avatarFunBtn" class="avatar-fun-btn hidden" type="button" title="Edit profile" aria-label="Edit traveler profile"><img id="userAvatar" class="user-avatar hidden" alt="User avatar" /><span id="userAvatarFallback" class="user-avatar-fallback">👤</span></button>
             <button id="logoutBtn" class="ghost-btn hidden" type="button" aria-label="Log out" title="Log out">↪</button>
           </div>
         </div>
@@ -491,6 +491,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=306"></script>
+  <script src="./app.js?v=307"></script>
 </body>
 </html>

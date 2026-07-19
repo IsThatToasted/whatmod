@@ -534,3 +534,8 @@ Do not add the `wetrack://` URL to Google Cloud; Supabase receives Google's call
 - Preserved the notification, Fun Ideas, profile, authentication, and logout controls.
 - The main countdown/dashboard greeting remains unchanged.
 - Cache version bumped to `v306`.
+
+## WeTrack V1.7 mobile/iOS top navigation
+- Restores the compact top account/navigation dock on mobile and in the iOS wrapper.
+- Shows notification bell, permission-controlled Fun Ideas lock, profile avatar/fallback, login, and logout as clean circular controls.
+- Keeps the duplicate greeting removed.
