@@ -4389,3 +4389,16 @@ dialog{
   .notification-row{grid-template-columns:46px minmax(0,1fr);padding:12px}.notification-row time{grid-column:2;text-align:left;margin-top:-4px}.notification-row-icon{width:44px;height:44px}
   .onboarding-steps{grid-template-columns:1fr}.onboarding-permission{grid-column:auto}.onboarding-card .dialog-actions{position:sticky;bottom:-20px;background:linear-gradient(transparent,var(--card,#fff) 20%);padding-top:25px}
 }
+
+
+/* WeTrack V1.4 mobile header cleanup */
+@media (max-width:760px){
+  /* The home dashboard already owns the personalized greeting. */
+  .topbar > div:first-child{display:none!important}
+  .topbar{padding-top:10px!important;padding-bottom:8px!important}
+  .topbar .top-actions{width:100%!important;justify-content:center!important}
+
+  /* One real logout glyph only; remove legacy generated duplicates. */
+  #logoutBtn{font-size:25px!important;line-height:1!important;text-indent:0!important;color:#53617e!important}
+  #logoutBtn::before,#logoutBtn::after{content:none!important;display:none!important}
+}

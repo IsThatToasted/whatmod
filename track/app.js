@@ -4940,7 +4940,7 @@ async function deletePackingItem(id) {
 
 /* === WeTrack V1.2 mobile traveler roster reliability patch === */
 (function weTrackMobileTravelerRosterPatch(){
-  const BUILD = 'WeTrack V1.3.0 / V2.3.12-native-notifications-onboarding-2026-07-19';
+  const BUILD = 'WeTrack V1.4.0 / V2.3.13-ios-memory-notification-ui-2026-07-19';
   function safeFirstName(value){
     return String(value || 'Traveler').trim().split(/\s+/)[0] || 'Traveler';
   }
@@ -5118,9 +5118,20 @@ async function deletePackingItem(id) {
     try { nativeNotifications?.postMessage({ action, ...payload }); return !!nativeNotifications; }
     catch (error) { console.warn('Native notification bridge failed', error); return false; }
   }
+  function notificationDisplayReminders(reminders=allUpcomingReminders()){
+    // Keep every reminder scheduled natively, but show only the next reminder
+    // for each event in the bell so 2-hour + 30-minute reminders do not clutter it.
+    const nextByEvent = new Map();
+    for (const reminder of reminders || []) {
+      const key = reminder.itemId || reminder.id;
+      const current = nextByEvent.get(key);
+      if (!current || new Date(reminder.fireDate) < new Date(current.fireDate)) nextByEvent.set(key, reminder);
+    }
+    return [...nextByEvent.values()].sort((a,b)=>new Date(a.fireDate)-new Date(b.fireDate));
+  }
   function updateNotificationBadge(reminders){
     const badge=$n('notificationBadge'); if(!badge) return;
-    const count=reminders.length;
+    const count=notificationDisplayReminders(reminders).length;
     badge.textContent=count>99?'99+':String(count);
     badge.classList.toggle('hidden',!count);
   }
@@ -5131,7 +5142,7 @@ async function deletePackingItem(id) {
   function refreshNotificationSchedule(force=false){
     const reminders=allUpcomingReminders();
     updateNotificationBadge(reminders);
-    renderNotificationCenter(reminders);
+    renderNotificationCenter(notificationDisplayReminders(reminders));
     const hash=scheduleHash(reminders);
     if (!force && hash===lastScheduleHash) return;
     lastScheduleHash=hash;
@@ -5164,7 +5175,7 @@ async function deletePackingItem(id) {
   };
 
   $n('notificationsBtn')?.addEventListener('click',()=>{
-    const reminders=allUpcomingReminders(); renderNotificationCenter(reminders); updatePermissionBanner(); $n('notificationsDialog')?.showModal();
+    const reminders=allUpcomingReminders(); renderNotificationCenter(notificationDisplayReminders(reminders)); updatePermissionBanner(); $n('notificationsDialog')?.showModal();
   });
   $n('enableNotificationsBtn')?.addEventListener('click',requestNotificationPermission);
 

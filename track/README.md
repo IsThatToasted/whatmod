@@ -510,3 +510,12 @@ Do not add the `wetrack://` URL to Google Cloud; Supabase receives Google's call
 - Reminder schedules are regenerated only when the event schedule/settings hash changes, minimizing work and avoiding Supabase writes.
 - Cache version: `303`.
 - Build marker: `WeTrack V1.3.0 / V2.3.12-native-notifications-onboarding-2026-07-19`.
+
+
+## WeTrack V1.4 — iOS cleanup
+
+- Removes the duplicate mobile greeting above the action icons.
+- Uses one centered logout icon with no generated pseudo-element duplicate.
+- Notification center shows only the nearest upcoming reminder per event while the native scheduler still keeps all configured reminders.
+- Adds native WKWebView JavaScript confirm/alert support so memory, trip, and other confirmed deletes work inside the iOS app.
+- Cache/build version: `v304` / `WeTrack V1.4.0`.

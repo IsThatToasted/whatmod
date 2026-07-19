@@ -186,6 +186,30 @@ struct WeTrackWebView: UIViewRepresentable {
             completionHandler([.banner, .sound, .badge])
         }
 
+
+        // WKWebView does not present JavaScript alert/confirm dialogs unless the
+        // host app implements WKUIDelegate. These are used by destructive actions
+        // such as deleting a memory or trip.
+        func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+            let alert = UIAlertController(title: "WeTrack", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
+            present(alert)
+        }
+
+        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+            let alert = UIAlertController(title: "Please confirm", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
+            alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in completionHandler(true) })
+            present(alert)
+        }
+
+        private func present(_ controller: UIViewController) {
+            guard let root = webView?.window?.rootViewController else { return }
+            var presenter = root
+            while let shown = presenter.presentedViewController { presenter = shown }
+            presenter.present(controller, animated: true)
+        }
+
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let requestURL = navigationAction.request.url else {
                 decisionHandler(.allow)
