@@ -535,7 +535,15 @@ Do not add the `wetrack://` URL to Google Cloud; Supabase receives Google's call
 - The main countdown/dashboard greeting remains unchanged.
 - Cache version bumped to `v306`.
 
-## WeTrack V1.8 mobile/iOS top navigation
+## WeTrack V1.9 mobile/iOS top navigation
 - Restores the compact top account/navigation dock on mobile and in the iOS wrapper.
 - Shows notification bell, permission-controlled Fun Ideas lock, profile avatar/fallback, login, and logout as clean circular controls.
 - Keeps the duplicate greeting removed.
+
+## WeTrack V1.9 — Persistent Fun Ideas Bucket List
+
+Fun Ideas are now stored in one owner-led shared bucket list rather than inside an individual trip. The list, categories, access permissions, assignments, and reaction sliders persist when travelers switch trips or create a new trip.
+
+Run the complete updated `schema.sql` once in Supabase. It creates the account-level bucket-list tables and automatically migrates existing trip Fun Ideas, categories, permissions, and reactions. The migration is idempotent, so rerunning the SQL will not duplicate migrated ideas.
+
+The active trip still determines which owner-led bucket list is shown. For example, every trip owned by Brian opens Brian's same shared bucket list. A collaborator's access granted from one of those trips remains valid across the owner's other trips.

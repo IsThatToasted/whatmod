@@ -1559,3 +1559,244 @@ alter table public.itinerary_trip_members
 
 comment on column public.itinerary_trip_members.onboarding_completed is
   'True after this traveler completes and saves onboarding for the trip.';
+
+-- ============================================================
+-- WeTrack V1.9 — Persistent shared Fun Ideas bucket list
+-- Fun Ideas now belong to a reusable owner-led space rather than one trip.
+-- Safe to run more than once.
+-- ============================================================
+
+create table if not exists public.itinerary_fun_spaces (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  name text not null default 'Our Bucket List',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(owner_id)
+);
+
+create table if not exists public.itinerary_fun_space_members (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references public.itinerary_fun_spaces(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  can_access boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(space_id, user_id)
+);
+
+create table if not exists public.itinerary_fun_bucket_categories (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references public.itinerary_fun_spaces(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  emoji text not null default '✨',
+  legacy_category_id uuid unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.itinerary_fun_bucket_ideas (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references public.itinerary_fun_spaces(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  assigned_to uuid references auth.users(id) on delete set null,
+  category_id uuid references public.itinerary_fun_bucket_categories(id) on delete set null,
+  title text not null,
+  description text default '',
+  play_type text not null default 'private' check (play_type in ('private','public')),
+  visibility text not null default 'shared' check (visibility in ('shared','private')),
+  status text not null default 'planned' check (status in ('planned','maybe','completed')),
+  legacy_fun_idea_id uuid unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.itinerary_fun_bucket_reactions (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references public.itinerary_fun_spaces(id) on delete cascade,
+  fun_idea_id uuid not null references public.itinerary_fun_bucket_ideas(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  score int not null default 50 check (score between 0 and 100),
+  updated_at timestamptz not null default now(),
+  unique(fun_idea_id, user_id)
+);
+
+create index if not exists idx_fun_space_members_user on public.itinerary_fun_space_members(user_id);
+create index if not exists idx_fun_bucket_ideas_space on public.itinerary_fun_bucket_ideas(space_id, created_at desc);
+create index if not exists idx_fun_bucket_categories_space on public.itinerary_fun_bucket_categories(space_id);
+create index if not exists idx_fun_bucket_reactions_space on public.itinerary_fun_bucket_reactions(space_id);
+
+create or replace function public.user_can_access_fun_space(target_space_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.itinerary_fun_spaces s
+    where s.id = target_space_id and s.owner_id = auth.uid()
+  ) or exists (
+    select 1 from public.itinerary_fun_space_members m
+    where m.space_id = target_space_id
+      and m.user_id = auth.uid()
+      and m.can_access = true
+  );
+$$;
+
+grant execute on function public.user_can_access_fun_space(uuid) to authenticated;
+
+create or replace function public.ensure_itinerary_fun_space(p_owner_id uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_space_id uuid;
+  v_allowed boolean := false;
+begin
+  if auth.uid() is null or p_owner_id is null then
+    raise exception 'Authentication required';
+  end if;
+
+  v_allowed := auth.uid() = p_owner_id or exists (
+    select 1
+    from public.itinerary_trips t
+    join public.itinerary_trip_members m on m.trip_id = t.id
+    where t.user_id = p_owner_id and m.user_id = auth.uid()
+  );
+
+  if not v_allowed then
+    raise exception 'You do not share a trip with this bucket-list owner';
+  end if;
+
+  insert into public.itinerary_fun_spaces(owner_id)
+  values (p_owner_id)
+  on conflict (owner_id) do update set updated_at = public.itinerary_fun_spaces.updated_at
+  returning id into v_space_id;
+
+  insert into public.itinerary_fun_space_members(space_id, user_id, can_access)
+  values (v_space_id, p_owner_id, true)
+  on conflict (space_id, user_id) do update set can_access = true;
+
+  return v_space_id;
+end;
+$$;
+
+grant execute on function public.ensure_itinerary_fun_space(uuid) to authenticated;
+
+alter table public.itinerary_fun_spaces enable row level security;
+alter table public.itinerary_fun_space_members enable row level security;
+alter table public.itinerary_fun_bucket_categories enable row level security;
+alter table public.itinerary_fun_bucket_ideas enable row level security;
+alter table public.itinerary_fun_bucket_reactions enable row level security;
+
+drop policy if exists "fun spaces visible to participants" on public.itinerary_fun_spaces;
+create policy "fun spaces visible to participants" on public.itinerary_fun_spaces
+for select using (owner_id = auth.uid() or public.user_can_access_fun_space(id));
+
+drop policy if exists "owners update fun spaces" on public.itinerary_fun_spaces;
+create policy "owners update fun spaces" on public.itinerary_fun_spaces
+for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+
+drop policy if exists "fun space members visible to participants" on public.itinerary_fun_space_members;
+create policy "fun space members visible to participants" on public.itinerary_fun_space_members
+for select using (public.user_can_access_fun_space(space_id));
+
+drop policy if exists "fun space owner manages members" on public.itinerary_fun_space_members;
+create policy "fun space owner manages members" on public.itinerary_fun_space_members
+for all using (
+  exists(select 1 from public.itinerary_fun_spaces s where s.id = space_id and s.owner_id = auth.uid())
+) with check (
+  exists(select 1 from public.itinerary_fun_spaces s where s.id = space_id and s.owner_id = auth.uid())
+);
+
+drop policy if exists "bucket categories visible to participants" on public.itinerary_fun_bucket_categories;
+create policy "bucket categories visible to participants" on public.itinerary_fun_bucket_categories
+for select using (public.user_can_access_fun_space(space_id));
+
+drop policy if exists "bucket participants manage categories" on public.itinerary_fun_bucket_categories;
+create policy "bucket participants manage categories" on public.itinerary_fun_bucket_categories
+for all using (public.user_can_access_fun_space(space_id))
+with check (public.user_can_access_fun_space(space_id));
+
+drop policy if exists "bucket ideas visible to participants" on public.itinerary_fun_bucket_ideas;
+create policy "bucket ideas visible to participants" on public.itinerary_fun_bucket_ideas
+for select using (
+  public.user_can_access_fun_space(space_id)
+  and (visibility <> 'private' or created_by = auth.uid() or exists(
+    select 1 from public.itinerary_fun_spaces s where s.id = space_id and s.owner_id = auth.uid()
+  ))
+);
+
+drop policy if exists "bucket participants manage ideas" on public.itinerary_fun_bucket_ideas;
+create policy "bucket participants manage ideas" on public.itinerary_fun_bucket_ideas
+for all using (public.user_can_access_fun_space(space_id))
+with check (public.user_can_access_fun_space(space_id));
+
+drop policy if exists "bucket reactions visible to participants" on public.itinerary_fun_bucket_reactions;
+create policy "bucket reactions visible to participants" on public.itinerary_fun_bucket_reactions
+for select using (public.user_can_access_fun_space(space_id));
+
+drop policy if exists "users manage own bucket reactions" on public.itinerary_fun_bucket_reactions;
+create policy "users manage own bucket reactions" on public.itinerary_fun_bucket_reactions
+for all using (user_id = auth.uid() and public.user_can_access_fun_space(space_id))
+with check (user_id = auth.uid() and public.user_can_access_fun_space(space_id));
+
+-- Create one reusable space for every existing trip owner.
+insert into public.itinerary_fun_spaces(owner_id)
+select distinct user_id from public.itinerary_trips
+on conflict (owner_id) do nothing;
+
+insert into public.itinerary_fun_space_members(space_id, user_id, can_access)
+select s.id, s.owner_id, true from public.itinerary_fun_spaces s
+on conflict (space_id, user_id) do update set can_access = true;
+
+-- Preserve previously granted Fun Ideas access across every trip owned by the same person.
+insert into public.itinerary_fun_space_members(space_id, user_id, can_access)
+select distinct s.id, p.user_id, p.can_access
+from public.trip_fun_permissions p
+join public.itinerary_trips t on t.id = p.trip_id
+join public.itinerary_fun_spaces s on s.owner_id = t.user_id
+where p.can_access = true
+on conflict (space_id, user_id) do update set can_access = excluded.can_access, updated_at = now();
+
+-- Migrate categories and retain a mapping to the old category IDs.
+insert into public.itinerary_fun_bucket_categories(space_id, created_by, name, emoji, legacy_category_id, created_at, updated_at)
+select s.id, c.created_by, c.name, c.emoji, c.id, c.created_at, c.updated_at
+from public.trip_fun_categories c
+join public.itinerary_trips t on t.id = c.trip_id
+join public.itinerary_fun_spaces s on s.owner_id = t.user_id
+on conflict (legacy_category_id) do nothing;
+
+-- Migrate all existing trip-specific ideas into the reusable bucket list.
+insert into public.itinerary_fun_bucket_ideas(
+  space_id, created_by, assigned_to, category_id, title, description,
+  play_type, visibility, status, legacy_fun_idea_id, created_at, updated_at
+)
+select
+  s.id, i.created_by, i.assigned_to, bc.id, i.title, i.description,
+  i.play_type, i.visibility, i.status, i.id, i.created_at, i.updated_at
+from public.trip_fun_ideas i
+join public.itinerary_trips t on t.id = i.trip_id
+join public.itinerary_fun_spaces s on s.owner_id = t.user_id
+left join public.itinerary_fun_bucket_categories bc on bc.legacy_category_id = i.category_id
+on conflict (legacy_fun_idea_id) do nothing;
+
+-- Migrate existing reactions to their matching bucket-list ideas.
+insert into public.itinerary_fun_bucket_reactions(space_id, fun_idea_id, user_id, score, updated_at)
+select bi.space_id, bi.id, r.user_id, r.score, r.updated_at
+from public.trip_fun_reactions r
+join public.itinerary_fun_bucket_ideas bi on bi.legacy_fun_idea_id = r.fun_idea_id
+on conflict (fun_idea_id, user_id) do update set score = excluded.score, updated_at = excluded.updated_at;
+
+-- Add the new tables to Realtime when possible.
+do $$
+begin
+  begin alter publication supabase_realtime add table public.itinerary_fun_space_members; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.itinerary_fun_bucket_categories; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.itinerary_fun_bucket_ideas; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.itinerary_fun_bucket_reactions; exception when duplicate_object then null; end;
+end $$;

@@ -4945,7 +4945,7 @@ async function deletePackingItem(id) {
 
 /* === WeTrack V1.2 mobile traveler roster reliability patch === */
 (function weTrackMobileTravelerRosterPatch(){
-  const BUILD = 'WeTrack V1.8.0 / desktop-header-cleanup-2026-07-19';
+  const BUILD = 'WeTrack V1.9.0 / desktop-header-cleanup-2026-07-19';
   function safeFirstName(value){
     return String(value || 'Traveler').trim().split(/\s+/)[0] || 'Traveler';
   }
@@ -5364,3 +5364,186 @@ async function deletePackingItem(id) {
   setInterval(()=>{ if(!document.hidden && session?.user && activeTripId) refreshNotificationSchedule(); },60000);
   setTimeout(()=>{ updatePermissionBanner(); queueNotificationRefresh(); maybeShowOnboarding(); },1200);
 })();
+
+/* ============================================================
+   WeTrack V1.9 — account-level shared Fun Ideas bucket list
+   The active trip determines whose shared bucket is open, but the
+   contents and permissions persist across all of that owner's trips.
+   ============================================================ */
+let funSpaceId = null;
+
+function activeFunSpaceOwnerId() {
+  return currentTrip()?.user_id || members.find(m => m.role === 'owner')?.user_id || session?.user?.id || null;
+}
+
+async function ensureActiveFunSpace() {
+  const ownerId = activeFunSpaceOwnerId();
+  funSpaceId = null;
+  if (!client || !ownerId || !session?.user?.id) return null;
+  const { data, error } = await client.rpc('ensure_itinerary_fun_space', { p_owner_id: ownerId });
+  if (error) {
+    console.warn('Persistent Fun Ideas space unavailable. Run the V1.9 schema.sql update.', error);
+    return null;
+  }
+  funSpaceId = data || null;
+  return funSpaceId;
+}
+
+canAccessFunIdeasLocal = function canAccessPersistentFunIdeas() {
+  if (!funSpaceId || !session?.user?.id) return false;
+  if (activeFunSpaceOwnerId() === session.user.id) return true;
+  return funPermissions.some(p => p.space_id === funSpaceId && p.user_id === session.user.id && p.can_access);
+};
+
+isTripOwner = function isPersistentBucketOwner() {
+  return !!session?.user?.id && activeFunSpaceOwnerId() === session.user.id;
+};
+
+loadFunPermissions = async function loadPersistentFunPermissions() {
+  funPermissions = [];
+  if (!session?.user?.id) return;
+  if (!funSpaceId && !(await ensureActiveFunSpace())) return;
+  const { data, error } = await client.from('itinerary_fun_space_members').select('*').eq('space_id', funSpaceId);
+  if (error) { console.warn('Persistent Fun Ideas permissions unavailable.', error); return; }
+  funPermissions = data || [];
+};
+
+loadFunCategories = async function loadPersistentFunCategories() {
+  funCategories = [];
+  if (!session?.user?.id) return;
+  if (!funSpaceId && !(await ensureActiveFunSpace())) return;
+  if (!canAccessFunIdeasLocal()) return;
+  const { data, error } = await client.from('itinerary_fun_bucket_categories').select('*').eq('space_id', funSpaceId).order('created_at');
+  if (error) { console.warn('Persistent Fun Ideas categories unavailable.', error); return; }
+  funCategories = data || [];
+};
+
+loadFunReactions = async function loadPersistentFunReactions() {
+  funReactions = [];
+  if (!session?.user?.id || !canAccessFunIdeasLocal()) return;
+  const { data, error } = await client.from('itinerary_fun_bucket_reactions').select('*').eq('space_id', funSpaceId);
+  if (error) { console.warn('Persistent Fun Ideas reactions unavailable.', error); return; }
+  funReactions = data || [];
+};
+
+loadFunIdeas = async function loadPersistentFunIdeas() {
+  funIdeas = [];
+  funCategories = [];
+  funReactions = [];
+  funPermissions = [];
+  if (!session?.user?.id || !activeTripId) return;
+  if (!(await ensureActiveFunSpace())) return;
+  await loadFunPermissions();
+  if (!canAccessFunIdeasLocal()) return;
+  await loadFunCategories();
+  const { data, error } = await client.from('itinerary_fun_bucket_ideas').select('*').eq('space_id', funSpaceId).order('created_at', { ascending: false });
+  if (error) { console.warn('Persistent Fun Ideas bucket unavailable.', error); return; }
+  funIdeas = data || [];
+  await loadFunReactions();
+};
+
+addFunCategory = async function addPersistentFunCategory() {
+  if (!canManageFunCategories() || !funSpaceId) return;
+  const name = (els.funCategoryName?.value || '').trim();
+  if (!name) return els.funCategoryName?.focus();
+  const emoji = (els.funCategoryEmoji?.value || '✨').trim().slice(0, 4) || '✨';
+  const { error } = await client.from('itinerary_fun_bucket_categories').insert({ space_id: funSpaceId, created_by: session.user.id, name, emoji });
+  if (error) { showDbError(error); return; }
+  if (els.funCategoryName) els.funCategoryName.value = '';
+  if (els.funCategoryEmoji) els.funCategoryEmoji.value = '✨';
+  await loadFunCategories(); renderFunIdeasModal(); broadcastTripChange('Shared bucket categories updated');
+};
+
+editFunCategory = async function editPersistentFunCategory(id) {
+  if (!canManageFunCategories()) return;
+  const c = funCategories.find(x => x.id === id); if (!c) return;
+  const name = prompt('Category name', c.name || ''); if (name === null) return;
+  const emoji = prompt('Emoji', c.emoji || '✨'); if (emoji === null) return;
+  const { error } = await client.from('itinerary_fun_bucket_categories').update({ name: name.trim() || c.name, emoji: (emoji.trim() || c.emoji || '✨').slice(0, 4), updated_at: new Date().toISOString() }).eq('id', id).eq('space_id', funSpaceId);
+  if (error) { showDbError(error); return; }
+  await loadFunCategories(); renderFunIdeasModal(); broadcastTripChange('Shared bucket categories updated');
+};
+
+deleteFunCategory = async function deletePersistentFunCategory(id) {
+  if (!canManageFunCategories()) return;
+  if (!confirm('Delete this category? Ideas will stay, but lose this category.')) return;
+  await client.from('itinerary_fun_bucket_ideas').update({ category_id: null, updated_at: new Date().toISOString() }).eq('category_id', id).eq('space_id', funSpaceId);
+  const { error } = await client.from('itinerary_fun_bucket_categories').delete().eq('id', id).eq('space_id', funSpaceId);
+  if (error) { showDbError(error); return; }
+  if (funCategoryFilterValue === id) funCategoryFilterValue = 'all';
+  await loadFunCategories(); await loadFunIdeas(); renderFunIdeasModal(); broadcastTripChange('Shared bucket categories updated');
+};
+
+saveFunIdea = async function savePersistentFunIdea() {
+  if (!funSpaceId || !session?.user?.id || !canEdit() || !canAccessFunIdeasLocal()) return;
+  const title = (els.funIdeaTitle?.value || '').trim();
+  if (!title) { els.funIdeaTitle?.focus(); return; }
+  const payload = {
+    space_id: funSpaceId,
+    created_by: session.user.id,
+    title,
+    description: (els.funIdeaDescription?.value || '').trim(),
+    play_type: els.funIdeaPlayType?.value || 'private',
+    visibility: els.funIdeaVisibility?.value || 'shared',
+    assigned_to: els.funIdeaAssignedTo?.value || null,
+    category_id: els.funIdeaCategory?.value || null,
+    updated_at: new Date().toISOString()
+  };
+  const id = els.funIdeaId?.value;
+  const result = id
+    ? await client.from('itinerary_fun_bucket_ideas').update(payload).eq('id', id).eq('space_id', funSpaceId).select('*').single()
+    : await client.from('itinerary_fun_bucket_ideas').insert(payload).select('*').single();
+  if (result.error) { showDbError(result.error); return; }
+  await loadFunIdeas(); clearFunIdeaForm(); showFunEditor(false); renderFunIdeasModal(); broadcastTripChange('Shared bucket list updated');
+};
+
+deleteFunIdea = async function deletePersistentFunIdea(id) {
+  if (!canEdit() || !canAccessFunIdeasLocal() || !funSpaceId) return;
+  if (!confirm('Remove this Fun Idea from your shared bucket list?')) return;
+  await client.from('itinerary_fun_bucket_reactions').delete().eq('fun_idea_id', id).eq('space_id', funSpaceId);
+  const { error } = await client.from('itinerary_fun_bucket_ideas').delete().eq('id', id).eq('space_id', funSpaceId);
+  if (error) { showDbError(error); return; }
+  await loadFunIdeas(); renderFunIdeasModal(); broadcastTripChange('Shared bucket list updated');
+};
+
+toggleFunPermission = async function togglePersistentFunPermission(userId, canAccess) {
+  if (!isTripOwner() || !funSpaceId || !userId) return;
+  const payload = { space_id: funSpaceId, user_id: userId, can_access: !!canAccess, updated_at: new Date().toISOString() };
+  const { error } = await client.from('itinerary_fun_space_members').upsert(payload, { onConflict: 'space_id,user_id' });
+  if (error) { showDbError(error); return; }
+  await loadFunPermissions(); renderFunIdeasModal(); broadcastTripChange('Shared bucket access updated');
+};
+
+// Replace the final reaction autosave implementation with the persistent table.
+window.saveFunReaction = function savePersistentFunReaction(ideaId, rawScore, forceNow = false) {
+  if (!client || !funSpaceId || !session?.user?.id || !canAccessFunIdeasLocal()) return;
+  const score = Math.max(0, Math.min(100, Number(rawScore) || 50));
+  const userId = session.user.id;
+  const localRow = { space_id: funSpaceId, fun_idea_id: ideaId, user_id: userId, score, updated_at: new Date().toISOString() };
+  const idx = funReactions.findIndex(r => r.fun_idea_id === ideaId && r.user_id === userId);
+  if (idx >= 0) funReactions[idx] = { ...funReactions[idx], ...localRow };
+  else funReactions.push(localRow);
+
+  const persist = async () => {
+    delete funReactionSaveTimers[ideaId];
+    const { error } = await client.from('itinerary_fun_bucket_reactions').upsert(localRow, { onConflict: 'fun_idea_id,user_id' });
+    if (error) {
+      console.warn('Could not save persistent Fun Ideas reaction.', error);
+      if (typeof showToast === 'function') showToast('Could not save reaction', 'error');
+      return;
+    }
+    broadcastTripChange('Shared bucket reaction updated');
+  };
+
+  clearTimeout(funReactionSaveTimers[ideaId]);
+  if (forceNow) persist();
+  else funReactionSaveTimers[ideaId] = setTimeout(persist, 450);
+};
+
+// Clarify the modal as a cross-trip bucket list without changing its controls.
+window.addEventListener('DOMContentLoaded', () => {
+  const title = document.querySelector('#funIdeasDialog h2, #funIdeasModal h2, .fun-ideas-dialog h2');
+  if (title) title.textContent = 'Our Fun Ideas Bucket List';
+  const helper = document.querySelector('#funIdeasDialog .modal-subtitle, #funIdeasModal .modal-subtitle, .fun-ideas-dialog .modal-subtitle');
+  if (helper) helper.textContent = 'Shared across all trips — add ideas anytime and check them off together.';
+});
