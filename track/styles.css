@@ -4219,3 +4219,57 @@ dialog{
   .brand span:last-child{font-size:1.25rem!important;}
   .build-version-badge{max-width:70vw!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
 }
+
+
+/* WeTrack iOS/mobile compact trip date fields — build 301 */
+@media (max-width: 760px) {
+  .trip-hero .date-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    align-items: end !important;
+  }
+
+  .trip-hero .date-row > * {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .trip-hero input[type="date"] {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    padding: 0 12px !important;
+    border-radius: 17px !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    text-align: left !important;
+    overflow: hidden !important;
+  }
+
+  .trip-hero input[type="date"]::-webkit-date-and-time-value {
+    min-height: 1.2em !important;
+    text-align: left !important;
+  }
+
+  .trip-hero input[type="date"]::-webkit-calendar-picker-indicator {
+    margin: 0 !important;
+    padding: 6px !important;
+  }
+
+  .trip-copy {
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .trip-hero .date-row { gap: 8px !important; }
+  .trip-hero input[type="date"] { padding: 0 9px !important; font-size: 15px !important; }
+}

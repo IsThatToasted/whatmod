@@ -714,7 +714,81 @@ function refreshAuthUI() {
     els.signedOut.querySelector('p').textContent = 'Sign in first, then the invite will be added to your account automatically.';
   }
 }
-async function loginGoogle() { await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.href.includes('?invite=') ? location.href : REDIRECT_TO } }); }
+const IS_WETRACK_IOS_APP = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativeAuth);
+
+window.WeTrackNativeAuth = {
+  async handleCallback(callbackUrl) {
+    try {
+      const callback = new URL(callbackUrl);
+      const raw = callback.hash ? callback.hash.slice(1) : callback.search.slice(1);
+      const params = new URLSearchParams(raw);
+      const errorDescription = params.get('error_description') || params.get('error');
+      if (errorDescription) throw new Error(decodeURIComponent(errorDescription));
+
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      const code = params.get('code');
+
+      if (accessToken && refreshToken) {
+        const { error } = await client.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+        if (error) throw error;
+      } else if (code) {
+        const { error } = await client.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+      } else {
+        throw new Error('The sign-in callback did not include a usable Supabase session.');
+      }
+
+      showToast('Signed in successfully', 'success');
+      const { data } = await client.auth.getSession();
+      session = data.session;
+      refreshAuthUI();
+      if (session) await bootSignedIn();
+    } catch (error) {
+      console.error('Native OAuth callback failed:', error);
+      showToast(error?.message || 'Google sign-in failed', 'error', 5000);
+    }
+  },
+
+  authCancelled(message) {
+    if (message) showToast(message, 'error', 4000);
+  }
+};
+
+async function loginGoogle() {
+  const inviteRedirect = location.href.includes('?invite=') ? location.href : REDIRECT_TO;
+
+  if (IS_WETRACK_IOS_APP) {
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'wetrack://auth-callback',
+        skipBrowserRedirect: true
+      }
+    });
+    if (error) {
+      showToast(error.message, 'error', 5000);
+      return;
+    }
+    if (!data?.url) {
+      showToast('Google sign-in could not be started.', 'error', 5000);
+      return;
+    }
+    window.webkit.messageHandlers.nativeAuth.postMessage({
+      action: 'googleOAuth',
+      url: data.url
+    });
+    return;
+  }
+
+  await client.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: inviteRedirect }
+  });
+}
 async function loginEmail() { const email = els.emailInput.value.trim(); if (!email) return alert('Enter your email first.'); const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.includes('?invite=') ? location.href : REDIRECT_TO } }); if (error) return alert(error.message); alert('Magic link sent. Check your email.'); }
 async function logout() { if (realtimeChannel) { try { client.removeChannel(realtimeChannel); } catch {} realtimeChannel = null; } await client.auth.signOut(); trips = []; items = []; members = []; activeTripId = null; render(); }
 function showDbError(error) { console.error(error); alert(`${error.message}\n\nRun the newest schema.sql in Supabase SQL Editor. This version needs the members, invites, and accept_itinerary_invite function.`); setStatus('Database setup needed'); }

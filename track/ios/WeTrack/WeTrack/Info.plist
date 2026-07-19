@@ -32,6 +32,20 @@
   <true/>
   <key>UIStatusBarStyle</key>
   <string>UIStatusBarStyleDefault</string>
+
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.whatmod.wetrack.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>wetrack</string>
+			</array>
+		</dict>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UISupportedInterfaceOrientations</key>

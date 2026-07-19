@@ -465,3 +465,29 @@ This checkpoint fixes the unsigned IPA metadata for Sideloadly by adding these r
 - `LSRequiresIPhoneOS = true`
 
 The GitHub Actions workflow now also validates that the generated IPA contains a bundle identifier before uploading the artifact.
+
+## iOS Google OAuth setup (required)
+
+Google blocks OAuth inside embedded `WKWebView` browsers. This build uses `ASWebAuthenticationSession` and returns the Supabase session to WeTrack through the custom URL scheme:
+
+```text
+wetrack://auth-callback
+```
+
+In Supabase Dashboard:
+
+1. Open **Authentication → URL Configuration**.
+2. Keep the web Site URL as `https://whatmod.com/track/`.
+3. Add this **Additional Redirect URL** exactly:
+
+```text
+wetrack://auth-callback
+```
+
+Your Google Cloud authorized redirect URI remains the Supabase callback:
+
+```text
+https://cuhbzgeqvgzshwwfkpdm.supabase.co/auth/v1/callback
+```
+
+Do not add the `wetrack://` URL to Google Cloud; Supabase receives Google's callback and then redirects into the app.
