@@ -454,3 +454,14 @@ This package includes a corrected workflow at:
 It builds an unsigned IPA for Sideloadly and does **not** require Apple signing secrets. Copy `repo-root/.github` to the root of your `whatmod` repo. The app still lives under `/track`.
 
 Use Sideloadly locally with your Apple ID, for example `Toasted3@icloud.com`, to sign/install the generated unsigned IPA.
+
+## Sideloadly CFBundleIdentifier fix
+
+This checkpoint fixes the unsigned IPA metadata for Sideloadly by adding these required Info.plist keys to `ios/WeTrack/WeTrack/Info.plist`:
+
+- `CFBundleIdentifier = $(PRODUCT_BUNDLE_IDENTIFIER)`
+- `CFBundleExecutable = $(EXECUTABLE_NAME)`
+- `CFBundlePackageType = APPL`
+- `LSRequiresIPhoneOS = true`
+
+The GitHub Actions workflow now also validates that the generated IPA contains a bundle identifier before uploading the artifact.
