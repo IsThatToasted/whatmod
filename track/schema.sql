@@ -1508,3 +1508,46 @@ begin
 exception when others then
   raise notice 'Could not add trip_fun_reactions to supabase_realtime publication: %', sqlerrm;
 end $$;
+
+
+-- WeTrack V1.5: persistent per-user onboarding / Traveler Passport defaults
+create table if not exists public.itinerary_user_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  display_name text,
+  trip_role text default 'Traveler',
+  favorite_foods text,
+  favorite_activities text,
+  personal_interests text,
+  onboarding_completed boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.itinerary_user_profiles
+  add column if not exists display_name text,
+  add column if not exists trip_role text default 'Traveler',
+  add column if not exists favorite_foods text,
+  add column if not exists favorite_activities text,
+  add column if not exists personal_interests text,
+  add column if not exists onboarding_completed boolean not null default false,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.itinerary_user_profiles enable row level security;
+grant select, insert, update on public.itinerary_user_profiles to authenticated;
+
+drop policy if exists "users read own traveler profile" on public.itinerary_user_profiles;
+create policy "users read own traveler profile"
+on public.itinerary_user_profiles for select
+to authenticated using (auth.uid() = user_id);
+
+drop policy if exists "users create own traveler profile" on public.itinerary_user_profiles;
+create policy "users create own traveler profile"
+on public.itinerary_user_profiles for insert
+to authenticated with check (auth.uid() = user_id);
+
+drop policy if exists "users update own traveler profile" on public.itinerary_user_profiles;
+create policy "users update own traveler profile"
+on public.itinerary_user_profiles for update
+to authenticated using (auth.uid() = user_id)
+with check (auth.uid() = user_id);

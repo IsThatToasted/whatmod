@@ -4402,3 +4402,19 @@ dialog{
   #logoutBtn{font-size:25px!important;line-height:1!important;text-indent:0!important;color:#53617e!important}
   #logoutBtn::before,#logoutBtn::after{content:none!important;display:none!important}
 }
+
+
+/* WeTrack V1.6: remove duplicate desktop greeting while preserving compact controls. */
+.topbar.topbar-actions-only {
+  justify-content: flex-end;
+  min-height: 58px;
+}
+.topbar.topbar-actions-only .top-actions {
+  width: 100%;
+  justify-content: flex-end;
+}
+@media (max-width: 900px) {
+  .topbar.topbar-actions-only {
+    min-height: 0;
+  }
+}

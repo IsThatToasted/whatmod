@@ -4940,7 +4940,7 @@ async function deletePackingItem(id) {
 
 /* === WeTrack V1.2 mobile traveler roster reliability patch === */
 (function weTrackMobileTravelerRosterPatch(){
-  const BUILD = 'WeTrack V1.4.0 / V2.3.13-ios-memory-notification-ui-2026-07-19';
+  const BUILD = 'WeTrack V1.6.0 / desktop-header-cleanup-2026-07-19';
   function safeFirstName(value){
     return String(value || 'Traveler').trim().split(/\s+/)[0] || 'Traveler';
   }
@@ -5030,11 +5030,20 @@ async function deletePackingItem(id) {
 /* WeTrack V1.3 native/local event notifications + onboarding */
 (function installWeTrackNotificationsAndOnboarding(){
   const NOTIF_PREF_KEY = 'wetrack.notificationPrefs.v1';
-  const ONBOARDING_KEY = 'wetrack.onboarding.v1.complete';
+  const ONBOARDING_KEY_PREFIX = 'wetrack.onboarding.v2.complete.';
   const nativeNotifications = window.webkit?.messageHandlers?.nativeNotifications;
   let lastScheduleHash = '';
   let scheduleTimer = null;
   let nativePermission = 'unknown';
+  let onboardingStatusUserId = '';
+  let onboardingStatusLoaded = false;
+  let onboardingCompletedRemote = false;
+  let onboardingLoadPromise = null;
+  let onboardingSkippedThisSession = false;
+
+  function onboardingStorageKey(){
+    return `${ONBOARDING_KEY_PREFIX}${session?.user?.id || 'anonymous'}`;
+  }
 
   const $n = id => document.getElementById(id);
   const defaults = { enabled:true, firstReminder:120, secondReminder:30, includeShared:true };
@@ -5179,34 +5188,125 @@ async function deletePackingItem(id) {
   });
   $n('enableNotificationsBtn')?.addEventListener('click',requestNotificationPermission);
 
+  function authProfileDefaults(){
+    const meta = session?.user?.user_metadata || {};
+    const fullName = String(meta.full_name || meta.name || meta.display_name || '').trim();
+    const firstName = fullName.split(/\s+/)[0] || (typeof currentUserFirstName === 'function' ? currentUserFirstName() : '');
+    return {
+      display_name: firstName || '',
+      trip_role: 'Traveler',
+      favorite_foods: '',
+      favorite_activities: '',
+      personal_interests: ''
+    };
+  }
+
+  async function loadOnboardingProfile(force=false){
+    const userId = session?.user?.id || '';
+    if (!userId || !client) return { completed:false, profile:authProfileDefaults() };
+    if (!force && onboardingStatusLoaded && onboardingStatusUserId === userId) {
+      return { completed:onboardingCompletedRemote, profile:null };
+    }
+    if (onboardingLoadPromise) return onboardingLoadPromise;
+    onboardingLoadPromise = (async()=>{
+      let remote = null;
+      try {
+        const { data, error } = await client
+          .from('itinerary_user_profiles')
+          .select('display_name,trip_role,favorite_foods,favorite_activities,personal_interests,onboarding_completed')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (error && !String(error.message||'').toLowerCase().includes('does not exist')) throw error;
+        remote = data || null;
+      } catch (error) {
+        console.warn('Could not load persistent onboarding profile; using trip profile fallback.', error);
+      }
+      onboardingStatusUserId = userId;
+      onboardingStatusLoaded = true;
+      onboardingCompletedRemote = !!remote?.onboarding_completed;
+      if (onboardingCompletedRemote) localStorage.setItem(onboardingStorageKey(),'1');
+      const member = (members || []).find(m => m.user_id === userId) || {};
+      const auth = authProfileDefaults();
+      const profile = {
+        display_name: remote?.display_name || member.display_name || auth.display_name,
+        trip_role: remote?.trip_role || member.trip_role || auth.trip_role,
+        favorite_foods: remote?.favorite_foods || member.favorite_foods || '',
+        favorite_activities: remote?.favorite_activities || member.favorite_activities || '',
+        personal_interests: remote?.personal_interests || member.personal_interests || ''
+      };
+      return { completed:onboardingCompletedRemote, profile };
+    })();
+    try { return await onboardingLoadPromise; }
+    finally { onboardingLoadPromise = null; }
+  }
+
+  function fillOnboardingForm(profile={}){
+    const auth = authProfileDefaults();
+    if($n('onboardingName')) $n('onboardingName').value=profile.display_name || auth.display_name || '';
+    if($n('onboardingRole')) $n('onboardingRole').value=profile.trip_role || 'Traveler';
+    if($n('onboardingFoods')) $n('onboardingFoods').value=profile.favorite_foods || '';
+    if($n('onboardingInterests')) $n('onboardingInterests').value=profile.favorite_activities || profile.personal_interests || '';
+  }
+
   async function saveOnboarding(){
     const name=($n('onboardingName')?.value||'').trim() || (typeof currentUserFirstName==='function'?currentUserFirstName():'Traveler');
     const role=($n('onboardingRole')?.value||'Traveler').trim();
     const foods=($n('onboardingFoods')?.value||'').trim();
     const interests=($n('onboardingInterests')?.value||'').trim();
-    if(activeTripId && session?.user?.id){
-      const payload={ display_name:name, trip_role:role, favorite_foods:foods, favorite_activities:interests, personal_interests:interests };
-      const {data,error}=await client.from('itinerary_trip_members').update(payload).eq('trip_id',activeTripId).eq('user_id',session.user.id).select().maybeSingle();
+    if(!session?.user?.id) return;
+    const profilePayload={
+      user_id:session.user.id,
+      display_name:name,
+      trip_role:role,
+      favorite_foods:foods,
+      favorite_activities:interests,
+      personal_interests:interests,
+      onboarding_completed:true,
+      updated_at:new Date().toISOString()
+    };
+    try {
+      const { error:profileError } = await client
+        .from('itinerary_user_profiles')
+        .upsert(profilePayload,{onConflict:'user_id'});
+      if(profileError) throw profileError;
+    } catch(error) {
+      console.warn('Persistent onboarding save failed.',error);
+      if(typeof showToast==='function') showToast('Could not save onboarding profile. Please try again.','error');
+      return;
+    }
+    if(activeTripId){
+      const memberPayload={ display_name:name, trip_role:role, favorite_foods:foods, favorite_activities:interests, personal_interests:interests };
+      const {data,error}=await client.from('itinerary_trip_members').update(memberPayload).eq('trip_id',activeTripId).eq('user_id',session.user.id).select().maybeSingle();
       if(!error && data) members=members.map(m=>m.user_id===session.user.id?data:m);
-      if(error) console.warn('Onboarding profile save failed',error);
+      if(error) console.warn('Trip member profile sync failed',error);
     }
     if($n('onboardingNotifications')?.checked) requestNotificationPermission();
-    localStorage.setItem(ONBOARDING_KEY,'1');
+    onboardingCompletedRemote=true;
+    onboardingStatusLoaded=true;
+    onboardingStatusUserId=session.user.id;
+    onboardingSkippedThisSession=false;
+    localStorage.setItem(onboardingStorageKey(),'1');
     $n('onboardingDialog')?.close();
     try { render(); } catch {}
   }
-  function maybeShowOnboarding(){
-    if(!session?.user || !activeTripId || localStorage.getItem(ONBOARDING_KEY)==='1') return;
+
+  async function maybeShowOnboarding(){
+    if(!session?.user || !activeTripId || onboardingSkippedThisSession) return;
+    const userId=session.user.id;
+    if(localStorage.getItem(onboardingStorageKey())==='1') return;
     const dialog=$n('onboardingDialog'); if(!dialog || dialog.open) return;
-    const current=(members||[]).find(m=>m.user_id===session.user.id);
-    if($n('onboardingName')) $n('onboardingName').value=current?.display_name||currentUserFirstName();
-    if($n('onboardingRole')) $n('onboardingRole').value=current?.trip_role||'Traveler';
-    if($n('onboardingFoods')) $n('onboardingFoods').value=current?.favorite_foods||'';
-    if($n('onboardingInterests')) $n('onboardingInterests').value=current?.favorite_activities||current?.personal_interests||'';
-    setTimeout(()=>{ if(!dialog.open) dialog.showModal(); },450);
+    const loaded=await loadOnboardingProfile(false);
+    if(!session?.user || session.user.id!==userId || loaded.completed || localStorage.getItem(onboardingStorageKey())==='1') return;
+    fillOnboardingForm(loaded.profile || {});
+    setTimeout(()=>{ if(!dialog.open && session?.user?.id===userId && !onboardingSkippedThisSession) dialog.showModal(); },450);
   }
   $n('finishOnboardingBtn')?.addEventListener('click',saveOnboarding);
-  $n('skipOnboardingBtn')?.addEventListener('click',()=>{ localStorage.setItem(ONBOARDING_KEY,'1'); $n('onboardingDialog')?.close(); });
+  $n('skipOnboardingBtn')?.addEventListener('click',()=>{
+    // Skip only dismisses onboarding for the current app session. It is intentionally
+    // shown again on a later launch until the traveler explicitly saves it.
+    onboardingSkippedThisSession=true;
+    $n('onboardingDialog')?.close();
+  });
 
   // Refresh only when relevant data has changed; the hash prevents redundant native scheduling.
   const previousRender=window.render || render;

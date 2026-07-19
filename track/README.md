@@ -519,3 +519,18 @@ Do not add the `wetrack://` URL to Google Cloud; Supabase receives Google's call
 - Notification center shows only the nearest upcoming reminder per event while the native scheduler still keeps all configured reminders.
 - Adds native WKWebView JavaScript confirm/alert support so memory, trip, and other confirmed deletes work inside the iOS app.
 - Cache/build version: `v304` / `WeTrack V1.4.0`.
+
+
+## WeTrack V1.5 onboarding behavior
+- Existing traveler details prefill onboarding from Supabase, the current trip membership, or Google profile metadata.
+- Save & Continue permanently marks onboarding complete per user across devices.
+- Skip for now only dismisses it for the current app session; it returns on a later launch until saved.
+- Run the included schema.sql once to add itinerary_user_profiles.
+
+
+## WeTrack V1.6 desktop header cleanup
+
+- Removed the duplicate desktop `Good morning, USER / Ready for your next adventure` header.
+- Preserved the notification, Fun Ideas, profile, authentication, and logout controls.
+- The main countdown/dashboard greeting remains unchanged.
+- Cache version bumped to `v306`.
