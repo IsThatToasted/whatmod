@@ -4273,3 +4273,119 @@ dialog{
   .trip-hero .date-row { gap: 8px !important; }
   .trip-hero input[type="date"] { padding: 0 9px !important; font-size: 15px !important; }
 }
+
+/* === WeTrack V1.2 mobile traveler/date polish === */
+@media (max-width: 760px){
+  /* Keep every invited traveler visible in a clean, centered roster. */
+  #travelerStrip.traveler-strip{
+    display:grid!important;
+    grid-template-columns:repeat(auto-fit,minmax(64px,72px))!important;
+    justify-content:center!important;
+    align-items:start!important;
+    gap:12px 10px!important;
+    width:100%!important;
+    max-width:100%!important;
+    margin:14px 0 2px!important;
+    padding:10px 8px 6px!important;
+    overflow:visible!important;
+    background:rgba(255,255,255,.64)!important;
+    border-radius:20px!important;
+    box-sizing:border-box!important;
+  }
+  #travelerStrip .traveler-person{
+    width:72px!important;
+    min-width:0!important;
+    max-width:72px!important;
+    flex:none!important;
+    justify-self:center!important;
+  }
+  #travelerStrip .traveler-person img,
+  #travelerStrip .traveler-person .traveler-avatar-fallback{
+    width:48px!important;
+    height:48px!important;
+    min-width:48px!important;
+  }
+  #travelerStrip .traveler-person span{
+    max-width:72px!important;
+    width:100%!important;
+    text-align:center!important;
+    font-size:.76rem!important;
+  }
+  #travelerStrip .traveler-more{
+    min-height:48px!important;
+    align-self:center!important;
+    justify-self:center!important;
+  }
+
+  /* Center the trip name inside the field. */
+  #tripTitle{
+    text-align:center!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+
+  /* Preserve the compact two-column date layout and optically center iOS date text. */
+  .trip-hero .date-row{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:12px!important;
+    align-items:start!important;
+  }
+  .trip-hero .date-row > label{
+    min-width:0!important;
+  }
+  #startDate,#endDate{
+    width:100%!important;
+    min-width:0!important;
+    height:82px!important;
+    box-sizing:border-box!important;
+    padding:16px 8px 8px!important;
+    text-align:center!important;
+    line-height:1.2!important;
+    font-size:1rem!important;
+  }
+  #startDate::-webkit-date-and-time-value,
+  #endDate::-webkit-date-and-time-value{
+    text-align:center!important;
+    padding-top:5px!important;
+  }
+  #startDate::-webkit-datetime-edit,
+  #endDate::-webkit-datetime-edit{
+    display:block!important;
+    padding-top:5px!important;
+    text-align:center!important;
+  }
+  #startDate::-webkit-calendar-picker-indicator,
+  #endDate::-webkit-calendar-picker-indicator{
+    margin:0!important;
+  }
+}
+
+/* WeTrack V1.3 mobile header/nav + notification center/onboarding polish */
+.notification-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#7c3cff;color:#fff;font-size:11px;line-height:18px;font-weight:900;text-align:center;border:2px solid var(--card,#fff)}
+.icon-btn{position:relative}
+.notifications-dialog,.onboarding-dialog{max-width:none}
+.notifications-card,.onboarding-card{width:min(680px,calc(100vw - 28px));max-height:min(86vh,820px);overflow:auto;overscroll-behavior:contain}
+.notifications-head,.onboarding-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:18px}
+.notification-permission-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid rgba(124,60,255,.18);background:linear-gradient(135deg,rgba(124,60,255,.08),rgba(255,125,198,.08));padding:16px;border-radius:20px;margin:12px 0 18px}
+.notification-permission-banner p{margin:4px 0 0;color:var(--muted,#68708c)}
+.notifications-list{display:grid;gap:12px}
+.notification-row{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px;border:1px solid var(--border,#e8e1ff);border-radius:18px;background:var(--card,#fff)}
+.notification-row-icon{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;font-size:23px;background:linear-gradient(135deg,#f3ebff,#fff4fa)}
+.notification-row strong{display:block;line-height:1.25}.notification-row p{margin:4px 0 0;color:var(--muted,#69718c);font-size:13px}.notification-row time{font-weight:850;color:#7040e8;white-space:nowrap;text-align:right;font-size:12px}
+.notifications-empty{text-align:center;padding:38px 20px;border:1px dashed var(--border,#ddd4ff);border-radius:20px;color:var(--muted,#69718c)}
+.notifications-footer{padding-top:16px;text-align:center}.notifications-footer a{font-weight:800;color:#7040e8;text-decoration:none}
+.onboarding-steps{display:grid;grid-template-columns:1fr 1fr;gap:14px}.onboarding-steps label{display:grid;gap:7px;font-weight:800}.onboarding-steps textarea,.onboarding-steps input,.onboarding-steps select{width:100%}.onboarding-permission{grid-column:1/-1;display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:12px;padding:16px;border:1px solid var(--border,#e4dcff);border-radius:18px;background:rgba(124,60,255,.05)}.onboarding-permission input{width:22px;height:22px;margin-top:2px}.onboarding-permission span{display:grid;gap:3px}.onboarding-permission small{font-weight:500;color:var(--muted,#69718c)}
+
+@media (max-width:760px){
+  .topbar .top-actions{width:100%;display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:nowrap}
+  .topbar .auth-card{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:nowrap}
+  #logoutBtn{width:52px!important;height:52px!important;min-width:52px!important;padding:0!important;border-radius:50%!important;display:grid!important;place-items:center!important;font-size:0!important;line-height:1!important;overflow:hidden}
+  #logoutBtn::before{content:'↪';font-size:25px;line-height:1;display:block;transform:none;margin:0}
+  .mobile-quick-nav{grid-template-columns:repeat(5,minmax(0,1fr));align-items:stretch;padding:9px 11px calc(9px + env(safe-area-inset-bottom));gap:5px}
+  .mobile-quick-nav button,.mobile-quick-nav .mobile-nav-memory{height:67px!important;min-height:67px!important;transform:none!important;margin:0!important;top:auto!important;border-radius:19px!important;padding:6px 3px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;box-shadow:none!important}
+  .mobile-quick-nav button span{font-size:22px;line-height:1}.mobile-quick-nav button strong{font-size:11px;line-height:1.1;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-quick-nav .mobile-nav-memory{background:linear-gradient(135deg,#7a43ff,#ec59c5)!important;color:white!important;box-shadow:0 9px 22px rgba(117,68,242,.25)!important}
+  .notifications-card,.onboarding-card{width:calc(100vw - 18px);max-height:calc(100dvh - 34px);padding:20px 16px;border-radius:28px}
+  .notification-row{grid-template-columns:46px minmax(0,1fr);padding:12px}.notification-row time{grid-column:2;text-align:left;margin-top:-4px}.notification-row-icon{width:44px;height:44px}
+  .onboarding-steps{grid-template-columns:1fr}.onboarding-permission{grid-column:auto}.onboarding-card .dialog-actions{position:sticky;bottom:-20px;background:linear-gradient(transparent,var(--card,#fff) 20%);padding-top:25px}
+}

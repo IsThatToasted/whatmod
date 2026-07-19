@@ -4937,3 +4937,271 @@ async function deletePackingItem(id) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyWeTrackBrand);
   else applyWeTrackBrand();
 })();
+
+/* === WeTrack V1.2 mobile traveler roster reliability patch === */
+(function weTrackMobileTravelerRosterPatch(){
+  const BUILD = 'WeTrack V1.3.0 / V2.3.12-native-notifications-onboarding-2026-07-19';
+  function safeFirstName(value){
+    return String(value || 'Traveler').trim().split(/\s+/)[0] || 'Traveler';
+  }
+  function rosterMemberName(member){
+    try {
+      return safeFirstName(member?.display_name || (typeof memberLabel === 'function' ? memberLabel(member?.user_id || '') : '') || 'Traveler');
+    } catch (_) { return 'Traveler'; }
+  }
+  function rosterAvatar(member){
+    const name = rosterMemberName(member);
+    const avatar = member?.avatar_url || '';
+    return avatar
+      ? `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(name)} avatar">`
+      : `<span class="traveler-avatar-fallback">${escapeHtml(name.slice(0,1).toUpperCase())}</span>`;
+  }
+  function canonicalTravelerRoster(){
+    const roster = new Map();
+    try {
+      (members || []).forEach(member => {
+        if (member?.user_id) roster.set(member.user_id, member);
+      });
+    } catch (_) {}
+    /* Packing progress is a safe fallback when an older member row is temporarily stale. */
+    try {
+      (packingProgressByUser || []).forEach(progress => {
+        if (!progress?.user_id || roster.has(progress.user_id)) return;
+        roster.set(progress.user_id, {
+          user_id: progress.user_id,
+          display_name: progress.display_name || 'Traveler',
+          avatar_url: progress.avatar_url || '',
+          role: 'editor'
+        });
+      });
+    } catch (_) {}
+    try {
+      const uid = session?.user?.id;
+      if (uid && !roster.has(uid)) {
+        const meta = session.user.user_metadata || {};
+        roster.set(uid, {
+          user_id: uid,
+          display_name: meta.full_name || meta.name || session.user.email?.split('@')[0] || 'Traveler',
+          avatar_url: meta.avatar_url || meta.picture || '',
+          role: 'editor'
+        });
+      }
+    } catch (_) {}
+    return [...roster.values()].sort((a,b) => {
+      if (a.role === 'owner' && b.role !== 'owner') return -1;
+      if (b.role === 'owner' && a.role !== 'owner') return 1;
+      return rosterMemberName(a).localeCompare(rosterMemberName(b));
+    });
+  }
+  function repairTravelerStrip(){
+    const strip = document.getElementById('travelerStrip');
+    if (!strip || !activeTripId) return;
+    const roster = canonicalTravelerRoster();
+    if (!roster.length) return;
+    const firstFive = roster.slice(0,5);
+    strip.classList.remove('hidden');
+    strip.innerHTML = firstFive.map(member =>
+      `<button type="button" class="traveler-person" data-profile-user="${escapeHtml(member.user_id)}">${rosterAvatar(member)}<span>${escapeHtml(rosterMemberName(member))}</span></button>`
+    ).join('') + (roster.length > 5 ? '<button type="button" class="traveler-more" id="travelerMoreBtn">Show more</button>' : '');
+  }
+  const previousRender = render;
+  render = function weTrackRenderWithRosterRepair(){
+    previousRender?.();
+    requestAnimationFrame(repairTravelerStrip);
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) setTimeout(repairTravelerStrip, 80);
+  });
+  window.addEventListener('pageshow', () => setTimeout(repairTravelerStrip, 100));
+  setTimeout(repairTravelerStrip, 900);
+  setTimeout(repairTravelerStrip, 2200);
+
+  function updateBuildMarker(){
+    try {
+      document.documentElement.setAttribute('data-build', BUILD);
+      const badge = document.querySelector('.build-version-badge');
+      if (badge) badge.textContent = BUILD;
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', updateBuildMarker);
+  else updateBuildMarker();
+})();
+
+/* WeTrack V1.3 native/local event notifications + onboarding */
+(function installWeTrackNotificationsAndOnboarding(){
+  const NOTIF_PREF_KEY = 'wetrack.notificationPrefs.v1';
+  const ONBOARDING_KEY = 'wetrack.onboarding.v1.complete';
+  const nativeNotifications = window.webkit?.messageHandlers?.nativeNotifications;
+  let lastScheduleHash = '';
+  let scheduleTimer = null;
+  let nativePermission = 'unknown';
+
+  const $n = id => document.getElementById(id);
+  const defaults = { enabled:true, firstReminder:120, secondReminder:30, includeShared:true };
+  function readNotificationPrefs(){
+    try { return { ...defaults, ...(JSON.parse(localStorage.getItem(NOTIF_PREF_KEY) || '{}')) }; }
+    catch { return { ...defaults }; }
+  }
+  function writeNotificationPrefs(prefs){ localStorage.setItem(NOTIF_PREF_KEY, JSON.stringify({ ...defaults, ...prefs })); }
+  window.WeTrackNotificationSettings = { read:readNotificationPrefs, write:writeNotificationPrefs, refresh:queueNotificationRefresh };
+
+  function eventIcon(item){
+    const type = String(item?.item_type || 'event').toLowerCase();
+    return ({flight:'✈️',drive:'🚗',transit:'🚆',hotel:'🏨',lodging:'🏨',food:'🍽️',shopping:'🛍️',activity:'🎟️',sightseeing:'📍'})[type] || '📅';
+  }
+  function eventKind(item){
+    const type = String(item?.item_type || 'event').toLowerCase();
+    return ({flight:'Flight',drive:'Drive',transit:'Transit',hotel:'Hotel',lodging:'Hotel',food:'Meal',shopping:'Shopping trip',activity:'Activity',sightseeing:'Sightseeing'})[type] || 'Event';
+  }
+  function localEventDate(item){
+    if (!item?.item_date || !item?.start_time) return null;
+    const time = String(item.start_time).slice(0,5);
+    const date = new Date(`${item.item_date}T${time}:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  function reminderText(minutes){
+    const m = Number(minutes || 0);
+    if (m >= 1440 && m % 1440 === 0) return `${m/1440} day${m===1440?'':'s'}`;
+    if (m >= 60 && m % 60 === 0) return `${m/60} hour${m===60?'':'s'}`;
+    return `${m} minute${m===1?'':'s'}`;
+  }
+  function ownerFriendlyName(item){
+    if (!item?.assigned_to || item.assigned_to === session?.user?.id) return '';
+    return typeof memberLabel === 'function' ? memberLabel(item.assigned_to) : 'Traveler';
+  }
+  function notificationCopy(item, minutes){
+    const kind = eventKind(item);
+    const assignedName = ownerFriendlyName(item);
+    const heading = assignedName ? `${kind} for ${assignedName}` : `Your ${kind}`;
+    const title = String(item.title || kind).trim();
+    return {
+      title: heading,
+      body: `${title} is starting in ${reminderText(minutes)} — get ready!`
+    };
+  }
+  function allUpcomingReminders(){
+    const prefs = readNotificationPrefs();
+    if (!prefs.enabled || !session?.user || !activeTripId) return [];
+    const now = Date.now();
+    const max = now + 1000*60*60*24*120;
+    const offsets = [...new Set([Number(prefs.firstReminder),Number(prefs.secondReminder)].filter(n => Number.isFinite(n) && n > 0))].sort((a,b)=>b-a);
+    const result = [];
+    (items || []).forEach(item => {
+      const eventDate = localEventDate(item);
+      if (!eventDate || eventDate.getTime() <= now || eventDate.getTime() > max) return;
+      if (!prefs.includeShared && item.assigned_to && item.assigned_to !== session.user.id) return;
+      offsets.forEach(minutes => {
+        const fire = new Date(eventDate.getTime() - minutes*60000);
+        if (fire.getTime() <= now) return;
+        const copy = notificationCopy(item, minutes);
+        result.push({
+          id:`${activeTripId}:${item.id}:${minutes}`,
+          tripId:activeTripId,
+          itemId:item.id,
+          fireDate:fire.toISOString(),
+          eventDate:eventDate.toISOString(),
+          title:copy.title,
+          body:copy.body,
+          icon:eventIcon(item),
+          itemTitle:item.title || eventKind(item),
+          assignee:item.assigned_to || '',
+          minutesBefore:minutes
+        });
+      });
+    });
+    return result.sort((a,b)=>new Date(a.fireDate)-new Date(b.fireDate)).slice(0,96);
+  }
+  function scheduleHash(reminders){
+    return JSON.stringify(reminders.map(r=>[r.id,r.fireDate,r.title,r.body]));
+  }
+  function sendNative(action, payload={}){
+    try { nativeNotifications?.postMessage({ action, ...payload }); return !!nativeNotifications; }
+    catch (error) { console.warn('Native notification bridge failed', error); return false; }
+  }
+  function updateNotificationBadge(reminders){
+    const badge=$n('notificationBadge'); if(!badge) return;
+    const count=reminders.length;
+    badge.textContent=count>99?'99+':String(count);
+    badge.classList.toggle('hidden',!count);
+  }
+  function queueNotificationRefresh(){
+    clearTimeout(scheduleTimer);
+    scheduleTimer=setTimeout(refreshNotificationSchedule,650);
+  }
+  function refreshNotificationSchedule(force=false){
+    const reminders=allUpcomingReminders();
+    updateNotificationBadge(reminders);
+    renderNotificationCenter(reminders);
+    const hash=scheduleHash(reminders);
+    if (!force && hash===lastScheduleHash) return;
+    lastScheduleHash=hash;
+    if (nativeNotifications) sendNative('replaceSchedule',{ reminders });
+  }
+  function formatNotificationDate(iso){
+    const d=new Date(iso);
+    return d.toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  }
+  function renderNotificationCenter(reminders=allUpcomingReminders()){
+    const list=$n('notificationsList'); if(!list) return;
+    if(!reminders.length){ list.innerHTML='<div class="notifications-empty"><strong>No upcoming event reminders</strong><p>Add a start time to an event or adjust reminders in Settings.</p></div>'; return; }
+    list.innerHTML=reminders.map(r=>`<article class="notification-row"><div class="notification-row-icon">${r.icon}</div><div><strong>${escapeHtml(r.title)}</strong><p>${escapeHtml(r.body)}</p></div><time>${escapeHtml(formatNotificationDate(r.fireDate))}</time></article>`).join('');
+  }
+  function updatePermissionBanner(){
+    const banner=$n('notificationPermissionBanner'); if(!banner) return;
+    const browserDenied = !nativeNotifications && typeof Notification!=='undefined' && Notification.permission==='denied';
+    banner.classList.toggle('hidden', nativePermission==='authorized' || (!nativeNotifications && !browserDenied && typeof Notification!=='undefined' && Notification.permission==='granted'));
+  }
+  async function requestNotificationPermission(){
+    if (nativeNotifications) { sendNative('requestPermission'); return; }
+    if (typeof Notification !== 'undefined') {
+      try { nativePermission = await Notification.requestPermission()==='granted'?'authorized':'denied'; } catch { nativePermission='denied'; }
+      updatePermissionBanner();
+    }
+  }
+  window.WeTrackNativeNotifications = {
+    permissionChanged(status){ nativePermission=String(status||'unknown'); updatePermissionBanner(); if(nativePermission==='authorized') refreshNotificationSchedule(true); },
+    scheduleUpdated(){ /* intentionally quiet */ }
+  };
+
+  $n('notificationsBtn')?.addEventListener('click',()=>{
+    const reminders=allUpcomingReminders(); renderNotificationCenter(reminders); updatePermissionBanner(); $n('notificationsDialog')?.showModal();
+  });
+  $n('enableNotificationsBtn')?.addEventListener('click',requestNotificationPermission);
+
+  async function saveOnboarding(){
+    const name=($n('onboardingName')?.value||'').trim() || (typeof currentUserFirstName==='function'?currentUserFirstName():'Traveler');
+    const role=($n('onboardingRole')?.value||'Traveler').trim();
+    const foods=($n('onboardingFoods')?.value||'').trim();
+    const interests=($n('onboardingInterests')?.value||'').trim();
+    if(activeTripId && session?.user?.id){
+      const payload={ display_name:name, trip_role:role, favorite_foods:foods, favorite_activities:interests, personal_interests:interests };
+      const {data,error}=await client.from('itinerary_trip_members').update(payload).eq('trip_id',activeTripId).eq('user_id',session.user.id).select().maybeSingle();
+      if(!error && data) members=members.map(m=>m.user_id===session.user.id?data:m);
+      if(error) console.warn('Onboarding profile save failed',error);
+    }
+    if($n('onboardingNotifications')?.checked) requestNotificationPermission();
+    localStorage.setItem(ONBOARDING_KEY,'1');
+    $n('onboardingDialog')?.close();
+    try { render(); } catch {}
+  }
+  function maybeShowOnboarding(){
+    if(!session?.user || !activeTripId || localStorage.getItem(ONBOARDING_KEY)==='1') return;
+    const dialog=$n('onboardingDialog'); if(!dialog || dialog.open) return;
+    const current=(members||[]).find(m=>m.user_id===session.user.id);
+    if($n('onboardingName')) $n('onboardingName').value=current?.display_name||currentUserFirstName();
+    if($n('onboardingRole')) $n('onboardingRole').value=current?.trip_role||'Traveler';
+    if($n('onboardingFoods')) $n('onboardingFoods').value=current?.favorite_foods||'';
+    if($n('onboardingInterests')) $n('onboardingInterests').value=current?.favorite_activities||current?.personal_interests||'';
+    setTimeout(()=>{ if(!dialog.open) dialog.showModal(); },450);
+  }
+  $n('finishOnboardingBtn')?.addEventListener('click',saveOnboarding);
+  $n('skipOnboardingBtn')?.addEventListener('click',()=>{ localStorage.setItem(ONBOARDING_KEY,'1'); $n('onboardingDialog')?.close(); });
+
+  // Refresh only when relevant data has changed; the hash prevents redundant native scheduling.
+  const previousRender=window.render || render;
+  render=function patchedRenderWithNotifications(){ const out=previousRender?.(); queueNotificationRefresh(); setTimeout(maybeShowOnboarding,300); return out; };
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) queueNotificationRefresh(); });
+  window.addEventListener('focus',queueNotificationRefresh);
+  setInterval(()=>{ if(!document.hidden && session?.user && activeTripId) refreshNotificationSchedule(); },60000);
+  setTimeout(()=>{ updatePermissionBanner(); queueNotificationRefresh(); maybeShowOnboarding(); },1200);
+})();

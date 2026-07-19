@@ -491,3 +491,22 @@ https://cuhbzgeqvgzshwwfkpdm.supabase.co/auth/v1/callback
 ```
 
 Do not add the `wetrack://` URL to Google Cloud; Supabase receives Google's callback and then redirects into the app.
+
+## WeTrack V1.2 mobile polish
+- Restores the complete traveler roster on mobile using the trip-member roster with a packing-progress fallback.
+- Centers the trip title field on phones.
+- Optically centers and lowers the iOS start/end date text while retaining the two-column layout.
+- Cache version: `302`.
+
+
+## WeTrack V1.3 — Native event reminders and onboarding
+
+- Mobile logout icon and quick navigation alignment polished.
+- Added an Upcoming Notifications center generated from scheduled itinerary events.
+- Default event reminders are two hours and thirty minutes before each event.
+- Reminder timing and shared-event inclusion are adjustable in `settings.html`.
+- iOS wrapper now requests notification permission and schedules efficient local device notifications through `UNUserNotificationCenter`.
+- Added first-run onboarding for Traveler Passport basics and notification permission.
+- Reminder schedules are regenerated only when the event schedule/settings hash changes, minimizing work and avoiding Supabase writes.
+- Cache version: `303`.
+- Build marker: `WeTrack V1.3.0 / V2.3.12-native-notifications-onboarding-2026-07-19`.

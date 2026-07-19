@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=301" />
+  <link rel="stylesheet" href="./styles.css?v=303" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -52,7 +52,7 @@
         </div>
         <div class="top-actions">
           <div class="search-pill">🔎 <span>Search trips, activities...</span></div>
-          <button class="icon-btn" type="button" aria-label="Notifications">🔔</button>
+          <button id="notificationsBtn" class="icon-btn" type="button" aria-label="Upcoming notifications" title="Upcoming notifications">🔔<span id="notificationBadge" class="notification-badge hidden">0</span></button>
           <button id="funLockBtn" class="icon-btn fun-lock-btn hidden" type="button" aria-label="Fun Ideas" title="Fun Ideas">🔒</button>
           <div class="auth-card" id="authArea">
             <button id="googleBtn" class="ghost-btn">Continue with Google</button>
@@ -448,6 +448,35 @@
     </form>
   </dialog>
 
+  <dialog id="notificationsDialog" class="notifications-dialog">
+    <form method="dialog" class="dialog-card notifications-card">
+      <div class="notifications-head">
+        <div><p class="eyebrow">Trip reminders</p><h2>🔔 Upcoming Notifications</h2><p class="helper-text compact-help">Estimated device reminders generated from your upcoming events.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <div id="notificationPermissionBanner" class="notification-permission-banner hidden">
+        <div><strong>Enable device notifications</strong><p>Allow WeTrack to remind you before events.</p></div>
+        <button id="enableNotificationsBtn" type="button">Enable</button>
+      </div>
+      <div id="notificationsList" class="notifications-list"></div>
+      <div class="notifications-footer"><a href="./settings.html#notifications">Adjust reminder times in Settings →</a></div>
+    </form>
+  </dialog>
+
+  <dialog id="onboardingDialog" class="onboarding-dialog">
+    <form method="dialog" class="dialog-card onboarding-card">
+      <div class="onboarding-head"><div><p class="eyebrow">Welcome to WeTrack</p><h2>Let’s personalize your traveler profile</h2><p class="helper-text">This helps your trip partners plan activities everyone will enjoy.</p></div></div>
+      <div class="onboarding-steps">
+        <label>First name<input id="onboardingName" maxlength="60" autocomplete="given-name" /></label>
+        <label>Trip role<select id="onboardingRole"><option>Traveler</option><option>Planner</option><option>Driver</option><option>Passenger</option><option>Parent</option><option>Photographer</option><option>Food Scout</option><option>Budget Keeper</option></select></label>
+        <label>Favorite foods<textarea id="onboardingFoods" rows="2" placeholder="Coffee, seafood, pizza, ice cream..."></textarea></label>
+        <label>Favorite activities / interests<textarea id="onboardingInterests" rows="3" placeholder="Beaches, museums, shopping, hiking..."></textarea></label>
+        <label class="onboarding-permission"><input id="onboardingNotifications" type="checkbox" checked /><span><strong>Event reminders</strong><small>Get reminders before flights, drives, reservations, and other scheduled events.</small></span></label>
+      </div>
+      <div class="dialog-actions"><button id="skipOnboardingBtn" type="button" class="ghost-btn">Skip for now</button><button id="finishOnboardingBtn" type="button">Save & Continue</button></div>
+    </form>
+  </dialog>
+
   <template id="itemTemplate">
     <article class="item-card" draggable="true">
       <div class="card-face card-front">
@@ -466,6 +495,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=301"></script>
+  <script src="./app.js?v=303"></script>
 </body>
 </html>

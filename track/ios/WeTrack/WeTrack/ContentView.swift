@@ -1,6 +1,7 @@
 import SwiftUI
 import WebKit
 import AuthenticationServices
+import UserNotifications
 
 struct ContentView: View {
     var body: some View {
@@ -18,9 +19,11 @@ struct WeTrackWebView: UIViewRepresentable {
         config.defaultWebpagePreferences.allowsContentJavaScript = true
         config.websiteDataStore = .default()
         config.userContentController.add(context.coordinator, name: "nativeAuth")
+        config.userContentController.add(context.coordinator, name: "nativeNotifications")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         context.coordinator.webView = webView
+        UNUserNotificationCenter.current().delegate = context.coordinator
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
@@ -33,25 +36,95 @@ struct WeTrackWebView: UIViewRepresentable {
 
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "nativeAuth")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "nativeNotifications")
         coordinator.authSession?.cancel()
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, ASWebAuthenticationPresentationContextProviding {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, ASWebAuthenticationPresentationContextProviding, UNUserNotificationCenterDelegate {
         weak var webView: WKWebView?
         var authSession: ASWebAuthenticationSession?
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            guard message.name == "nativeAuth",
-                  let body = message.body as? [String: Any],
-                  let action = body["action"] as? String,
-                  action == "googleOAuth",
-                  let urlString = body["url"] as? String,
-                  let authURL = URL(string: urlString) else {
+            guard let body = message.body as? [String: Any],
+                  let action = body["action"] as? String else { return }
+
+            if message.name == "nativeAuth",
+               action == "googleOAuth",
+               let urlString = body["url"] as? String,
+               let authURL = URL(string: urlString) {
+                startAuthentication(url: authURL)
                 return
             }
-            startAuthentication(url: authURL)
+
+            if message.name == "nativeNotifications" {
+                switch action {
+                case "requestPermission":
+                    requestNotificationPermission()
+                case "replaceSchedule":
+                    let reminders = body["reminders"] as? [[String: Any]] ?? []
+                    replaceNotificationSchedule(reminders)
+                default:
+                    break
+                }
+            }
+        }
+
+        private func requestNotificationPermission() {
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in
+                DispatchQueue.main.async {
+                    self?.sendNotificationPermission(granted ? "authorized" : "denied")
+                }
+            }
+        }
+
+        private func replaceNotificationSchedule(_ reminders: [[String: Any]]) {
+            let center = UNUserNotificationCenter.current()
+            let identifiers = reminders.compactMap { $0["id"] as? String }
+            center.getPendingNotificationRequests { [weak self] pending in
+                let weTrackIds = pending.map(\.identifier).filter { $0.hasPrefix("wetrack:") }
+                center.removePendingNotificationRequests(withIdentifiers: weTrackIds)
+
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let fallbackFormatter = ISO8601DateFormatter()
+                fallbackFormatter.formatOptions = [.withInternetDateTime]
+                let calendar = Calendar.current
+                let group = DispatchGroup()
+
+                for reminder in reminders.prefix(96) {
+                    guard let rawId = reminder["id"] as? String,
+                          let fireDateString = reminder["fireDate"] as? String,
+                          let fireDate = formatter.date(from: fireDateString) ?? fallbackFormatter.date(from: fireDateString),
+                          fireDate.timeIntervalSinceNow > 1 else { continue }
+
+                    let content = UNMutableNotificationContent()
+                    content.title = reminder["title"] as? String ?? "Upcoming trip event"
+                    content.body = reminder["body"] as? String ?? "An event is coming up soon."
+                    content.sound = .default
+                    content.userInfo = [
+                        "tripId": reminder["tripId"] as? String ?? "",
+                        "itemId": reminder["itemId"] as? String ?? ""
+                    ]
+                    let components = calendar.dateComponents([.year,.month,.day,.hour,.minute,.second], from: fireDate)
+                    let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+                    let request = UNNotificationRequest(identifier: "wetrack:\(rawId)", content: content, trigger: trigger)
+                    group.enter()
+                    center.add(request) { _ in group.leave() }
+                }
+
+                group.notify(queue: .main) {
+                    self?.webView?.evaluateJavaScript("window.WeTrackNativeNotifications && window.WeTrackNativeNotifications.scheduleUpdated();")
+                }
+                _ = identifiers
+            }
+        }
+
+        private func sendNotificationPermission(_ status: String) {
+            guard let webView else { return }
+            let value = Self.javascriptString(status)
+            webView.evaluateJavaScript("window.WeTrackNativeNotifications && window.WeTrackNativeNotifications.permissionChanged(\(value));")
         }
 
         private func startAuthentication(url: URL) {
@@ -106,6 +179,11 @@ struct WeTrackWebView: UIViewRepresentable {
                 .compactMap { $0 as? UIWindowScene }
                 .flatMap(\.windows)
                 .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+        }
+
+
+        func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+            completionHandler([.banner, .sound, .badge])
         }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {

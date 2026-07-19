@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack Settings</title>
-  <link rel="stylesheet" href="./styles.css?v=238" />
+  <link rel="stylesheet" href="./styles.css?v=303" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="settings-page">
@@ -77,6 +77,24 @@
         </form>
       </article>
 
+
+      <article class="settings-card" id="notifications">
+        <h2>Event Notifications</h2>
+        <p>Schedule local reminders from event start times. These are generated on your device and do not require repeated database writes.</p>
+        <form class="settings-form">
+          <label class="settings-toggle"><span>Enable event reminders</span><input id="notificationsEnabled" type="checkbox" checked /></label>
+          <label>First reminder
+            <select id="firstReminder"><option value="1440">1 day before</option><option value="240">4 hours before</option><option value="120" selected>2 hours before</option><option value="60">1 hour before</option></select>
+          </label>
+          <label>Second reminder
+            <select id="secondReminder"><option value="60">1 hour before</option><option value="30" selected>30 minutes before</option><option value="15">15 minutes before</option><option value="5">5 minutes before</option></select>
+          </label>
+          <label class="settings-toggle"><span>Include shared events assigned to other travelers</span><input id="includeSharedNotifications" type="checkbox" checked /></label>
+          <button id="requestNotificationPermissionBtn" type="button" class="ghost-btn">Enable device notifications</button>
+          <p id="notificationPermissionStatus" class="settings-status"></p>
+        </form>
+      </article>
+
       <article class="settings-card danger-zone">
         <h2>Local Data</h2>
         <p>This only clears local browser preferences/cache on this device. It does not delete trips from Supabase.</p>
@@ -97,6 +115,7 @@ const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_K
 const PREF_KEY = 'itineraryTrackerV2.settings';
 const $ = id => document.getElementById(id);
 const fields = ['appTheme','weatherUnit','timelineDensity','reduceMotion','defaultDayStart','defaultDayEnd','defaultMpg','defaultGasPrice','showTravelDefault','showLiveToasts','mobileLongPress'];
+const NOTIF_PREF_KEY='wetrack.notificationPrefs.v1';
 function firstName(meta = {}, fallback = 'Traveler') { return String(meta.full_name || meta.name || meta.display_name || fallback || 'Traveler').trim().split(/\s+/)[0] || 'Traveler'; }
 function readPrefs(){ try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch { return {}; } }
 function applyThemeSetting(theme){
@@ -109,10 +128,11 @@ function writePrefs(){
   const data = {};
   fields.forEach(id => { const el = $(id); if (!el) return; data[id] = el.type === 'checkbox' ? el.checked : el.value; });
   localStorage.setItem(PREF_KEY, JSON.stringify(data));
+  localStorage.setItem(NOTIF_PREF_KEY, JSON.stringify({enabled:$('notificationsEnabled')?.checked!==false,firstReminder:Number($('firstReminder')?.value||120),secondReminder:Number($('secondReminder')?.value||30),includeShared:$('includeSharedNotifications')?.checked!==false}));
   applyThemeSetting(data.appTheme || 'purple');
   $('settingsStatus').textContent = 'Settings saved on this device.';
 }
-function loadPrefs(){ const p = readPrefs(); if (!p.appTheme) p.appTheme = localStorage.getItem('itineraryTrackerV2.theme') || 'purple'; fields.forEach(id => { const el = $(id); if (!el || p[id] === undefined) return; if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id]; }); applyThemeSetting(p.appTheme || 'purple'); }
+function loadPrefs(){ const p = readPrefs(); if (!p.appTheme) p.appTheme = localStorage.getItem('itineraryTrackerV2.theme') || 'purple'; fields.forEach(id => { const el = $(id); if (!el || p[id] === undefined) return; if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id]; }); applyThemeSetting(p.appTheme || 'purple'); try { const n={enabled:true,firstReminder:120,secondReminder:30,includeShared:true,...JSON.parse(localStorage.getItem(NOTIF_PREF_KEY)||'{}')}; if($('notificationsEnabled')) $('notificationsEnabled').checked=n.enabled!==false; if($('firstReminder')) $('firstReminder').value=String(n.firstReminder); if($('secondReminder')) $('secondReminder').value=String(n.secondReminder); if($('includeSharedNotifications')) $('includeSharedNotifications').checked=n.includeShared!==false; } catch {} }
 async function loadProfile(){
   const { data } = await client.auth.getSession();
   const user = data?.session?.user;
@@ -123,6 +143,14 @@ async function loadProfile(){
   const avatar = meta.avatar_url || meta.picture;
   if (avatar) $('profileAvatarWrap').outerHTML = `<img src="${avatar}" alt="Profile avatar" />`;
 }
+
+const nativeNotifications = window.webkit?.messageHandlers?.nativeNotifications;
+window.WeTrackNativeNotifications={permissionChanged(status){ $('notificationPermissionStatus').textContent=status==='authorized'?'Device notifications are enabled.':status==='denied'?'Notifications are disabled in iOS Settings.':'Notification permission: '+status; }};
+$('requestNotificationPermissionBtn')?.addEventListener('click', async ()=>{
+  if(nativeNotifications){ nativeNotifications.postMessage({action:'requestPermission'}); return; }
+  if(typeof Notification!=='undefined'){ const result=await Notification.requestPermission(); $('notificationPermissionStatus').textContent=result==='granted'?'Browser notifications are enabled.':'Notifications were not enabled.'; }
+});
+
 $('saveSettingsBtn').addEventListener('click', writePrefs);
 $('clearLocalBtn').addEventListener('click', () => { localStorage.removeItem(PREF_KEY); sessionStorage.clear(); $('settingsStatus').textContent = 'Local settings/cache cleared on this device.'; loadPrefs(); });
 $('settingsLogoutBtn').addEventListener('click', async () => { await client.auth.signOut(); location.href = './'; });
