@@ -4845,3 +4845,21 @@ async function deletePackingItem(id) {
     try { window.openFunIdeasDialog = openFunIdeasDialog; } catch (_) {}
   }
 })();
+
+
+/* === WeTrack V1.0 rebrand/iOS handoff marker === */
+(function weTrackBrandBuildMarker(){
+  const BUILD = 'WeTrack V1.0.0 / V2.3.10-rebrand-ios-2026-07-19';
+  try { document.documentElement.setAttribute('data-build', BUILD); } catch (_) {}
+  function applyWeTrackBrand(){
+    try { document.title = 'WeTrack'; } catch (_) {}
+    try {
+      const badge = document.querySelector('.build-version-badge') || document.createElement('div');
+      badge.className = 'build-version-badge';
+      badge.textContent = BUILD;
+      if (!badge.parentNode) document.body.appendChild(badge);
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyWeTrackBrand);
+  else applyWeTrackBrand();
+})();

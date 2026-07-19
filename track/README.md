@@ -1,3 +1,68 @@
+# WeTrack — V1.0 Rebrand + iOS Wrapper Checkpoint
+
+This build rebrands the current ItineraryTrackerV2.3 app to **WeTrack** while preserving the existing GitHub Pages + Supabase app under `/track`.
+
+Build marker: `WeTrack V1.0.0 / V2.3.10-rebrand-ios-2026-07-19` / cache version `v=300`.
+
+## Web deployment
+
+Upload the contents of this ZIP into your existing `whatmod` repo under the `track/` folder, preserving the existing path so the web app remains available at:
+
+```text
+https://whatmod.com/track
+```
+
+The Supabase URL, public key, database tables, license gates, maps, memories, Fun Ideas, shopping lists, and current app features are preserved.
+
+## iOS app wrapper
+
+This checkpoint adds a native iOS wrapper under:
+
+```text
+ios/WeTrack
+```
+
+The iOS app uses SwiftUI + WKWebView to load the live web app at `https://whatmod.com/track/`. That means the iOS app can be shipped without duplicating the existing Supabase/web logic. The web app remains the source of truth, and future web updates continue to work inside the iOS app.
+
+## GitHub Actions IPA build
+
+A starter workflow is included for your repo root at:
+
+```text
+repo-root/.github/workflows/ios-ipa.yml
+```
+
+Copy the contents of the `repo-root/` folder into the root of your `whatmod` repository. The workflow expects the iOS project to live at `track/ios/WeTrack/WeTrack.xcodeproj`, which matches this ZIP once the web files are uploaded into the `track/` folder.
+
+To build a real installable IPA, add these GitHub repository secrets:
+
+- `APPLE_CERTIFICATE_BASE64` — base64 encoded `.p12` signing certificate
+- `P12_PASSWORD` — password for the `.p12` certificate
+- `PROVISIONING_PROFILE_BASE64` — base64 encoded `.mobileprovision` profile
+- `APPLE_TEAM_ID` — your Apple Developer Team ID
+- `IOS_BUNDLE_ID` — usually `com.whatmod.wetrack`
+
+Then run the **Build WeTrack iOS IPA** workflow manually from GitHub Actions.
+
+## Local license key generator
+
+The existing license generator remains in:
+
+```text
+tools/license_key_generator.py
+tools/run_license_generator_windows.bat
+```
+
+Use it to generate SQL commands for Supabase license keys and user entitlements.
+
+## Notes
+
+- No schema change is required for this rebrand/iOS wrapper patch.
+- Keep existing `schema.sql` for full project setup/recovery.
+- The iOS wrapper is intentionally thin so it does not risk breaking the live web app.
+
+---
+
 # ItineraryTrackerV2.3.2 UI Redesign
 
 Production UI redesign checkpoint based on the latest stable V2.2 licensing/mobile-layout build.
