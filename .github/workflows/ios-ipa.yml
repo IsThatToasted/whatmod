@@ -1,84 +1,80 @@
-name: Build WeTrack iOS IPA
+name: Build WeTrack Unsigned IPA
 
 on:
   workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'App artifact name'
+        required: false
+        default: 'WeTrack'
+      bundle_id:
+        description: 'Bundle identifier used for the unsigned build. Sideloadly can resign it locally.'
+        required: false
+        default: 'com.whatmod.wetrack'
 
 jobs:
-  build-ios:
-    runs-on: macos-latest
+  build-unsigned-ipa:
+    name: Build unsigned IPA for Sideloadly
+    runs-on: macos-15
     env:
       PROJECT_PATH: track/ios/WeTrack/WeTrack.xcodeproj
       SCHEME: WeTrack
-      BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID || 'com.whatmod.wetrack' }}
-      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      CONFIGURATION: Release
+      DERIVED_DATA: build/DerivedData
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Import signing certificate
-        if: ${{ secrets.APPLE_CERTIFICATE_BASE64 != '' }}
-        env:
-          CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ github.run_id }}-wetrack
-        run: |
-          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
+      - name: Show Xcode version
+        run: xcodebuild -version
 
-      - name: Install provisioning profile
-        if: ${{ secrets.PROVISIONING_PROFILE_BASE64 != '' }}
-        env:
-          PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+      - name: Validate project path
         run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo -n "$PROFILE_BASE64" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/wetrack.mobileprovision
+          if [ ! -d "$PROJECT_PATH" ]; then
+            echo "Could not find Xcode project at: $PROJECT_PATH"
+            echo "This workflow expects the iOS wrapper to live at track/ios/WeTrack/."
+            echo "If your repo layout is different, edit PROJECT_PATH in this workflow."
+            exit 1
+          fi
 
-      - name: Create ExportOptions.plist
+      - name: Build unsigned iPhone app
         run: |
-          cat > ExportOptions.plist <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>ad-hoc</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>teamID</key>
-            <string>${TEAM_ID}</string>
-          </dict>
-          </plist>
-          PLIST
-
-      - name: Archive
-        run: |
-          xcodebuild archive \
+          xcodebuild build \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME" \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$PWD/build/WeTrack.xcarchive" \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
-            CODE_SIGN_STYLE=Automatic
+            -configuration "$CONFIGURATION" \
+            -sdk iphoneos \
+            -derivedDataPath "$DERIVED_DATA" \
+            PRODUCT_BUNDLE_IDENTIFIER="${{ github.event.inputs.bundle_id }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
 
-      - name: Export IPA
+      - name: Package unsigned IPA
         run: |
-          xcodebuild -exportArchive \
-            -archivePath "$PWD/build/WeTrack.xcarchive" \
-            -exportPath "$PWD/build/export" \
-            -exportOptionsPlist ExportOptions.plist
+          APP_PATH=$(find "$DERIVED_DATA/Build/Products/${CONFIGURATION}-iphoneos" -maxdepth 1 -name "*.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app bundle found. Build output:"
+            find "$DERIVED_DATA/Build/Products" -maxdepth 3 -type d || true
+            exit 1
+          fi
 
-      - name: Upload IPA
+          rm -rf build/Payload build/ipa
+          mkdir -p build/Payload build/ipa
+          cp -R "$APP_PATH" build/Payload/
+          (cd build && zip -qry "ipa/${{ github.event.inputs.app_name }}-unsigned.ipa" Payload)
+          echo "Created unsigned IPA: build/ipa/${{ github.event.inputs.app_name }}-unsigned.ipa"
+
+      - name: Upload unsigned IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WeTrack-IPA
-          path: build/export/*.ipa
+          name: ${{ github.event.inputs.app_name }}-unsigned-ipa
+          path: build/ipa/*.ipa
+          if-no-files-found: error
+
+      - name: Upload raw .app bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.app_name }}-app-bundle
+          path: build/Payload/*.app
+          if-no-files-found: warn
