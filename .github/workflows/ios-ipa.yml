@@ -59,11 +59,31 @@ jobs:
             exit 1
           fi
 
+          echo "Checking generated Info.plist:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist"
+
           rm -rf build/Payload build/ipa
           mkdir -p build/Payload build/ipa
           cp -R "$APP_PATH" build/Payload/
           (cd build && zip -qry "ipa/${{ github.event.inputs.app_name }}-unsigned.ipa" Payload)
           echo "Created unsigned IPA: build/ipa/${{ github.event.inputs.app_name }}-unsigned.ipa"
+
+      - name: Validate IPA bundle metadata
+        run: |
+          TMPDIR=$(mktemp -d)
+          unzip -q build/ipa/*.ipa -d "$TMPDIR"
+          APP_PLIST=$(find "$TMPDIR/Payload" -maxdepth 2 -name Info.plist | head -n 1)
+          if [ -z "$APP_PLIST" ]; then
+            echo "IPA is missing Payload/*.app/Info.plist"
+            exit 1
+          fi
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PLIST" 2>/dev/null || true)
+          if [ -z "$BUNDLE_ID" ]; then
+            echo "IPA Info.plist is missing CFBundleIdentifier. Sideloadly will fail."
+            exit 1
+          fi
+          echo "IPA bundle identifier: $BUNDLE_ID"
 
       - name: Upload unsigned IPA artifact
         uses: actions/upload-artifact@v4
