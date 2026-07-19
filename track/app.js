@@ -4945,7 +4945,7 @@ async function deletePackingItem(id) {
 
 /* === WeTrack V1.2 mobile traveler roster reliability patch === */
 (function weTrackMobileTravelerRosterPatch(){
-  const BUILD = 'WeTrack V1.7.0 / desktop-header-cleanup-2026-07-19';
+  const BUILD = 'WeTrack V1.8.0 / desktop-header-cleanup-2026-07-19';
   function safeFirstName(value){
     return String(value || 'Traveler').trim().split(/\s+/)[0] || 'Traveler';
   }
@@ -5269,21 +5269,63 @@ async function deletePackingItem(id) {
       onboarding_completed:true,
       updated_at:new Date().toISOString()
     };
+    let persistentProfileSaved = false;
+    let tripMemberSaved = false;
+    let profileSaveError = null;
+
+    // Prefer the account-wide profile so onboarding stays completed across devices.
+    // Older deployments may not have this table yet, so failure here must not block
+    // saving the Traveler Passport data to the active trip.
     try {
       const { error:profileError } = await client
         .from('itinerary_user_profiles')
         .upsert(profilePayload,{onConflict:'user_id'});
       if(profileError) throw profileError;
+      persistentProfileSaved = true;
     } catch(error) {
-      console.warn('Persistent onboarding save failed.',error);
-      if(typeof showToast==='function') showToast('Could not save onboarding profile. Please try again.','error');
-      return;
+      profileSaveError = error;
+      console.warn('Account-wide onboarding profile save unavailable; using trip profile fallback.', error);
     }
+
     if(activeTripId){
-      const memberPayload={ display_name:name, trip_role:role, favorite_foods:foods, favorite_activities:interests, personal_interests:interests };
-      const {data,error}=await client.from('itinerary_trip_members').update(memberPayload).eq('trip_id',activeTripId).eq('user_id',session.user.id).select().maybeSingle();
-      if(!error && data) members=members.map(m=>m.user_id===session.user.id?data:m);
-      if(error) console.warn('Trip member profile sync failed',error);
+      const memberPayload={
+        display_name:name,
+        trip_role:role,
+        favorite_foods:foods,
+        favorite_activities:interests,
+        personal_interests:interests,
+        onboarding_completed:true
+      };
+      let result = await client.from('itinerary_trip_members')
+        .update(memberPayload)
+        .eq('trip_id',activeTripId)
+        .eq('user_id',session.user.id)
+        .select()
+        .maybeSingle();
+
+      // Compatibility fallback for databases that have not added the
+      // onboarding_completed column to itinerary_trip_members yet.
+      if(result.error && /onboarding_completed|column/i.test(String(result.error.message || ''))){
+        const legacyPayload={ display_name:name, trip_role:role, favorite_foods:foods, favorite_activities:interests, personal_interests:interests };
+        result = await client.from('itinerary_trip_members')
+          .update(legacyPayload)
+          .eq('trip_id',activeTripId)
+          .eq('user_id',session.user.id)
+          .select()
+          .maybeSingle();
+      }
+      if(!result.error && result.data){
+        tripMemberSaved = true;
+        members=members.map(m=>m.user_id===session.user.id?{...m,...result.data,onboarding_completed:true}:m);
+      } else if(result.error) {
+        console.warn('Trip member profile sync failed',result.error);
+      }
+    }
+
+    if(!persistentProfileSaved && !tripMemberSaved){
+      console.warn('Onboarding could not be saved to either profile store.', profileSaveError);
+      if(typeof showToast==='function') showToast('Could not save your traveler profile. Check your connection and try again.','error');
+      return;
     }
     if($n('onboardingNotifications')?.checked) requestNotificationPermission();
     onboardingCompletedRemote=true;
@@ -5292,6 +5334,7 @@ async function deletePackingItem(id) {
     onboardingSkippedThisSession=false;
     localStorage.setItem(onboardingStorageKey(),'1');
     $n('onboardingDialog')?.close();
+    if(typeof showToast==='function') showToast(persistentProfileSaved ? 'Traveler profile saved' : 'Traveler profile saved for this trip', 'success');
     try { render(); } catch {}
   }
 

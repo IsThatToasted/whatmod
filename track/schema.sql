@@ -1551,3 +1551,11 @@ create policy "users update own traveler profile"
 on public.itinerary_user_profiles for update
 to authenticated using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+
+-- WeTrack V1.8: onboarding completion fallback on trip membership
+alter table public.itinerary_trip_members
+  add column if not exists onboarding_completed boolean not null default false;
+
+comment on column public.itinerary_trip_members.onboarding_completed is
+  'True after this traveler completes and saves onboarding for the trip.';
