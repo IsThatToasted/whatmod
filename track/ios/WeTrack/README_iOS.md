@@ -1,33 +1,40 @@
 # WeTrack iOS Wrapper
 
-This is a thin SwiftUI + WKWebView iOS wrapper for the live WeTrack web app at:
+This is a thin native iOS wrapper around the live web app at:
+
+`https://whatmod.com/track/`
+
+## Recommended sideload workflow
+
+The included GitHub Actions workflow builds an **unsigned IPA**. This is intentional for Sideloadly: download the IPA artifact, then let Sideloadly sign/install it locally with your Apple ID, such as `Toasted3@icloud.com`.
+
+No Apple certificate/provisioning-profile GitHub secrets are required for this unsigned workflow.
+
+## Repo layout expected by GitHub Actions
+
+The workflow expects this folder structure in your main `whatmod` repo:
 
 ```text
-https://whatmod.com/track/
+whatmod/
+  .github/workflows/ios-ipa.yml
+  track/
+    index.html
+    settings.html
+    ios/WeTrack/WeTrack.xcodeproj
 ```
 
-The web app remains hosted in the main `whatmod` repo under `/track`, so your Supabase logic and feature updates stay centralized.
+If your Xcode project lives somewhere else, edit `PROJECT_PATH` in `.github/workflows/ios-ipa.yml`.
 
-## Bundle ID
+## Building
 
-Default bundle ID:
+1. Push the workflow to `.github/workflows/ios-ipa.yml` at the root of the repo.
+2. Go to GitHub → Actions → **Build WeTrack Unsigned IPA**.
+3. Click **Run workflow**.
+4. Download the `WeTrack-unsigned-ipa` artifact.
+5. Open Sideloadly and install the unsigned IPA using your Apple ID.
 
-```text
-com.whatmod.wetrack
-```
+## Notes
 
-You can override it in GitHub Actions using the `IOS_BUNDLE_ID` secret.
-
-## Permissions
-
-The app includes camera/photo usage descriptions so the web app memory upload flow can use camera/photo picker in WKWebView.
-
-## Building an IPA
-
-Use the included workflow:
-
-```text
-.github/workflows/ios-ipa.yml
-```
-
-A real installable IPA requires Apple signing secrets.
+- The app loads the live GitHub Pages site, so updating `/track` updates the app content.
+- Some camera/photo features require HTTPS; `whatmod.com/track` is fine.
+- iOS WebView behavior may differ slightly from Safari. Test Add Memory, login, maps, and modals on device.

@@ -444,3 +444,13 @@ This build hardens Fun Ideas reaction sliders:
 Run `schema.sql` once after deploying to ensure `trip_fun_reactions`, the save RPC, RLS policies, indexes, and Realtime publication are in place.
 
 Build marker: `V2.3.8-live-reactions-2026-07-14`
+
+## iOS unsigned IPA workflow fix
+
+This package includes a corrected workflow at:
+
+`repo-root/.github/workflows/ios-ipa.yml`
+
+It builds an unsigned IPA for Sideloadly and does **not** require Apple signing secrets. Copy `repo-root/.github` to the root of your `whatmod` repo. The app still lives under `/track`.
+
+Use Sideloadly locally with your Apple ID, for example `Toasted3@icloud.com`, to sign/install the generated unsigned IPA.
