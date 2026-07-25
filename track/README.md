@@ -1,4 +1,9 @@
-# WeTrack — V1.0 Rebrand + iOS Wrapper Checkpoint
+# WeTrack V2.0 Production
+
+Build marker: `WeTrack V2.0.0 Production / production-audit-2026-07-25` · cache `v400`.
+
+This consolidated release repairs Trip Details editing, hardens the unsigned iOS build workflow, and includes a repeatable production audit and deployment checklist. Read `AUDIT_REPORT.md` and `DEPLOYMENT_CHECKLIST.md` before deployment.
+
 
 This build rebrands the current ItineraryTrackerV2.3 app to **WeTrack** while preserving the existing GitHub Pages + Supabase app under `/track`.
 

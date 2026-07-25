@@ -4565,3 +4565,22 @@ dialog{
   .topbar.topbar-actions-only #logoutBtn{font-size:0!important}
   .topbar.topbar-actions-only #logoutBtn .logout-icon{display:block!important;width:21px!important;height:21px!important}
 }
+
+
+/* === WeTrack V2.0 Production: reliable Trip Details editing === */
+.edit-chip {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--accent, #7c5cff) 28%, transparent);
+  background: color-mix(in srgb, var(--accent, #7c5cff) 10%, transparent);
+  color: inherit;
+  border-radius: 999px;
+  padding: .45rem .75rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.edit-chip:hover, .edit-chip:focus-visible { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(60,45,110,.12); }
+#detailsDestination, #detailsStart, #detailsEnd { cursor: pointer; }
+.trip-hero.trip-edit-highlight { outline: 3px solid color-mix(in srgb, var(--accent, #7c5cff) 45%, transparent); outline-offset: 4px; animation: tripEditPulse .8s ease; }
+@keyframes tripEditPulse { 0% { transform: scale(.995); } 55% { transform: scale(1.004); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .trip-hero.trip-edit-highlight { animation: none; } }

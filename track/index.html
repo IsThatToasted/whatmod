@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=307" />
+  <link rel="stylesheet" href="./styles.css?v=400" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -205,7 +205,7 @@
             </section>
 
             <section class="details-panel glass">
-              <div class="panel-head compact"><h2>Trip Details</h2><span class="edit-chip">✏️ Edit</span></div>
+              <div class="panel-head compact"><h2>Trip Details</h2><button id="editTripDetailsBtn" class="edit-chip" type="button" aria-label="Edit trip details">✏️ Edit</button></div>
               <dl>
                 <dt>Destination</dt><dd id="detailsDestination">—</dd>
                 <dt>Start Date</dt><dd id="detailsStart">—</dd>
@@ -491,6 +491,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=307"></script>
+  <script src="./app.js?v=400"></script>
 </body>
 </html>
