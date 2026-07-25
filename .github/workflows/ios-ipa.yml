@@ -21,9 +21,10 @@ jobs:
       SCHEME: WeTrack
       CONFIGURATION: Release
       DERIVED_DATA: build/DerivedData
+      HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -38,17 +39,36 @@ jobs:
           fi
 
       - name: Build unsigned iPhone app
+        shell: bash
         run: |
-          xcodebuild build \
+          set -o pipefail
+          mkdir -p build/logs
+          xcodebuild clean build \
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME" \
             -configuration "$CONFIGURATION" \
             -sdk iphoneos \
+            -destination "generic/platform=iOS" \
             -derivedDataPath "$DERIVED_DATA" \
             PRODUCT_BUNDLE_IDENTIFIER="${{ github.event.inputs.bundle_id }}" \
+            MARKETING_VERSION="2.0.0" \
+            CURRENT_PROJECT_VERSION="200" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
+            CODE_SIGN_IDENTITY="" \
+            | tee build/logs/xcodebuild.log
+
+
+      - name: Upload Xcode diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WeTrack-xcode-diagnostics
+          path: |
+            build/logs/xcodebuild.log
+            build/DerivedData/Logs
+          if-no-files-found: warn
 
       - name: Package unsigned IPA
         run: |
