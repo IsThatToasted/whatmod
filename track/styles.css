@@ -4707,3 +4707,64 @@ dialog{
   .timeline-origin-ghost,.timeline-drop-slot{left:44px!important;right:0!important}
   .timeline-drag-time-badge{transform:translateX(-55%);margin-left:-16px}
 }
+
+
+/* === WeTrack V2.3: signed-out navigation cleanup + total expense === */
+.metric.total-expense::before{content:'∑';background:linear-gradient(135deg,#fff1cf,#ffe1ef);color:#7547bd;font-weight:900}
+.metric.total-expense{background:linear-gradient(145deg,rgba(255,251,239,.92),rgba(255,241,249,.88))!important}
+
+/* The signed-out state must win over older mobile !important display rules. */
+body.auth-signed-out #licensePlanBadge,
+body.auth-signed-out #notificationsBtn,
+body.auth-signed-out #funLockBtn,
+body.auth-signed-out #avatarFunBtn,
+body.auth-signed-out #logoutBtn,
+body.auth-signed-out .email-login,
+body.auth-signed-out .search-pill,
+body.auth-signed-out .mobile-quick-nav{
+  display:none!important;
+}
+body.auth-signed-out .topbar.topbar-actions-only{
+  min-height:0!important;
+  margin-bottom:14px!important;
+  padding:10px 0!important;
+}
+body.auth-signed-out .topbar.topbar-actions-only .top-actions{
+  width:100%!important;
+  justify-content:flex-end!important;
+  padding:0!important;
+}
+body.auth-signed-out .topbar.topbar-actions-only .auth-card{
+  display:flex!important;
+  width:auto!important;
+  min-width:0!important;
+  padding:0!important;
+  margin:0!important;
+}
+body.auth-signed-out .topbar.topbar-actions-only #googleBtn:not(.hidden){
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  max-width:190px!important;
+  min-width:0!important;
+  height:40px!important;
+  padding:0 16px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  border-radius:999px!important;
+  font-size:.86rem!important;
+  font-weight:800!important;
+}
+@media (max-width:820px){
+  body.auth-signed-out .main-wrap{padding-bottom:24px!important}
+  body.auth-signed-out .topbar.topbar-actions-only{padding:8px 10px!important}
+  body.auth-signed-out .topbar.topbar-actions-only #googleBtn:not(.hidden){
+    max-width:170px!important;
+    height:38px!important;
+    padding:0 14px!important;
+    font-size:.8rem!important;
+  }
+  body.auth-signed-out #signedOut{margin-top:0!important}
+}

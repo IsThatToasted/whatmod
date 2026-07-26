@@ -15,7 +15,7 @@ const els = {
   emailInput: document.getElementById('emailInput'), emailBtn: document.getElementById('emailBtn'), logoutBtn: document.getElementById('logoutBtn'),
   tripSelect: document.getElementById('tripSelect'), newTripBtn: document.getElementById('newTripBtn'), deleteTripBtn: document.getElementById('deleteTripBtn'), saveStatus: document.getElementById('saveStatus'), roleBadge: document.getElementById('roleBadge'),
   tripTitle: document.getElementById('tripTitle'), startDate: document.getElementById('startDate'), endDate: document.getElementById('endDate'), destination: document.getElementById('destination'), tripNotes: document.getElementById('tripNotes'),
-  totalBudget: document.getElementById('totalBudget'), stopCount: document.getElementById('stopCount'), dayCount: document.getElementById('dayCount'), plannerTitle: document.getElementById('plannerTitle'), dayTabs: document.getElementById('dayTabs'), timeline: document.getElementById('timeline'),
+  totalBudget: document.getElementById('totalBudget'), totalExpenseTotal: document.getElementById('totalExpenseTotal'), stopCount: document.getElementById('stopCount'), dayCount: document.getElementById('dayCount'), plannerTitle: document.getElementById('plannerTitle'), dayTabs: document.getElementById('dayTabs'), timeline: document.getElementById('timeline'),
   addAnyItemBtn: document.getElementById('addAnyItemBtn'), itemDialog: document.getElementById('itemDialog'), itemDialogTitle: document.getElementById('itemDialogTitle'), editingItemId: document.getElementById('editingItemId'),
   itemTitle: document.getElementById('itemTitle'), itemDate: document.getElementById('itemDate'), itemTime: document.getElementById('itemTime'), itemEndTime: document.getElementById('itemEndTime'), itemType: document.getElementById('itemType'), itemBudget: document.getElementById('itemBudget'), itemFlightTicket: document.getElementById('itemFlightTicket'), itemFlightBaggage: document.getElementById('itemFlightBaggage'), itemFlightOther: document.getElementById('itemFlightOther'), itemDriveGas: document.getElementById('itemDriveGas'), itemTravelOther: document.getElementById('itemTravelOther'), travelExpenseTotal: document.getElementById('travelExpenseTotal'), itemAssignedTo: document.getElementById('itemAssignedTo'), itemFromLocation: document.getElementById('itemFromLocation'), itemToLocation: document.getElementById('itemToLocation'), itemLocation: document.getElementById('itemLocation'), itemNotes: document.getElementById('itemNotes'), itemRainPlan: document.getElementById('itemRainPlan'), saveItemBtn: document.getElementById('saveItemBtn'),
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
@@ -708,6 +708,8 @@ async function bootSignedIn() {
 }
 function refreshAuthUI() {
   const signedIn = !!session?.user;
+  document.body.classList.toggle('auth-signed-in', signedIn);
+  document.body.classList.toggle('auth-signed-out', !signedIn);
   const meta = session?.user?.user_metadata || {};
   const displayName = meta.full_name || meta.name || session?.user?.email?.split('@')[0] || 'Traveler';
   if (els.userName) els.userName.textContent = displayName.split(' ')[0] || 'Traveler';
@@ -1220,7 +1222,7 @@ function renderTripEditor() {
   [els.tripTitle, els.startDate, els.endDate, els.destination, els.tripNotes, els.gasMiles, els.gasMpg, els.gasPrice, els.addAnyItemBtn, els.exportBtn, els.importInput].forEach(el => { if (el) el.disabled = !editable && el !== els.exportBtn; });
   els.deleteTripBtn.disabled = !canDeleteTrip();
 }
-function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; const plannedBudget = tripPlannedBudgetTotal(); const travelExpense = tripTravelExpenseTotal(); els.totalBudget.textContent = money(plannedBudget); if (els.travelExpenseTotal) els.travelExpenseTotal.textContent = money(travelExpense); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); updateTripCountdown(); els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderGasCalculator(); renderTripProgress(); }
+function renderSummary() { const t = currentTrip(); const days = t ? dateRange(t.start_date, t.end_date) : []; const plannedBudget = tripPlannedBudgetTotal(); const travelExpense = tripTravelExpenseTotal(); const totalExpense = plannedBudget + travelExpense; els.totalBudget.textContent = money(plannedBudget); if (els.travelExpenseTotal) els.travelExpenseTotal.textContent = money(travelExpense); if (els.totalExpenseTotal) els.totalExpenseTotal.textContent = money(totalExpense); els.stopCount.textContent = items.length; els.dayCount.textContent = days.length; if (els.travelerCount) els.travelerCount.textContent = Math.max(1, members.length); updateTripCountdown(); els.plannerTitle.textContent = t ? `${t.title || 'Trip'} • ${days.length} day${days.length === 1 ? '' : 's'}` : 'Your itinerary'; renderGasCalculator(); renderTripProgress(); }
 function renderHomeDashboard() {
   if (!els.homeGreeting) return;
   const t = currentTrip();
@@ -3993,7 +3995,7 @@ async function deletePackingItem(id) {
   function updatePlanBadge(){
     injectPlanBadge();
     const badge = document.getElementById('licensePlanBadge');
-    if (badge) badge.textContent = window.isPremiumUser() ? '✨ Premium' : 'Free';
+    if (badge) { badge.textContent = window.isPremiumUser() ? '✨ Premium' : 'Free'; badge.classList.toggle('hidden', !session?.user); }
   }
   const oldApply = applyLicenseUI;
   applyLicenseUI = function(){ oldApply(); updatePlanBadge(); };

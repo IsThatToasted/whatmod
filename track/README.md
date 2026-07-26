@@ -1,3 +1,11 @@
+# WeTrack V2.3 Production
+
+## Changes
+- Added **Total Expense** beside Travel Expense. It combines all non-travel planned spending, Must Do costs, shopping estimates, transportation, lodging, baggage, gas, and other travel expenses.
+- Cleaned up signed-out navigation on desktop, mobile web, and the iOS wrapper. Premium, notifications, Fun Ideas, avatar, logout, search, and the bottom app navigation are hidden until authenticated.
+- Reduced the Google sign-in button to a compact pill so the signed-out header stays balanced.
+- Cache version: `v430`.
+
 # WeTrack V2.2 Production
 
 Build marker: `WeTrack V2.2.0 Production / production-audit-2026-07-25` · cache `v410`.
