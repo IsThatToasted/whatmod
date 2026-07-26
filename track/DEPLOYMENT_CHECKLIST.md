@@ -16,7 +16,7 @@
 - Replace the contents of the repository's `/track` folder with this release.
 - Keep `index.html`, `app.js`, `styles.css`, `settings.html`, assets, and supporting folders together.
 - Commit and wait for GitHub Pages deployment.
-- Hard refresh `https://whatmod.com/track/` and confirm assets load with cache version `v440`.
+- Hard refresh `https://whatmod.com/track/` and confirm assets load with cache version `v450`.
 
 ## 4. Critical smoke test
 

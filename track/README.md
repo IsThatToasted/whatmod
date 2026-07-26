@@ -4,11 +4,11 @@
 - Added **Total Expense** beside Travel Expense. It combines all non-travel planned spending, Must Do costs, shopping estimates, transportation, lodging, baggage, gas, and other travel expenses.
 - Cleaned up signed-out navigation on desktop, mobile web, and the iOS wrapper. Premium, notifications, Fun Ideas, avatar, logout, search, and the bottom app navigation are hidden until authenticated.
 - Reduced the Google sign-in button to a compact pill so the signed-out header stays balanced.
-- Cache version: `v440`.
+- Cache version: `v450`.
 
 # WeTrack V2.2 Production
 
-Build marker: `WeTrack V2.2.0 Production / production-audit-2026-07-25` · cache `v440`.
+Build marker: `WeTrack V2.2.0 Production / production-audit-2026-07-25` · cache `v450`.
 
 This consolidated release repairs Trip Details editing, hardens the unsigned iOS build workflow, and includes a repeatable production audit and deployment checklist. Read `AUDIT_REPORT.md` and `DEPLOYMENT_CHECKLIST.md` before deployment.
 
@@ -568,10 +568,20 @@ The active trip still determines which owner-led bucket list is shown. For examp
 - Dashboard Planned amount now includes only Must Do costs and non-travel event budgets for the selected day. Flights, drives, trains, ferries, cruises, hotels/lodging, transit, gas, and other travel expenses are excluded.
 
 
-## WeTrack V2.4 — Fun Ideas persistent-save repair
+## WeTrack V2.5 — Fun Ideas persistent-save repair
 
 - Fixed legacy event listeners that captured the old trip-scoped Fun Ideas save and category functions before the persistent bucket-list overrides loaded.
 - Fun Ideas now always save to `itinerary_fun_bucket_ideas`.
 - Category creation now always targets `itinerary_fun_bucket_categories`.
 - Added active-space category validation so stale/deleted category IDs are cleared rather than producing a foreign-key violation.
-- Cache version bumped to `v440`.
+- Cache version bumped to `v450`.
+
+
+## WeTrack V2.5 — persistent reaction repair
+
+- Removed duplicate legacy slider listeners that caused several save attempts and stacked error toasts.
+- Routed all reaction changes to the persistent `itinerary_fun_bucket_reactions` table.
+- Added `upsert_itinerary_fun_bucket_reaction(...)` with server-side bucket/access validation.
+- Coalesced `input`, `change`, `pointerup`, and `touchend` into one serialized write.
+- Added `fun_reactions_v25_repair.sql` for installations that already ran the full schema.
+- Cache version: `v450`.

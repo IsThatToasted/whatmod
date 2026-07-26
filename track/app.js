@@ -3784,13 +3784,8 @@ async function deletePackingItem(id) {
     if (input) window.commitFunReactionSlide(input);
   }
 
-  document.addEventListener('input', delegatedInput, true);
-  document.addEventListener('change', delegatedCommit, true);
-  document.addEventListener('pointerup', delegatedCommit, true);
-  document.addEventListener('touchend', delegatedCommit, true);
-  document.addEventListener('keyup', (e) => {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Home' || e.key === 'End') delegatedCommit(e);
-  }, true);
+  // V2.5: legacy delegated reaction listeners removed. The slider's inline handlers
+  // now route through one persistent bucket-list save pipeline only.
   els.funIdeasDialog?.addEventListener('close', () => { window.flushFunReactionSaves?.(); });
   window.addEventListener('pagehide', () => { window.flushFunReactionSaves?.(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) window.flushFunReactionSaves?.(); });
@@ -5678,31 +5673,128 @@ toggleFunPermission = async function togglePersistentFunPermission(userId, canAc
   await loadFunPermissions(); renderFunIdeasModal(); broadcastTripChange('Shared bucket access updated');
 };
 
-// Replace the final reaction autosave implementation with the persistent table.
-window.saveFunReaction = function savePersistentFunReaction(ideaId, rawScore, forceNow = false) {
-  if (!client || !funSpaceId || !session?.user?.id || !canAccessFunIdeasLocal()) return;
-  const score = Math.max(0, Math.min(100, Number(rawScore) || 50));
-  const userId = session.user.id;
-  const localRow = { space_id: funSpaceId, fun_idea_id: ideaId, user_id: userId, score, updated_at: new Date().toISOString() };
-  const idx = funReactions.findIndex(r => r.fun_idea_id === ideaId && r.user_id === userId);
-  if (idx >= 0) funReactions[idx] = { ...funReactions[idx], ...localRow };
-  else funReactions.push(localRow);
+// Replace every legacy reaction path with one persistent bucket-list pipeline.
+// This deliberately owns handle/commit/save so older trip-scoped patches cannot run.
+(() => {
+  const pending = new Map();
+  const lastSaved = new Map();
+  const inFlight = new Map();
+  let lastErrorToastAt = 0;
 
-  const persist = async () => {
-    delete funReactionSaveTimers[ideaId];
-    const { error } = await client.from('itinerary_fun_bucket_reactions').upsert(localRow, { onConflict: 'fun_idea_id,user_id' });
-    if (error) {
-      console.warn('Could not save persistent Fun Ideas reaction.', error);
-      if (typeof showToast === 'function') showToast('Could not save reaction', 'error');
-      return;
-    }
-    broadcastTripChange('Shared bucket reaction updated');
+  const clampScore = value => Math.max(0, Math.min(100, Number(value) || 50));
+  const keyFor = (ideaId, userId = session?.user?.id) => `${funSpaceId || ''}:${ideaId || ''}:${userId || ''}`;
+
+  function updateReactionVisual(input) {
+    if (!input) return;
+    const score = clampScore(input.value);
+    input.value = String(score);
+    input.dataset.score = String(score);
+    input.setAttribute('aria-valuenow', String(score));
+    const row = input.closest('.fun-reaction-row');
+    row?.style.setProperty('--reaction-score', `${score}%`);
+    const value = row?.querySelector('.fun-reaction-value');
+    if (value) value.textContent = `${reactionEmoji(score)} ${reactionLabel(score)}`;
+  }
+
+  function setLocalReaction(ideaId, score) {
+    const userId = session?.user?.id;
+    if (!ideaId || !userId || !funSpaceId) return;
+    const localRow = {
+      space_id: funSpaceId,
+      fun_idea_id: ideaId,
+      user_id: userId,
+      score,
+      updated_at: new Date().toISOString()
+    };
+    const idx = funReactions.findIndex(r => r.fun_idea_id === ideaId && r.user_id === userId);
+    if (idx >= 0) funReactions[idx] = { ...funReactions[idx], ...localRow };
+    else funReactions.push(localRow);
+  }
+
+  async function persistReaction(ideaId, score) {
+    const userId = session?.user?.id;
+    const spaceId = funSpaceId;
+    if (!client || !spaceId || !userId || !ideaId || !canAccessFunIdeasLocal()) return false;
+    score = clampScore(score);
+    const key = keyFor(ideaId, userId);
+    const signature = `${spaceId}:${ideaId}:${userId}:${score}`;
+    if (lastSaved.get(key) === signature) return true;
+
+    // Serialize writes per idea/user so pointerup + change cannot race each other.
+    const previous = inFlight.get(key) || Promise.resolve();
+    const run = previous.catch(() => {}).then(async () => {
+      const { data, error } = await client.rpc('upsert_itinerary_fun_bucket_reaction', {
+        p_space_id: spaceId,
+        p_fun_idea_id: ideaId,
+        p_score: score
+      });
+      if (error) throw error;
+      lastSaved.set(key, signature);
+      const saved = Array.isArray(data) ? data[0] : data;
+      if (saved) {
+        const idx = funReactions.findIndex(r => r.fun_idea_id === ideaId && r.user_id === userId);
+        if (idx >= 0) funReactions[idx] = { ...funReactions[idx], ...saved };
+        else funReactions.push(saved);
+      }
+      try { broadcastTripChange('Shared bucket reaction updated'); } catch (_) {}
+      return true;
+    }).catch(err => {
+      console.warn('Persistent Fun Ideas reaction save failed.', err);
+      const now = Date.now();
+      if (now - lastErrorToastAt > 5000) {
+        lastErrorToastAt = now;
+        showToast?.(`Reaction could not save${err?.message ? `: ${err.message}` : ''}`, 'error');
+      }
+      return false;
+    }).finally(() => {
+      if (inFlight.get(key) === run) inFlight.delete(key);
+    });
+    inFlight.set(key, run);
+    return run;
+  }
+
+  function scheduleReaction(input, immediate = false) {
+    if (!input) return;
+    updateReactionVisual(input);
+    const ideaId = input.dataset.ideaId || input.closest('.fun-reactions')?.dataset.ideaId;
+    if (!ideaId) return;
+    const score = clampScore(input.value);
+    setLocalReaction(ideaId, score);
+    const key = keyFor(ideaId);
+    const existing = pending.get(key);
+    if (existing?.timer) clearTimeout(existing.timer);
+    const delay = immediate ? 60 : 450;
+    const timer = setTimeout(() => {
+      pending.delete(key);
+      persistReaction(ideaId, score);
+    }, delay);
+    pending.set(key, { ideaId, score, timer });
+  }
+
+  window.saveFunReaction = function savePersistentFunReaction(ideaId, rawScore, forceNow = false) {
+    const score = clampScore(rawScore);
+    setLocalReaction(ideaId, score);
+    const key = keyFor(ideaId);
+    const existing = pending.get(key);
+    if (existing?.timer) clearTimeout(existing.timer);
+    const timer = setTimeout(() => {
+      pending.delete(key);
+      persistReaction(ideaId, score);
+    }, forceNow ? 60 : 450);
+    pending.set(key, { ideaId, score, timer });
   };
 
-  clearTimeout(funReactionSaveTimers[ideaId]);
-  if (forceNow) persist();
-  else funReactionSaveTimers[ideaId] = setTimeout(persist, 450);
-};
+  window.handleFunReactionSlide = input => scheduleReaction(input, false);
+  window.commitFunReactionSlide = input => scheduleReaction(input, true);
+  window.flushFunReactionSaves = async function flushPersistentFunReactions() {
+    const rows = Array.from(pending.values());
+    pending.clear();
+    await Promise.all(rows.map(row => {
+      clearTimeout(row.timer);
+      return persistReaction(row.ideaId, row.score);
+    }));
+  };
+})();
 
 // Clarify the modal as a cross-trip bucket list without changing its controls.
 window.addEventListener('DOMContentLoaded', () => {
