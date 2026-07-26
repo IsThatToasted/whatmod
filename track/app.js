@@ -2740,7 +2740,7 @@ function startQuickMemoryCapture() {
 if (els.funNewIdeaBtn) els.funNewIdeaBtn.addEventListener('click', () => { clearFunIdeaForm(); showFunEditor(true); });
 if (els.funCancelEditorBtn) els.funCancelEditorBtn.addEventListener('click', () => { clearFunIdeaForm(); showFunEditor(false); });
 if (els.funCategoryManageBtn) els.funCategoryManageBtn.addEventListener('click', () => els.funCategoryEditor?.classList.toggle('hidden'));
-if (els.funAddCategoryBtn) els.funAddCategoryBtn.addEventListener('click', addFunCategory);
+if (els.funAddCategoryBtn) els.funAddCategoryBtn.addEventListener('click', () => addFunCategory());
 if (els.funCategoryFilter) els.funCategoryFilter.addEventListener('click', e => {
   const btn = e.target.closest('.fun-category-chip'); if (!btn) return;
   funCategoryFilterValue = btn.dataset.filter || 'all'; renderFunIdeasModal();
@@ -2751,8 +2751,8 @@ if (els.funCategoryList) els.funCategoryList.addEventListener('click', e => {
   if (e.target.closest('.fun-category-delete')) deleteFunCategory(row.dataset.id);
 });
 
-if (els.avatarFunBtn) els.avatarFunBtn.addEventListener('click', openFunIdeasDialog);
-if (els.funSaveBtn) els.funSaveBtn.addEventListener('click', saveFunIdea);
+if (els.avatarFunBtn) els.avatarFunBtn.addEventListener('click', () => openFunIdeasDialog());
+if (els.funSaveBtn) els.funSaveBtn.addEventListener('click', () => saveFunIdea());
 if (els.funClearBtn) els.funClearBtn.addEventListener('click', clearFunIdeaForm);
 if (els.funPermissionList) els.funPermissionList.addEventListener('change', e => {
   const cb = e.target.closest('input[type="checkbox"][data-user-id]');
@@ -5633,6 +5633,15 @@ saveFunIdea = async function savePersistentFunIdea() {
   if (!funSpaceId || !session?.user?.id || !canEdit() || !canAccessFunIdeasLocal()) return;
   const title = (els.funIdeaTitle?.value || '').trim();
   if (!title) { els.funIdeaTitle?.focus(); return; }
+  const requestedCategoryId = els.funIdeaCategory?.value || null;
+  // A category can become stale after a trip/owner switch or a realtime delete.
+  // Only submit IDs loaded from the active persistent bucket space.
+  const safeCategoryId = requestedCategoryId && funCategories.some(category => category.id === requestedCategoryId)
+    ? requestedCategoryId
+    : null;
+  if (requestedCategoryId && !safeCategoryId && els.funIdeaCategory) {
+    els.funIdeaCategory.value = '';
+  }
   const payload = {
     space_id: funSpaceId,
     created_by: session.user.id,
@@ -5641,7 +5650,7 @@ saveFunIdea = async function savePersistentFunIdea() {
     play_type: els.funIdeaPlayType?.value || 'private',
     visibility: els.funIdeaVisibility?.value || 'shared',
     assigned_to: els.funIdeaAssignedTo?.value || null,
-    category_id: els.funIdeaCategory?.value || null,
+    category_id: safeCategoryId,
     updated_at: new Date().toISOString()
   };
   const id = els.funIdeaId?.value;

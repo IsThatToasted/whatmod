@@ -4,11 +4,11 @@
 - Added **Total Expense** beside Travel Expense. It combines all non-travel planned spending, Must Do costs, shopping estimates, transportation, lodging, baggage, gas, and other travel expenses.
 - Cleaned up signed-out navigation on desktop, mobile web, and the iOS wrapper. Premium, notifications, Fun Ideas, avatar, logout, search, and the bottom app navigation are hidden until authenticated.
 - Reduced the Google sign-in button to a compact pill so the signed-out header stays balanced.
-- Cache version: `v430`.
+- Cache version: `v440`.
 
 # WeTrack V2.2 Production
 
-Build marker: `WeTrack V2.2.0 Production / production-audit-2026-07-25` · cache `v410`.
+Build marker: `WeTrack V2.2.0 Production / production-audit-2026-07-25` · cache `v440`.
 
 This consolidated release repairs Trip Details editing, hardens the unsigned iOS build workflow, and includes a repeatable production audit and deployment checklist. Read `AUDIT_REPORT.md` and `DEPLOYMENT_CHECKLIST.md` before deployment.
 
@@ -566,3 +566,12 @@ The active trip still determines which owner-led bucket list is shown. For examp
 - Live snapped start/end time while dragging or resizing.
 - Floating time preview, destination slot highlight, origin ghost, light haptics, and edge auto-scroll.
 - Dashboard Planned amount now includes only Must Do costs and non-travel event budgets for the selected day. Flights, drives, trains, ferries, cruises, hotels/lodging, transit, gas, and other travel expenses are excluded.
+
+
+## WeTrack V2.4 — Fun Ideas persistent-save repair
+
+- Fixed legacy event listeners that captured the old trip-scoped Fun Ideas save and category functions before the persistent bucket-list overrides loaded.
+- Fun Ideas now always save to `itinerary_fun_bucket_ideas`.
+- Category creation now always targets `itinerary_fun_bucket_categories`.
+- Added active-space category validation so stale/deleted category IDs are cleared rather than producing a foreign-key violation.
+- Cache version bumped to `v440`.
