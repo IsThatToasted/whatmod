@@ -30,9 +30,9 @@ for token in ['openTripDetailsEditor', "editTripDetailsBtn.addEventListener", "d
 else:
     if not any('Trip editing pipeline' in e for e in errors): ok('Trip destination editing pipeline is wired end-to-end')
 
-if 'WeTrack V2.0.0 Production' in app: ok('V2.0 production build marker found')
+if 'WeTrack V2.1.0 Production' in app: ok('V2.1 production build marker found')
 else: fail('V2.0 build marker missing')
-if './app.js?v=400' in index and './styles.css?v=400' in index: ok('Production cache version is consistent')
+if './app.js?v=410' in index and './styles.css?v=410' in index: ok('Production cache version is consistent')
 else: fail('Cache version mismatch in index.html')
 
 # JavaScript syntax when Node is available

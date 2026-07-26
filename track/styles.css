@@ -4584,3 +4584,65 @@ dialog{
 .trip-hero.trip-edit-highlight { outline: 3px solid color-mix(in srgb, var(--accent, #7c5cff) 45%, transparent); outline-offset: 4px; animation: tripEditPulse .8s ease; }
 @keyframes tripEditPulse { 0% { transform: scale(.995); } 55% { transform: scale(1.004); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .trip-hero.trip-edit-highlight { animation: none; } }
+
+
+/* === WeTrack V2.1: grip-only event movement + compact action geometry === */
+.item-card .card-front{position:relative}
+.card-drag-handle{
+  position:absolute!important;
+  z-index:9!important;
+  left:-11px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  display:grid!important;
+  place-items:center!important;
+  width:24px!important;
+  min-width:24px!important;
+  max-width:24px!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:999px!important;
+  border:1px solid #d7d9f4!important;
+  background:rgba(255,255,255,.96)!important;
+  color:#7765d8!important;
+  box-shadow:0 6px 18px rgba(64,50,130,.14)!important;
+  cursor:grab!important;
+  touch-action:none!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  -webkit-touch-callout:none!important;
+}
+.card-drag-handle span{display:block;font-size:19px;line-height:1;transform:rotate(90deg);pointer-events:none}
+.card-drag-handle:hover,.card-drag-handle:focus-visible{border-color:#9e8cff!important;background:#f8f5ff!important;box-shadow:0 8px 22px rgba(94,67,210,.2)!important}
+.card-drag-handle:active{cursor:grabbing!important;transform:translateY(-50%) scale(.96)!important}
+.card-drag-handle:disabled,.card-drag-handle.disabled{opacity:.34!important;cursor:not-allowed!important;box-shadow:none!important}
+.item-card.timeline-moving .card-drag-handle,.item-card.dragging .card-drag-handle{cursor:grabbing!important;background:#efeaff!important;border-color:#8c70ff!important}
+.item-card.timeline-moving{z-index:30!important;box-shadow:0 22px 45px rgba(52,42,112,.2)!important}
+
+/* 30-minute cards: never inherit the old elongated desktop action widths. */
+.item-card.timeline-item.compact-time-card .item-actions .edit,
+.item-card.timeline-item.compact-time-card .item-actions .delete{
+  flex:0 0 38px!important;
+  width:38px!important;
+  min-width:38px!important;
+  max-width:38px!important;
+  height:38px!important;
+  min-height:38px!important;
+  max-height:38px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:50%!important;
+  aspect-ratio:1/1!important;
+  display:inline-grid!important;
+  place-items:center!important;
+  line-height:1!important;
+}
+@media(max-width:760px){
+  .card-drag-handle{left:-8px!important;width:22px!important;min-width:22px!important;max-width:22px!important;height:38px!important;min-height:38px!important}
+  .item-card.timeline-item.compact-time-card .item-actions .edit,
+  .item-card.timeline-item.compact-time-card .item-actions .delete{
+    flex-basis:36px!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important;
+  }
+}

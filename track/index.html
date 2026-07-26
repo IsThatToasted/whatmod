@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=400" />
+  <link rel="stylesheet" href="./styles.css?v=410" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -474,8 +474,9 @@
   </dialog>
 
   <template id="itemTemplate">
-    <article class="item-card" draggable="true">
+    <article class="item-card">
       <div class="card-face card-front">
+        <button class="card-drag-handle" type="button" aria-label="Drag to move event" title="Drag to move event"><span aria-hidden="true">⠿</span></button>
         <button class="resize-handle resize-start" type="button" aria-label="Adjust start time"></button>
         <div class="time-chip"></div>
         <div class="item-main"><div class="item-type"></div><div><h3></h3><p class="item-meta"></p><p class="item-notes"></p><p class="overlap-warning hidden"></p></div></div>
@@ -491,6 +492,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=400"></script>
+  <script src="./app.js?v=410"></script>
 </body>
 </html>

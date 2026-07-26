@@ -1327,7 +1327,7 @@ function renderItem(item, isTimed = false) {
   card.dataset.id = item.id;
   const locked = isLockedItem(item);
   if (locked) card.classList.add('is-locked');
-  card.draggable = canEdit() && !locked && !isCoarsePointerDevice();
+  card.draggable = false;
   const start = itemStartMinutes(item), end = itemEndMinutes(item);
   if (isTimed) {
     card.classList.add('timeline-item');
@@ -1368,7 +1368,7 @@ function renderItem(item, isTimed = false) {
   const rainText = tpl.querySelector('.rain-plan-text');
   if (rainText) rainText.textContent = item.rain_plan || 'No rain backup added yet. Tap Edit rain plan to add an indoor option, alternate time, or weather note.';
   if (item.rain_plan) card.classList.add('has-rain-plan');
-  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const lockBtn = tpl.querySelector('.lock-toggle'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain'); const resetRainBtn = tpl.querySelector('.reset-rain');
+  const editBtn = tpl.querySelector('.edit'); const delBtn = tpl.querySelector('.delete'); const earlierBtn = tpl.querySelector('.earlier'); const laterBtn = tpl.querySelector('.later'); const lockBtn = tpl.querySelector('.lock-toggle'); const rainBtn = tpl.querySelector('.rain-toggle'); const rainClose = tpl.querySelector('.rain-close'); const editRainBtn = tpl.querySelector('.edit-rain'); const resetRainBtn = tpl.querySelector('.reset-rain'); const dragHandle = tpl.querySelector('.card-drag-handle');
   editBtn.disabled = delBtn.disabled = earlierBtn.disabled = laterBtn.disabled = !canEdit() || locked; if (editRainBtn) editRainBtn.disabled = !canEdit() || locked; if (resetRainBtn) resetRainBtn.disabled = !canEdit() || locked;
   // Compact icon actions keep timeline cards clean on desktop and mobile.
   earlierBtn.textContent = '−30'; earlierBtn.title = 'Move 30 minutes earlier'; earlierBtn.setAttribute('aria-label', 'Move 30 minutes earlier');
@@ -1377,6 +1377,14 @@ function renderItem(item, isTimed = false) {
   delBtn.textContent = '×'; delBtn.title = 'Delete event'; delBtn.setAttribute('aria-label', 'Delete event');
   if (rainBtn) { rainBtn.textContent = item.rain_plan ? '☔' : '☔+'; rainBtn.title = item.rain_plan ? 'View rain plan' : 'Add rain plan'; rainBtn.setAttribute('aria-label', rainBtn.title); }
   if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒' : '🔓'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; lockBtn.setAttribute('aria-label', lockBtn.title); }
+  if (dragHandle) {
+    const mayMove = canEdit() && !locked && isTimed;
+    dragHandle.disabled = !mayMove;
+    dragHandle.draggable = mayMove && !isCoarsePointerDevice();
+    dragHandle.classList.toggle('disabled', !mayMove);
+    dragHandle.title = locked ? 'Unlock this card to move it' : (isTimed ? 'Drag to move event' : 'Add a time before moving this event');
+    dragHandle.setAttribute('aria-label', dragHandle.title);
+  }
   editBtn.addEventListener('click', () => openItemDialog(item.item_date, item));
   lockBtn?.addEventListener('click', () => toggleItemLock(item));
   rainBtn?.addEventListener('click', () => handleRainButton(card, item));
@@ -1390,16 +1398,27 @@ function renderItem(item, isTimed = false) {
   earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
   laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
   if (canEdit() && !locked) {
-    card.addEventListener('dragstart', () => { draggedId = item.id; card.classList.add('dragging'); });
-    card.addEventListener('dragend', () => card.classList.remove('dragging'));
-    card.addEventListener('pointerdown', e => startTimelinePointer(e, item, card));
+    dragHandle?.addEventListener('dragstart', (e) => {
+      draggedId = item.id;
+      card.classList.add('dragging');
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', item.id); } catch (_) {}
+    });
+    dragHandle?.addEventListener('dragend', () => {
+      draggedId = null;
+      card.classList.remove('dragging');
+    });
+    // Resize remains available from the thin top/bottom handles. Moving is grip-only.
+    card.addEventListener('pointerdown', e => {
+      if (e.target.closest('.resize-handle')) startTimelinePointer(e, item, card);
+    });
+    dragHandle?.addEventListener('pointerdown', e => startTimelinePointer(e, item, card));
   }
   return tpl;
 }
 
 
 function shouldIgnoreCardExpandTarget(target) {
-  return !!target.closest('button, a, input, textarea, select, label, .resize-handle, .item-actions, .shopping-list-pill, .map-links');
+  return !!target.closest('button, a, input, textarea, select, label, .resize-handle, .card-drag-handle, .item-actions, .shopping-list-pill, .map-links');
 }
 function collapseExpandedCards(exceptCard) {
   document.querySelectorAll('.item-card.expanded').forEach(card => {
@@ -1514,8 +1533,10 @@ async function shiftItemBy(id, delta) {
 function startTimelinePointer(e, item, card) {
   const resizeStart = e.target.closest('.resize-start');
   const resizeEnd = e.target.closest('.resize-end');
-  if (e.pointerType === 'touch' || (isCoarsePointerDevice() && e.pointerType !== 'mouse')) return;
-  if (!canEdit() || isLockedItem(item) || (!resizeStart && !resizeEnd && isInteractiveTarget(e.target))) return;
+  const moveHandle = e.target.closest('.card-drag-handle');
+  // A card can only move from its dedicated grip. The rest of the card is safe to tap/click.
+  if (!canEdit() || isLockedItem(item) || (!resizeStart && !resizeEnd && !moveHandle)) return;
+  if (moveHandle?.disabled) return;
   const board = card.closest('.timeline-board'); if (!board) return;
   e.preventDefault();
   card.setPointerCapture?.(e.pointerId);
@@ -4963,7 +4984,7 @@ async function deletePackingItem(id) {
 
 /* === WeTrack V1.2 mobile traveler roster reliability patch === */
 (function weTrackMobileTravelerRosterPatch(){
-  const BUILD = 'WeTrack V2.0.0 Production / production-audit-2026-07-25';
+  const BUILD = 'WeTrack V2.1.0 Production / grip-handle-safety-2026-07-25';
   function safeFirstName(value){
     return String(value || 'Traveler').trim().split(/\s+/)[0] || 'Traveler';
   }
