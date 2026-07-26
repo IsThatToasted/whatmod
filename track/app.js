@@ -183,6 +183,18 @@ function tripPlannedBudgetTotal() {
 function tripTravelExpenseTotal() {
   return items.reduce((sum, i) => sum + itemTravelExpense(i), 0) + calcGasCost();
 }
+function dashboardPlannedAmount(day = selectedDay || currentTrip()?.start_date || todayISO()) {
+  // The dashboard Planned card is intentionally a day-planning figure, not a trip-spend figure.
+  // Include shared Must Do costs plus non-travel event budgets scheduled for the visible day.
+  const mustDoCost = mustDoItems.reduce((sum, i) =>
+    String(i.priority || '').toLowerCase() === 'must' ? sum + Number(i.budget || 0) : sum, 0);
+  const dayEventCost = items.reduce((sum, i) => {
+    if (String(i.item_date || '') !== String(day || '')) return sum;
+    if (isTravelExpenseType(i.item_type)) return sum;
+    return sum + Number(i.budget || 0);
+  }, 0);
+  return mustDoCost + dayEventCost;
+}
 function isTravelExpenseType(type) {
   return ['flight','train','ferry','cruise','drive','transport','gas','hotel','lodging'].includes(String(type || '').toLowerCase());
 }
@@ -1243,10 +1255,9 @@ function renderHomeDashboard() {
   const must = mustDoItems.filter(i => String(i.priority || '').toLowerCase() === 'must');
   const doneMust = must.filter(i => i.completed).length;
   els.homeMustDoLine.textContent = `${must.length} Must Do${must.length === 1 ? '' : 's'}${must.length ? ` • ${doneMust}/${must.length} done` : ''}`;
-  const planned = tripPlannedBudgetTotal() + tripTravelExpenseTotal();
-  const tripBudget = Number(t?.budget || 0);
-  const pct = tripBudget ? Math.min(999, Math.round((planned / tripBudget) * 100)) : (planned ? 100 : 0);
-  els.homeBudgetLine.textContent = tripBudget ? `Budget ${pct}% • ${money(planned)} / ${money(tripBudget)}` : `Planned ${money(planned)}`;
+  const planned = dashboardPlannedAmount(selectedDay || t?.start_date || todayISO());
+  const pct = planned ? 100 : 0;
+  els.homeBudgetLine.textContent = `Planned ${money(planned)}`;
   const progressPct = (() => { const val = els.tripProgressText?.textContent?.match(/\d+/); return val ? Number(val[0]) : 0; })();
   if (els.homeProgressBar) els.homeProgressBar.style.width = `${Math.max(6, Math.min(100, progressPct || pct || 8))}%`;
   const recent = items.slice().sort((a,b)=> new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
@@ -1540,54 +1551,157 @@ function startTimelinePointer(e, item, card) {
   const board = card.closest('.timeline-board'); if (!board) return;
   e.preventDefault();
   card.setPointerCapture?.(e.pointerId);
+
   const rect = board.getBoundingClientRect();
   const initialTop = parseFloat(card.style.top || '0');
   const initialHeight = card.offsetHeight;
   const offset = e.clientY - card.getBoundingClientRect().top;
-  timelineDrag = { id: item.id, mode: resizeStart ? 'resize-start' : resizeEnd ? 'resize-end' : 'move', board, rect, initialTop, initialHeight, offset, day: board.dataset.day, item };
-  card.classList.add('timeline-moving');
-  const onMove = ev => {
-    if (!timelineDrag) return;
-    const y = ev.clientY - timelineDrag.rect.top;
-    if (timelineDrag.mode === 'move') {
-      const top = clamp(y - timelineDrag.offset, TIMELINE_TOP_PAD, timelineDrag.board.offsetHeight - TIMELINE_BOTTOM_PAD - 40);
-      card.style.top = `${top}px`;
-    } else if (timelineDrag.mode === 'resize-start') {
-      const bottom = timelineDrag.initialTop + timelineDrag.initialHeight;
-      const top = clamp(y, 0, bottom - 40);
-      card.style.top = `${top}px`;
-      card.style.minHeight = `${bottom - top}px`; card.style.height = `${bottom - top}px`;
-    } else if (timelineDrag.mode === 'resize-end') {
-      const height = clamp(y - timelineDrag.initialTop, 40, timelineDrag.board.offsetHeight - timelineDrag.initialTop);
-      card.style.minHeight = `${height}px`; card.style.height = `${height}px`;
-    }
+  const originalTimeText = card.querySelector('.time-chip')?.textContent || '';
+  const duration = Math.max(30, itemEndMinutes(item) - itemStartMinutes(item));
+
+  const badge = document.createElement('div');
+  badge.className = 'timeline-drag-time-badge';
+  badge.setAttribute('aria-live', 'polite');
+  document.body.appendChild(badge);
+
+  const slot = document.createElement('div');
+  slot.className = 'timeline-drop-slot';
+  board.appendChild(slot);
+
+  const ghost = document.createElement('div');
+  ghost.className = 'timeline-origin-ghost';
+  ghost.style.top = `${initialTop}px`;
+  ghost.style.height = `${initialHeight}px`;
+  board.appendChild(ghost);
+
+  timelineDrag = {
+    id: item.id,
+    mode: resizeStart ? 'resize-start' : resizeEnd ? 'resize-end' : 'move',
+    board, rect, initialTop, initialHeight, offset, day: board.dataset.day, item,
+    duration, badge, slot, ghost, originalTimeText, lastSnap: null, pointerId: e.pointerId
   };
-  const onUp = async ev => {
+  card.classList.add('timeline-moving');
+  board.classList.add('timeline-drag-active');
+
+  const cleanup = (restore = false) => {
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onCancel);
     card.classList.remove('timeline-moving');
-    if (!timelineDrag) return;
-    const targetBoard = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.timeline-board') || timelineDrag.board;
-    const targetRect = targetBoard.getBoundingClientRect();
-    const draggedItem = items.find(i => i.id === timelineDrag.id); if (!draggedItem) { timelineDrag = null; return; }
-    let patch = {};
-    if (timelineDrag.mode === 'move') {
-      const newStart = yToMinutes(ev.clientY - targetRect.top - timelineDrag.offset);
-      patch = { item_date: targetBoard.dataset.day, ...defaultTimedPatch(draggedItem, newStart) };
-    } else if (timelineDrag.mode === 'resize-start') {
-      const oldEnd = itemEndMinutes(draggedItem);
-      const newStart = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop) - (TIMELINE_EVENT_GAP / 2))), DAY_START_MIN, oldEnd - 30);
-      patch = { start_time: minutesToTime(newStart), end_time: minutesToTime(oldEnd), sort_order: newStart };
-    } else {
-      const oldStart = itemStartMinutes(draggedItem);
-      const newEnd = clamp(snapMinutes(yToMinutes(parseFloat(card.style.top || timelineDrag.initialTop) + card.offsetHeight + (TIMELINE_EVENT_GAP / 2))), oldStart + 30, DAY_END_MIN);
-      patch = { start_time: minutesToTime(oldStart), end_time: minutesToTime(newEnd), sort_order: oldStart };
+    document.querySelectorAll('.timeline-board.timeline-drag-active').forEach(x => x.classList.remove('timeline-drag-active'));
+    document.querySelectorAll('.timeline-drop-slot,.timeline-origin-ghost,.timeline-drag-time-badge').forEach(x => x.remove());
+    if (restore && timelineDrag) {
+      card.style.top = `${timelineDrag.initialTop}px`;
+      card.style.minHeight = `${timelineDrag.initialHeight}px`;
+      card.style.height = `${timelineDrag.initialHeight}px`;
+      const chip = card.querySelector('.time-chip');
+      if (chip) chip.textContent = timelineDrag.originalTimeText;
     }
-    timelineDrag = null;
-    await updateItemWithUndo(draggedItem.id, patch, patch.end_time && patch.start_time ? 'Event time updated' : 'Event moved');
   };
+
+  const updateVisualPreview = (ev) => {
+    if (!timelineDrag) return;
+    const hoveredBoard = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('.timeline-board') || timelineDrag.board;
+    if (hoveredBoard !== timelineDrag.board && timelineDrag.mode === 'move') {
+      timelineDrag.board.classList.remove('timeline-drag-active');
+      timelineDrag.slot.remove();
+      timelineDrag.board = hoveredBoard;
+      timelineDrag.rect = hoveredBoard.getBoundingClientRect();
+      hoveredBoard.classList.add('timeline-drag-active');
+      hoveredBoard.appendChild(timelineDrag.slot);
+    }
+    const activeRect = timelineDrag.board.getBoundingClientRect();
+    const rawY = ev.clientY - activeRect.top;
+    let previewStart = itemStartMinutes(item);
+    let previewEnd = itemEndMinutes(item);
+
+    if (timelineDrag.mode === 'move') {
+      previewStart = clamp(snapMinutes(yToMinutes(rawY - timelineDrag.offset)), DAY_START_MIN, DAY_END_MIN - timelineDrag.duration);
+      previewEnd = previewStart + timelineDrag.duration;
+      const snappedTop = minutesToY(previewStart) + (TIMELINE_EVENT_GAP / 2);
+      card.style.top = `${snappedTop}px`;
+      timelineDrag.slot.style.top = `${snappedTop}px`;
+      timelineDrag.slot.style.height = `${timelineDrag.initialHeight}px`;
+    } else if (timelineDrag.mode === 'resize-start') {
+      previewEnd = itemEndMinutes(item);
+      previewStart = clamp(snapMinutes(yToMinutes(rawY - (TIMELINE_EVENT_GAP / 2))), DAY_START_MIN, previewEnd - 30);
+      const snappedTop = minutesToY(previewStart) + (TIMELINE_EVENT_GAP / 2);
+      const bottom = timelineDrag.initialTop + timelineDrag.initialHeight;
+      card.style.top = `${snappedTop}px`;
+      card.style.minHeight = `${bottom - snappedTop}px`;
+      card.style.height = `${bottom - snappedTop}px`;
+      timelineDrag.slot.style.top = `${snappedTop}px`;
+      timelineDrag.slot.style.height = `${bottom - snappedTop}px`;
+    } else {
+      previewStart = itemStartMinutes(item);
+      previewEnd = clamp(snapMinutes(yToMinutes(rawY + (TIMELINE_EVENT_GAP / 2))), previewStart + 30, DAY_END_MIN);
+      const height = Math.max(40, minutesToY(previewEnd) - minutesToY(previewStart) - TIMELINE_EVENT_GAP);
+      card.style.minHeight = `${height}px`;
+      card.style.height = `${height}px`;
+      timelineDrag.slot.style.top = `${timelineDrag.initialTop}px`;
+      timelineDrag.slot.style.height = `${height}px`;
+    }
+
+    timelineDrag.previewStart = previewStart;
+    timelineDrag.previewEnd = previewEnd;
+    timelineDrag.previewDay = timelineDrag.board.dataset.day;
+    const previewText = `${fmtTime(minutesToTime(previewStart))} - ${fmtTime(minutesToTime(previewEnd))}`;
+    const chip = card.querySelector('.time-chip');
+    if (chip) chip.textContent = previewText;
+    timelineDrag.badge.innerHTML = `<strong>${escapeHtml(fmtTime(minutesToTime(previewStart)))}</strong><span>→ ${escapeHtml(fmtTime(minutesToTime(previewEnd)))}</span>`;
+    timelineDrag.badge.style.left = `${Math.min(window.innerWidth - 150, ev.clientX + 18)}px`;
+    timelineDrag.badge.style.top = `${Math.max(12, ev.clientY - 58)}px`;
+
+    if (timelineDrag.lastSnap !== previewStart) {
+      timelineDrag.lastSnap = previewStart;
+      if (navigator.vibrate) navigator.vibrate(8);
+    }
+
+    // Gentle edge scrolling keeps long moves possible without releasing the grip.
+    const edge = 72;
+    if (ev.clientY < edge) window.scrollBy({ top: -12, behavior: 'auto' });
+    else if (ev.clientY > window.innerHeight - edge) window.scrollBy({ top: 12, behavior: 'auto' });
+  };
+
+  const onMove = ev => {
+    if (!timelineDrag) return;
+    updateVisualPreview(ev);
+  };
+
+  const onCancel = () => {
+    cleanup(true);
+    timelineDrag = null;
+  };
+
+  const onUp = async ev => {
+    if (!timelineDrag) return;
+    updateVisualPreview(ev);
+    const drag = timelineDrag;
+    cleanup(false);
+    const draggedItem = items.find(i => i.id === drag.id);
+    timelineDrag = null;
+    if (!draggedItem) return;
+
+    let patch = {};
+    if (drag.mode === 'move') {
+      patch = {
+        item_date: drag.previewDay || drag.day,
+        start_time: minutesToTime(drag.previewStart),
+        end_time: minutesToTime(drag.previewEnd),
+        sort_order: drag.previewStart
+      };
+    } else if (drag.mode === 'resize-start') {
+      patch = { start_time: minutesToTime(drag.previewStart), end_time: minutesToTime(drag.previewEnd), sort_order: drag.previewStart };
+    } else {
+      patch = { start_time: minutesToTime(drag.previewStart), end_time: minutesToTime(drag.previewEnd), sort_order: drag.previewStart };
+    }
+    await updateItemWithUndo(draggedItem.id, patch, `Moved to ${fmtTime(patch.start_time)}`);
+  };
+
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onCancel);
+  updateVisualPreview(e);
 }
 
 function renderPackingList() {
@@ -4984,7 +5098,7 @@ async function deletePackingItem(id) {
 
 /* === WeTrack V1.2 mobile traveler roster reliability patch === */
 (function weTrackMobileTravelerRosterPatch(){
-  const BUILD = 'WeTrack V2.1.0 Production / grip-handle-safety-2026-07-25';
+  const BUILD = 'WeTrack V2.2.0 Production / timeline-live-preview-2026-07-26';
   function safeFirstName(value){
     return String(value || 'Traveler').trim().split(/\s+/)[0] || 'Traveler';
   }

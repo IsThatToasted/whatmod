@@ -1,6 +1,6 @@
-# WeTrack V2.1 Production
+# WeTrack V2.2 Production
 
-Build marker: `WeTrack V2.1.0 Production / production-audit-2026-07-25` · cache `v410`.
+Build marker: `WeTrack V2.2.0 Production / production-audit-2026-07-25` · cache `v410`.
 
 This consolidated release repairs Trip Details editing, hardens the unsigned iOS build workflow, and includes a repeatable production audit and deployment checklist. Read `AUDIT_REPORT.md` and `DEPLOYMENT_CHECKLIST.md` before deployment.
 
@@ -80,7 +80,7 @@ Build marker: `V2.3.2.0-ui-redesign-2026-07-12` / cache version `v=230`.
 
 # ItineraryTrackerV2.2 — Production Stabilization
 
-# ItineraryTrackerV2.1 Production UI
+# ItineraryTrackerV2.2 Production UI
 
 Checkpoint build focused on PC/tablet display polish, mobile quick navigation, and camera-first memories.
 
@@ -176,7 +176,7 @@ Locked cards can still be viewed, but cannot be dragged, resized, shifted, edite
 This patch updates the mobile quick nav to: Home, Must Do, Add Memory, and Packing. Add Memory opens the camera/photo picker flow directly. The nav stays sticky at the top, fades after 10 seconds of inactivity while scrolled, and wakes back up when the user scrolls/touches the page.
 
 
-## V2.1 Production UI Revamp
+## V2.2 Production UI Revamp
 
 This checkpoint focuses on moving the app from feature-complete prototype toward a product-ready interface.
 
@@ -211,7 +211,7 @@ This build adds:
 Run `schema.sql` once in Supabase SQL Editor before testing deletion/cleanup.
 
 
-## V2.1 Final Polish Notes
+## V2.2 Final Polish Notes
 
 This checkpoint adds a completed-trip memory mode and storage/performance hardening.
 
@@ -225,7 +225,7 @@ This checkpoint adds a completed-trip memory mode and storage/performance harden
 
 Run `schema.sql` once after deploying this version so the Storage delete policy and cleanup helpers are current.
 
-## V2.1.14 profile / UI polish patch
+## V2.2.14 profile / UI polish patch
 - Activity Generator search input now gets its own row above radius/GPS/generate controls.
 - Desktop timeline action buttons have consistent compact spacing.
 - Traveler avatars appear beside the day planner title; click/tap a traveler to view their profile.
@@ -234,7 +234,7 @@ Run `schema.sql` once after deploying this version so the Storage delete policy 
 - `schema.sql` adds optional traveler profile preference fields on `itinerary_trip_members`.
 
 
-## V2.1.15 Traveler Passport
+## V2.2.15 Traveler Passport
 
 Adds a polished Traveler Passport profile modal with trip role, nickname, food preferences, foods to avoid, activity preferences, rainy-day picks, outdoor favorites, shopping interests, travel style chips, budget comfort, wake-up time, logistics notes, and trip notes. Run `schema.sql` once to add the optional profile fields.
 
@@ -245,10 +245,10 @@ Adds a polished Traveler Passport profile modal with trip role, nickname, food p
 - Universal toast/status messages for saves, updates, sync events, and recoverable errors.
 - Silent live-sync fallback refreshes trip data periodically, on visibility return, and after realtime broadcasts without interrupting open dialogs/forms.
 - No-trip empty state instead of silently creating duplicate starter trips.
-- Completed-trip memory recap/slideshow and storage-safe deletion behavior preserved from V2.1.
+- Completed-trip memory recap/slideshow and storage-safe deletion behavior preserved from V2.2.
 - Hidden diagnostics panel: press Ctrl/Cmd + Shift + D to view current user/trip/sync state while testing.
 
-Run `schema.sql` after deploying if you have not already run the latest V2.1 schema. No new required schema changes were added specifically for V2.2 UI stabilization.
+Run `schema.sql` after deploying if you have not already run the latest V2.2 schema. No new required schema changes were added specifically for V2.2 UI stabilization.
 
 
 ## V2.2.1 patch
@@ -552,3 +552,9 @@ Fun Ideas are now stored in one owner-led shared bucket list rather than inside 
 Run the complete updated `schema.sql` once in Supabase. It creates the account-level bucket-list tables and automatically migrates existing trip Fun Ideas, categories, permissions, and reactions. The migration is idempotent, so rerunning the SQL will not duplicate migrated ideas.
 
 The active trip still determines which owner-led bucket list is shown. For example, every trip owned by Brian opens Brian's same shared bucket list. A collaborator's access granted from one of those trips remains valid across the owner's other trips.
+
+
+## V2.2 Timeline Interaction Polish
+- Live snapped start/end time while dragging or resizing.
+- Floating time preview, destination slot highlight, origin ghost, light haptics, and edge auto-scroll.
+- Dashboard Planned amount now includes only Must Do costs and non-travel event budgets for the selected day. Flights, drives, trains, ferries, cruises, hotels/lodging, transit, gas, and other travel expenses are excluded.
