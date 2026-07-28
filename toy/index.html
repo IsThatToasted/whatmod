@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#130b20">
+  <title>PulseLink Remote</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient one"></div><div class="ambient two"></div>
+  <header class="topbar">
+    <div><span class="eyebrow">PRIVATE REMOTE SESSION</span><h1>PulseLink</h1></div>
+    <button id="panic" class="panic">STOP</button>
+  </header>
+  <main>
+    <section class="hero panel">
+      <div class="heroCopy"><span class="eyebrow">WHATMOD / TOY</span><h2 id="heroTitle">Connect to a private session</h2><p id="heroText">Control a partner's approved toy manually or from a video you choose. Raw media stays in this browser.</p></div>
+      <div class="liveOrb"><strong id="liveOutput">0</strong><small>/20</small></div>
+    </section>
+
+    <section id="connectPanel" class="grid two">
+      <article class="panel">
+        <span class="eyebrow">JOIN OR CREATE</span>
+        <label>Display name<input id="name" maxlength="40" placeholder="Your name"></label>
+        <label>Relay URL<input id="relay" placeholder="https://your-public-relay.example"></label>
+        <label>Invite link or code<input id="invite" placeholder="Paste invite link"></label>
+        <div class="buttons"><button id="join" class="primary">Join session</button><button id="create" class="secondary">Create invite</button></div>
+        <p id="connectionHint" class="muted">A GitHub Pages site is the interface; a public WSS relay is still required.</p>
+      </article>
+      <article id="invitePanel" class="panel hidden">
+        <span class="eyebrow">INVITATION</span><h3 id="inviteState">Waiting for partner…</h3>
+        <div class="copy"><input id="inviteLink" readonly><button id="copy">Copy</button></div>
+      </article>
+    </section>
+
+    <section id="sessionPanel" class="hidden">
+      <div class="grid two">
+        <article class="panel">
+          <div class="row"><div><span class="eyebrow">CONNECTED WITH</span><h2 id="partnerName">Partner</h2></div><span class="badge">LIVE</span></div>
+          <p id="permissionText" class="muted">Waiting for their permissions.</p>
+          <div class="permissionGrid"><span id="manualPermission">Manual off</span><span id="videoPermission">Video off</span></div>
+          <label>Manual intensity <b id="manualValue">0</b><input id="manual" type="range" min="0" max="20" value="0"></label>
+          <button id="hold" class="hold">Press and hold</button>
+          <div class="patterns"><button data-pattern="pulse">Pulse</button><button data-pattern="wave">Wave</button><button data-pattern="tease">Tease</button><button data-pattern="random">Random</button></div>
+          <button id="stopPattern" class="secondary full">Stop pattern</button>
+        </article>
+
+        <article class="panel">
+          <div class="row"><div><span class="eyebrow">VIDEO SYNC</span><h2>Choose a tab or window</h2></div><span id="mediaBadge" class="badge off">OFF</span></div>
+          <div class="meters">
+            <label>Motion <b id="motionValue">0%</b><span><i id="motionMeter"></i></span></label>
+            <label>Sound <b id="audioValue">0%</b><span><i id="audioMeter"></i></span></label>
+            <label>Beat <b id="beatValue">0%</b><span><i id="beatMeter"></i></span></label>
+            <label>Output <b id="outputValue">0</b><span class="accent"><i id="outputMeter"></i></span></label>
+          </div>
+          <div class="segments" id="mode"><button data-value="balanced" class="active">Balanced</button><button data-value="motion">Motion</button><button data-value="audio">Audio</button><button data-value="beat">Beat</button></div>
+          <label>Sensitivity <b id="sensitivityValue">100%</b><input id="sensitivity" type="range" min="25" max="200" value="100"></label>
+          <label>Smoothing <b id="smoothingValue">55%</b><input id="smoothing" type="range" min="0" max="90" value="55"></label>
+          <label>Video maximum <b id="videoMaxValue">12</b><input id="videoMax" type="range" min="1" max="20" value="12"></label>
+          <div class="buttons"><button id="startVideo" class="primary">Choose video</button><button id="stopVideo" class="secondary">Stop</button></div>
+          <p id="videoStatus" class="muted">Select a browser tab and enable Share tab audio for full audio response.</p>
+          <video id="captureVideo" muted playsinline hidden></video><canvas id="captureCanvas" width="160" height="90" hidden></canvas>
+        </article>
+      </div>
+
+      <article class="panel chatPanel">
+        <div class="row"><div><span class="eyebrow">TEMPORARY CHAT</span><h3>Deleted when the session ends</h3></div><button id="end" class="danger">End</button></div>
+        <div id="messages" class="chat"></div>
+        <form id="chatForm"><input id="chatInput" maxlength="1000" placeholder="Write a message"><button class="primary">Send</button></form>
+      </article>
+    </section>
+  </main>
+  <div id="toast"></div>
+  <script src="config.js"></script><script src="app.js"></script>
+</body>
+</html>
