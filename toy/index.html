@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#130b20">
   <title>PulseLink Remote</title>
-  <link rel="stylesheet" href="styles.css?v=0.2.7">
+  <link rel="stylesheet" href="styles.css?v=0.2.13">
 </head>
 <body>
   <div class="ambient one"></div><div class="ambient two"></div>
@@ -35,15 +35,36 @@
     </section>
 
     <section id="sessionPanel" class="hidden">
-      <div class="grid two">
-        <article class="panel">
-          <div class="row"><div><span class="eyebrow">CONNECTED WITH</span><h2 id="partnerName">Partner</h2></div><span class="badge">LIVE</span></div>
-          <p id="permissionText" class="muted">Waiting for their permissions.</p>
-          <div class="permissionGrid"><span id="manualPermission">Manual off</span><span id="videoPermission">Video off</span></div>
-          <label>Manual intensity <b id="manualValue">0</b><input id="manual" type="range" min="0" max="20" value="0"></label>
-          <button id="hold" class="hold">Press and hold</button>
-          <div class="patterns"><button data-pattern="pulse">Pulse</button><button data-pattern="wave">Wave</button><button data-pattern="tease">Tease</button><button data-pattern="random">Random</button></div>
-          <button id="stopPattern" class="secondary full">Stop pattern</button>
+      <div class="sessionHeading panel">
+        <div class="row"><div><span class="eyebrow">CONNECTED WITH</span><h2 id="partnerName">Partner</h2><p id="permissionText" class="muted">Waiting for their permissions.</p></div><span class="badge">LIVE</span></div>
+        <div class="toyPair">
+          <div id="myToyCard" class="toyMini waiting"><span class="toyIcon">●</span><div><small>YOUR TOY</small><b id="myToyName">Waiting for your Toy…</b><em id="myToyMeta">Not connected on this page</em></div></div>
+          <div id="theirToyCard" class="toyMini waiting"><span class="toyIcon">●</span><div><small>PARTNER TOY</small><b id="theirToyName">Waiting for user's Toy…</b><em id="theirToyMeta">Not connected</em></div></div>
+        </div>
+        <div class="permissionGrid"><span id="manualPermission">Manual off</span><span id="videoPermission">Video off</span></div>
+      </div>
+
+      <div class="grid two controlGrid">
+        <article class="panel touchPanel">
+          <div class="row"><div><span class="eyebrow">TOUCH CONTROL</span><h2>Partner toy</h2></div><div class="liveOrb small"><strong id="touchOutput">0</strong><small>/20</small></div></div>
+          <div class="vibeScope">
+            <div class="scopeHeader"><span><i class="scopeDot mine"></i>Your toy</span><span><i class="scopeDot partner"></i>Partner toy</span><b>LIVE VIBRATION</b></div>
+            <canvas id="vibeCanvas" class="vibeCanvas" aria-label="Live vibration history"></canvas>
+          </div>
+          <div id="partnerToyWait" class="touchWait">
+            <strong>Waiting for user's Toy…</strong>
+            <span>Controls appear automatically when their toy reports connected.</span>
+          </div>
+          <div id="partnerControlArea" class="hidden">
+            <div id="touchPad" class="touchPad" role="slider" aria-label="Partner toy vibration intensity" aria-valuemin="0" aria-valuemax="20" aria-valuenow="0">
+              <div class="touchGrid"></div><div id="touchFill" class="touchFill"></div><div id="touchThumb" class="touchThumb"><span></span></div>
+              <div class="touchScale"><b>20</b><b>15</b><b>10</b><b>5</b><b>0</b></div>
+              <div class="touchPrompt"><b>TOUCH &amp; DRAG</b><span>Slide up for more</span></div>
+            </div>
+            <label>Fine control <b id="manualValue">0</b><input id="manual" type="range" min="0" max="20" value="0"></label>
+            <div class="patterns"><button data-pattern="pulse">Pulse</button><button data-pattern="wave">Wave</button><button data-pattern="tease">Tease</button><button data-pattern="random">Random</button></div>
+            <button id="stopPattern" class="secondary full">Stop pattern</button>
+          </div>
         </article>
 
         <article class="panel">
@@ -72,6 +93,6 @@
     </section>
   </main>
   <div id="toast"></div>
-  <script src="config.js?v=0.2.7"></script><script src="app.js?v=0.2.7"></script>
+  <script src="config.js?v=0.2.13"></script><script src="app.js?v=0.2.13"></script>
 </body>
 </html>
