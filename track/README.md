@@ -1,3 +1,12 @@
+# WeTrack V2.7 — Traveler-aware map filters
+
+- Adds **Show only me** and **Show everyone** controls to the daily route map.
+- **Show only me** includes events assigned to the signed-in traveler plus shared/Everyone events, while hiding another traveler’s solo flights, drives, and stops.
+- Keeps **Show travel events** independent.
+- Route stop cards and map popups now identify the assigned traveler.
+- The selected route filter is remembered per signed-in user on that device.
+- Cache version: `v461`.
+
 # WeTrack V2.3 Production
 
 ## Changes

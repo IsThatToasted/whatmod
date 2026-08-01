@@ -4768,3 +4768,18 @@ body.auth-signed-out .topbar.topbar-actions-only #googleBtn:not(.hidden){
   }
   body.auth-signed-out #signedOut{margin-top:0!important}
 }
+
+
+/* === WeTrack V2.7: traveler-aware map filters === */
+.daily-map-legend .map-filter-group{display:inline-flex;align-items:center;gap:8px;padding:4px;border-radius:14px;background:rgba(116,70,255,.07);border:1px solid rgba(116,70,255,.12)}
+.daily-map-legend .map-filter-option{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 10px;border-radius:11px;background:rgba(255,255,255,.72);cursor:pointer;user-select:none;transition:.18s ease}
+.daily-map-legend .map-filter-option:has(input:checked){background:linear-gradient(135deg,rgba(116,70,255,.16),rgba(255,102,181,.10));color:var(--primary,#7446ff);box-shadow:inset 0 0 0 1px rgba(116,70,255,.18)}
+.daily-map-legend .travel-toggle{margin-left:auto}
+.daily-map-stops .route-stop{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:'pin title time' 'pin assignee time';align-items:center;column-gap:10px;row-gap:2px}
+.daily-map-stops .route-stop>b{grid-area:pin}.daily-map-stops .route-stop>strong{grid-area:title;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.daily-map-stops .route-stop>small{grid-area:assignee;color:var(--muted,#7380a7);font-size:.72rem;font-weight:800}.daily-map-stops .route-stop>span{grid-area:time}
+@media(max-width:760px){
+  .daily-map-legend .map-filter-group{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:6px}
+  .daily-map-legend .map-filter-option{justify-content:center;width:100%;white-space:normal!important;text-align:center}
+  .daily-map-legend .travel-toggle{margin-left:0}
+  .daily-map-stops .route-stop{min-width:260px;max-width:86vw}
+}

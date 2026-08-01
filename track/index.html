@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=440" />
+  <link rel="stylesheet" href="./styles.css?v=461" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -171,7 +171,15 @@
                 <a id="dailyDirectionsLink" class="ghost-btn map-directions hidden" target="_blank" rel="noopener">Open directions</a>
               </div>
               <p id="dailyMapHelp" class="helper-text compact-help">Add locations to timed plans to see today’s pins and route.</p>
-              <div id="dailyMapLegend" class="daily-map-legend hidden"><span><i class="legend-dot drive"></i>Driving route</span><span><i class="legend-dot travel"></i>Flights / transit separate</span><label><input id="dailyShowTravel" type="checkbox" checked /> Show travel events</label></div>
+              <div id="dailyMapLegend" class="daily-map-legend hidden">
+                <span><i class="legend-dot drive"></i>Driving route</span>
+                <span><i class="legend-dot travel"></i>Flights / transit separate</span>
+                <div class="map-filter-group" role="group" aria-label="Filter route by traveler">
+                  <label class="map-filter-option"><input id="dailyShowMine" type="checkbox" /> Show only me</label>
+                  <label class="map-filter-option"><input id="dailyShowEveryone" type="checkbox" checked /> Show everyone</label>
+                </div>
+                <label class="map-filter-option travel-toggle"><input id="dailyShowTravel" type="checkbox" checked /> Show travel events</label>
+              </div>
               <div id="dailyRouteMap" class="daily-route-map" aria-label="Map of selected day route"></div>
               <div id="dailyMapStops" class="daily-map-stops"></div>
             </section>
@@ -493,6 +501,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=440"></script>
+  <script src="./app.js?v=461"></script>
 </body>
 </html>

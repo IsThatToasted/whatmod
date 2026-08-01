@@ -21,7 +21,7 @@ const els = {
   expandAllBtn: document.getElementById('expandAllBtn'), collapseAllBtn: document.getElementById('collapseAllBtn'), exportBtn: document.getElementById('exportBtn'), importInput: document.getElementById('importInput'),
   tripDialog: document.getElementById('tripDialog'), dialogTripTitle: document.getElementById('dialogTripTitle'), dialogStartDate: document.getElementById('dialogStartDate'), dialogEndDate: document.getElementById('dialogEndDate'), createTripConfirm: document.getElementById('createTripConfirm'),
   inviteRole: document.getElementById('inviteRole'), createInviteBtn: document.getElementById('createInviteBtn'), inviteOutput: document.getElementById('inviteOutput'), inviteLink: document.getElementById('inviteLink'), copyInviteBtn: document.getElementById('copyInviteBtn'), collabList: document.getElementById('collabList'),
-  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), editTripDetailsBtn: document.getElementById('editTripDetailsBtn'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyMapLegend: document.getElementById('dailyMapLegend'),
+  destinationSuggestions: document.getElementById('destinationSuggestions'), destinationMapLinks: document.getElementById('destinationMapLinks'), itemLocationSuggestions: document.getElementById('itemLocationSuggestions'), itemLocationMapLinks: document.getElementById('itemLocationMapLinks'), itemFromSuggestions: document.getElementById('itemFromSuggestions'), itemToSuggestions: document.getElementById('itemToSuggestions'), userName: document.getElementById('userName'), userAvatar: document.getElementById('userAvatar'), homeGreeting: document.getElementById('homeGreeting'), homeDaysLeft: document.getElementById('homeDaysLeft'), homeCountdownLabel: document.getElementById('homeCountdownLabel'), homeCountdownDetail: document.getElementById('homeCountdownDetail'), homeProgressBar: document.getElementById('homeProgressBar'), homeMustDoLine: document.getElementById('homeMustDoLine'), homeBudgetLine: document.getElementById('homeBudgetLine'), homeActivityLine: document.getElementById('homeActivityLine'), homeWeatherLine: document.getElementById('homeWeatherLine'), homeContinueBtn: document.getElementById('homeContinueBtn'), heroDaysLeft: document.getElementById('heroDaysLeft'), heroCountdownLabel: document.getElementById('heroCountdownLabel'), heroCountdownDetail: document.getElementById('heroCountdownDetail'), travelerCount: document.getElementById('travelerCount'), detailsDestination: document.getElementById('detailsDestination'), editTripDetailsBtn: document.getElementById('editTripDetailsBtn'), detailsStart: document.getElementById('detailsStart'), detailsEnd: document.getElementById('detailsEnd'), sidebarNewTripBtn: document.getElementById('sidebarNewTripBtn'), viewItineraryBtn: document.getElementById('viewItineraryBtn'), dailyMapPanel: document.getElementById('dailyMapPanel'), dailyRouteMap: document.getElementById('dailyRouteMap'), dailyMapTitle: document.getElementById('dailyMapTitle'), dailyMapHelp: document.getElementById('dailyMapHelp'), dailyMapStops: document.getElementById('dailyMapStops'), dailyDirectionsLink: document.getElementById('dailyDirectionsLink'), dailyShowTravel: document.getElementById('dailyShowTravel'), dailyShowMine: document.getElementById('dailyShowMine'), dailyShowEveryone: document.getElementById('dailyShowEveryone'), dailyMapLegend: document.getElementById('dailyMapLegend'),
   packingPanel: document.getElementById('packingPanel'), packingCount: document.getElementById('packingCount'), packingProgress: document.getElementById('packingProgress'), packingProgressList: document.getElementById('packingProgressList'), packingList: document.getElementById('packingList'), packingForm: document.getElementById('packingForm'), packingInput: document.getElementById('packingInput'), addPackingBtn: document.getElementById('addPackingBtn'), resetPackingBtn: document.getElementById('resetPackingBtn'),
   mustDoPanel: document.getElementById('mustDoPanel'), mustDoCount: document.getElementById('mustDoCount'), mustDoProgress: document.getElementById('mustDoProgress'), mustDoList: document.getElementById('mustDoList'), mustDoForm: document.getElementById('mustDoForm'), mustDoInput: document.getElementById('mustDoInput'), mustDoPriority: document.getElementById('mustDoPriority'), addMustDoBtn: document.getElementById('addMustDoBtn'), mustDoBudget: document.getElementById('mustDoBudget'),
   memoryPanel: document.getElementById('memoryPanel'), memoryCount: document.getElementById('memoryCount'), memoryList: document.getElementById('memoryList'), memoryForm: document.getElementById('memoryForm'), memoryInput: document.getElementById('memoryInput'), addMemoryBtn: document.getElementById('addMemoryBtn'), tripProgress: document.getElementById('tripProgress'), tripProgressText: document.getElementById('tripProgressText'), gasMiles: document.getElementById('gasMiles'), gasMpg: document.getElementById('gasMpg'), gasPrice: document.getElementById('gasPrice'), gasEstimate: document.getElementById('gasEstimate'), gasBreakdown: document.getElementById('gasBreakdown'), activitySearch: document.getElementById('activitySearch'), activityRadius: document.getElementById('activityRadius'), activityUseGps: document.getElementById('activityUseGps'), activityGenerateBtn: document.getElementById('activityGenerateBtn'), activityGeneratorStatus: document.getElementById('activityGeneratorStatus'), activityResults: document.getElementById('activityResults'), activityResultCount: document.getElementById('activityResultCount'), avatarFunBtn: document.getElementById('avatarFunBtn'), funIdeasDialog: document.getElementById('funIdeasDialog'), funAccessPanel: document.getElementById('funAccessPanel'), funPermissionList: document.getElementById('funPermissionList'), funIdeasList: document.getElementById('funIdeasList'), funIdeaId: document.getElementById('funIdeaId'), funIdeaTitle: document.getElementById('funIdeaTitle'), funIdeaDescription: document.getElementById('funIdeaDescription'), funIdeaPlayType: document.getElementById('funIdeaPlayType'), funIdeaStatus: document.getElementById('funIdeaStatus'), funIdeaVisibility: document.getElementById('funIdeaVisibility'), funIdeaAssignedTo: document.getElementById('funIdeaAssignedTo'), funIdeaCategory: document.getElementById('funIdeaCategory'), funCategoryFilter: document.getElementById('funCategoryFilter'), funCategoryManageBtn: document.getElementById('funCategoryManageBtn'), funCategoryEditor: document.getElementById('funCategoryEditor'), funCategoryName: document.getElementById('funCategoryName'), funCategoryEmoji: document.getElementById('funCategoryEmoji'), funAddCategoryBtn: document.getElementById('funAddCategoryBtn'), funCategoryList: document.getElementById('funCategoryList'), funNewIdeaBtn: document.getElementById('funNewIdeaBtn'), funCancelEditorBtn: document.getElementById('funCancelEditorBtn'), funClearBtn: document.getElementById('funClearBtn'), funSaveBtn: document.getElementById('funSaveBtn'), memoryPhotoInput: document.getElementById('memoryPhotoInput'), memoryPhotoBtn: document.getElementById('memoryPhotoBtn'), memorySlideshowBtn: document.getElementById('memorySlideshowBtn'), memorySlideshowDialog: document.getElementById('memorySlideshowDialog'), memorySlideshowStage: document.getElementById('memorySlideshowStage'), memoryPrevBtn: document.getElementById('memoryPrevBtn'), memoryNextBtn: document.getElementById('memoryNextBtn'), shoppingListDialog: document.getElementById('shoppingListDialog'), shoppingListTitle: document.getElementById('shoppingListTitle'), shoppingPermissionPanel: document.getElementById('shoppingPermissionPanel'), shoppingPermissionList: document.getElementById('shoppingPermissionList'), shoppingListBody: document.getElementById('shoppingListBody'), shoppingNewBtn: document.getElementById('shoppingNewBtn'), shoppingEditor: document.getElementById('shoppingEditor'), shoppingItemId: document.getElementById('shoppingItemId'), shoppingItemName: document.getElementById('shoppingItemName'), shoppingItemQty: document.getElementById('shoppingItemQty'), shoppingItemCategory: document.getElementById('shoppingItemCategory'), shoppingItemCost: document.getElementById('shoppingItemCost'), shoppingItemNotes: document.getElementById('shoppingItemNotes'), shoppingCancelEditorBtn: document.getElementById('shoppingCancelEditorBtn'), shoppingSaveBtn: document.getElementById('shoppingSaveBtn'),
@@ -567,10 +567,28 @@ async function geocodeOne(query) {
   locationCache.set(cacheKey, best);
   return best;
 }
+function mapAudienceMode() {
+  return els.dailyShowMine?.checked ? 'mine' : 'everyone';
+}
+function mapItemMatchesAudience(item, mode = mapAudienceMode()) {
+  if (mode !== 'mine') return true;
+  const uid = session?.user?.id;
+  if (!uid) return false;
+  // “Only me” keeps shared/group stops while removing another traveler's
+  // individually assigned flight, drive, transit, or solo event.
+  return !item.assigned_to || item.assigned_to === uid;
+}
+function mapAssigneeLabel(item) {
+  if (!item?.assigned_to) return 'Everyone';
+  if (item.assigned_to === session?.user?.id) return 'Me';
+  return memberLabel(item.assigned_to) || 'Traveler';
+}
 function selectedDayMapItems() {
   const day = selectedDay || currentTrip()?.start_date || todayISO();
+  const audience = mapAudienceMode();
   return items
     .filter(i => i.item_date === day && timeToMinutes(i.start_time) !== null && (i.location || i.from_location || i.to_location))
+    .filter(i => mapItemMatchesAudience(i, audience))
     .sort((a,b) => `${a.start_time || '99:99'} ${a.sort_order || 0}`.localeCompare(`${b.start_time || '99:99'} ${b.sort_order || 0}`));
 }
 async function renderDayMap() {
@@ -585,6 +603,7 @@ async function renderDayMap() {
   const day = selectedDay || currentTrip()?.start_date || todayISO();
   const dayItems = selectedDayMapItems();
   const showTravel = els.dailyShowTravel ? els.dailyShowTravel.checked !== false : true;
+  const audienceMode = mapAudienceMode();
 
   if (els.dailyMapTitle) els.dailyMapTitle.textContent = `Route for ${fmtLongDate(day)}`;
   if (!routeMap) {
@@ -608,7 +627,7 @@ async function renderDayMap() {
   if (els.dailyMapLegend) els.dailyMapLegend.classList.toggle('hidden', !dayItems.length);
 
   if (!dayItems.length) {
-    if (els.dailyMapHelp) els.dailyMapHelp.textContent = 'Add locations to timed plans to see this day’s pins and route.';
+    if (els.dailyMapHelp) els.dailyMapHelp.textContent = audienceMode === 'mine' ? 'No locations assigned to you or Everyone for this day.' : 'Add locations to timed plans to see this day’s pins and route.';
     setTimeout(() => routeMap?.invalidateSize(true), 120);
     return;
   }
@@ -640,14 +659,14 @@ async function renderDayMap() {
     const isRoute = p.behavior.routable;
     const displayIndex = isRoute ? ++routeIndex : 0;
     const marker = L.marker([p.lat, p.lon], { icon: mapPinIcon(p, displayIndex) })
-      .bindPopup(`<strong>${isRoute ? `${displayIndex}. ` : ''}${escapeHtml(p.item.title)}</strong><br>${escapeHtml(p.behavior.label)}<br>${escapeHtml(fmtTime(p.item.start_time))}<br>${escapeHtml(shortLocationLabel(p.query || itemMapLocation(p.item)))}`);
+      .bindPopup(`<strong>${isRoute ? `${displayIndex}. ` : ''}${escapeHtml(p.item.title)}</strong><br>${escapeHtml(p.behavior.label)} · ${escapeHtml(mapAssigneeLabel(p.item))}<br>${escapeHtml(fmtTime(p.item.start_time))}<br>${escapeHtml(shortLocationLabel(p.query || itemMapLocation(p.item)))}`);
     marker.addTo(routeLayer);
     routeMarkers.push(marker);
   });
 
   if (els.dailyMapStops) {
-    const routeHtml = routePoints.map((p, idx) => `<a class="route-stop driving" target="_blank" rel="noopener" href="${mapsUrl(p.query || itemMapLocation(p.item), 'google')}"><b>${idx + 1}</b><strong>${escapeHtml(p.label || p.item.title)}</strong><span>${escapeHtml(fmtTime(p.item.start_time))}</span></a>`).join('');
-    const travelHtml = travelPoints.map((p) => `<a class="route-stop travel" target="_blank" rel="noopener" href="${mapsUrl(p.query || itemMapLocation(p.item), 'google')}"><b>${escapeHtml(typeIcon[p.item.item_type] || '✈️')}</b><strong>${escapeHtml(p.label || p.item.title)}</strong><span>${escapeHtml(fmtTime(p.item.start_time))}</span></a>`).join('');
+    const routeHtml = routePoints.map((p, idx) => `<a class="route-stop driving" target="_blank" rel="noopener" href="${mapsUrl(p.query || itemMapLocation(p.item), 'google')}"><b>${idx + 1}</b><strong>${escapeHtml(p.label || p.item.title)}</strong><small>${escapeHtml(mapAssigneeLabel(p.item))}</small><span>${escapeHtml(fmtTime(p.item.start_time))}</span></a>`).join('');
+    const travelHtml = travelPoints.map((p) => `<a class="route-stop travel" target="_blank" rel="noopener" href="${mapsUrl(p.query || itemMapLocation(p.item), 'google')}"><b>${escapeHtml(typeIcon[p.item.item_type] || '✈️')}</b><strong>${escapeHtml(p.label || p.item.title)}</strong><small>${escapeHtml(mapAssigneeLabel(p.item))}</small><span>${escapeHtml(fmtTime(p.item.start_time))}</span></a>`).join('');
     els.dailyMapStops.innerHTML = `${routeHtml}${travelHtml ? `<div class="travel-stop-divider">Travel events shown separately</div>${travelHtml}` : ''}`;
   }
 
@@ -1996,7 +2015,25 @@ els.createTripConfirm.addEventListener('click', e => { e.preventDefault(); els.t
 els.activityGenerateBtn?.addEventListener('click', () => generateActivities(false));
 els.activityUseGps?.addEventListener('click', () => generateActivities(true));
 els.activityResults?.addEventListener('click', e => { const btn = e.target.closest('button[data-idx]'); if (!btn) return; const idea = window.__activityResults?.[Number(btn.dataset.idx)]; if (!idea) return; const loc = idea.lat && idea.lon ? `${idea.title}, ${idea.address || ''}`.trim() : idea.address || idea.title; if (btn.dataset.action === 'must') { if (els.mustDoInput) els.mustDoInput.value = idea.title; if (els.mustDoPriority) els.mustDoPriority.value = 'want'; addMustDoItem(idea.title); } else { openItemDialog(selectedDay || currentTrip()?.start_date || todayISO(), { title: idea.title, item_type: 'event', location: loc, notes: `Generated idea: ${idea.type}` }); } });
-els.deleteTripBtn.addEventListener('click', deleteTrip); if (els.dailyShowTravel) els.dailyShowTravel.addEventListener('change', renderDayMap); ['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => els[k].addEventListener('input', queueTripSave));
+els.deleteTripBtn.addEventListener('click', deleteTrip);
+if (els.dailyShowTravel) els.dailyShowTravel.addEventListener('change', renderDayMap);
+function setMapAudience(mode, persist = true) {
+  const mine = mode === 'mine';
+  if (els.dailyShowMine) els.dailyShowMine.checked = mine;
+  if (els.dailyShowEveryone) els.dailyShowEveryone.checked = !mine;
+  if (persist) {
+    try { localStorage.setItem(`wetrack-map-audience:${session?.user?.id || 'guest'}`, mine ? 'mine' : 'everyone'); } catch (_) {}
+  }
+  renderDayMap();
+}
+if (els.dailyShowMine) els.dailyShowMine.addEventListener('change', () => setMapAudience(els.dailyShowMine.checked ? 'mine' : 'everyone'));
+if (els.dailyShowEveryone) els.dailyShowEveryone.addEventListener('change', () => setMapAudience(els.dailyShowEveryone.checked ? 'everyone' : 'mine'));
+try {
+  const savedMapAudience = localStorage.getItem(`wetrack-map-audience:${session?.user?.id || 'guest'}`);
+  if (savedMapAudience === 'mine') setMapAudience('mine', false);
+  else setMapAudience('everyone', false);
+} catch (_) { setMapAudience('everyone', false); }
+['tripTitle','startDate','endDate','destination','tripNotes'].forEach(k => els[k].addEventListener('input', queueTripSave));
 els.addAnyItemBtn.addEventListener('click', () => openItemDialog(selectedDay)); els.saveItemBtn.addEventListener('click', saveItemFromDialog);
 els.createInviteBtn.addEventListener('click', createInviteLink); els.copyInviteBtn.addEventListener('click', copyInviteLink);
 setupLocationAutocomplete(els.destination, els.destinationSuggestions, els.destinationMapLinks);
