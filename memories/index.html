@@ -1,12 +1,544 @@
-{
-  "colors" : [
-    {
-      "color" : {
-        "color-space" : "srgb",
-        "components" : { "alpha" : "1.000", "blue" : "1.000", "green" : "0.486", "red" : "0.616" }
-      },
-      "idiom" : "universal"
-    }
-  ],
-  "info" : { "author" : "xcode", "version" : 1 }
-}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1020" />
+  <meta name="description" content="Memories is a private, visual space to document, connect, and rediscover the story of your life." />
+  <title>Memories — Every memory leads somewhere</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="./styles.css?v=1" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient__orb ambient__orb--one"></div>
+    <div class="ambient__orb ambient__orb--two"></div>
+    <div class="ambient__orb ambient__orb--three"></div>
+    <div class="ambient__grain"></div>
+  </div>
+
+  <div id="landing" class="landing">
+    <header class="landing__header shell">
+      <a class="brand" href="./" aria-label="Memories home">
+        <span class="brand__mark"><span></span><span></span><span></span></span>
+        <span class="brand__text">Memories</span>
+      </a>
+      <div class="landing__actions">
+        <button class="button button--ghost" data-action="open-auth" data-mode="signin">Sign in</button>
+        <button class="button button--primary" data-action="open-auth" data-mode="signup">Begin your story</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero shell">
+        <div class="hero__copy reveal">
+          <div class="eyebrow"><span class="eyebrow__pulse"></span>Your personal memory universe</div>
+          <h1>Explore the life<br /><span>you have lived.</span></h1>
+          <p>Document meaningful moments, connect the people and places around them, and follow pathways back to memories you thought were gone.</p>
+          <div class="hero__actions">
+            <button class="button button--primary button--large" data-action="open-auth" data-mode="signup">Create your private archive</button>
+            <button class="button button--soft button--large" data-action="enter-demo">Explore the demo</button>
+          </div>
+          <div class="hero__trust">
+            <span>Private by default</span>
+            <span>Full data export</span>
+            <span>No advertising profile</span>
+          </div>
+        </div>
+
+        <div class="memory-universe reveal reveal--delay" aria-label="Animated memory constellation preview">
+          <div class="universe__glow"></div>
+          <svg class="universe__lines" viewBox="0 0 600 560" role="presentation">
+            <path d="M300 280 C240 220 185 192 118 165" />
+            <path d="M300 280 C380 245 430 182 500 132" />
+            <path d="M300 280 C235 330 180 385 115 425" />
+            <path d="M300 280 C360 325 420 382 510 420" />
+            <path d="M300 280 C320 185 320 118 295 58" />
+            <path d="M300 280 C310 365 295 445 300 510" />
+          </svg>
+          <article class="universe-node universe-node--center">
+            <span class="node__date">SUMMER 2018</span>
+            <strong>The lake house</strong>
+            <small>7 connected memories</small>
+          </article>
+          <article class="universe-node universe-node--one"><span>☀️</span><strong>Last day of school</strong></article>
+          <article class="universe-node universe-node--two"><span>🎵</span><strong>Our road-trip song</strong></article>
+          <article class="universe-node universe-node--three"><span>📍</span><strong>Bluewater Lake</strong></article>
+          <article class="universe-node universe-node--four"><span>👥</span><strong>People who were there</strong></article>
+          <article class="universe-node universe-node--five"><span>📷</span><strong>19 photos</strong></article>
+          <article class="universe-node universe-node--six"><span>✨</span><strong>A forgotten detail</strong></article>
+          <div class="universe__hint">Every detail becomes another way back.</div>
+        </div>
+      </section>
+
+      <section class="feature-strip shell reveal">
+        <article><span>01</span><h2>Capture naturally</h2><p>Write, speak, or begin with a photograph. Partial memories are welcome.</p></article>
+        <article><span>02</span><h2>Connect the details</h2><p>Link people, places, feelings, objects, sounds, seasons, and life chapters.</p></article>
+        <article><span>03</span><h2>Follow the pathways</h2><p>Move through a timeline, story path, or living constellation of related moments.</p></article>
+      </section>
+
+      <section class="story-section shell reveal">
+        <div class="section-heading">
+          <div class="eyebrow">More than a journal</div>
+          <h2>Your memories are not a list.<br />They are a living network.</h2>
+        </div>
+        <div class="story-grid">
+          <article class="story-card story-card--timeline">
+            <div class="story-card__visual timeline-preview">
+              <span class="timeline-preview__line"></span>
+              <div class="timeline-preview__year">2024</div>
+              <div class="timeline-preview__memory"><b>First apartment</b><small>March</small></div>
+              <div class="timeline-preview__memory"><b>Weekend in Chicago</b><small>July</small></div>
+              <div class="timeline-preview__year">2025</div>
+              <div class="timeline-preview__memory"><b>A new beginning</b><small>January</small></div>
+            </div>
+            <div><span class="story-card__number">01</span><h3>A timeline that breathes</h3><p>Zoom from your entire life into one afternoon, with life chapters and quiet gaps that invite recollection.</p></div>
+          </article>
+          <article class="story-card story-card--fragment">
+            <div class="story-card__visual fragment-preview">
+              <div class="fragment-preview__fog"></div>
+              <span class="fragment-preview__quote">“A red hallway. Rain outside. Someone laughing.”</span>
+              <div class="fragment-preview__chips"><span>Maybe 2011</span><span>Hotel</span><span>Family trip?</span></div>
+            </div>
+            <div><span class="story-card__number">02</span><h3>A home for unfinished memories</h3><p>Save fragments without forcing certainty. Add clues over time until their place in your story becomes clearer.</p></div>
+          </article>
+          <article class="story-card story-card--perspective">
+            <div class="story-card__visual perspective-preview">
+              <div><span>B</span><p>“It started raining after dinner.”</p></div>
+              <div><span>A</span><p>“I remember the rain before we arrived.”</p></div>
+              <small>Two perspectives can both belong.</small>
+            </div>
+            <div><span class="story-card__number">03</span><h3>Remember together</h3><p>Invite trusted people to add their own perspective while preserving what each person remembers differently.</p></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="privacy-section shell reveal">
+        <div class="privacy-card">
+          <div>
+            <div class="eyebrow">Built around trust</div>
+            <h2>Your life is not content.</h2>
+            <p>Your archive stays private unless you deliberately share it. Export your data at any time, control what media can be analyzed, and permanently remove anything you no longer want stored.</p>
+          </div>
+          <div class="privacy-points">
+            <span><b>Private</b> by default</span>
+            <span><b>Protected</b> with row-level security</span>
+            <span><b>Portable</b> through complete export</span>
+            <span><b>Yours</b> without advertising use</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta-section shell reveal">
+        <div class="cta-card">
+          <div class="cta-card__rings" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="eyebrow">Every memory leads somewhere</div>
+          <h2>Begin with the first moment<br />that comes to mind.</h2>
+          <p>It does not need to be complete. It only needs a place to begin.</p>
+          <button class="button button--light button--large" data-action="open-auth" data-mode="signup">Start your memory archive</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="landing__footer shell">
+      <a class="brand brand--small" href="./"><span class="brand__mark"><span></span><span></span><span></span></span><span class="brand__text">Memories</span></a>
+      <p>Explore the life you have lived.</p>
+      <span>© <span id="copyright-year"></span> WhatMod</span>
+    </footer>
+  </div>
+
+  <div id="app-shell" class="app-shell" hidden>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__header">
+        <a class="brand" href="#today" data-nav="today">
+          <span class="brand__mark"><span></span><span></span><span></span></span>
+          <span class="brand__text">Memories</span>
+        </a>
+        <button class="icon-button sidebar__close" id="sidebar-close" aria-label="Close navigation">×</button>
+      </div>
+
+      <nav class="nav-list" aria-label="Main navigation">
+        <button class="nav-item is-active" data-nav="today"><span>✦</span><b>Today</b></button>
+        <button class="nav-item" data-nav="timeline"><span>◷</span><b>Timeline</b></button>
+        <button class="nav-item" data-nav="pathways"><span>〰</span><b>Pathways</b></button>
+        <button class="nav-item" data-nav="constellation"><span>✣</span><b>Constellation</b></button>
+        <button class="nav-item" data-nav="fragments"><span>◌</span><b>Fragments</b><em id="fragment-badge">0</em></button>
+        <button class="nav-item" data-nav="people"><span>♧</span><b>People & places</b></button>
+      </nav>
+
+      <div class="sidebar__chapter">
+        <div class="sidebar__label"><span>Current chapter</span><button data-action="edit-chapter" aria-label="Edit current life chapter">•••</button></div>
+        <button class="chapter-card" data-action="edit-chapter">
+          <span class="chapter-card__orb"></span>
+          <small>NOW</small>
+          <strong id="current-chapter-label">The chapter I am living</strong>
+          <span id="current-chapter-count">0 memories</span>
+        </button>
+      </div>
+
+      <div class="sidebar__footer">
+        <button class="nav-item" data-nav="settings"><span>⚙</span><b>Settings</b></button>
+        <button class="profile-chip" data-action="profile-menu">
+          <span class="profile-chip__avatar" id="profile-avatar">M</span>
+          <span><strong id="profile-name">My archive</strong><small id="profile-status">Private archive</small></span>
+          <em>⌄</em>
+        </button>
+      </div>
+    </aside>
+
+    <div class="mobile-backdrop" id="mobile-backdrop"></div>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="topbar__left">
+          <button class="icon-button menu-button" id="menu-button" aria-label="Open navigation">☰</button>
+          <div>
+            <span class="topbar__eyebrow" id="view-eyebrow">YOUR ARCHIVE</span>
+            <h1 id="view-title">Today</h1>
+          </div>
+        </div>
+        <div class="topbar__actions">
+          <label class="search-box">
+            <span>⌕</span>
+            <input id="global-search" type="search" placeholder="Search your life…" autocomplete="off" />
+            <kbd>⌘ K</kbd>
+          </label>
+          <button class="icon-button" id="theme-toggle" aria-label="Toggle theme">☼</button>
+          <button class="button button--primary add-memory-button" data-action="new-memory"><span>＋</span>Add memory</button>
+        </div>
+      </header>
+
+      <div class="mobile-quick-add">
+        <button class="button button--primary" data-action="new-memory"><span>＋</span>Add memory</button>
+      </div>
+
+      <section class="view is-active" id="view-today" data-view="today">
+        <div class="view-inner">
+          <section class="welcome-row">
+            <div>
+              <div class="eyebrow">A quiet place to remember</div>
+              <h2 id="welcome-heading">Good evening.</h2>
+              <p id="welcome-subheading">What part of your story would you like to visit?</p>
+            </div>
+            <div class="archive-health" id="archive-health">
+              <div class="archive-health__ring"><span id="archive-score">0</span></div>
+              <div><small>ARCHIVE DEPTH</small><strong id="archive-depth-label">Just beginning</strong><span id="archive-depth-detail">Add your first memory</span></div>
+            </div>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="dashboard-card dashboard-card--featured" id="featured-memory-card">
+              <div class="card-topline"><span>MEMORY TO REVISIT</span><button class="icon-button" data-action="shuffle-featured" aria-label="Show another memory">↻</button></div>
+              <div id="featured-memory-content" class="featured-memory__content"></div>
+            </article>
+
+            <article class="dashboard-card dashboard-card--prompt">
+              <div class="prompt-card__glow"></div>
+              <div class="card-topline"><span>TODAY'S RECOLLECTION</span><span>✦</span></div>
+              <div id="daily-prompt-content"></div>
+            </article>
+
+            <article class="dashboard-card dashboard-card--stats">
+              <div class="card-topline"><span>YOUR LIFE, CONNECTED</span><button class="text-button" data-nav="timeline">View timeline</button></div>
+              <div class="stats-grid" id="stats-grid"></div>
+              <div class="activity-ribbon" id="activity-ribbon"></div>
+            </article>
+
+            <article class="dashboard-card dashboard-card--fragment">
+              <div class="card-topline"><span>FROM THE FOG</span><button class="text-button" data-nav="fragments">All fragments</button></div>
+              <div id="fragment-preview-content"></div>
+            </article>
+          </section>
+
+          <section class="section-block">
+            <div class="section-block__heading"><div><span class="eyebrow">Recently added</span><h2>Fresh threads in your story</h2></div><button class="button button--soft" data-nav="timeline">Explore all</button></div>
+            <div class="memory-card-grid" id="recent-memory-grid"></div>
+          </section>
+
+          <section class="section-block">
+            <div class="section-block__heading"><div><span class="eyebrow">Suggested pathways</span><h2>Connections worth following</h2></div><button class="button button--soft" data-nav="pathways">Open pathways</button></div>
+            <div class="pathway-suggestion-grid" id="pathway-suggestion-grid"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-timeline" data-view="timeline">
+        <div class="view-inner">
+          <div class="toolbar-card">
+            <div class="filter-row">
+              <button class="filter-chip is-active" data-filter="all">All memories</button>
+              <button class="filter-chip" data-filter="favorite">Favorites</button>
+              <button class="filter-chip" data-filter="photo">With photos</button>
+              <button class="filter-chip" data-filter="uncertain">Uncertain dates</button>
+              <button class="filter-chip" data-filter="fragment">Fragments</button>
+            </div>
+            <div class="timeline-controls">
+              <label>Sort<select id="timeline-sort"><option value="desc">Newest first</option><option value="asc">Oldest first</option><option value="created">Recently added</option></select></label>
+              <button class="button button--soft" data-action="jump-today">Jump to today</button>
+            </div>
+          </div>
+          <div class="timeline-shell" id="timeline-shell"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-pathways" data-view="pathways">
+        <div class="view-inner">
+          <section class="pathway-hero">
+            <div><span class="eyebrow">Story paths through your life</span><h2>One memory rarely stands alone.</h2><p>Build a pathway around a relationship, place, season, transformation, tradition, or any thread that matters to you.</p></div>
+            <button class="button button--primary" data-action="new-pathway">＋ Create pathway</button>
+          </section>
+          <div class="pathways-layout">
+            <div>
+              <div class="section-block__heading compact"><div><span class="eyebrow">Your pathways</span><h2>Stories you are shaping</h2></div></div>
+              <div class="pathway-list" id="pathway-list"></div>
+            </div>
+            <aside class="pathway-insights">
+              <div class="card-topline"><span>SUGGESTED BY YOUR ARCHIVE</span><span>✦</span></div>
+              <div id="pathway-insights"></div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-constellation" data-view="constellation">
+        <div class="constellation-view">
+          <div class="constellation-toolbar">
+            <div><span class="eyebrow">Explore by association</span><h2>Your memory constellation</h2><p>Move through your archive without needing to know exactly what you are looking for.</p></div>
+            <div class="constellation-legend"><span><i class="legend-dot legend-dot--memory"></i>Memory</span><span><i class="legend-dot legend-dot--fragment"></i>Fragment</span><span><i class="legend-line"></i>Shared connection</span></div>
+          </div>
+          <div class="constellation-stage" id="constellation-stage">
+            <canvas id="constellation-canvas" aria-label="Interactive map of connected memories"></canvas>
+            <div class="constellation-empty" id="constellation-empty" hidden><span>✣</span><h3>Your constellation is waiting</h3><p>Add a few memories with shared people, places, tags, or life chapters to reveal their connections.</p><button class="button button--primary" data-action="new-memory">Add a memory</button></div>
+            <div class="constellation-help">Drag to explore · Scroll to zoom · Select a memory to open it</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-fragments" data-view="fragments">
+        <div class="view-inner">
+          <section class="fragment-hero">
+            <div class="fragment-hero__fog"></div>
+            <div><span class="eyebrow">Unplaced, unfinished, still meaningful</span><h2>The Fog</h2><p>A detail does not need a date, complete story, or explanation to deserve a place. Save it now and let future clues bring it into focus.</p></div>
+            <button class="button button--light" data-action="new-fragment">＋ Save a fragment</button>
+          </section>
+
+          <section class="fragment-prompts">
+            <button data-fragment-prompt="A room I can picture, but cannot place…"><span>▣</span><b>A room</b><small>Describe the first detail you see.</small></button>
+            <button data-fragment-prompt="A face I remember, but cannot name…"><span>◉</span><b>A face</b><small>What about them feels familiar?</small></button>
+            <button data-fragment-prompt="A sound or song tied to something unclear…"><span>♪</span><b>A sound</b><small>Where does it seem to take you?</small></button>
+            <button data-fragment-prompt="A phrase someone said that stayed with me…"><span>“</span><b>A phrase</b><small>Write the words as you remember them.</small></button>
+          </section>
+
+          <div class="section-block__heading"><div><span class="eyebrow">Saved fragments</span><h2>Clues waiting for a connection</h2></div><label class="inline-select">Sort<select id="fragment-sort"><option value="new">Recently added</option><option value="old">Oldest first</option><option value="certainty">Most clues</option></select></label></div>
+          <div class="fragment-grid" id="fragment-grid"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-people" data-view="people">
+        <div class="view-inner">
+          <div class="library-tabs">
+            <button class="is-active" data-library-tab="people">People</button>
+            <button data-library-tab="places">Places</button>
+            <button data-library-tab="chapters">Life chapters</button>
+          </div>
+          <section class="library-panel is-active" id="library-people">
+            <div class="library-hero"><div><span class="eyebrow">The people in your story</span><h2>Relationships become pathways.</h2><p>See the moments, places, and chapters connected to each person.</p></div><button class="button button--primary" data-action="new-person">＋ Add person</button></div>
+            <div class="entity-grid" id="people-grid"></div>
+          </section>
+          <section class="library-panel" id="library-places">
+            <div class="library-hero"><div><span class="eyebrow">Your personal geography</span><h2>Places hold their own memories.</h2><p>Homes, neighborhoods, schools, workplaces, destinations, and unnamed corners of your life.</p></div><button class="button button--primary" data-action="new-place">＋ Add place</button></div>
+            <div class="entity-grid" id="places-grid"></div>
+          </section>
+          <section class="library-panel" id="library-chapters">
+            <div class="library-hero"><div><span class="eyebrow">Seasons of your life</span><h2>Give shape to the chapters.</h2><p>Chapters can overlap. They are emotional and personal, not only chronological.</p></div><button class="button button--primary" data-action="new-chapter">＋ Add chapter</button></div>
+            <div class="chapter-grid" id="chapters-grid"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-settings" data-view="settings">
+        <div class="view-inner view-inner--narrow">
+          <section class="settings-hero"><span class="eyebrow">Your archive, your rules</span><h2>Settings & privacy</h2><p>Control how your archive looks, behaves, stores media, and leaves the platform.</p></section>
+          <div class="settings-stack">
+            <article class="settings-card">
+              <div><span class="settings-icon">◐</span><div><h3>Appearance</h3><p>Choose the atmosphere that feels right for reflection.</p></div></div>
+              <div class="theme-options"><button data-theme-choice="dark" class="is-active"><span class="theme-preview theme-preview--dark"></span>Night</button><button data-theme-choice="light"><span class="theme-preview theme-preview--light"></span>Daylight</button><button data-theme-choice="auto"><span class="theme-preview theme-preview--auto"></span>Automatic</button></div>
+            </article>
+            <article class="settings-card">
+              <div><span class="settings-icon">⇩</span><div><h3>Export your archive</h3><p>Download memories, pathways, people, places, and relationships as a portable JSON file.</p></div></div>
+              <button class="button button--soft" data-action="export-data">Export archive</button>
+            </article>
+            <article class="settings-card">
+              <div><span class="settings-icon">⇧</span><div><h3>Import an archive</h3><p>Restore a compatible Memories export. Existing records are preserved unless IDs match.</p></div></div>
+              <label class="button button--soft file-button">Import archive<input id="import-file" type="file" accept="application/json" /></label>
+            </article>
+            <article class="settings-card">
+              <div><span class="settings-icon">⌁</span><div><h3>Realtime sync</h3><p>Changes from your other devices appear automatically while the app is open.</p></div></div>
+              <label class="switch"><input id="realtime-toggle" type="checkbox" checked /><span></span></label>
+            </article>
+            <article class="settings-card settings-card--danger">
+              <div><span class="settings-icon">×</span><div><h3>Sign out</h3><p>Your information remains safely stored in your private archive.</p></div></div>
+              <button class="button button--danger" data-action="sign-out">Sign out</button>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="modal auth-modal" id="auth-modal">
+    <button class="modal__close" data-action="close-modal" aria-label="Close">×</button>
+    <div class="auth-modal__visual">
+      <div class="brand brand--light"><span class="brand__mark"><span></span><span></span><span></span></span><span class="brand__text">Memories</span></div>
+      <div class="auth-quote"><span>“</span><p>Memory is the diary that we all carry about with us.</p><small>Oscar Wilde</small></div>
+      <div class="auth-visual__nodes"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="auth-modal__form">
+      <div class="auth-heading"><span class="eyebrow">Your private archive</span><h2 id="auth-title">Welcome back</h2><p id="auth-description">Continue exploring the story only you can tell.</p></div>
+      <div class="auth-tabs"><button class="is-active" data-auth-tab="signin">Sign in</button><button data-auth-tab="signup">Create account</button></div>
+      <form id="auth-form">
+        <label><span>Email address</span><input id="auth-email" type="email" required autocomplete="email" placeholder="you@example.com" /></label>
+        <label><span>Password</span><input id="auth-password" type="password" required minlength="6" autocomplete="current-password" placeholder="At least 6 characters" /></label>
+        <label id="auth-name-row" hidden><span>Your name</span><input id="auth-name" type="text" autocomplete="name" placeholder="What should we call you?" /></label>
+        <button class="button button--primary button--full" id="auth-submit" type="submit">Sign in</button>
+      </form>
+      <div class="auth-divider"><span>or</span></div>
+      <button class="button button--google button--full" data-action="google-auth"><span>G</span>Continue with Google</button>
+      <button class="text-button auth-magic" data-action="magic-link">Email me a password-free sign-in link</button>
+      <p class="auth-note">By continuing, you agree to keep your own archive respectful of the privacy and consent of other people.</p>
+    </div>
+  </dialog>
+
+  <dialog class="modal memory-modal" id="memory-modal">
+    <form id="memory-form" method="dialog">
+      <div class="modal-header">
+        <div><span class="eyebrow" id="memory-modal-eyebrow">A NEW THREAD</span><h2 id="memory-modal-title">Capture a memory</h2><p>Begin with what you know. Uncertainty is welcome.</p></div>
+        <button class="modal__close" type="button" data-action="close-modal" aria-label="Close">×</button>
+      </div>
+      <div class="memory-form-layout">
+        <div class="memory-form-main">
+          <input type="hidden" id="memory-id" />
+          <label class="field field--title"><span>Give this memory a name</span><input id="memory-title" type="text" required maxlength="140" placeholder="The summer at the lake house" /></label>
+          <label class="field"><span>Tell the story as it comes back</span><textarea id="memory-body" rows="8" placeholder="What do you see first? Who was there? What happened before and after?"></textarea></label>
+
+          <div class="form-section">
+            <div class="form-section__heading"><span class="form-section__icon">◷</span><div><h3>When did this happen?</h3><p>Exact dates are optional.</p></div></div>
+            <div class="field-grid field-grid--three">
+              <label class="field"><span>Date</span><input id="memory-date" type="date" /></label>
+              <label class="field"><span>Date precision</span><select id="memory-date-precision"><option value="exact">Exact date</option><option value="month">Month only</option><option value="season">Season</option><option value="year">Year only</option><option value="approximate">Approximate</option><option value="unknown">I do not know</option></select></label>
+              <label class="field"><span>Time of day</span><select id="memory-time-of-day"><option value="">Not sure</option><option>Morning</option><option>Afternoon</option><option>Evening</option><option>Night</option><option>Late night</option></select></label>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section__heading"><span class="form-section__icon">♧</span><div><h3>Who and where?</h3><p>These details create powerful pathways later.</p></div></div>
+            <div class="field-grid">
+              <label class="field"><span>People</span><input id="memory-people" type="text" placeholder="Ashley, Grandma, Marcus" /><small>Separate names with commas</small></label>
+              <label class="field"><span>Place</span><input id="memory-place" type="text" placeholder="Bluewater Lake, Wisconsin" /></label>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section__heading"><span class="form-section__icon">◌</span><div><h3>How did it feel?</h3><p>Choose as many as belong.</p></div></div>
+            <div class="choice-grid" id="emotion-choices">
+              <button type="button" data-choice="Joy">Joy</button><button type="button" data-choice="Love">Love</button><button type="button" data-choice="Excitement">Excitement</button><button type="button" data-choice="Calm">Calm</button><button type="button" data-choice="Nostalgia">Nostalgia</button><button type="button" data-choice="Sadness">Sadness</button><button type="button" data-choice="Fear">Fear</button><button type="button" data-choice="Confusion">Confusion</button><button type="button" data-choice="Pride">Pride</button><button type="button" data-choice="Grief">Grief</button><button type="button" data-choice="Hope">Hope</button><button type="button" data-choice="Wonder">Wonder</button>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section__heading"><span class="form-section__icon">✦</span><div><h3>Sensory clues</h3><p>Small details are often the strongest way back.</p></div></div>
+            <div class="field-grid field-grid--three">
+              <label class="field"><span>Sounds or music</span><input id="memory-sounds" type="text" placeholder="A song, traffic, laughter…" /></label>
+              <label class="field"><span>Smells or tastes</span><input id="memory-smells" type="text" placeholder="Rain, perfume, a meal…" /></label>
+              <label class="field"><span>Visual or physical details</span><input id="memory-visuals" type="text" placeholder="Lighting, clothing, temperature…" /></label>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section__heading"><span class="form-section__icon">▣</span><div><h3>Photos and evidence</h3><p>Images are compressed before upload when possible.</p></div></div>
+            <label class="upload-drop" id="memory-upload-drop">
+              <input id="memory-files" type="file" accept="image/*,video/*,audio/*,.pdf" multiple />
+              <span class="upload-drop__icon">＋</span><strong>Add photos, video, audio, or documents</strong><small>Tap to choose files or drag them here</small>
+            </label>
+            <div class="upload-preview" id="upload-preview"></div>
+          </div>
+        </div>
+
+        <aside class="memory-form-aside">
+          <div class="aside-card">
+            <span class="eyebrow">MEMORY TYPE</span>
+            <div class="segmented-control" id="memory-type-control"><button type="button" class="is-active" data-memory-type="memory">Memory</button><button type="button" data-memory-type="fragment">Fragment</button></div>
+            <p id="memory-type-help">A moment with enough context to place in your timeline.</p>
+          </div>
+          <div class="aside-card">
+            <label class="field"><span>Life chapter</span><input id="memory-chapter" type="text" list="chapter-options" placeholder="The early apartment years" /><datalist id="chapter-options"></datalist></label>
+            <label class="field"><span>Tags</span><input id="memory-tags" type="text" placeholder="summer, road trip, childhood" /><small>Separate tags with commas</small></label>
+          </div>
+          <div class="aside-card">
+            <label class="field"><span>How certain are the details?</span><select id="memory-certainty"><option value="confirmed">Confirmed</option><option value="likely">Likely</option><option value="uncertain">Uncertain</option><option value="reconstructed">Reconstructed from evidence</option></select></label>
+            <label class="field"><span>Visibility</span><select id="memory-visibility"><option value="private">Only me</option><option value="shared">People I invite</option></select></label>
+          </div>
+          <div class="aside-card aside-card--toggle">
+            <label><span><b>Favorite</b><small>Keep this memory easy to revisit</small></span><input id="memory-favorite" type="checkbox" /></label>
+          </div>
+          <div class="memory-save-status" id="memory-save-status">Changes are saved when you press Save memory.</div>
+        </aside>
+      </div>
+      <div class="modal-footer">
+        <button class="button button--ghost" type="button" data-action="close-modal">Cancel</button>
+        <button class="button button--primary" id="memory-save-button" type="submit"><span>✦</span>Save memory</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal pathway-modal" id="pathway-modal">
+    <form id="pathway-form" method="dialog">
+      <div class="modal-header"><div><span class="eyebrow">A STORY THROUGH TIME</span><h2 id="pathway-modal-title">Create a pathway</h2><p>Gather memories around one meaningful thread.</p></div><button class="modal__close" type="button" data-action="close-modal">×</button></div>
+      <input id="pathway-id" type="hidden" />
+      <div class="pathway-form-grid">
+        <div>
+          <label class="field field--title"><span>Pathway name</span><input id="pathway-title" required maxlength="120" placeholder="Homes that shaped me" /></label>
+          <label class="field"><span>What connects these memories?</span><textarea id="pathway-description" rows="4" placeholder="A story about the places where I became different versions of myself."></textarea></label>
+          <div class="field-grid"><label class="field"><span>Pathway icon</span><select id="pathway-icon"><option>〰</option><option>⌂</option><option>♡</option><option>✦</option><option>☀</option><option>♧</option><option>⚑</option><option>∞</option></select></label><label class="field"><span>Color mood</span><select id="pathway-color"><option value="violet">Violet</option><option value="rose">Rose</option><option value="amber">Amber</option><option value="aqua">Aqua</option><option value="sage">Sage</option></select></label></div>
+        </div>
+        <div class="pathway-memory-picker"><div class="picker-heading"><span>Select memories</span><small id="pathway-selected-count">0 selected</small></div><div id="pathway-memory-options"></div></div>
+      </div>
+      <div class="modal-footer"><button class="button button--ghost" type="button" data-action="close-modal">Cancel</button><button class="button button--primary" type="submit">Save pathway</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal entity-modal" id="entity-modal">
+    <form id="entity-form" method="dialog">
+      <div class="modal-header"><div><span class="eyebrow" id="entity-eyebrow">YOUR STORY</span><h2 id="entity-title">Add person</h2><p id="entity-description">Create a profile that memories can connect to.</p></div><button class="modal__close" type="button" data-action="close-modal">×</button></div>
+      <input id="entity-id" type="hidden" /><input id="entity-type" type="hidden" />
+      <div class="entity-form-body">
+        <label class="field field--title"><span id="entity-name-label">Name</span><input id="entity-name" required maxlength="120" /></label>
+        <div class="field-grid"><label class="field"><span id="entity-kind-label">Relationship</span><input id="entity-kind" placeholder="Friend, family, home, workplace…" /></label><label class="field"><span>Color</span><select id="entity-color"><option value="violet">Violet</option><option value="rose">Rose</option><option value="amber">Amber</option><option value="aqua">Aqua</option><option value="sage">Sage</option></select></label></div>
+        <label class="field"><span>Notes</span><textarea id="entity-notes" rows="5" placeholder="Why this person or place matters in your story…"></textarea></label>
+      </div>
+      <div class="modal-footer"><button class="button button--ghost" type="button" data-action="close-modal">Cancel</button><button class="button button--primary" type="submit">Save</button></div>
+    </form>
+  </dialog>
+
+  <aside class="detail-drawer" id="detail-drawer" aria-hidden="true">
+    <div class="detail-drawer__backdrop" data-action="close-detail"></div>
+    <article class="detail-panel">
+      <button class="modal__close" data-action="close-detail" aria-label="Close memory">×</button>
+      <div id="detail-content"></div>
+    </article>
+  </aside>
+
+  <div class="profile-menu" id="profile-menu" hidden>
+    <button data-nav="settings">Settings & privacy</button>
+    <button data-action="export-data">Export archive</button>
+    <button data-action="sign-out">Sign out</button>
+  </div>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+  <div class="sync-indicator" id="sync-indicator" hidden><span></span><b>Syncing your archive…</b></div>
+
+  <script type="module" src="./app.js?v=1"></script>
+</body>
+</html>
