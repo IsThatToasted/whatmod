@@ -1,0 +1,152 @@
+name: Build Memories Unsigned IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: App artifact name
+        required: false
+        default: Memories
+      bundle_id:
+        description: Bundle identifier used for the unsigned build. Sideloadly can resign it locally.
+        required: false
+        default: com.whatmod.memories
+  push:
+    paths:
+      - 'memories/ios/**'
+      - '.github/workflows/memories-ios-ipa.yml'
+
+jobs:
+  build-unsigned-ipa:
+    name: Build Memories unsigned IPA
+    runs-on: macos-15
+
+    env:
+      IOS_ROOT: memories/ios/Memories
+      PROJECT_PATH: memories/ios/Memories/Memories.xcodeproj
+      SCHEME: Memories
+      CONFIGURATION: Release
+      DERIVED_DATA: build/memories-derived-data
+      HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        shell: bash
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$IOS_ROOT/project.yml" || {
+            echo "Missing XcodeGen specification: $IOS_ROOT/project.yml"
+            exit 1
+          }
+          cd "$IOS_ROOT"
+          xcodegen generate
+          test -d "Memories.xcodeproj" || {
+            echo "XcodeGen did not create Memories.xcodeproj"
+            exit 1
+          }
+
+      - name: Validate project and scheme
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -list -project "$PROJECT_PATH"
+          test -f "$IOS_ROOT/Memories/Info.plist"
+          test -f "$IOS_ROOT/Memories/MemoriesApp.swift"
+          test -f "$IOS_ROOT/Memories/MemoriesWebView.swift"
+
+      - name: Build unsigned iPhone app
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/logs
+          xcodebuild clean build \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIGURATION" \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$DERIVED_DATA" \
+            PRODUCT_BUNDLE_IDENTIFIER="${{ github.event.inputs.bundle_id || 'com.whatmod.memories' }}" \
+            MARKETING_VERSION="1.0.0" \
+            CURRENT_PROJECT_VERSION="100" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | tee build/logs/memories-xcodebuild.log
+
+      - name: Upload Xcode diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Memories-xcode-diagnostics
+          path: |
+            build/logs/memories-xcodebuild.log
+            build/memories-derived-data/Logs
+          if-no-files-found: warn
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find "$DERIVED_DATA/Build/Products/${CONFIGURATION}-iphoneos" -maxdepth 1 -name "*.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app bundle found. Build output:"
+            find "$DERIVED_DATA/Build/Products" -maxdepth 3 -type d || true
+            exit 1
+          fi
+
+          echo "Generated app: $APP_PATH"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist"
+
+          rm -rf build/Payload build/ipa
+          mkdir -p build/Payload build/ipa
+          cp -R "$APP_PATH" build/Payload/
+          (cd build && zip -qry "ipa/${{ github.event.inputs.app_name || 'Memories' }}-unsigned.ipa" Payload)
+
+      - name: Validate IPA metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEMP_DIR=$(mktemp -d)
+          unzip -q build/ipa/*.ipa -d "$TEMP_DIR"
+          APP_PLIST=$(find "$TEMP_DIR/Payload" -maxdepth 2 -name Info.plist | head -n 1)
+          test -n "$APP_PLIST" || {
+            echo "IPA is missing Payload/*.app/Info.plist"
+            exit 1
+          }
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PLIST")
+          EXECUTABLE=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PLIST")
+          test -n "$BUNDLE_ID"
+          test -n "$EXECUTABLE"
+          echo "IPA bundle identifier: $BUNDLE_ID"
+          echo "IPA executable: $EXECUTABLE"
+
+      - name: Upload unsigned IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.app_name || 'Memories' }}-unsigned-ipa
+          path: build/ipa/*.ipa
+          if-no-files-found: error
+
+      - name: Upload raw app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.app_name || 'Memories' }}-app-bundle
+          path: build/Payload/*.app
+          if-no-files-found: warn
