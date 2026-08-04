@@ -1,5 +1,5 @@
-const CACHE = 'whatmod-memories-v1';
-const SHELL = ['./','./index.html','./styles.css?v=1','./app.js?v=1','./manifest.webmanifest','./favicon.svg','./icon-192.png','./icon-512.png'];
+const CACHE = 'whatmod-memories-v3';
+const SHELL = ['./','./index.html','./styles.css?v=3','./app.js?v=3','./manifest.webmanifest','./favicon.svg','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).catch(() => undefined));

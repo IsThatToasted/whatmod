@@ -3,7 +3,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = 'https://gapqvyfoxxyoymtogvbt.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_JGjmBr-Btu_GT2cOw5Tf7A_bItVoMH6';
 const STORAGE_BUCKET = 'memory-media';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '3.0.0';
 const DEMO_STORAGE_KEY = 'whatmod-memories-demo-v1';
 const THEME_KEY = 'whatmod-memories-theme';
 
@@ -649,7 +649,7 @@ function navigate(view, updateHash = true) {
   if (!allowed.includes(view)) view = 'today';
   state.activeView = view;
   $$('.view').forEach(section => section.classList.toggle('is-active', section.dataset.view === view));
-  $$('.nav-item[data-nav]').forEach(item => item.classList.toggle('is-active', item.dataset.nav === view));
+  $$('[data-nav]').forEach(item => item.classList.toggle('is-active', item.dataset.nav === view));
   const titles = {
     today:['YOUR ARCHIVE','Today'], timeline:['EXPLORE THROUGH TIME','Timeline'], pathways:['FOLLOW THE THREADS','Pathways'], constellation:['EXPLORE BY ASSOCIATION','Constellation'], fragments:['UNPLACED MEMORIES','The Fog'], people:['THE ANCHORS IN YOUR STORY','People & places'], settings:['YOUR ARCHIVE, YOUR RULES','Settings']
   };

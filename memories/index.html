@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0d1020" />
+  <meta name="theme-color" content="#080a12" />
   <meta name="description" content="Memories is a private, visual space to document, connect, and rediscover the story of your life." />
   <title>Memories — Every memory leads somewhere</title>
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" href="./styles.css?v=1" />
+  <link rel="stylesheet" href="./styles.css?v=3" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true">
@@ -386,6 +386,14 @@
         </div>
       </section>
     </main>
+
+    <nav class="mobile-tabbar" aria-label="Mobile navigation">
+      <button class="mobile-tab is-active" data-nav="today" aria-label="Today"><span>✦</span><small>Today</small></button>
+      <button class="mobile-tab" data-nav="timeline" aria-label="Timeline"><span>◷</span><small>Timeline</small></button>
+      <button class="mobile-tab mobile-tab--add" data-action="new-memory" aria-label="Add memory"><span>＋</span><small>Add</small></button>
+      <button class="mobile-tab" data-nav="pathways" aria-label="Pathways"><span>〰</span><small>Paths</small></button>
+      <button class="mobile-tab" data-nav="fragments" aria-label="Fragments"><span>◌</span><small>Fragments</small></button>
+    </nav>
   </div>
 
   <dialog class="modal auth-modal" id="auth-modal">
@@ -539,6 +547,6 @@
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
   <div class="sync-indicator" id="sync-indicator" hidden><span></span><b>Syncing your archive…</b></div>
 
-  <script type="module" src="./app.js?v=1"></script>
+  <script type="module" src="./app.js?v=3"></script>
 </body>
 </html>

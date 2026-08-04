@@ -112,20 +112,42 @@ private struct LaunchView: View {
 private struct MemoryMark: View {
     var body: some View {
         ZStack {
+            RoundedRectangle(cornerRadius: 31, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.58, green: 0.43, blue: 1.0),
+                            Color(red: 1.0, green: 0.45, blue: 0.70),
+                            Color(red: 0.38, green: 0.90, blue: 0.87)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .rotationEffect(.degrees(-7))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 31, style: .continuous)
+                        .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                        .rotationEffect(.degrees(-7))
+                )
+
             Circle()
-                .stroke(Color(red: 0.62, green: 0.49, blue: 1.0), lineWidth: 7)
-                .frame(width: 48, height: 48)
-                .offset(x: -18, y: -12)
+                .stroke(Color.white.opacity(0.82), lineWidth: 4)
+                .frame(width: 39, height: 39)
+                .offset(x: -10, y: -7)
+
             Circle()
-                .stroke(Color(red: 1.0, green: 0.55, blue: 0.72), lineWidth: 7)
-                .frame(width: 48, height: 48)
-                .offset(x: 18, y: -12)
+                .fill(Color.white.opacity(0.72))
+                .frame(width: 13, height: 13)
+                .offset(x: 20, y: 17)
+
             Circle()
-                .stroke(Color(red: 0.43, green: 0.89, blue: 0.81), lineWidth: 7)
-                .frame(width: 48, height: 48)
-                .offset(y: 23)
+                .fill(Color.white.opacity(0.44))
+                .frame(width: 9, height: 9)
+                .offset(x: -25, y: 22)
         }
-        .shadow(color: Color(red: 0.58, green: 0.40, blue: 1.0).opacity(0.35), radius: 22)
+        .padding(8)
+        .shadow(color: Color(red: 0.52, green: 0.34, blue: 1.0).opacity(0.42), radius: 30, y: 12)
     }
 }
 
