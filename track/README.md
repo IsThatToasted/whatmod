@@ -594,3 +594,12 @@ The active trip still determines which owner-led bucket list is shown. For examp
 - Coalesced `input`, `change`, `pointerup`, and `touchend` into one serialized write.
 - Added `fun_reactions_v25_repair.sql` for installations that already ran the full schema.
 - Cache version: `v450`.
+
+
+## WeTrack V2.8
+
+- Weather now requests Open-Meteo's supported 16-day horizon and filters locally, avoiding empty forecasts when the trip end date extends past the short-range horizon.
+- A 35-day Open-Meteo ensemble-mean fallback is attempted for later trip days and is labeled as an extended outlook.
+- Fun Ideas reactions now use a unique V2.8 DOM class, one debounced save path, direct table upsert with RPC fallback, and a dedicated realtime subscription.
+- Added a persistent shared Orgasm Leaderboard inside Fun Ideas. Each record stores who experienced it, who caused it, pleasure level, role, and timestamp.
+- Run `v28_reactions_orgasm_repair.sql` once in Supabase.

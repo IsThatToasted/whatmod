@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=461" />
+  <link rel="stylesheet" href="./styles.css?v=470" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -371,6 +371,14 @@
         <p class="helper-text compact-help">Only selected travelers can open this hidden popup from their avatar.</p>
         <div id="funPermissionList" class="fun-permission-list"></div>
       </div>
+      <section id="orgasmCounterPanel" class="orgasm-counter-panel hidden" aria-live="polite">
+        <div class="orgasm-counter-head">
+          <div><p class="eyebrow">Shared counter</p><h3>✨ Orgasm Leaderboard</h3><p class="helper-text compact-help">Private to people with access to this bucket list.</p></div>
+          <button id="addOrgasmBtn" type="button" class="fun-add-btn orgasm-add-btn">+ Orgasm</button>
+        </div>
+        <div id="orgasmLeaderboard" class="orgasm-leaderboard"></div>
+        <div id="orgasmRecent" class="orgasm-recent"></div>
+      </section>
       <div class="fun-board-toolbar">
         <div id="funCategoryFilter" class="fun-category-filter"></div>
         <div class="fun-toolbar-actions">
@@ -399,6 +407,33 @@
           <label>Assigned to<select id="funIdeaAssignedTo"><option value="">Anyone / shared</option></select></label>
         </div>
         <div class="dialog-actions"><button id="funClearBtn" type="button" class="ghost-btn">Clear</button><button id="funSaveBtn" type="button">Save idea</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="orgasmDialog" class="orgasm-dialog">
+    <form method="dialog" class="dialog-card orgasm-dialog-card">
+      <div class="orgasm-dialog-head">
+        <div><p class="eyebrow">Private shared milestone</p><h2>✨ Add Orgasm</h2><p class="helper-text compact-help">This records the date, time, pleasure level, role, and who caused it.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <label>Who caused it?
+        <select id="orgasmCausedBy"></select>
+      </label>
+      <label class="orgasm-level-label">Pleasure level <strong id="orgasmLevelValue">7 / 10</strong>
+        <input id="orgasmPleasureLevel" type="range" min="1" max="10" step="1" value="7" />
+        <span class="orgasm-scale"><span>1 · Gentle</span><span>10 · Incredible</span></span>
+      </label>
+      <label>Role
+        <select id="orgasmRole">
+          <option value="neutral">Neutral</option>
+          <option value="submissive">Submissive</option>
+          <option value="dominant">Dominant</option>
+        </select>
+      </label>
+      <div class="dialog-actions">
+        <button value="cancel" class="ghost-btn" type="submit">Cancel</button>
+        <button id="saveOrgasmBtn" type="button">Save Orgasm</button>
       </div>
     </form>
   </dialog>
@@ -501,6 +536,6 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=461"></script>
+  <script src="./app.js?v=470"></script>
 </body>
 </html>

@@ -5840,3 +5840,132 @@ window.addEventListener('DOMContentLoaded', () => {
   const helper = document.querySelector('#funIdeasDialog .modal-subtitle, #funIdeasModal .modal-subtitle, .fun-ideas-dialog .modal-subtitle');
   if (helper) helper.textContent = 'Shared across all trips — add ideas anytime and check them off together.';
 });
+
+
+/* ============================================================
+   WeTrack V2.8 — reliable weather + persistent live reactions
+   + shared Orgasm Counter
+   ============================================================ */
+(() => {
+  const BUILD = 'WeTrack V2.8.0';
+  const clamp = (n,min,max)=>Math.max(min,Math.min(max,Number(n)||0));
+  const isoDays = (start,end) => {
+    const out=[]; if(!start||!end) return out;
+    let d=new Date(`${start}T12:00:00`), stop=new Date(`${end}T12:00:00`);
+    while(d<=stop && out.length<370){ out.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); }
+    return out;
+  };
+  const inferWeatherCode = (precip=0, cloud=50) => precip >= 12 ? 65 : precip >= 4 ? 63 : precip > .2 ? 61 : cloud >= 80 ? 3 : cloud >= 45 ? 2 : 1;
+  async function fetchJsonChecked(url){
+    const response=await fetch(url,{headers:{Accept:'application/json'}});
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok || payload?.error) throw new Error(payload?.reason || `Weather service returned ${response.status}`);
+    return payload;
+  }
+
+  // The previous request sent the trip end date even when it extended past the
+  // 16-day deterministic horizon. Open-Meteo can reject that whole request.
+  // Request the full supported horizon first, then filter it locally.
+  window.loadWeatherForTrip = loadWeatherForTrip = async function loadWeatherV28(force=false){
+    const t=currentTrip(); weatherByDate={}; weatherStatus='';
+    if(!t?.start_date||!t?.end_date||!t?.destination){weatherStatus='Add a destination to enable weather.';return;}
+    const wanted=isoDays(t.start_date,t.end_date); const first=daysUntilISO(t.start_date);
+    if(first>46){weatherStatus='Extended weather outlook unlocks about 46 days before the trip.';return;}
+    const key=`track-weather-v28:${t.destination}:${t.start_date}:${t.end_date}`;
+    if(!force){try{const c=JSON.parse(localStorage.getItem(key)||'null');if(c&&Date.now()-c.at<45*60*1000){weatherByDate=c.byDate||{};weatherStatus=c.status||'Weather cached';return;}}catch{}}
+    weatherStatus='Loading weather…'; try{renderDayTabs();renderTimeline();}catch{}
+    try{
+      const geo=await geocodeOne(t.destination); if(!geo){weatherStatus='Could not find destination weather.';return;}
+      const standardUrl=`https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}&longitude=${geo.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,cloud_cover_mean&temperature_unit=fahrenheit&timezone=auto&forecast_days=16`;
+      let standard={};
+      try{
+        const data=await fetchJsonChecked(standardUrl), d=data.daily||{};
+        (d.time||[]).forEach((day,i)=>{standard[day]={code:d.weather_code?.[i],max:d.temperature_2m_max?.[i],min:d.temperature_2m_min?.[i],precip:d.precipitation_probability_max?.[i]??0,source:'forecast'};});
+      }catch(error){console.warn('Standard weather forecast failed; trying extended outlook.',error);}
+      const missing=wanted.filter(day=>!standard[day]); let extended={};
+      if(missing.length && first<=35){
+        try{
+          const url=`https://ensemble-api.open-meteo.com/v1/ensemble?latitude=${geo.lat}&longitude=${geo.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,cloud_cover_mean&temperature_unit=fahrenheit&timezone=auto&forecast_days=35&models=gfs_seamless_ensemble_mean`;
+          const data=await fetchJsonChecked(url), d=data.daily||{};
+          (d.time||[]).forEach((day,i)=>{const rain=Number(d.precipitation_sum?.[i]||0),cloud=Number(d.cloud_cover_mean?.[i]??50);extended[day]={code:inferWeatherCode(rain,cloud),max:d.temperature_2m_max?.[i],min:d.temperature_2m_min?.[i],precip:Math.min(95,Math.round(rain*16)),source:'extended'};});
+        }catch(error){console.warn('Extended ensemble weather unavailable.',error);}
+      }
+      wanted.forEach(day=>{if(standard[day])weatherByDate[day]=standard[day];else if(extended[day])weatherByDate[day]=extended[day];});
+      const count=Object.keys(weatherByDate).length;
+      const extendedCount=Object.values(weatherByDate).filter(x=>x.source==='extended').length;
+      weatherStatus=count?(extendedCount?`Weather loaded · ${extendedCount} day${extendedCount===1?'':'s'} use an extended outlook.`:'Live forecast from Open-Meteo.'):'Weather not available for this date yet.';
+      localStorage.setItem(key,JSON.stringify({at:Date.now(),byDate:weatherByDate,status:weatherStatus}));
+    }catch(error){console.warn('Weather providers failed.',error);weatherStatus='Weather unavailable right now. Pull to refresh or try again shortly.';}
+    try{renderDayTabs();renderTimeline();renderHomeDashboard?.();}catch{}
+  };
+
+  const oldWeatherChip=window.weatherChipHtml || weatherChipHtml;
+  window.weatherChipHtml = weatherChipHtml = function weatherChipV28(day){
+    const html=oldWeatherChip(day); return weatherByDate?.[day]?.source==='extended'?html.replace('weather-chip ','weather-chip extended '):html;
+  };
+  const oldWeatherSummary=window.dayWeatherSummaryHtml || dayWeatherSummaryHtml;
+  window.dayWeatherSummaryHtml = dayWeatherSummaryHtml = function weatherSummaryV28(day){
+    const html=oldWeatherSummary(day); return weatherByDate?.[day]?.source==='extended'?html.replace('day-weather-card ','day-weather-card extended '):html;
+  };
+
+  // ---------- One reaction UI and one save path ----------
+  let reactionChannel=null, reactionChannelSpace=null;
+  const reactionTimers=new Map(), reactionLastSaved=new Map(), reactionInFlight=new Map();
+  function funRosterV28(){
+    const ids=new Set(); const owner=activeFunSpaceOwnerId?.(); if(owner)ids.add(owner); if(session?.user?.id)ids.add(session.user.id);
+    (funPermissions||[]).filter(p=>p.can_access!==false).forEach(p=>ids.add(p.user_id));
+    return (members||[]).filter(m=>ids.has(m.user_id));
+  }
+  window.renderFunReactionRows = renderFunReactionRows = function renderBucketReactionRowsV28(idea){
+    const roster=funRosterV28();
+    return `<div class="fun-reactions-v28" data-idea-id="${escapeHtml(idea.id)}"><div class="fun-reaction-scale-labels"><span>No Thanks</span><span>YES PLEASE</span></div>${roster.map(m=>{
+      const mine=m.user_id===session?.user?.id, saved=funReactions.find(r=>r.fun_idea_id===idea.id&&r.user_id===m.user_id),score=clamp(saved?.score??50,0,100);
+      const name=mine?'Me':memberLabel(m.user_id),pic=mine?(session.user.user_metadata?.avatar_url||''):(m.avatar_url||''),initial=String(name||'U').slice(0,1).toUpperCase();
+      const avatar=pic?`<img class="fun-reaction-avatar" src="${escapeHtml(pic)}" alt="">`:`<span class="fun-reaction-avatar fallback">${escapeHtml(initial)}</span>`;
+      return `<div class="fun-reaction-row-v28 ${mine?'mine':''}" data-user-id="${escapeHtml(m.user_id)}" style="--reaction-score:${score}%"><div class="fun-reaction-user">${avatar}<span>${escapeHtml(name)}</span></div><input class="bucket-reaction-slider-v28" data-idea-id="${escapeHtml(idea.id)}" type="range" min="0" max="100" step="1" value="${score}" ${mine?'':'disabled'} aria-label="${escapeHtml(name)} reaction"><span class="fun-reaction-value">${reactionEmoji(score)} ${escapeHtml(reactionLabel(score))}</span></div>`;
+    }).join('')}</div>`;
+  };
+  function applyReactionVisual(input){const score=clamp(input.value,0,100),row=input.closest('.fun-reaction-row-v28');input.value=score;row?.style.setProperty('--reaction-score',`${score}%`);const value=row?.querySelector('.fun-reaction-value');if(value)value.textContent=`${reactionEmoji(score)} ${reactionLabel(score)}`;}
+  function setReactionLocal(ideaId,userId,score,row={}){const idx=funReactions.findIndex(r=>r.fun_idea_id===ideaId&&r.user_id===userId);const val={space_id:funSpaceId,fun_idea_id:ideaId,user_id:userId,score,updated_at:new Date().toISOString(),...row};if(idx>=0)funReactions[idx]={...funReactions[idx],...val};else funReactions.push(val);document.querySelectorAll(`.fun-reactions-v28[data-idea-id="${CSS.escape(String(ideaId))}"] .fun-reaction-row-v28[data-user-id="${CSS.escape(String(userId))}"]`).forEach(el=>{el.style.setProperty('--reaction-score',`${score}%`);const i=el.querySelector('input');if(i&&userId!==session?.user?.id)i.value=score;const v=el.querySelector('.fun-reaction-value');if(v)v.textContent=`${reactionEmoji(score)} ${reactionLabel(score)}`;});}
+  async function persistReactionV28(ideaId,score){
+    const userId=session?.user?.id,spaceId=funSpaceId;if(!client||!userId||!spaceId||!ideaId)return false;score=clamp(score,0,100);const key=`${spaceId}:${ideaId}:${userId}`;if(reactionLastSaved.get(key)===score)return true;
+    const previous=reactionInFlight.get(key)||Promise.resolve();const run=previous.catch(()=>{}).then(async()=>{
+      const payload={space_id:spaceId,fun_idea_id:ideaId,user_id:userId,score,updated_at:new Date().toISOString()};
+      let result=await client.from('itinerary_fun_bucket_reactions').upsert(payload,{onConflict:'fun_idea_id,user_id'}).select('*').single();
+      if(result.error){result=await client.rpc('upsert_itinerary_fun_bucket_reaction',{p_space_id:spaceId,p_fun_idea_id:ideaId,p_score:score});}
+      if(result.error)throw result.error;reactionLastSaved.set(key,score);const saved=Array.isArray(result.data)?result.data[0]:result.data;if(saved)setReactionLocal(ideaId,userId,score,saved);return true;
+    }).catch(error=>{console.error('V2.8 reaction sync failed',error);showToast?.(`Reaction sync failed: ${error.message||'check Fun Ideas access'}`,'error');return false;}).finally(()=>{if(reactionInFlight.get(key)===run)reactionInFlight.delete(key);});reactionInFlight.set(key,run);return run;
+  }
+  function queueReactionV28(input,immediate=false){if(!input)return;applyReactionVisual(input);const ideaId=input.dataset.ideaId,score=clamp(input.value,0,100),uid=session?.user?.id;if(!ideaId||!uid)return;setReactionLocal(ideaId,uid,score);const key=`${funSpaceId}:${ideaId}:${uid}`;clearTimeout(reactionTimers.get(key));reactionTimers.set(key,setTimeout(()=>{reactionTimers.delete(key);persistReactionV28(ideaId,score);},immediate?40:320));}
+  document.addEventListener('input',e=>{const input=e.target?.closest?.('.bucket-reaction-slider-v28');if(input)queueReactionV28(input,false);},true);
+  ['change','pointerup','touchend'].forEach(type=>document.addEventListener(type,e=>{const input=e.target?.closest?.('.bucket-reaction-slider-v28');if(input)queueReactionV28(input,true);},true));
+  function subscribeReactionsV28(){if(!client||!funSpaceId||reactionChannelSpace===funSpaceId)return;if(reactionChannel)try{client.removeChannel(reactionChannel);}catch{};reactionChannelSpace=funSpaceId;reactionChannel=client.channel(`fun-reactions-v28-${funSpaceId}`).on('postgres_changes',{event:'*',schema:'public',table:'itinerary_fun_bucket_reactions',filter:`space_id=eq.${funSpaceId}`},payload=>{const row=payload.new||payload.old;if(!row?.fun_idea_id||!row?.user_id)return;if(payload.eventType==='DELETE')funReactions=funReactions.filter(r=>!(r.fun_idea_id===row.fun_idea_id&&r.user_id===row.user_id));else setReactionLocal(row.fun_idea_id,row.user_id,clamp(row.score,0,100),row);}).subscribe();}
+
+  // ---------- Shared orgasm counter ----------
+  let orgasmEvents=[],orgasmChannel=null,orgasmChannelSpace=null;
+  const $v28=id=>document.getElementById(id);
+  async function loadOrgasmEventsV28(){if(!client||!funSpaceId||!canAccessFunIdeasLocal?.())return;const {data,error}=await client.from('itinerary_fun_orgasm_events').select('*').eq('space_id',funSpaceId).order('occurred_at',{ascending:false}).limit(500);if(error){console.warn('Orgasm counter unavailable. Run schema.sql.',error);return;}orgasmEvents=data||[];renderOrgasmCounterV28();}
+  function avatarForUserV28(userId){const m=(members||[]).find(x=>x.user_id===userId),mine=userId===session?.user?.id,pic=mine?(session.user.user_metadata?.avatar_url||''):(m?.avatar_url||'');const name=mine?'Me':memberLabel(userId);return {name,pic,initial:String(name||'U').slice(0,1).toUpperCase()};}
+  function renderOrgasmCounterV28(){const panel=$v28('orgasmCounterPanel'),board=$v28('orgasmLeaderboard'),recent=$v28('orgasmRecent');if(!panel||!board||!recent)return;const roster=funRosterV28();panel.classList.toggle('hidden',!canAccessFunIdeasLocal?.());board.innerHTML=roster.map(m=>{const a=avatarForUserV28(m.user_id),count=orgasmEvents.filter(x=>x.experienced_by===m.user_id).length,avatar=a.pic?`<img class="orgasm-avatar" src="${escapeHtml(a.pic)}" alt="">`:`<span class="orgasm-avatar">${escapeHtml(a.initial)}</span>`;return `<div class="orgasm-leader-row">${avatar}<div class="orgasm-leader-copy"><strong>${escapeHtml(a.name)}</strong><span>${count===1?'orgasm':'orgasms'} recorded</span></div><span class="orgasm-total">${count}</span></div>`;}).join('')||'<p class="helper-text">No connected travelers found.</p>';
+    recent.innerHTML=orgasmEvents.slice(0,4).map(x=>{const who=avatarForUserV28(x.experienced_by).name,caused=x.caused_by===x.experienced_by?'themselves':avatarForUserV28(x.caused_by).name,when=new Date(x.occurred_at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});return `<div class="orgasm-recent-row"><strong>✨ ${escapeHtml(who)} · ${x.pleasure_level}/10 · ${escapeHtml(x.role)}</strong><span>Caused by ${escapeHtml(caused)} · ${escapeHtml(when)}</span></div>`;}).join('');}
+  function openOrgasmDialogV28(){const select=$v28('orgasmCausedBy'),roster=funRosterV28();if(select)select.innerHTML=roster.map(m=>`<option value="${escapeHtml(m.user_id)}">${m.user_id===session?.user?.id?'Myself':escapeHtml(memberLabel(m.user_id))}</option>`).join('');if(select)select.value=session?.user?.id||roster[0]?.user_id||'';$v28('orgasmPleasureLevel').value='7';$v28('orgasmLevelValue').textContent='7 / 10';$v28('orgasmRole').value='neutral';$v28('orgasmDialog')?.showModal();}
+  async function saveOrgasmV28(){const experienced=session?.user?.id,caused=$v28('orgasmCausedBy')?.value,level=clamp($v28('orgasmPleasureLevel')?.value,1,10),role=$v28('orgasmRole')?.value||'neutral';if(!experienced||!caused||!funSpaceId)return;const {data,error}=await client.from('itinerary_fun_orgasm_events').insert({space_id:funSpaceId,experienced_by:experienced,caused_by:caused,pleasure_level:level,role,occurred_at:new Date().toISOString()}).select('*').single();if(error){showToast?.(`Could not save orgasm: ${error.message}`,'error');return;}orgasmEvents.unshift(data);renderOrgasmCounterV28();$v28('orgasmDialog')?.close();showToast?.('Orgasm added ✨','success');}
+  function subscribeOrgasmV28(){if(!client||!funSpaceId||orgasmChannelSpace===funSpaceId)return;if(orgasmChannel)try{client.removeChannel(orgasmChannel);}catch{};orgasmChannelSpace=funSpaceId;orgasmChannel=client.channel(`fun-orgasms-v28-${funSpaceId}`).on('postgres_changes',{event:'*',schema:'public',table:'itinerary_fun_orgasm_events',filter:`space_id=eq.${funSpaceId}`},async()=>{await loadOrgasmEventsV28();}).subscribe();}
+  $v28('addOrgasmBtn')?.addEventListener('click',openOrgasmDialogV28);$v28('saveOrgasmBtn')?.addEventListener('click',saveOrgasmV28);$v28('orgasmPleasureLevel')?.addEventListener('input',e=>{$v28('orgasmLevelValue').textContent=`${e.target.value} / 10`;});
+
+  const previousOpenFun=window.openFunIdeasDialog||openFunIdeasDialog;
+  window.openFunIdeasDialog = openFunIdeasDialog = async function openFunIdeasV28(){await previousOpenFun();if(funSpaceId){subscribeReactionsV28();subscribeOrgasmV28();await loadFunReactions();await loadOrgasmEventsV28();renderFunIdeasModal();renderOrgasmCounterV28();}};
+  const previousRenderFun=window.renderFunIdeasModal||renderFunIdeasModal;
+  window.renderFunIdeasModal = renderFunIdeasModal = function renderFunIdeasV28(){const out=previousRenderFun();renderOrgasmCounterV28();return out;};
+
+  // Flush reaction writes before closing/hiding.
+  $v28('funIdeasDialog')?.addEventListener('close',()=>{reactionTimers.forEach((timer,key)=>{clearTimeout(timer);reactionTimers.delete(key);const parts=key.split(':');const ideaId=parts[1],r=funReactions.find(x=>x.fun_idea_id===ideaId&&x.user_id===session?.user?.id);if(r)persistReactionV28(ideaId,r.score);});});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)$v28('funIdeasDialog')?.dispatchEvent(new Event('close'));});
+  console.info(`${BUILD} loaded`);
+})();
+
+/* WeTrack V2.8 visible build marker */
+window.addEventListener('DOMContentLoaded',()=>{
+  const badge=document.getElementById('buildVersionBadge');
+  if(badge) badge.textContent='WeTrack V2.8.0 · weather/reactions/counter';
+});
