@@ -1035,78 +1035,47 @@ function renderPackingProgressSummary() {
   }).join('');
 }
 
-function dedupeStarterPackingRows(rows=[]) {
-  const starter = new Set(STARTER_PACKING_ITEMS.map(x => String(x).trim().toLowerCase()));
-  const seen = new Map();
-  const output = [];
-  for (const raw of rows || []) {
-    const row = normalizePackingItem(raw);
-    const key = String(row.label || '').trim().toLowerCase();
-    if (!starter.has(key)) { output.push(row); continue; }
-    if (!seen.has(key)) {
-      seen.set(key, row);
-      output.push(row);
-    } else if (row.packed) {
-      const kept = seen.get(key);
-      kept.packed = true;
-    }
-  }
-  return output.sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
-}
-
+let packingSeedPromise = null;
 async function loadPackingItems() {
   if (!activeTripId || !session?.user?.id) { packingItems = []; return; }
-  const tripId = activeTripId;
-  const userId = session.user.id;
-  const generation = ++packingLoadGeneration;
+  const tripIdAtStart = activeTripId;
+  const userIdAtStart = session.user.id;
   const { data, error } = await client
     .from('itinerary_packing_items')
     .select('*')
-    .eq('trip_id', tripId)
-    .eq('user_id', userId)
+    .eq('trip_id', tripIdAtStart)
+    .eq('user_id', userIdAtStart)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
-  if (generation !== packingLoadGeneration || tripId !== activeTripId || userId !== session?.user?.id) return;
   if (error) {
-    console.warn('Packing list table unavailable. Using local fallback until recovery SQL is run.', error);
+    console.warn('Packing list table unavailable. Using local fallback until the database reconnects.', error);
     packingItems = loadPackingFallback();
-    setStatus('Packing list local only — run v292_recovery.sql for sync');
+    setStatus('Packing list temporarily local');
     return;
   }
-  packingItems = dedupeStarterPackingRows(data || []);
+  if (activeTripId !== tripIdAtStart || session?.user?.id !== userIdAtStart) return;
+  packingItems = (data || []).map(normalizePackingItem);
   if (!packingItems.length) await seedStarterPackingItems();
 }
 
 async function seedStarterPackingItems() {
   if (!activeTripId || !session?.user?.id) return;
   if (packingSeedPromise) return packingSeedPromise;
-  const tripId = activeTripId;
-  const userId = session.user.id;
-  packingSeedPromise = (async()=>{
-    try {
-      const rpc = await client.rpc('ensure_itinerary_starter_packing', { target_trip_id: tripId });
-      if (!rpc.error && Array.isArray(rpc.data)) {
-        if (tripId === activeTripId && userId === session?.user?.id) packingItems = dedupeStarterPackingRows(rpc.data);
-        return;
-      }
-      if (rpc.error) console.warn('Starter packing helper unavailable; not inserting duplicate-prone rows client-side.', rpc.error);
-      // Safe fallback: re-read only. Do not auto-insert eight rows from multiple tabs/devices.
-      const existing = await client.from('itinerary_packing_items').select('*')
-        .eq('trip_id', tripId).eq('user_id', userId)
-        .order('sort_order',{ascending:true}).order('created_at',{ascending:true});
-      if (!existing.error && existing.data?.length) {
-        if (tripId === activeTripId && userId === session?.user?.id) packingItems = dedupeStarterPackingRows(existing.data);
-        return;
-      }
-      // Keep a local visual starter list only until the recovery helper is installed.
-      if (tripId === activeTripId && userId === session?.user?.id) {
-        packingItems = loadPackingFallback();
-        if (!packingItems.length) packingItems = STARTER_PACKING_ITEMS.map((label,idx)=>normalizePackingItem({id:`local-${idx}`,label,packed:false,sort_order:idx}));
-        savePackingFallback();
-      }
-    } finally { packingSeedPromise = null; }
+  const tripIdAtStart = activeTripId;
+  packingSeedPromise = (async () => {
+    // V2.9.3: server-side, advisory-locked starter seeding prevents two login/realtime
+    // load paths from inserting the starter list at the same time.
+    const { data, error } = await client.rpc('ensure_itinerary_starter_packing', { target_trip_id: tripIdAtStart });
+    if (error) {
+      console.warn('Starter packing helper unavailable; leaving the list empty instead of risking duplicate rows.', error);
+      packingItems = [];
+      return;
+    }
+    if (activeTripId !== tripIdAtStart) return;
+    packingItems = (data || []).map(normalizePackingItem);
   })();
-  return packingSeedPromise;
+  try { await packingSeedPromise; }
+  finally { packingSeedPromise = null; }
 }
 async function createTrip(input) {
   const { data: userData, error: userError } = await client.auth.getUser();
@@ -5438,49 +5407,40 @@ async function deletePackingItem(id) {
   async function loadOnboardingProfile(force=false){
     const userId = session?.user?.id || '';
     if (!userId || !client) return { completed:false, profile:authProfileDefaults() };
-    const localCompleted = localStorage.getItem(onboardingStorageKey()) === '1';
     if (!force && onboardingStatusLoaded && onboardingStatusUserId === userId) {
-      return { completed:onboardingCompletedRemote || localCompleted, profile:null };
+      return { completed:onboardingCompletedRemote, profile:null };
     }
     if (onboardingLoadPromise) return onboardingLoadPromise;
     onboardingLoadPromise = (async()=>{
       let remote = null;
       try {
-        const { data, error } = await client.from('wetrack_account_profiles')
-          .select('display_name,trip_role,favorite_foods,favorite_activities,personal_interests,onboarding_completed,updated_at')
+        const { data, error } = await client
+          .from('wetrack_account_profiles')
+          .select('display_name,trip_role,favorite_foods,favorite_activities,personal_interests,onboarding_completed')
           .eq('user_id', userId)
-          .order('updated_at',{ascending:false})
-          .limit(1);
+          .maybeSingle();
         if (error && !String(error.message||'').toLowerCase().includes('does not exist')) throw error;
-        remote = Array.isArray(data) ? (data[0] || null) : (data || null);
+        remote = data || null;
       } catch (error) {
         console.warn('Could not load persistent onboarding profile; using trip profile fallback.', error);
       }
-      let member = (members || []).find(m => m.user_id === userId) || null;
-      if (!member && activeTripId) {
-        try {
-          const { data, error } = await client.from('itinerary_trip_members')
-            .select('display_name,trip_role,favorite_foods,favorite_activities,personal_interests,onboarding_completed')
-            .eq('trip_id', activeTripId).eq('user_id', userId).limit(1);
-          if (!error) member = Array.isArray(data) ? (data[0] || null) : data;
-        } catch {}
-      }
-      member ||= {};
-      const completed = localCompleted || !!remote?.onboarding_completed || !!member?.onboarding_completed;
       onboardingStatusUserId = userId;
       onboardingStatusLoaded = true;
-      onboardingCompletedRemote = completed;
-      if (completed) localStorage.setItem(onboardingStorageKey(),'1');
+      onboardingCompletedRemote = !!remote?.onboarding_completed || !!((members || []).find(m => m.user_id === userId)?.onboarding_completed);
+      if (onboardingCompletedRemote) localStorage.setItem(onboardingStorageKey(),'1');
+      const member = (members || []).find(m => m.user_id === userId) || {};
       const auth = authProfileDefaults();
-      return { completed, profile:{
+      const profile = {
         display_name: remote?.display_name || member.display_name || auth.display_name,
         trip_role: remote?.trip_role || member.trip_role || auth.trip_role,
         favorite_foods: remote?.favorite_foods || member.favorite_foods || '',
         favorite_activities: remote?.favorite_activities || member.favorite_activities || '',
         personal_interests: remote?.personal_interests || member.personal_interests || ''
-      }};
+      };
+      return { completed:onboardingCompletedRemote, profile };
     })();
-    try { return await onboardingLoadPromise; } finally { onboardingLoadPromise = null; }
+    try { return await onboardingLoadPromise; }
+    finally { onboardingLoadPromise = null; }
   }
 
   function fillOnboardingForm(profile={}){
@@ -5515,19 +5475,14 @@ async function deletePackingItem(id) {
     // Older deployments may not have this table yet, so failure here must not block
     // saving the Traveler Passport data to the active trip.
     try {
-      // Do not depend on ON CONFLICT metadata; some older deployments created this table
-      // before user_id had a unique constraint. Update first, then insert only when absent.
-      const updated = await client.from('wetrack_account_profiles')
-        .update(profilePayload).eq('user_id', session.user.id).select('user_id');
-      if (updated.error) throw updated.error;
-      if (!updated.data?.length) {
-        const inserted = await client.from('wetrack_account_profiles').insert(profilePayload).select('user_id');
-        if (inserted.error) throw inserted.error;
-      }
+      const { error:profileError } = await client
+        .from('wetrack_account_profiles')
+        .upsert(profilePayload,{onConflict:'user_id'});
+      if(profileError) throw profileError;
       persistentProfileSaved = true;
     } catch(error) {
       profileSaveError = error;
-      console.warn('Account-wide onboarding profile save unavailable; using trip profile fallback.', error);
+      console.warn('Account profile save unavailable; using trip profile fallback.', error);
     }
 
     if(activeTripId){
@@ -5903,7 +5858,7 @@ window.addEventListener('DOMContentLoaded', () => {
    + shared Orgasm Counter
    ============================================================ */
 (() => {
-  const BUILD = 'WeTrack V2.9.2 Recovery';
+  const BUILD = 'WeTrack V2.8.0';
   const clamp = (n,min,max)=>Math.max(min,Math.min(max,Number(n)||0));
   const isoDays = (start,end) => {
     const out=[]; if(!start||!end) return out;
@@ -6023,5 +5978,9 @@ window.addEventListener('DOMContentLoaded', () => {
 /* WeTrack V2.8 visible build marker */
 window.addEventListener('DOMContentLoaded',()=>{
   const badge=document.getElementById('buildVersionBadge');
-  if(badge) badge.textContent='WeTrack V2.9.2 · recovery/stability';
+  if(badge) badge.textContent='WeTrack V2.8.0 · weather/reactions/counter';
 });
+
+
+/* WeTrack V2.9.3 safe stabilization marker */
+(function(){ const b='WeTrack V2.9.3 Safe Stabilization'; try{document.documentElement.setAttribute('data-build',b);}catch{}; document.addEventListener('DOMContentLoaded',()=>{const x=document.querySelector('.build-version-badge')||document.getElementById('buildVersionBadge'); if(x)x.textContent=b;});})();
