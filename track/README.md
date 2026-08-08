@@ -605,14 +605,15 @@ The active trip still determines which owner-led bucket list is shown. For examp
 - Run `v28_reactions_orgasm_repair.sql` once in Supabase.
 
 
-## WeTrack V2.9 — Stabilization Audit
+## WeTrack V2.9.2 Recovery
+- Built from the known-working V2.8 application after the V2.9 migration failed on an `ON CONFLICT` assumption.
+- Run `v292_recovery.sql` first. It does not use `ON CONFLICT`.
+- Repairs/deduplicates `itinerary_user_profiles` before adding a unique user index.
+- Deduplicates only the eight built-in packing starter items and preserves custom items/check state.
+- Starter packing creation is serialized server-side and no longer performs duplicate-prone client inserts.
+- Onboarding completion is recognized from local completion, account profile, or legacy trip membership.
+- App cache: v482.
 
-This release fixes two production regressions without changing working feature flows:
 
-- Onboarding completion now honors both the account profile and the legacy trip-member completion flag, then backfills account-level completion so a saved onboarding stays dismissed across browsers/devices.
-- Starter packing rows are now seeded transactionally and idempotently. The migration removes duplicate copies of only the eight built-in starter rows while preserving custom packing items and checked state.
-- Corrected the Must Do Realtime table name (`itinerary_must_do_items`).
-- Removed memory-upload code that unnecessarily reset the one-time starter-trip cleanup guard, reducing redundant Supabase RPC calls.
-- Added stale-response protection when switching trips during a packing fetch.
-
-Run `v29_stabilization_repair.sql` (or the full `schema.sql`) once after deployment.
+## V2.9.2 recovery note
+This release no longer treats the legacy `itinerary_user_profiles` table as account-wide. Older databases may require `trip_id` there. Account onboarding persistence now uses `wetrack_account_profiles`, while Traveler Passport/trip data remains untouched. Run `v292_recovery.sql` once.

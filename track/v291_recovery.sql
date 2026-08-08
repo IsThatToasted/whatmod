@@ -1,0 +1,2 @@
+-- OBSOLETE: Do not run V2.9.1 recovery.
+-- Use v292_recovery.sql instead. The old script incorrectly treated itinerary_user_profiles as account-wide.
