@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=483" />
+  <link rel="stylesheet" href="./styles.css?v=490" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -49,6 +49,7 @@
         <div class="top-actions">
           <div class="search-pill">🔎 <span>Search trips, activities...</span></div>
           <button id="notificationsBtn" class="icon-btn" type="button" aria-label="Upcoming notifications" title="Upcoming notifications">🔔<span id="notificationBadge" class="notification-badge hidden">0</span></button>
+          <button id="shopBtn" class="icon-btn shop-btn hidden" type="button" aria-label="WeTrack Shop" title="WeTrack Shop">🛍️</button>
           <button id="funLockBtn" class="icon-btn fun-lock-btn hidden" type="button" aria-label="Fun Ideas" title="Fun Ideas">🔒</button>
           <div class="auth-card" id="authArea">
             <button id="googleBtn" class="ghost-btn">Continue with Google</button>
@@ -503,6 +504,31 @@
     </form>
   </dialog>
 
+
+  <dialog id="shopDialog" class="shop-dialog">
+    <div class="dialog-card shop-card">
+      <div class="shop-head">
+        <div><p class="eyebrow">WeTrack Shop</p><h2>✨ Upgrade your adventures</h2><p class="helper-text compact-help">Unlock the full planner and choose how much memory space you want for every trip.</p></div>
+        <button id="shopCloseBtn" class="ghost-btn" type="button">Close</button>
+      </div>
+      <div id="shopStatus" class="shop-status"></div>
+      <section class="shop-plan-card featured">
+        <div class="shop-plan-icon">✨</div>
+        <div class="shop-plan-copy"><span class="shop-kicker">FULL APP</span><h3>WeTrack Premium</h3><p>Maps, shopping lists, Memories, trip recaps, collaboration tools, and all Premium features.</p><div class="shop-memory-note">Includes <strong>20 Memories per trip</strong>.</div></div>
+        <div class="shop-plan-buy"><strong id="shopPremiumPrice">$7.95</strong><span>/ month</span><button id="shopPremiumBuyBtn" type="button">Unlock Premium</button></div>
+      </section>
+      <section id="shopMemorySection" class="shop-memory-section">
+        <div class="shop-section-head"><div><span class="shop-kicker">MEMORY CAPACITY</span><h3>Need more Memories?</h3><p>Increase every trip in blocks of 20. You can change the tier later.</p></div><div id="shopMemoryUsage" class="shop-memory-usage">0 / 20</div></div>
+        <div id="shopMemoryTiers" class="shop-memory-tiers"></div>
+      </section>
+      <div class="shop-actions">
+        <button id="shopRestoreBtn" type="button" class="ghost-btn">Restore Purchases</button>
+        <button id="shopRedeemLicenseBtn" type="button" class="ghost-btn">Redeem License Key</button>
+      </div>
+      <p id="shopPlatformNote" class="shop-platform-note"></p>
+    </div>
+  </dialog>
+
   <dialog id="onboardingDialog" class="onboarding-dialog">
     <form method="dialog" class="dialog-card onboarding-card">
       <div class="onboarding-head"><div><p class="eyebrow">Welcome to WeTrack</p><h2>Let’s personalize your traveler profile</h2><p class="helper-text">This helps your trip partners plan activities everyone will enjoy.</p></div></div>
@@ -536,6 +562,7 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./app.js?v=483"></script>
+  <script src="./shop-config.js?v=490"></script>
+  <script src="./app.js?v=490"></script>
 </body>
 </html>

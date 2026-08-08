@@ -4121,7 +4121,7 @@ async function deletePackingItem(id) {
 
 /* === V2.2.9 hard cache/license/reaction stabilization === */
 (function(){
-  const BUILD = 'V2.3.4-shopping-aisles-budget-2026-07-12';
+  const BUILD = 'WeTrack V2.9.4 Release Shop';
   window.ITINERARY_TRACKER_BUILD = BUILD;
   try {
     document.documentElement.setAttribute('data-build', BUILD);
@@ -5984,3 +5984,161 @@ window.addEventListener('DOMContentLoaded',()=>{
 
 /* WeTrack V2.9.3 safe stabilization marker */
 (function(){ const b='WeTrack V2.9.3 Safe Stabilization'; try{document.documentElement.setAttribute('data-build',b);}catch{}; document.addEventListener('DOMContentLoaded',()=>{const x=document.querySelector('.build-version-badge')||document.getElementById('buildVersionBadge'); if(x)x.textContent=b;});})();
+
+
+/* === WeTrack V2.9.4 release Shop + memory capacity === */
+(function WeTrackReleaseShop(){
+  const cfg = window.WeTrackShopConfig || { enabled:false };
+  const $ = id => document.getElementById(id);
+  const isNativeStoreKit = () => !!(window.webkit?.messageHandlers?.nativeStoreKit && cfg.storeKitEnabled !== false);
+  let products = new Map();
+  let pendingPurchase = false;
+
+  function signedIn(){ return !!session?.user?.id; }
+  function ent(){ return window.getLicenseEntitlements?.() || {}; }
+  function premium(){ return !!window.isPremiumUser?.(); }
+  function memoryLimit(){
+    const e = ent();
+    const n = Number(e.memory_limit_per_trip);
+    return premium() ? (Number.isFinite(n) && n > 0 ? n : Number(cfg.baseMemoryLimit || 20)) : 0;
+  }
+  function myMemoryCount(){ return (memoryItems || []).length; }
+  function allProductIds(){ return [cfg.premium?.productId, ...(cfg.memoryTiers || []).map(x=>x.productId)].filter(Boolean); }
+  function productPrice(id, fallback){ return products.get(id)?.displayPrice || fallback || ''; }
+  function shopEnabled(){ return cfg.enabled !== false; }
+
+  function applyShopVisibility(){
+    const b=$('shopBtn');
+    if (!b) return;
+    const show = shopEnabled() && signedIn();
+    b.classList.toggle('hidden', !show);
+    b.hidden = !show;
+  }
+  window.applyShopVisibility = applyShopVisibility;
+
+  function renderShop(){
+    if (!shopEnabled()) return;
+    const e=ent(); const lim=memoryLimit(); const used=myMemoryCount();
+    if ($('shopStatus')) $('shopStatus').innerHTML = premium()
+      ? `<strong>✨ Premium active</strong> · ${used}/${lim} Memories used on this trip`
+      : `<strong>Free plan</strong> · Upgrade to unlock the full app`;
+    if ($('shopMemoryUsage')) $('shopMemoryUsage').textContent = premium() ? `${used} / ${lim}` : 'Premium required';
+    if ($('shopPremiumPrice')) $('shopPremiumPrice').textContent = productPrice(cfg.premium?.productId,cfg.premium?.fallbackPrice || '$7.95');
+    if ($('shopPremiumBuyBtn')) {
+      $('shopPremiumBuyBtn').textContent = premium() ? 'Premium Active' : 'Unlock Premium';
+      $('shopPremiumBuyBtn').disabled = premium();
+    }
+    const tiers=$('shopMemoryTiers');
+    if (tiers) {
+      tiers.innerHTML=(cfg.memoryTiers||[]).map(t=>{
+        const total=Number(cfg.baseMemoryLimit||20)+Number(t.extra||0);
+        const active=premium() && lim===total;
+        return `<div class="shop-tier ${active?'active':''}"><strong>${total} Memories / trip</strong><span>+${t.extra} capacity · ${productPrice(t.productId,t.fallbackPrice)}/month add-on</span><button type="button" data-shop-product="${t.productId}" ${!premium()||active?'disabled':''}>${active?'Current':'Choose'}</button></div>`;
+      }).join('');
+    }
+    const note=$('shopPlatformNote');
+    if (note) note.textContent = isNativeStoreKit()
+      ? 'Purchases are handled securely by Apple. Manage or cancel subscriptions from your Apple Account subscriptions.'
+      : 'App Store purchases are available in the WeTrack iPhone app. License-key redemption remains available for web and sideload testing.';
+    $('shopMemorySection')?.classList.toggle('shop-unavailable', !premium());
+  }
+
+  function openShop(){
+    if (!shopEnabled() || !signedIn()) return;
+    renderShop();
+    $('shopDialog')?.showModal?.();
+    if (isNativeStoreKit()) requestProducts();
+  }
+  window.openWeTrackShop=openShop;
+
+  function requestProducts(){
+    try { window.webkit.messageHandlers.nativeStoreKit.postMessage({action:'listProducts', productIds:allProductIds()}); } catch(e){ console.warn('StoreKit product request failed',e); }
+  }
+  function purchase(productId){
+    if (!productId || pendingPurchase) return;
+    if (!isNativeStoreKit()) { window.showAppToast?.('Open WeTrack on iPhone to purchase, or redeem a license key.', 'info'); return; }
+    pendingPurchase=true;
+    try { window.webkit.messageHandlers.nativeStoreKit.postMessage({action:'purchase', productId}); }
+    catch(e){ pendingPurchase=false; window.showAppToast?.('Could not start purchase.', 'error'); }
+  }
+  function restore(){
+    if (!isNativeStoreKit()) { window.showAppToast?.('Restore Purchases is available in the iPhone app.', 'info'); return; }
+    window.webkit.messageHandlers.nativeStoreKit.postMessage({action:'restore', productIds:allProductIds()});
+  }
+
+  async function syncTransaction(tx){
+    if (!client || !signedIn() || !tx?.productId) return;
+    try {
+      const {data,error}=await client.rpc('record_wetrack_storekit_purchase',{
+        p_product_id:tx.productId,
+        p_transaction_id:String(tx.transactionId||''),
+        p_original_transaction_id:String(tx.originalTransactionId||''),
+        p_expires_at:tx.expirationDate||null
+      });
+      if (error) throw error;
+      await window.loadLicenseEntitlements?.(true);
+      window.applyEntitlementUI?.();
+      renderShop();
+      try { render?.(); } catch(_){}
+      window.showAppToast?.('Purchase synced with WeTrack', 'success');
+    } catch(err){
+      console.error('StoreKit entitlement sync failed',err);
+      window.showAppToast?.(`Purchase verified by Apple, but WeTrack sync failed: ${err.message||err}`, 'error');
+    }
+  }
+
+  window.WeTrackStoreKit={
+    productsLoaded(rows){ products=new Map((rows||[]).map(p=>[p.id,p])); pendingPurchase=false; renderShop(); },
+    purchaseCompleted(tx){ pendingPurchase=false; syncTransaction(tx); },
+    purchasePending(){ pendingPurchase=false; window.showAppToast?.('Purchase is pending approval.', 'info'); },
+    purchaseCancelled(){ pendingPurchase=false; },
+    purchaseFailed(message){ pendingPurchase=false; window.showAppToast?.(message||'Purchase failed.', 'error'); },
+    entitlementsLoaded(txs){ (txs||[]).forEach(syncTransaction); }
+  };
+
+  async function quotaAvailable(){
+    if (!shopEnabled()) return true;
+    if (!window.featureEnabled?.('memories')) return true; // existing Premium gate handles Free.
+    const lim=memoryLimit();
+    if (!lim) return true;
+    if (myMemoryCount() < lim) return true;
+    window.showAppToast?.(`You have used ${lim}/${lim} Memories for this trip. Add another 20 from the Shop.`, 'info');
+    openShop();
+    return false;
+  }
+  window.weTrackMemoryQuotaAvailable=quotaAvailable;
+
+  // Enforce the same capacity for note-only and photo Memories.
+  if (typeof addMemoryItem === 'function' && !addMemoryItem.__shopQuotaWrapped) {
+    const originalAddMemoryItem = addMemoryItem;
+    addMemoryItem = async function(){
+      if (!(await quotaAvailable())) return;
+      return originalAddMemoryItem.apply(this, arguments);
+    };
+    addMemoryItem.__shopQuotaWrapped = true;
+    try { window.addMemoryItem = addMemoryItem; } catch(_) {}
+  }
+
+  // Intercept camera/file picker BEFORE it opens when the per-trip capacity is full.
+  document.addEventListener('click', async ev=>{
+    const t=ev.target?.closest?.('#memoryPhotoBtn,#mobileNavMemory,#completedAddMemoryBtn');
+    if (!t || !shopEnabled() || !window.featureEnabled?.('memories')) return;
+    if (!(await quotaAvailable())) { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation?.(); }
+  }, true);
+
+  $('shopBtn')?.addEventListener('click',openShop);
+  $('shopCloseBtn')?.addEventListener('click',()=> $('shopDialog')?.close());
+  $('shopPremiumBuyBtn')?.addEventListener('click',()=>purchase(cfg.premium?.productId));
+  $('shopMemoryTiers')?.addEventListener('click',e=>{ const b=e.target.closest('[data-shop-product]'); if(b) purchase(b.dataset.shopProduct); });
+  $('shopRestoreBtn')?.addEventListener('click',restore);
+  $('shopRedeemLicenseBtn')?.addEventListener('click',()=>window.redeemPremiumLicense?.());
+
+  // Keep the Shop next to Notifications and in sync with auth/license changes.
+  const oldApply=window.applyEntitlementUI;
+  if (typeof oldApply==='function' && !oldApply.__shopWrapped){
+    window.applyEntitlementUI=function(){ const r=oldApply.apply(this,arguments); applyShopVisibility(); renderShop(); return r; };
+    window.applyEntitlementUI.__shopWrapped=true;
+  }
+  document.addEventListener('DOMContentLoaded',()=>{applyShopVisibility(); setTimeout(()=>{applyShopVisibility();renderShop(); if(isNativeStoreKit() && signedIn()) restore();},600);});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){applyShopVisibility(); if(isNativeStoreKit()) restore();}});
+})();

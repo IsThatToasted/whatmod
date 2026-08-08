@@ -32,7 +32,7 @@ else:
 
 if 'WeTrack V2.2.0 Production' in app: ok('V2.2 production build marker found')
 else: fail('V2.2 build marker missing')
-if './app.js?v=440' in index and './styles.css?v=440' in index: ok('Production cache version is consistent')
+if './app.js?v=490' in index and './styles.css?v=490' in index: ok('Production cache version is consistent')
 else: fail('Cache version mismatch in index.html')
 
 # JavaScript syntax when Node is available

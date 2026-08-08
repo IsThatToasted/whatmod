@@ -603,3 +603,7 @@ The active trip still determines which owner-led bucket list is shown. For examp
 - Fun Ideas reactions now use a unique V2.8 DOM class, one debounced save path, direct table upsert with RPC fallback, and a dedicated realtime subscription.
 - Added a persistent shared Orgasm Leaderboard inside Fun Ideas. Each record stores who experienced it, who caused it, pleasure level, role, and timestamp.
 - Run `v28_reactions_orgasm_repair.sql` once in Supabase.
+
+
+## V2.9.4 release shop
+See `SHOP_SETUP.md`. Toggle with `shop-config.js`. Premium is $7.95/month and includes 20 Memories per trip; optional Memory Capacity tiers add 20 at a time.

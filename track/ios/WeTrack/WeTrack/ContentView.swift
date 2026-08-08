@@ -2,6 +2,7 @@ import SwiftUI
 import WebKit
 import AuthenticationServices
 import UserNotifications
+import StoreKit
 
 struct ContentView: View {
     var body: some View {
@@ -20,6 +21,7 @@ struct WeTrackWebView: UIViewRepresentable {
         config.websiteDataStore = .default()
         config.userContentController.add(context.coordinator, name: "nativeAuth")
         config.userContentController.add(context.coordinator, name: "nativeNotifications")
+        config.userContentController.add(context.coordinator, name: "nativeStoreKit")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         context.coordinator.webView = webView
@@ -37,6 +39,7 @@ struct WeTrackWebView: UIViewRepresentable {
     static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "nativeAuth")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "nativeNotifications")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "nativeStoreKit")
         coordinator.authSession?.cancel()
     }
 
@@ -69,6 +72,98 @@ struct WeTrackWebView: UIViewRepresentable {
                     break
                 }
             }
+
+            if message.name == "nativeStoreKit" {
+                switch action {
+                case "listProducts":
+                    let ids = body["productIds"] as? [String] ?? []
+                    Task { await listStoreProducts(ids) }
+                case "purchase":
+                    if let productId = body["productId"] as? String { Task { await purchaseStoreProduct(productId) } }
+                case "restore":
+                    Task { await restoreStorePurchases() }
+                default:
+                    break
+                }
+            }
+        }
+
+        @MainActor
+        private func listStoreProducts(_ ids: [String]) async {
+            do {
+                let loaded = try await Product.products(for: ids)
+                let rows: [[String: Any]] = loaded.map { p in
+                    ["id": p.id, "displayName": p.displayName, "description": p.description, "displayPrice": p.displayPrice]
+                }
+                sendStoreKitJS("productsLoaded", payload: rows)
+            } catch {
+                sendStoreKitJS("purchaseFailed", payload: error.localizedDescription)
+            }
+        }
+
+        @MainActor
+        private func purchaseStoreProduct(_ productId: String) async {
+            do {
+                guard let product = try await Product.products(for: [productId]).first else {
+                    sendStoreKitJS("purchaseFailed", payload: "This purchase is not available in the current App Store configuration.")
+                    return
+                }
+                let result = try await product.purchase()
+                switch result {
+                case .success(let verification):
+                    switch verification {
+                    case .verified(let transaction):
+                        sendStoreTransaction(transaction, callback: "purchaseCompleted")
+                        await transaction.finish()
+                    case .unverified(_, let error):
+                        sendStoreKitJS("purchaseFailed", payload: "Apple could not verify this purchase: \(error.localizedDescription)")
+                    }
+                case .pending:
+                    sendStoreKitJS("purchasePending", payload: NSNull())
+                case .userCancelled:
+                    sendStoreKitJS("purchaseCancelled", payload: NSNull())
+                @unknown default:
+                    sendStoreKitJS("purchaseFailed", payload: "Unknown purchase result.")
+                }
+            } catch {
+                sendStoreKitJS("purchaseFailed", payload: error.localizedDescription)
+            }
+        }
+
+        @MainActor
+        private func restoreStorePurchases() async {
+            do { try await AppStore.sync() } catch { /* currentEntitlements below is still useful */ }
+            var rows: [[String: Any]] = []
+            for await result in Transaction.currentEntitlements {
+                if case .verified(let transaction) = result {
+                    rows.append(storeTransactionPayload(transaction))
+                }
+            }
+            sendStoreKitJS("entitlementsLoaded", payload: rows)
+        }
+
+        private func storeTransactionPayload(_ transaction: Transaction) -> [String: Any] {
+            let iso = ISO8601DateFormatter()
+            var row: [String: Any] = [
+                "productId": transaction.productID,
+                "transactionId": String(transaction.id),
+                "originalTransactionId": String(transaction.originalID)
+            ]
+            if let expirationDate = transaction.expirationDate { row["expirationDate"] = iso.string(from: expirationDate) }
+            return row
+        }
+
+        @MainActor
+        private func sendStoreTransaction(_ transaction: Transaction, callback: String) {
+            sendStoreKitJS(callback, payload: storeTransactionPayload(transaction))
+        }
+
+        @MainActor
+        private func sendStoreKitJS(_ callback: String, payload: Any) {
+            guard let webView,
+                  let data = try? JSONSerialization.data(withJSONObject: payload),
+                  let json = String(data: data, encoding: .utf8) else { return }
+            webView.evaluateJavaScript("window.WeTrackStoreKit && window.WeTrackStoreKit.\(callback)(\(json));")
         }
 
         private func requestNotificationPermission() {
