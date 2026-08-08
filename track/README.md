@@ -603,3 +603,16 @@ The active trip still determines which owner-led bucket list is shown. For examp
 - Fun Ideas reactions now use a unique V2.8 DOM class, one debounced save path, direct table upsert with RPC fallback, and a dedicated realtime subscription.
 - Added a persistent shared Orgasm Leaderboard inside Fun Ideas. Each record stores who experienced it, who caused it, pleasure level, role, and timestamp.
 - Run `v28_reactions_orgasm_repair.sql` once in Supabase.
+
+
+## WeTrack V2.9 — Stabilization Audit
+
+This release fixes two production regressions without changing working feature flows:
+
+- Onboarding completion now honors both the account profile and the legacy trip-member completion flag, then backfills account-level completion so a saved onboarding stays dismissed across browsers/devices.
+- Starter packing rows are now seeded transactionally and idempotently. The migration removes duplicate copies of only the eight built-in starter rows while preserving custom packing items and checked state.
+- Corrected the Must Do Realtime table name (`itinerary_must_do_items`).
+- Removed memory-upload code that unnecessarily reset the one-time starter-trip cleanup guard, reducing redundant Supabase RPC calls.
+- Added stale-response protection when switching trips during a packing fetch.
+
+Run `v29_stabilization_repair.sql` (or the full `schema.sql`) once after deployment.

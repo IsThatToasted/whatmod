@@ -164,7 +164,9 @@ function syncRouteFieldVisibility() {
   if (pointToPoint && els.itemLocation) els.itemLocation.placeholder = 'Optional label/place name';
   else if (els.itemLocation) els.itemLocation.placeholder = 'Address / location';
 }
-let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funReactions = [], funReactionSaveTimers = {}, shoppingListItems = [], allShoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false, starterCleanupChecked = false;
+let session = null, trips = [], items = [], members = [], packingItems = [], packingProgressByUser = [], mustDoItems = [], memoryItems = [], funIdeas = [], funPermissions = [], funCategories = [], funReactions = [], funReactionSaveTimers = {}, shoppingListItems = [], allShoppingListItems = [], shoppingListPermissions = [], activeShoppingItemId = null, funCategoryFilterValue = 'all', activeMemorySlide = 0, activeTripId = null, draggedId = null, autosaveTimer = null, selectedDay = null, pendingInviteToken = null, lastUndo = null, undoTimer = null, timelineDrag = null, packingDragId = null, realtimeChannel = null, liveSyncTimer = null, lastLiveSyncKey = '', routeMap = null, routeLayer = null, routeMarkers = [], routeRenderToken = 0, weatherByDate = {}, weatherStatus = '', quickMemoryCaptureMode = false;
+let packingSeedPromise = null;
+let packingLoadGeneration = 0;
 
 const setStatus = m => els.saveStatus.textContent = m;
 const money = n => Number(n || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
@@ -433,6 +435,26 @@ function loadPackingFallback() {
 }
 function normalizePackingItem(row, idx = 0) {
   return { id: row.id || `local-${idx}-${Date.now()}`, trip_id: row.trip_id || activeTripId, user_id: row.user_id || session?.user?.id, label: row.label || row.title || 'Packing item', packed: !!row.packed, sort_order: row.sort_order ?? idx, local_only: !!row.local_only };
+}
+function dedupeStarterPackingRows(rows = []) {
+  const starter = new Set(STARTER_PACKING_ITEMS.map(x => x.toLowerCase()));
+  const kept = [];
+  const byStarter = new Map();
+  for (const row of rows || []) {
+    const key = String(row?.label || row?.title || '').trim().toLowerCase();
+    if (!starter.has(key)) { kept.push(row); continue; }
+    const existing = byStarter.get(key);
+    if (!existing) {
+      const clone = { ...row };
+      byStarter.set(key, clone);
+      kept.push(clone);
+    } else if (row?.packed) {
+      // A legacy duplicate may be the copy the user checked. Reflect that state
+      // immediately even before the one-time SQL cleanup has been run.
+      existing.packed = true;
+    }
+  }
+  return kept;
 }
 function inviteTokenFromUrl() { return new URLSearchParams(location.search).get('invite'); }
 
@@ -890,7 +912,7 @@ function setupRealtimeSync() {
     'itinerary_items',
     'itinerary_trip_members',
     'itinerary_packing_items',
-    'itinerary_must_do',
+    'itinerary_must_do_items',
     'itinerary_memories',
     'trip_fun_permissions',
     'trip_fun_ideas',
@@ -928,7 +950,7 @@ function handleRealtimePayload(table, payload) {
     const label = table === 'itinerary_packing_items' ? 'Packing progress updated'
       : table === 'itinerary_items' ? 'Itinerary updated'
       : table === 'itinerary_memories' ? 'Memories updated'
-      : table === 'itinerary_must_do' ? 'Must Do updated'
+      : table === 'itinerary_must_do_items' ? 'Must Do updated'
       : table === 'trip_fun_ideas' || table === 'trip_fun_permissions' || table === 'trip_fun_categories' || table === 'trip_fun_reactions' ? 'Private list updated'
       : table === 'itinerary_shopping_items' ? 'Shopping list updated'
       : 'Trip updated';
@@ -1037,34 +1059,81 @@ function renderPackingProgressSummary() {
 
 async function loadPackingItems() {
   if (!activeTripId || !session?.user?.id) { packingItems = []; return; }
+  const tripId = activeTripId;
+  const userId = session.user.id;
+  const generation = ++packingLoadGeneration;
   const { data, error } = await client
     .from('itinerary_packing_items')
     .select('*')
-    .eq('trip_id', activeTripId)
-    .eq('user_id', session.user.id)
+    .eq('trip_id', tripId)
+    .eq('user_id', userId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
+  // Ignore a stale response after the user switched trips/accounts.
+  if (generation !== packingLoadGeneration || tripId !== activeTripId || userId !== session?.user?.id) return;
   if (error) {
     console.warn('Packing list table unavailable. Using local fallback until schema.sql is run.', error);
     packingItems = loadPackingFallback();
     setStatus('Packing list local only — run schema.sql for sync');
     return;
   }
-  packingItems = (data || []).map(normalizePackingItem);
+  packingItems = dedupeStarterPackingRows(data || []).map(normalizePackingItem);
   if (!packingItems.length) await seedStarterPackingItems();
 }
 
 async function seedStarterPackingItems() {
   if (!activeTripId || !session?.user?.id) return;
-  const rows = STARTER_PACKING_ITEMS.map((label, idx) => ({ trip_id: activeTripId, user_id: session.user.id, label, packed: false, sort_order: idx }));
-  const { data, error } = await client.from('itinerary_packing_items').insert(rows).select('*');
-  if (error) {
-    console.warn('Could not seed Supabase packing list. Using local starter list.', error);
-    packingItems = loadPackingFallback();
-    savePackingFallback();
-    return;
-  }
-  packingItems = (data || []).map(normalizePackingItem);
+  // Multiple load paths (initial load + realtime + visibility refresh) used to race here
+  // and could each insert the eight starter rows. Keep one seed operation in flight.
+  if (packingSeedPromise) return packingSeedPromise;
+  const tripId = activeTripId;
+  const userId = session.user.id;
+  packingSeedPromise = (async () => {
+    try {
+      // Server helper takes a transaction-level advisory lock and only inserts missing
+      // starter labels. It also returns the canonical list after deduplication.
+      const rpc = await client.rpc('ensure_itinerary_starter_packing', { target_trip_id: tripId });
+      if (!rpc.error && Array.isArray(rpc.data)) {
+        if (tripId === activeTripId && userId === session?.user?.id) {
+          packingItems = dedupeStarterPackingRows(rpc.data).map(normalizePackingItem);
+        }
+        return;
+      }
+      if (rpc.error) console.warn('Starter packing helper unavailable; using guarded client fallback.', rpc.error);
+
+      // Compatibility fallback for deployments that have not run the newest schema yet.
+      const existing = await client.from('itinerary_packing_items')
+        .select('*')
+        .eq('trip_id', tripId)
+        .eq('user_id', userId)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+      if (existing.error) throw existing.error;
+      const rows = existing.data || [];
+      const present = new Set(rows.map(r => String(r.label || '').trim().toLowerCase()));
+      const missing = STARTER_PACKING_ITEMS
+        .map((label, idx) => ({ trip_id: tripId, user_id: userId, label, packed: false, sort_order: idx }))
+        .filter(r => !present.has(r.label.toLowerCase()));
+      let allRows = rows;
+      if (missing.length) {
+        const inserted = await client.from('itinerary_packing_items').insert(missing).select('*');
+        if (inserted.error) throw inserted.error;
+        allRows = rows.concat(inserted.data || []);
+      }
+      if (tripId === activeTripId && userId === session?.user?.id) {
+        packingItems = dedupeStarterPackingRows(allRows).map(normalizePackingItem).sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
+      }
+    } catch (error) {
+      console.warn('Could not seed Supabase packing list. Using local starter list.', error);
+      if (tripId === activeTripId && userId === session?.user?.id) {
+        packingItems = loadPackingFallback();
+        savePackingFallback();
+      }
+    } finally {
+      packingSeedPromise = null;
+    }
+  })();
+  return packingSeedPromise;
 }
 async function createTrip(input) {
   const { data: userData, error: userError } = await client.auth.getUser();
@@ -2808,10 +2877,9 @@ if (els.funIdeasList) els.funIdeasList.addEventListener('click', e => {
 if (els.memoryPhotoBtn) els.memoryPhotoBtn.addEventListener('click', () => els.memoryPhotoInput?.click());
 if (els.memoryPhotoInput) els.memoryPhotoInput.addEventListener('change', async () => {
   const file = els.memoryPhotoInput.files?.[0];
-  if (!file) { quickMemoryCaptureMode = false, starterCleanupChecked = false; return; }
+  if (!file) { quickMemoryCaptureMode = false; return; }
   // Mobile-first memory flow: no popup. A photo automatically saves as a dated memory.
   quickMemoryCaptureMode = false;
-  starterCleanupChecked = false;
   const title = defaultMemoryTitle();
   if (els.memoryInput) els.memoryInput.value = title;
   await addMemoryItem(title);
@@ -2969,14 +3037,14 @@ async function addMemoryItem(note) {
     console.error(err);
     alert(`${err.message || 'Photo upload failed'}\n\nRun schema.sql once and make sure the trip-memories storage bucket exists.`);
   } finally {
-    quickMemoryCaptureMode = false, starterCleanupChecked = false;
+    quickMemoryCaptureMode = false;
     resetMemoryPhotoPicker();
   }
 }
 async function handleMemoryPhotoInputChangeFixed(event) {
   event?.stopImmediatePropagation?.();
   const file = els.memoryPhotoInput?.files?.[0] || null;
-  if (!file) { quickMemoryCaptureMode = false, starterCleanupChecked = false; return; }
+  if (!file) { quickMemoryCaptureMode = false; return; }
   // No title popup. Every camera/photo memory auto-saves with the local date and time.
   const title = defaultMemoryTitle();
   if (els.memoryInput) els.memoryInput.value = title;
@@ -2991,7 +3059,6 @@ els.memoryPhotoBtn?.addEventListener('click', (event) => {
   event?.stopImmediatePropagation?.();
   resetMemoryPhotoPicker();
   quickMemoryCaptureMode = false;
-  starterCleanupChecked = false;
   els.memoryPhotoInput?.click();
 }, true);
 els.memoryPhotoInput?.addEventListener('click', () => { /* intentionally no-op; value is reset before programmatic click */ }, true);
@@ -5396,8 +5463,9 @@ async function deletePackingItem(id) {
   async function loadOnboardingProfile(force=false){
     const userId = session?.user?.id || '';
     if (!userId || !client) return { completed:false, profile:authProfileDefaults() };
+    const localCompleted = localStorage.getItem(onboardingStorageKey()) === '1';
     if (!force && onboardingStatusLoaded && onboardingStatusUserId === userId) {
-      return { completed:onboardingCompletedRemote, profile:null };
+      return { completed:onboardingCompletedRemote || localCompleted, profile:null };
     }
     if (onboardingLoadPromise) return onboardingLoadPromise;
     onboardingLoadPromise = (async()=>{
@@ -5413,11 +5481,27 @@ async function deletePackingItem(id) {
       } catch (error) {
         console.warn('Could not load persistent onboarding profile; using trip profile fallback.', error);
       }
+
+      // The trip-member fallback is important for users who completed onboarding before
+      // itinerary_user_profiles existed. Prefer the already-loaded member, but query the
+      // current trip directly when the local member cache is not ready yet.
+      let member = (members || []).find(m => m.user_id === userId) || null;
+      if (!member && activeTripId) {
+        try {
+          const { data, error } = await client.from('itinerary_trip_members')
+            .select('display_name,trip_role,favorite_foods,favorite_activities,personal_interests,onboarding_completed')
+            .eq('trip_id', activeTripId)
+            .eq('user_id', userId)
+            .maybeSingle();
+          if (!error) member = data || null;
+        } catch {}
+      }
+      member ||= {};
+      const completed = localCompleted || !!remote?.onboarding_completed || !!member?.onboarding_completed;
       onboardingStatusUserId = userId;
       onboardingStatusLoaded = true;
-      onboardingCompletedRemote = !!remote?.onboarding_completed;
-      if (onboardingCompletedRemote) localStorage.setItem(onboardingStorageKey(),'1');
-      const member = (members || []).find(m => m.user_id === userId) || {};
+      onboardingCompletedRemote = completed;
+      if (completed) localStorage.setItem(onboardingStorageKey(),'1');
       const auth = authProfileDefaults();
       const profile = {
         display_name: remote?.display_name || member.display_name || auth.display_name,
@@ -5426,7 +5510,7 @@ async function deletePackingItem(id) {
         favorite_activities: remote?.favorite_activities || member.favorite_activities || '',
         personal_interests: remote?.personal_interests || member.personal_interests || ''
       };
-      return { completed:onboardingCompletedRemote, profile };
+      return { completed, profile };
     })();
     try { return await onboardingLoadPromise; }
     finally { onboardingLoadPromise = null; }
@@ -5847,7 +5931,7 @@ window.addEventListener('DOMContentLoaded', () => {
    + shared Orgasm Counter
    ============================================================ */
 (() => {
-  const BUILD = 'WeTrack V2.8.0';
+  const BUILD = 'WeTrack V2.9.0';
   const clamp = (n,min,max)=>Math.max(min,Math.min(max,Number(n)||0));
   const isoDays = (start,end) => {
     const out=[]; if(!start||!end) return out;
@@ -5967,5 +6051,5 @@ window.addEventListener('DOMContentLoaded', () => {
 /* WeTrack V2.8 visible build marker */
 window.addEventListener('DOMContentLoaded',()=>{
   const badge=document.getElementById('buildVersionBadge');
-  if(badge) badge.textContent='WeTrack V2.8.0 · weather/reactions/counter';
+  if(badge) badge.textContent='WeTrack V2.9.0 · stabilization/onboarding/packing';
 });
