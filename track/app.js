@@ -6196,3 +6196,6 @@ window.addEventListener('DOMContentLoaded',()=>{
 
 /* WeTrack V2.9.6 entitlement startup/performance stabilization */
 window.WETRACK_RELEASE='2.9.6';
+
+/* WeTrack V2.9.8 single-current-entitlement licensing */
+window.WETRACK_RELEASE='2.9.8';
