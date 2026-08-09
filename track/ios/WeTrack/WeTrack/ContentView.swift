@@ -134,7 +134,7 @@ struct WeTrackWebView: UIViewRepresentable {
         private func restoreStorePurchases() async {
             do { try await AppStore.sync() } catch { /* currentEntitlements below is still useful */ }
             var rows: [[String: Any]] = []
-            for await result in Transaction.currentEntitlements {
+            for await result in StoreKit.Transaction.currentEntitlements {
                 if case .verified(let transaction) = result {
                     rows.append(storeTransactionPayload(transaction))
                 }
@@ -142,7 +142,7 @@ struct WeTrackWebView: UIViewRepresentable {
             sendStoreKitJS("entitlementsLoaded", payload: rows)
         }
 
-        private func storeTransactionPayload(_ transaction: Transaction) -> [String: Any] {
+        private func storeTransactionPayload(_ transaction: StoreKit.Transaction) -> [String: Any] {
             let iso = ISO8601DateFormatter()
             var row: [String: Any] = [
                 "productId": transaction.productID,
@@ -154,7 +154,7 @@ struct WeTrackWebView: UIViewRepresentable {
         }
 
         @MainActor
-        private func sendStoreTransaction(_ transaction: Transaction, callback: String) {
+        private func sendStoreTransaction(_ transaction: StoreKit.Transaction, callback: String) {
             sendStoreKitJS(callback, payload: storeTransactionPayload(transaction))
         }
 
