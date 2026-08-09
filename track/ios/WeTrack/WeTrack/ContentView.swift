@@ -81,7 +81,11 @@ struct WeTrackWebView: UIViewRepresentable {
                 case "purchase":
                     if let productId = body["productId"] as? String { Task { await purchaseStoreProduct(productId) } }
                 case "restore":
+                    // Explicit user action only. AppStore.sync() may ask for Apple credentials.
                     Task { await restoreStorePurchases() }
+                case "refreshEntitlements":
+                    // Passive startup/foreground refresh. Never calls AppStore.sync().
+                    Task { await refreshStoreEntitlements() }
                 default:
                     break
                 }
@@ -131,14 +135,30 @@ struct WeTrackWebView: UIViewRepresentable {
         }
 
         @MainActor
-        private func restoreStorePurchases() async {
-            do { try await AppStore.sync() } catch { /* currentEntitlements below is still useful */ }
+        private func currentStoreEntitlementRows() async -> [[String: Any]] {
             var rows: [[String: Any]] = []
             for await result in StoreKit.Transaction.currentEntitlements {
                 if case .verified(let transaction) = result {
                     rows.append(storeTransactionPayload(transaction))
                 }
             }
+            return rows
+        }
+
+        @MainActor
+        private func refreshStoreEntitlements() async {
+            // Apple documents currentEntitlements as available without forcing an
+            // App Store credential prompt. Use this for launch/foreground refresh.
+            let rows = await currentStoreEntitlementRows()
+            sendStoreKitJS("entitlementsLoaded", payload: rows)
+        }
+
+        @MainActor
+        private func restoreStorePurchases() async {
+            // AppStore.sync() can display Apple's sign-in sheet, therefore this
+            // method is called ONLY after the user taps Restore Purchases.
+            do { try await AppStore.sync() } catch { /* still read local entitlements */ }
+            let rows = await currentStoreEntitlementRows()
             sendStoreKitJS("entitlementsLoaded", payload: rows)
         }
 

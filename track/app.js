@@ -3900,21 +3900,74 @@ async function deletePackingItem(id) {
   }
   window.showPremiumGate = premiumMessage;
 
+
+  // WeTrack V3.0: a single serialized redemption path shared by every legacy
+  // and current Premium button. Some historical UI layers still hold references
+  // to older click handlers; routing all of them through this function prevents
+  // duplicate prompts/RPC calls and false "invalid key" errors.
+  window.__wetrackRedeemLicenseOnce = window.__wetrackRedeemLicenseOnce || async function(explicitKey){
+    if (window.__wetrackRedeemPromise) return window.__wetrackRedeemPromise;
+
+    const entered = explicitKey !== undefined
+      ? String(explicitKey || '')
+      : String(prompt('Enter your premium license key:') || '');
+    const key = entered.trim();
+    if (!key) return null;
+
+    window.__wetrackRedeemPromise = (async () => {
+      try {
+        const { data, error } = await client.rpc('redeem_itinerary_license', { p_license_key: key });
+        if (error) throw error;
+
+        // Always re-read the one authoritative user entitlement row. This keeps
+        // every old/new UI layer and the iOS WebView on exactly the same result.
+        if (typeof window.loadLicenseEntitlements === 'function') {
+          await window.loadLicenseEntitlements(true);
+        } else if (typeof window.loadLicensePlan === 'function') {
+          await window.loadLicensePlan(true);
+        }
+
+        try { applyLicenseUI?.(); } catch(_) {}
+        try { applyEntitlementUI?.(); } catch(_) {}
+        try { render?.(); } catch(_) {}
+        try { renderDayMap?.(); } catch(_) {}
+
+        if (typeof safeToast2 === 'function') safeToast2('Premium unlocked', 'success');
+        else if (typeof showToast === 'function') showToast('Premium unlocked', 'success');
+        return data;
+      } catch (err) {
+        console.warn('License redeem attempt returned an error', err);
+
+        // A historical duplicate handler or a transient response can race a
+        // successful redemption. Before showing failure, ask the authoritative
+        // entitlement RPC whether the account is now Premium.
+        try {
+          const { data: status, error: statusError } = await client.rpc('get_itinerary_license_status');
+          if (!statusError && String(status?.plan || '').toLowerCase() === 'premium' && status?.active !== false) {
+            if (typeof window.loadLicenseEntitlements === 'function') await window.loadLicenseEntitlements(true);
+            try { applyEntitlementUI?.(); } catch(_) {}
+            try { applyLicenseUI?.(); } catch(_) {}
+            try { render?.(); } catch(_) {}
+            try { renderDayMap?.(); } catch(_) {}
+            if (typeof safeToast2 === 'function') safeToast2('Premium unlocked', 'success');
+            return status;
+          }
+        } catch (_) {}
+
+        const msg = String(err?.message || 'Could not redeem license.');
+        if (typeof safeToast2 === 'function') safeToast2(msg, 'error');
+        else alert(msg);
+        throw err;
+      } finally {
+        window.__wetrackRedeemPromise = null;
+      }
+    })();
+
+    return window.__wetrackRedeemPromise;
+  };
+
   async function redeemPremiumLicense(){
-    const key = prompt('Enter your premium license key:');
-    if (!key) return;
-    try {
-      const { data, error } = await client.rpc('redeem_itinerary_license', { p_license_key: key.trim() });
-      if (error) throw error;
-      licensePlan = normalizePlan(data?.plan || 'premium');
-      licenseLoadedFor = currentUserId();
-      applyLicenseUI();
-      render?.();
-      showToast?.('Premium unlocked', 'success');
-    } catch (err) {
-      console.warn('License redeem failed', err);
-      alert(err.message || 'Could not redeem license.');
-    }
+    return window.__wetrackRedeemLicenseOnce();
   }
   window.redeemPremiumLicense = redeemPremiumLicense;
 
@@ -4642,21 +4695,7 @@ async function deletePackingItem(id) {
   window.loadLicenseEntitlements = loadLicenseEntitlements;
 
   async function redeemLicenseKey(){
-    const key = prompt('Enter your premium license key:');
-    if (!key) return;
-    try {
-      const { data, error } = await client.rpc('redeem_itinerary_license', { p_license_key: key.trim() });
-      if (error) throw error;
-      entitlementState = mergedEntitlement(data || { plan: 'premium' });
-      entitlementLoadedFor = uid();
-      applyEntitlementUI();
-      try { render?.(); } catch(_) {}
-      try { renderDayMap?.(); } catch(_) {}
-      safeToast2('Premium unlocked', 'success');
-    } catch (err) {
-      console.warn('License redeem failed', err);
-      alert(err.message || 'Could not redeem license.');
-    }
+    return window.__wetrackRedeemLicenseOnce();
   }
   window.redeemPremiumLicense = redeemLicenseKey;
 
@@ -6114,10 +6153,16 @@ window.addEventListener('DOMContentLoaded',()=>{
   }
   function restore(){
     if (!isNativeStoreKit()) { window.showAppToast?.('Restore Purchases is available in the iPhone app.', 'info'); return; }
+    // Explicit button action: Apple may present an App Store sign-in sheet here.
     window.webkit.messageHandlers.nativeStoreKit.postMessage({action:'restore', productIds:allProductIds()});
   }
+  function refreshNativeEntitlements(){
+    if (!isNativeStoreKit() || !signedIn()) return;
+    try { window.webkit.messageHandlers.nativeStoreKit.postMessage({action:'refreshEntitlements', productIds:allProductIds()}); }
+    catch(e){ console.warn('Passive StoreKit entitlement refresh failed',e); }
+  }
 
-  async function syncTransaction(tx){
+  async function syncTransaction(tx, silent=false){
     if (!client || !signedIn() || !tx?.productId) return;
     try {
       const {data,error}=await client.rpc('record_wetrack_storekit_purchase',{
@@ -6131,7 +6176,7 @@ window.addEventListener('DOMContentLoaded',()=>{
       window.applyEntitlementUI?.();
       renderShop();
       try { render?.(); } catch(_){}
-      window.showAppToast?.('Purchase synced with WeTrack', 'success');
+      if (!silent) window.showAppToast?.('Purchase synced with WeTrack', 'success');
     } catch(err){
       console.error('StoreKit entitlement sync failed',err);
       window.showAppToast?.(`Purchase verified by Apple, but WeTrack sync failed: ${err.message||err}`, 'error');
@@ -6144,7 +6189,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     purchasePending(){ pendingPurchase=false; window.showAppToast?.('Purchase is pending approval.', 'info'); },
     purchaseCancelled(){ pendingPurchase=false; },
     purchaseFailed(message){ pendingPurchase=false; window.showAppToast?.(message||'Purchase failed.', 'error'); },
-    entitlementsLoaded(txs){ (txs||[]).forEach(syncTransaction); }
+    entitlementsLoaded(txs){ (txs||[]).forEach(tx=>syncTransaction(tx,true)); }
   };
 
   async function quotaAvailable(){
@@ -6190,8 +6235,8 @@ window.addEventListener('DOMContentLoaded',()=>{
     window.applyEntitlementUI=function(){ const r=oldApply.apply(this,arguments); applyShopVisibility(); renderShop(); return r; };
     window.applyEntitlementUI.__shopWrapped=true;
   }
-  document.addEventListener('DOMContentLoaded',()=>{applyShopVisibility(); setTimeout(()=>{applyShopVisibility();renderShop(); if(isNativeStoreKit() && signedIn()) restore();},600);});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden){applyShopVisibility(); if(isNativeStoreKit()) restore();}});
+  document.addEventListener('DOMContentLoaded',()=>{applyShopVisibility(); setTimeout(()=>{applyShopVisibility();renderShop(); refreshNativeEntitlements();},600);});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){applyShopVisibility(); refreshNativeEntitlements();}});
 })();
 
 /* WeTrack V2.9.6 entitlement startup/performance stabilization */
@@ -6199,3 +6244,9 @@ window.WETRACK_RELEASE='2.9.6';
 
 /* WeTrack V2.9.8 single-current-entitlement licensing */
 window.WETRACK_RELEASE='2.9.8';
+
+/* WeTrack V2.9.9: StoreKit startup refresh never calls AppStore.sync */
+window.WETRACK_RELEASE='2.9.9';
+
+/* WeTrack V3.0 licensing redemption stabilization */
+window.WETRACK_RELEASE='3.0.0';
