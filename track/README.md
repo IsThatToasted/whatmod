@@ -607,3 +607,7 @@ The active trip still determines which owner-led bucket list is shown. For examp
 
 ## V2.9.4 release shop
 See `SHOP_SETUP.md`. Toggle with `shop-config.js`. Premium is $7.95/month and includes 20 Memories per trip; optional Memory Capacity tiers add 20 at a time.
+
+## WeTrack V2.9.5 — License Admin Upgrade
+
+The local license generator has been upgraded into a live admin console. License keys can now define `memory_limit_per_trip` in addition to events/day, max trips, and individual Premium feature toggles. Run `v295_license_admin_upgrade.sql` once before using the new memory-limit field or live dashboard. See `LICENSE_ADMIN_SETUP.md` for service-role connection instructions and security notes.

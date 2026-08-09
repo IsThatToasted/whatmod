@@ -723,6 +723,20 @@ async function init() {
 }
 async function bootSignedIn() {
   if (pendingInviteToken) await acceptInvite(pendingInviteToken);
+  // V2.9.6: resolve entitlements before trip/map rendering. This prevents the
+  // temporary Free state that previously appeared on fresh login / iOS launch.
+  try {
+    document.body.classList.add('entitlements-loading');
+    if (typeof window.loadLicenseEntitlements === 'function') {
+      await window.loadLicenseEntitlements(true);
+    } else if (typeof window.loadLicensePlan === 'function') {
+      await window.loadLicensePlan(true);
+    }
+  } catch (error) {
+    console.warn('Entitlement preload failed; continuing with cached state.', error);
+  } finally {
+    document.body.classList.remove('entitlements-loading');
+  }
   await loadTrips();
 }
 function refreshAuthUI() {
@@ -4560,17 +4574,56 @@ async function deletePackingItem(id) {
   window.tripLimit = () => Number(entitlementState.max_trips || 1);
   window.showPremiumGate = premiumMsg;
 
+  function entitlementCacheKey(){ return uid() ? `wetrack:entitlements:${uid()}:v2` : ''; }
+  function readEntitlementCache(){
+    try {
+      const key=entitlementCacheKey(); if(!key) return null;
+      const raw=JSON.parse(localStorage.getItem(key)||'null');
+      if(!raw?.data || !raw?.saved_at) return null;
+      // Keep a verified Premium state warm for 24h so transient network/RPC
+      // startup failures never visually downgrade a valid user to Free.
+      if(Date.now()-Number(raw.saved_at) > 86400000) return null;
+      return mergedEntitlement(raw.data);
+    } catch(_) { return null; }
+  }
+  function writeEntitlementCache(value){
+    try {
+      const key=entitlementCacheKey(); if(key) localStorage.setItem(key,JSON.stringify({saved_at:Date.now(),data:value}));
+    } catch(_) {}
+  }
+  function sleepEntitlement(ms){ return new Promise(resolve=>setTimeout(resolve,ms)); }
+
   async function loadLicenseEntitlements(force=false){
     if (!client || !uid()) { entitlementState = { ...DEFAULT_FREE }; applyEntitlementUI(); return entitlementState; }
+    const cached = readEntitlementCache();
+    if (cached && entitlementLoadedFor !== uid()) {
+      entitlementState = cached;
+      applyEntitlementUI();
+    }
     if (!force && entitlementLoadedFor === uid()) return entitlementState;
     if (entitlementLoading) return entitlementLoading;
     entitlementLoading = (async () => {
-      try {
-        const { data, error } = await client.rpc('get_itinerary_license_status');
-        if (error) throw error;
-        entitlementState = mergedEntitlement(data || DEFAULT_FREE);
-      } catch (err) {
-        console.warn('Entitlement status unavailable; falling back to legacy plan/free.', err);
+      let lastError = null;
+      for (let attempt=0; attempt<3; attempt++) {
+        try {
+          const { data, error } = await client.rpc('get_itinerary_license_status');
+          if (error) throw error;
+          entitlementState = mergedEntitlement(data || DEFAULT_FREE);
+          entitlementLoadedFor = uid();
+          writeEntitlementCache(entitlementState);
+          applyEntitlementUI();
+          return entitlementState;
+        } catch (err) {
+          lastError = err;
+          if (attempt < 2) await sleepEntitlement(180 * (attempt + 1));
+        }
+      }
+      // Do not fail-open, but also do not overwrite a previously verified cached
+      // Premium state because of a transient connection/RPC failure.
+      console.warn('Entitlement status temporarily unavailable.', lastError);
+      if (cached) {
+        entitlementState = cached;
+      } else {
         try {
           const { data, error } = await client.rpc('get_itinerary_license_plan');
           if (error) throw error;
@@ -4578,13 +4631,11 @@ async function deletePackingItem(id) {
         } catch (_) {
           entitlementState = { ...DEFAULT_FREE };
         }
-      } finally {
-        entitlementLoadedFor = uid();
-        entitlementLoading = null;
       }
+      entitlementLoadedFor = uid();
       applyEntitlementUI();
       return entitlementState;
-    })();
+    })().finally(() => { entitlementLoading = null; });
     return entitlementLoading;
   }
   window.loadLicensePlan = loadLicenseEntitlements;
@@ -6142,3 +6193,6 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('DOMContentLoaded',()=>{applyShopVisibility(); setTimeout(()=>{applyShopVisibility();renderShop(); if(isNativeStoreKit() && signedIn()) restore();},600);});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){applyShopVisibility(); if(isNativeStoreKit()) restore();}});
 })();
+
+/* WeTrack V2.9.6 entitlement startup/performance stabilization */
+window.WETRACK_RELEASE='2.9.6';
