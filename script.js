@@ -1,7 +1,7 @@
 // WhatMod site JavaScript
 // 1) Create a Stripe Payment Link for your existing WhatMod 30-day subscription.
 // 2) Paste that public URL below. It should look like: https://buy.stripe.com/...
-const STRIPE_PAYMENT_LINK = "PASTE_YOUR_STRIPE_PAYMENT_LINK_HERE";
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_14A5kEbQne0i7cIgxddUY00";
 
 document.querySelector("[data-menu]")?.addEventListener("click", () => {
   document.querySelector("[data-nav]")?.classList.toggle("open");

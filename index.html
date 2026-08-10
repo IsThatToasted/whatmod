@@ -2,124 +2,295 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b1018" />
-  <meta name="description" content="Listen to Lights Out online." />
-  <title>Lights Out — Audiobook</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WhatMod for Chrome — Moderator tools for Whatnot mods</title>
+  <meta name="description" content="WhatMod for Chrome is a free moderation toolkit for Whatnot mods. Save messages, organize notes, manage reminders, and customize your mod workspace." />
+  <meta name="theme-color" content="#6d28ff" />
+  <meta property="og:title" content="WhatMod for Chrome — Built for mods. By mods." />
+  <meta property="og:description" content="A clean Chrome extension for Whatnot moderators: message banks, notes, reminders, shoe cards, dashboard tools, and customization." />
+  <meta property="og:image" content="assets/cover.png" />
+  <meta property="og:type" content="website" />
+  <meta name="google-site-verification" content="aVkuum8qbix59l4tZZJ4tyTkWgIE4bmRMtAq11MW4XM" />
+  <link rel="preload" as="image" href="assets/cover.png?v=20260520-chrome" />
+  <link rel="stylesheet" href="styles.css?v=20260520-chrome" />
 </head>
 <body>
-  <div class="background-glow" aria-hidden="true"></div>
+  <header class="site-header" data-nav>
+    <a class="brand" href="#top" aria-label="WhatMod home">
+      <span class="brand-mark">W</span><span>What<span>Mod</span></span>
+    </a>
 
-  <main class="app-shell">
-    <section class="book-panel" aria-label="Audiobook player">
-      <div class="cover-column">
-        <div class="cover-wrap">
-          <img
-            id="coverImage"
-            class="cover"
-            src="./cover.jpg"
-            alt="Lights Out book cover"
-          />
-          <div class="cover-fallback" aria-hidden="true">
-            <span>LIGHTS</span>
-            <strong>OUT</strong>
-          </div>
+    <nav class="nav-links" aria-label="Main navigation">
+      <a href="#features">Features</a>
+      <a href="#preview">Preview</a>
+      <a href="#install">Chrome</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">FAQ</a>
+      <a href="/purchases/">Tools</a>
+    </nav>
+
+    <div class="header-actions">
+      <a class="header-cta" href="#install">WhatMod for Chrome</a>
+    </div>
+
+    <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false" data-menu>☰</button>
+  </header>
+
+  <main id="top">
+    <section class="hero section-grid">
+      <div class="hero-copy reveal">
+        <p class="eyebrow">WhatMod for Chrome</p>
+        <h1>Moderator tools made simple for Whatnot mods.</h1>
+        <p class="hero-lede">
+          WhatMod is a free Chrome extension that helps moderators keep messages, notes,
+          reminders, shoe details, and dashboard tools organized in one polished workspace.
+        </p>
+
+        <div class="hero-actions">
+          <a class="button button-primary" href="#install">Get WhatMod for Chrome</a>
+          <a class="button button-secondary" href="#preview">See the toolkit</a>
         </div>
 
-        <div class="book-copy">
-          <p class="eyebrow">Audiobook</p>
-          <h1>Lights Out</h1>
-          <p id="chapterLabel" class="chapter-label">Chapter 1 of 10</p>
+        <div class="stats" aria-label="WhatMod highlights">
+          <div><strong>Free</strong><span>No license required</span></div>
+          <div><strong>Local</strong><span>Saved in your browser</span></div>
+          <div><strong>Custom</strong><span>Built around your flow</span></div>
         </div>
       </div>
 
-      <div class="player-column">
-        <audio id="audio" preload="metadata"></audio>
+      <div class="hero-media reveal delay-1">
+        <img src="assets/cover.png?v=20260520-chrome" alt="WhatMod branded splash graphic showing moderator tools for Whatnot mods" />
+      </div>
+    </section>
 
-        <div class="now-playing">
-          <span class="status-dot" aria-hidden="true"></span>
-          <div>
-            <p class="now-playing-label">Now playing</p>
-            <h2 id="currentTitle">Chapter 1</h2>
+    <section class="trust-strip" aria-label="Core pillars">
+      <span>Protect</span><span>Manage</span><span>Moderate</span><span>Organize</span>
+    </section>
+
+    <section id="features" class="section">
+      <div class="section-heading reveal">
+        <p class="eyebrow">Built for daily moderation</p>
+        <h2>Everything a mod reaches for during a live show.</h2>
+      </div>
+
+      <div class="feature-grid">
+        <article class="card reveal">
+          <div class="icon">⚡</div>
+          <h3>Custom Dash</h3>
+          <p>Create quick-access buttons for the messages and tools you use most while a stream is live.</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="icon">💬</div>
+          <h3>Message Banks</h3>
+          <p>Organize reusable messages for rules, sizing, reminders, announcements, and common chat moments.</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="icon">👟</div>
+          <h3>Shoes</h3>
+          <p>Keep size, condition, and product notes easy to reference when questions come in fast.</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="icon">⏰</div>
+          <h3>Auto Reminders</h3>
+          <p>Prepare reminder text for recurring show moments so important information stays close.</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="icon">📝</div>
+          <h3>Notes</h3>
+          <p>Save seller details, show instructions, reusable notes, and helpful moderation context.</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="icon">🎨</div>
+          <h3>Customization</h3>
+          <p>Adjust your workspace so WhatMod feels clean, comfortable, and ready for daily use.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="preview" class="section split-section">
+      <div class="panel reveal">
+        <p class="eyebrow">Preview</p>
+        <h2>A focused workspace for busy mods.</h2>
+        <p>
+          When chat is moving fast, WhatMod keeps the tools you need close without forcing you to jump
+          between documents, old messages, and extra tabs.
+        </p>
+
+        <ul class="check-list">
+          <li>Reusable message banks for common chat situations</li>
+          <li>Notes, shoe cards, and reminders in one place</li>
+          <li>Visual settings that make the extension feel like yours</li>
+          <li>Simple setup with no desktop app or subscription required</li>
+        </ul>
+      </div>
+
+      <div class="mockup reveal delay-1" aria-label="WhatMod extension mockup">
+        <div class="mockup-top"><span></span><span></span><span></span></div>
+        <div class="mockup-body">
+          <div class="sidebar">
+            <b>WhatMod</b>
+            <span>Dashboard</span>
+            <span>Custom Dash</span>
+            <span>Message Banks</span>
+            <span>Shoes</span>
+            <span>Notes</span>
           </div>
-        </div>
 
-        <div class="timeline-block">
-          <input
-            id="seekBar"
-            class="range"
-            type="range"
-            min="0"
-            max="1000"
-            value="0"
-            aria-label="Seek through chapter"
-          />
-          <div class="time-row">
-            <span id="currentTime">0:00</span>
-            <span id="duration">0:00</span>
+          <div class="mock-content">
+            <div class="message-card">
+              <strong>Welcome message</strong>
+              <p>Welcome in! Please read the show details and ask questions before bidding.</p>
+            </div>
+
+            <div class="message-card">
+              <strong>Reminder</strong>
+              <p>Make sure your address is updated before entering any giveaways.</p>
+            </div>
+
+            <div class="message-card">
+              <strong>Sizing help</strong>
+              <p>Need sizing help? Drop the item and size you are looking for in chat.</p>
+            </div>
           </div>
-        </div>
-
-        <div class="primary-controls" aria-label="Playback controls">
-          <button id="previousButton" class="icon-button" type="button" aria-label="Previous chapter" title="Previous chapter">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6V5Zm3 7 9-7v14l-9-7Z"/></svg>
-          </button>
-
-          <button id="backButton" class="icon-button skip-button" type="button" aria-label="Go back 15 seconds" title="Back 15 seconds">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.3 4.1V1L6.8 5.5 11.3 10V6.2a6 6 0 1 1-5.1 2.8L4.5 7.8A8 8 0 1 0 11.3 4.1Z"/></svg>
-            <span>15</span>
-          </button>
-
-          <button id="playButton" class="play-button" type="button" aria-label="Play" title="Play or pause">
-            <svg id="playIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>
-            <svg id="pauseIcon" class="hidden" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z"/></svg>
-          </button>
-
-          <button id="forwardButton" class="icon-button skip-button" type="button" aria-label="Go forward 15 seconds" title="Forward 15 seconds">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.7 4.1V1l4.5 4.5-4.5 4.5V6.2A6 6 0 1 0 17.8 9l1.7-1.2a8 8 0 1 1-6.8-3.7Z"/></svg>
-            <span>15</span>
-          </button>
-
-          <button id="nextButton" class="icon-button" type="button" aria-label="Next chapter" title="Next chapter">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2V5ZM6 5l9 7-9 7V5Z"/></svg>
-          </button>
-        </div>
-
-        <div class="secondary-controls">
-          <label class="select-control">
-            <span>Speed</span>
-            <select id="speedSelect" aria-label="Playback speed">
-              <option value="0.75">0.75×</option>
-              <option value="1" selected>1×</option>
-              <option value="1.25">1.25×</option>
-              <option value="1.5">1.5×</option>
-              <option value="1.75">1.75×</option>
-              <option value="2">2×</option>
-            </select>
-          </label>
-
-          <label class="volume-control">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Zm11.5 3a3.5 3.5 0 0 0-1.5-2.9v5.8a3.5 3.5 0 0 0 1.5-2.9Zm0-7v2.1a6 6 0 0 1 0 9.8V19a8 8 0 0 0 0-14Z"/></svg>
-            <input id="volumeBar" class="range volume-range" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
-          </label>
         </div>
       </div>
     </section>
 
-    <section class="chapters-panel" aria-labelledby="chaptersHeading">
-      <div class="chapters-heading-row">
-        <div>
-          <p class="eyebrow">Contents</p>
-          <h2 id="chaptersHeading">Chapters</h2>
-        </div>
-        <p id="progressText" class="progress-text">Your place is saved automatically.</p>
+    <section class="section dark-band">
+      <div class="section-heading reveal">
+        <p class="eyebrow">Why WhatMod</p>
+        <h2>Simple tools that support the way moderators already work.</h2>
       </div>
 
-      <ol id="chapterList" class="chapter-list"></ol>
+      <div class="benefit-grid">
+        <div>
+          <strong>Less repeated typing</strong>
+          <p>Keep trusted messages ready so you are not rewriting the same replies throughout every show.</p>
+        </div>
+
+        <div>
+          <strong>Cleaner organization</strong>
+          <p>Store messages, notes, reminders, and shoe details in a single extension workspace.</p>
+        </div>
+
+        <div>
+          <strong>Daily comfort</strong>
+          <p>Use a polished interface built to feel good during long streams and everyday moderation.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" class="section install-section">
+      <div class="install-card reveal">
+        <div>
+          <p class="eyebrow">Available for Chrome</p>
+          <h2>WhatMod for Chrome</h2>
+          <p class="price"><span>$</span>0 <small>/ free</small></p>
+          <p class="muted">
+            No license. No subscription. No Windows or Mac download. Install the extension in Chrome and keep your moderation setup in your browser.
+          </p>
+        </div>
+
+        <ul class="check-list">
+          <li>Custom Dash</li>
+          <li>Message Banks</li>
+          <li>Shoe notes and condition cards</li>
+          <li>Auto reminder tools</li>
+          <li>Saved notes and preferences</li>
+          <li>Visual customization options</li>
+        </ul>
+
+        <a class="button button-primary full" href="#" aria-label="Chrome Web Store link coming soon">
+          Chrome Web Store Coming Soon
+        </a>
+
+        <p class="tiny">Replace this button URL with your Chrome Web Store listing once it is published.</p>
+      </div>
+    </section>
+
+    <section id="privacy" class="section privacy-section">
+      <div class="panel reveal">
+        <p class="eyebrow">Privacy-first setup</p>
+        <h2>Your workspace stays yours.</h2>
+        <p>
+          WhatMod is designed to save your messages, notes, reminders, and preferences locally in Chrome.
+          It does not require an account, payment, subscription, or separate desktop app.
+        </p>
+        <ul class="check-list">
+          <li>No paid license required for the Chrome extension</li>
+          <li>No Stripe checkout or subscription flow</li>
+          <li>No Windows or Mac installer needed</li>
+          <li>Independent tool; not affiliated with Whatnot</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="faq" class="section faq-section">
+      <div class="section-heading reveal">
+        <p class="eyebrow">FAQ</p>
+        <h2>Everything moderators want to know.</h2>
+      </div>
+
+      <div class="faq-list">
+        <details open>
+          <summary>What is WhatMod?</summary>
+          <p>
+            WhatMod is a Chrome extension built for Whatnot moderators. It helps organize saved messages,
+            notes, reminders, shoe details, and dashboard tools in one customizable workspace.
+          </p>
+        </details>
+
+        <details>
+          <summary>Is WhatMod free?</summary>
+          <p>
+            Yes. WhatMod for Chrome is currently planned as a free extension with no license, subscription,
+            or paid account required.
+          </p>
+        </details>
+
+        <details>
+          <summary>Do I need Windows or Mac downloads?</summary>
+          <p>
+            No. WhatMod now runs as a Chrome extension, so there are no separate Windows or Mac desktop downloads.
+          </p>
+        </details>
+
+        <details>
+          <summary>Does WhatMod collect my data?</summary>
+          <p>
+            WhatMod is designed to store your saved messages, notes, reminders, and preferences locally in your browser.
+            It does not require an account or subscription.
+          </p>
+        </details>
+
+        <details>
+          <summary>Who is WhatMod made for?</summary>
+          <p>
+            WhatMod was designed for Whatnot moderators who want faster access to common messages,
+            cleaner notes, reusable show information, and a more organized moderation workflow.
+          </p>
+        </details>
+
+        <details>
+          <summary>Is WhatMod affiliated with Whatnot?</summary>
+          <p>
+            No. WhatMod is an independent moderation tool created for moderators who work within the Whatnot ecosystem.
+          </p>
+        </details>
+      </div>
     </section>
   </main>
 
-  <script src="./app.js" defer></script>
+  <footer class="site-footer">
+    <div class="brand"><span class="brand-mark">W</span><span>What<span>Mod</span></span></div>
+    <p>WhatMod for Chrome. Moderator tools for Whatnot mods. Built for mods. By mods.</p>
+  </footer>
+
+  <script src="script.js?v=20260520-chrome" defer></script>
 </body>
 </html>
