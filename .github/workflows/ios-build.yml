@@ -1,0 +1,84 @@
+name: Build ScooterCast iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "ios/**"
+      - "project.yml"
+      - ".github/workflows/ios-build.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required secret
+        env:
+          RIDER_ADMIN_KEY: ${{ secrets.RIDER_ADMIN_KEY }}
+        run: |
+          if [ -z "$RIDER_ADMIN_KEY" ]; then
+            echo "::error::Missing GitHub repository secret RIDER_ADMIN_KEY"
+            exit 1
+          fi
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Resolve packages
+        run: |
+          xcodebuild \
+            -project ScooterCast.xcodeproj \
+            -scheme ScooterCast \
+            -resolvePackageDependencies
+
+      - name: Build unsigned device app
+        env:
+          RIDER_ADMIN_KEY: ${{ secrets.RIDER_ADMIN_KEY }}
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project ScooterCast.xcodeproj \
+            -scheme ScooterCast \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/DerivedData \
+            SCOOTERCAST_RIDER_KEY="$RIDER_ADMIN_KEY" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build | tee build.log
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH=$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          test -n "$APP_PATH"
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/
+          cd build
+          zip -r ScooterCast-unsigned.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScooterCast-iOS-unsigned
+          path: build/ScooterCast-unsigned.ipa
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScooterCast-build-log
+          path: build.log
