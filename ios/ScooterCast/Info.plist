@@ -2,43 +2,47 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDisplayName</key>
-    <string>ScooterCast</string>
-    <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-    <key>CFBundleName</key>
-    <string>$(PRODUCT_NAME)</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.2.1</string>
-    <key>CFBundleVersion</key>
-    <string>13</string>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-    <key>NSCameraUsageDescription</key>
-    <string>ScooterCast uses the camera to broadcast your ride to viewers you invite.</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>ScooterCast uses the microphone to include live ride audio.</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>ScooterCast uses your location for the live ride map, speed, distance and heading.</string>
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>ScooterCast can continue recording ride telemetry while a live ride is active.</string>
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>location</string>
-    </array>
-    <key>UIRequiredDeviceCapabilities</key>
-    <array>
-        <string>gps</string>
-    </array>
-    <key>UIDeviceFamily</key>
-    <array>
-        <integer>1</integer>
-    </array>
-    <key>ScooterCastRiderKey</key>
-    <string>$(SCOOTERCAST_RIDER_KEY)</string>
-    <key>UILaunchScreen</key>
-    <dict/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>ScooterCast</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.2.2</string>
+	<key>CFBundleVersion</key>
+	<string>14</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>MinimumOSVersion</key>
+	<string>$(IPHONEOS_DEPLOYMENT_TARGET)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ScooterCast uses the camera to broadcast your ride to viewers you invite.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ScooterCast uses the microphone to include live ride audio.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ScooterCast uses your location for the live ride map, speed, distance and heading.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>ScooterCast can continue recording ride telemetry while a live ride is active.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>gps</string>
+	</array>
+	<key>ScooterCastRiderKey</key>
+	<string>$(SCOOTERCAST_RIDER_KEY)</string>
+	<key>UILaunchScreen</key>
+	<dict/>
 </dict>
 </plist>
