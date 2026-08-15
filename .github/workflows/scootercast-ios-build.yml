@@ -43,6 +43,13 @@ jobs:
             exit 1
           }
 
+          test -f Info.plist || {
+            echo "::error::Info.plist is missing."
+            exit 1
+          }
+
+          plutil -lint Info.plist
+
       - name: Verify rider secret
         env:
           RIDER_ADMIN_KEY: ${{ secrets.RIDER_ADMIN_KEY }}
@@ -59,6 +66,13 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Swift source preflight
+        run: |
+          if grep -R -n -F '\\n        var ' --include='*.swift' .; then
+            echo "::error::Found a literal backslash-n sequence in Swift source."
+            exit 1
+          fi
 
       - name: Generate Xcode project
         run: |
@@ -105,6 +119,12 @@ jobs:
           rm -rf build/Payload
           mkdir -p build/Payload
           cp -R "$APP_PATH" build/Payload/
+
+          echo "Built app Info.plist:"
+          plutil -p "$APP_PATH/Info.plist"
+
+          echo "Linked frameworks:"
+          find "$APP_PATH/Frameworks" -maxdepth 2 -type f 2>/dev/null | sort || true
 
           cd build
           zip -r ScooterCast-unsigned.ipa Payload
