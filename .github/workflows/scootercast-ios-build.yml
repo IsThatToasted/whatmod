@@ -86,6 +86,18 @@ jobs:
             exit 1
           fi
 
+      - name: V2 source integrity check
+        run: |
+          grep -q 'private func beginViewerEventLoop()' RiderViewModel.swift || {
+            echo "::error::RiderViewModel is missing beginViewerEventLoop()."
+            exit 1
+          }
+
+          grep -q 'private func viewerEventBanner' RiderHomeView.swift || {
+            echo "::error::RiderHomeView is missing viewerEventBanner()."
+            exit 1
+          }
+
       - name: Generate Xcode project
         run: |
           xcodegen generate --spec project.yml
