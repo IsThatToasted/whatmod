@@ -5,74 +5,77 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#071013" />
   <title>ScooterCast Live</title>
-
-  <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
-      <div>
-        <div class="eyebrow">PRIVATE RIDE FEED</div>
-        <h1>SCOOTERCAST</h1>
+      <a class="brand-link" href="./">
+        <div>
+          <div class="eyebrow">LIVE LOCAL RIDES</div>
+          <h1>SCOOTERCAST</h1>
+        </div>
+      </a>
+      <div class="top-actions">
+        <span id="explorerCount" class="count-pill hidden">0 RIDERS</span>
+        <div id="liveBadge" class="badge offline">EXPLORER</div>
       </div>
-      <div id="liveBadge" class="badge offline">OFFLINE</div>
     </header>
 
     <section id="errorPanel" class="error-panel hidden"></section>
 
-    <section class="hero-grid">
-      <div class="video-card">
-        <video id="video" autoplay playsinline></video>
-        <audio id="audio" autoplay></audio>
-
-        <div class="video-overlay top-left">
-          <span id="rideTitle">Scooter Ride</span>
+    <section id="explorerView" class="explorer-view hidden">
+      <div class="explorer-hero">
+        <div>
+          <div class="eyebrow">LIVE EXPLORER</div>
+          <h2>See who’s riding now.</h2>
+          <p>Only riders who enable <strong>Show in Live Explorer</strong> appear here.</p>
         </div>
-
-        <div class="video-overlay bottom-left">
-          <span id="networkLabel">Connecting…</span>
-        </div>
-
-        <div id="videoPlaceholder" class="placeholder">
-          <div class="pulse-dot"></div>
-          <h2>Waiting for rider video</h2>
-          <p>Telemetry can continue even if video temporarily drops.</p>
-        </div>
+        <button id="refreshExplorer" class="refresh-button">↻ Refresh</button>
       </div>
-
-      <div class="map-card">
-        <div id="map"></div>
-        <div class="map-label">LIVE POSITION</div>
+      <div id="riderGrid" class="rider-grid"></div>
+      <div id="emptyExplorer" class="empty-explorer hidden">
+        <div class="radar">◎</div>
+        <h3>No public rides right now</h3>
+        <p>When a rider goes live and enables Explorer visibility, they’ll appear here.</p>
       </div>
     </section>
 
-    <section class="metrics">
-      <article class="metric primary">
-        <span>SPEED</span><strong id="speed">0.0</strong><small>MPH</small>
-      </article>
-      <article class="metric">
-        <span>DISTANCE</span><strong id="distance">0.00</strong><small>MI</small>
-      </article>
-      <article class="metric">
-        <span>HEADING</span><strong id="heading">—</strong><small></small>
-      </article>
-      <article class="metric">
-        <span>ALTITUDE</span><strong id="altitude">0</strong><small>FT</small>
-      </article>
-      <article class="metric">
-        <span>PHONE</span><strong id="battery">—</strong><small>%</small>
-      </article>
-      <article class="metric">
-        <span>RIDE TIME</span><strong id="elapsed">00:00</strong><small></small>
-      </article>
-    </section>
+    <section id="viewerView" class="hidden">
+      <section class="hero-grid">
+        <div class="video-card">
+          <video id="video" autoplay playsinline></video>
+          <audio id="audio" autoplay></audio>
+          <div class="video-overlay top-left"><span id="rideTitle">Scooter Ride</span></div>
+          <div class="video-overlay bottom-left"><span id="networkLabel">Connecting…</span></div>
+          <div id="videoPlaceholder" class="placeholder">
+            <div class="pulse-dot"></div>
+            <h2>Waiting for rider video</h2>
+            <p id="videoMessage">Telemetry can continue even if video temporarily drops.</p>
+          </div>
+        </div>
 
-    <section class="statusbar">
-      <span id="gpsStatus">GPS —</span>
-      <span id="lastUpdate">No telemetry yet</span>
-      <span>🔒 Private share link</span>
+        <div class="map-card">
+          <div id="map"></div>
+          <div class="map-label">LIVE POSITION</div>
+        </div>
+      </section>
+
+      <section class="metrics">
+        <article class="metric primary"><span>SPEED</span><strong id="speed">0.0</strong><small>MPH</small></article>
+        <article class="metric"><span>DISTANCE</span><strong id="distance">0.00</strong><small>MI</small></article>
+        <article class="metric"><span>HEADING</span><strong id="heading">—</strong></article>
+        <article class="metric"><span>ALTITUDE</span><strong id="altitude">0</strong><small>FT</small></article>
+        <article class="metric"><span>PHONE</span><strong id="battery">—</strong><small>%</small></article>
+        <article class="metric"><span>RIDE TIME</span><strong id="elapsed">00:00</strong></article>
+      </section>
+
+      <section class="statusbar">
+        <span id="gpsStatus">GPS —</span>
+        <span id="lastUpdate">No telemetry yet</span>
+        <a href="./">← Live Explorer</a>
+      </section>
     </section>
   </main>
 

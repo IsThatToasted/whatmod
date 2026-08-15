@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
           share_slug: shareSlug,
           room_name: roomName,
           status: "live",
+          is_discoverable: Boolean(body?.is_discoverable),
         })
         .select("id, share_slug, room_name")
         .single();
@@ -137,6 +138,44 @@ Deno.serve(async (req) => {
         livekit_url: env("LIVEKIT_URL"),
         rider_token: riderToken,
         viewer_url: viewerURL,
+      });
+    }
+
+    if (action === "list-live" && req.method === "GET") {
+      const { data: rides, error } = await supabase
+        .from("rides")
+        .select("id, title, share_slug, started_at")
+        .eq("status", "live")
+        .eq("is_discoverable", true)
+        .gt("expires_at", new Date().toISOString())
+        .order("started_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      const results = await Promise.all(
+        (rides ?? []).map(async (ride) => {
+          const { data: telemetry } = await supabase
+            .from("ride_telemetry")
+            .select("speed_mph, distance_miles, elapsed_seconds, phone_battery, captured_at")
+            .eq("ride_id", ride.id)
+            .order("captured_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          return {
+            id: ride.id,
+            title: ride.title,
+            share_slug: ride.share_slug,
+            started_at: ride.started_at,
+            telemetry: telemetry ?? null,
+          };
+        }),
+      );
+
+      return json({
+        rides: results,
+        count: results.length,
       });
     }
 
@@ -238,7 +277,7 @@ Deno.serve(async (req) => {
     return json(
       {
         error: "Unknown action",
-        supported_actions: ["health", "create", "viewer-token", "telemetry", "end"],
+        supported_actions: ["health", "create", "list-live", "viewer-token", "telemetry", "end"],
       },
       404,
     );

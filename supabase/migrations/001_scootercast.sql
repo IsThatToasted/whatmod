@@ -5,6 +5,7 @@ create table if not exists public.rides (
   title text not null default 'Scooter Ride',
   share_slug text not null unique,
   room_name text not null unique,
+  is_discoverable boolean not null default false,
   status text not null default 'live'
     check (status in ('live', 'ended')),
   started_at timestamptz not null default now(),
@@ -72,3 +73,11 @@ begin
 exception
   when duplicate_object then null;
 end $$;
+
+
+-- V1.4 upgrade for existing ScooterCast installations.
+alter table public.rides
+  add column if not exists is_discoverable boolean not null default false;
+
+create index if not exists rides_live_discoverable_idx
+  on public.rides (status, is_discoverable, started_at desc);

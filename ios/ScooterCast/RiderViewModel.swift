@@ -7,6 +7,7 @@ final class RiderViewModel: ObservableObject {
     @Published var session: RideSession?
     @Published var statusMessage = "Ready"
     @Published var isBusy = false
+    @Published var isDiscoverable = true
     @Published var elapsedSeconds = 0
 
     let location = LocationService()
@@ -26,7 +27,7 @@ final class RiderViewModel: ObservableObject {
         statusMessage = "Creating private ride…"
 
         do {
-            let newSession = try await api.createRide(title: title)
+            let newSession = try await api.createRide(title: title, isDiscoverable: isDiscoverable)
             session = newSession
             startedAt = Date()
             elapsedSeconds = 0

@@ -18,10 +18,20 @@ struct RideAPI {
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
-    func createRide(title: String) async throws -> RideSession {
+    private struct CreateRideBody: Encodable {
+        let title: String
+        let isDiscoverable: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case title
+            case isDiscoverable = "is_discoverable"
+        }
+    }
+
+    func createRide(title: String, isDiscoverable: Bool) async throws -> RideSession {
         guard !AppConfig.riderAdminKey.isEmpty else {
             throw RideAPIError.server(
-                "Rider credential is not configured. Build using the GitHub Actions workflow after adding RIDER_ADMIN_KEY."
+                "Rider credential is not configured. Build using GitHub Actions after adding RIDER_ADMIN_KEY."
             )
         }
 
@@ -43,7 +53,9 @@ struct RideAPI {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(AppConfig.riderAdminKey, forHTTPHeaderField: "x-rider-key")
         request.setValue(viewerBaseURL.absoluteString, forHTTPHeaderField: "x-viewer-base")
-        request.httpBody = try encoder.encode(["title": title])
+        request.httpBody = try encoder.encode(
+            CreateRideBody(title: title, isDiscoverable: isDiscoverable)
+        )
 
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response: response, data: data)
