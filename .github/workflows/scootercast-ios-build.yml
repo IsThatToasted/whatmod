@@ -38,6 +38,11 @@ jobs:
             exit 1
           }
 
+          test -f MotionEngine.swift || {
+            echo "::error::MotionEngine.swift is missing."
+            exit 1
+          }
+
           test -f Config.swift || {
             echo "::error::Config.swift is missing."
             exit 1
@@ -71,6 +76,13 @@ jobs:
         run: |
           if grep -R -n -F '\\n        var ' --include='*.swift' .; then
             echo "::error::Found a literal backslash-n sequence in Swift source."
+            exit 1
+          fi
+
+      - name: LiveKit 2.16 source compatibility check
+        run: |
+          if grep -R -n -F 'Room(options:' --include='*.swift' .; then
+            echo "::error::Room(options:) is not compatible with the pinned LiveKit 2.16.0 build."
             exit 1
           fi
 
