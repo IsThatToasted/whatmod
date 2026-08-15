@@ -1,0 +1,72 @@
+name: Deploy ScooterCast Backend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "supabase/functions/ride-api/**"
+      - "supabase/migrations/**"
+      - ".github/workflows/scootercast-backend-deploy.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+      RIDER_ADMIN_KEY: ${{ secrets.RIDER_ADMIN_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Verify required secrets
+        run: |
+          missing=0
+          for name in SUPABASE_ACCESS_TOKEN LIVEKIT_API_SECRET RIDER_ADMIN_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub repository secret $name"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Install Supabase CLI
+        run: npm install --global supabase
+
+      - name: Configure ScooterCast Edge Function secrets
+        run: |
+          supabase secrets set \
+            --project-ref pcsrsfghbmvgfqwmldfi \
+            LIVEKIT_URL="wss://scootercast-xhfuctrp.livekit.cloud" \
+            LIVEKIT_API_KEY="APIdEEZcBJ3HjKx" \
+            LIVEKIT_API_SECRET="$LIVEKIT_API_SECRET" \
+            RIDER_ADMIN_KEY="$RIDER_ADMIN_KEY"
+
+      - name: Deploy ride-api
+        run: |
+          supabase functions deploy ride-api \
+            --project-ref pcsrsfghbmvgfqwmldfi \
+            --no-verify-jwt
+
+      - name: Verify health endpoint
+        run: |
+          python - <<'PY'
+          import json, urllib.request, sys
+          url = "https://pcsrsfghbmvgfqwmldfi.supabase.co/functions/v1/ride-api?action=health"
+          try:
+              with urllib.request.urlopen(url, timeout=20) as r:
+                  body = json.loads(r.read().decode())
+              print(body)
+              if not body.get("ok"):
+                  sys.exit("Health endpoint did not return ok=true")
+              if not body.get("livekit_configured"):
+                  sys.exit("LiveKit secrets are not configured")
+              if not body.get("rider_key_configured"):
+                  sys.exit("Rider key is not configured")
+          except Exception as e:
+              print("Health check failed:", e)
+              raise
+          PY
