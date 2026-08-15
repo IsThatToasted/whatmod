@@ -23,9 +23,6 @@ struct RiderHomeView: View {
                 .padding()
             }
         }
-        .task {
-            vm.requestPermissions()
-        }
     }
 
     private var header: some View {
@@ -113,6 +110,17 @@ struct RiderHomeView: View {
     private var controls: some View {
         VStack(spacing: 12) {
             if vm.session == nil {
+                if vm.location.authorizationStatus == .notDetermined {
+                    Button {
+                        vm.requestPermissions()
+                    } label: {
+                        Label("Enable Location", systemImage: "location.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.bordered)
+                }
+
                 Button {
                     Task { await vm.startRide() }
                 } label: {

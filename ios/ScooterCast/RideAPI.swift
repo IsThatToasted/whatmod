@@ -20,7 +20,7 @@ struct RideAPI {
         guard !AppConfig.riderAdminKey.isEmpty else {
             throw RideAPIError.server("Rider credential is not configured. Build using the GitHub Actions workflow after adding RIDER_ADMIN_KEY.")
         }
-        var request = URLRequest(url: AppConfig.rideAPIURL.appending(queryItems: [
+        guard let apiURL = AppConfig.rideAPIURL else { throw RideAPIError.server("Ride API URL is invalid.") }\n        var request = URLRequest(url: apiURL.appending(queryItems: [
             URLQueryItem(name: "action", value: "create")
         ]))
         request.httpMethod = "POST"
@@ -35,7 +35,7 @@ struct RideAPI {
     }
 
     func sendTelemetry(_ telemetry: TelemetryPayload) async throws {
-        var request = URLRequest(url: AppConfig.rideAPIURL.appending(queryItems: [
+        guard let apiURL = AppConfig.rideAPIURL else { throw RideAPIError.server("Ride API URL is invalid.") }\n        var request = URLRequest(url: apiURL.appending(queryItems: [
             URLQueryItem(name: "action", value: "telemetry")
         ]))
         request.httpMethod = "POST"
@@ -48,7 +48,7 @@ struct RideAPI {
     }
 
     func endRide(_ rideID: UUID) async throws {
-        var request = URLRequest(url: AppConfig.rideAPIURL.appending(queryItems: [
+        guard let apiURL = AppConfig.rideAPIURL else { throw RideAPIError.server("Ride API URL is invalid.") }\n        var request = URLRequest(url: apiURL.appending(queryItems: [
             URLQueryItem(name: "action", value: "end")
         ]))
         request.httpMethod = "POST"

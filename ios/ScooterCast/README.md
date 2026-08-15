@@ -1,29 +1,24 @@
-# ScooterCast iOS
+# ScooterCast iOS V1.2
 
-Everything required for the iOS app lives in this folder.
+Single-folder iOS project.
 
-Expected repository layout:
+V1.2 startup hardening:
+- explicit typed Info.plist
+- background location is disabled during app launch
+- background location only activates when a ride starts
+- no automatic location permission dialog on launch
+- URL config no longer uses force unwraps
+- GitHub build validates and prints the final app Info.plist
+- build artifact contains diagnostics
 
-```text
+Repository layout:
+
 whatmod/
-├── .github/
-│   └── workflows/
-│       └── scootercast-ios-build.yml
-└── ios/
-    └── ScooterCast/
-        ├── project.yml
-        ├── Config.swift
-        ├── LiveStreamManager.swift
-        ├── LocationService.swift
-        ├── Models.swift
-        ├── RideAPI.swift
-        ├── RiderHomeView.swift
-        ├── RiderViewModel.swift
-        └── ScooterCastApp.swift
-```
-
-The GitHub Action runs entirely with `ios/ScooterCast` as its working directory.
+├── .github/workflows/scootercast-ios-build.yml
+└── ios/ScooterCast/
+    ├── project.yml
+    ├── Info.plist
+    └── Swift sources...
 
 Required GitHub repository secret:
-
-`RIDER_ADMIN_KEY`
+RIDER_ADMIN_KEY
