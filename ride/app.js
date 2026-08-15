@@ -17,6 +17,18 @@ const els = {
   averageSpeed: el("averageSpeed"), maxSpeed: el("maxSpeed"), movingTime: el("movingTime"),
   gpsQuality: el("gpsQuality"), streamHealth: el("streamHealth"), heroGrid: el("heroGrid"),
   saveMoment: el("saveMoment"), reactionStatus: el("reactionStatus"),
+  liveTab: el("liveTab"), replayTab: el("replayTab"),
+  liveExplorerPanel: el("liveExplorerPanel"), replayExplorerPanel: el("replayExplorerPanel"),
+  replayGrid: el("replayGrid"), emptyReplays: el("emptyReplays"), refreshReplays: el("refreshReplays"),
+  replayView: el("replayView"), replayTitle: el("replayTitle"), replaySummary: el("replaySummary"),
+  replaySpeed: el("replaySpeed"), replayDistance: el("replayDistance"),
+  replayAverageSpeed: el("replayAverageSpeed"), replayMaxSpeed: el("replayMaxSpeed"),
+  replayAltitude: el("replayAltitude"), replayBattery: el("replayBattery"),
+  replayGPS: el("replayGPS"), replayMoving: el("replayMoving"),
+  replayElapsed: el("replayElapsed"), replayDuration: el("replayDuration"),
+  replaySlider: el("replaySlider"), replayMarkers: el("replayMarkers"),
+  replayPlayPause: el("replayPlayPause"), replayRestart: el("replayRestart"),
+  replayEventsList: el("replayEventsList"),
 };
 
 function fail(message) {
@@ -93,6 +105,62 @@ async function startExplorer() {
   setInterval(load, 15000);
 }
 
+
+async function loadReplays() {
+  if (!els.replayGrid) return;
+
+  try {
+    const r = await fetch(`${cfg.rideApiUrl}?action=list-replays`, { cache: "no-store" });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error || `Replay server error ${r.status}`);
+
+    const rides = body.rides || [];
+    els.replayGrid.innerHTML = "";
+    els.emptyReplays.classList.toggle("hidden", rides.length !== 0);
+
+    for (const ride of rides) {
+      const t = ride.telemetry || {};
+      const card = document.createElement("a");
+      card.className = "rider-card";
+      card.href = `?ride=${encodeURIComponent(ride.share_slug)}`;
+      card.innerHTML = `
+        <div class="rider-card-top">
+          <div>
+            <div class="replay-card-badge">REPLAY</div>
+            <h3>${escapeHtml(ride.title || "Scooter Ride")}</h3>
+          </div>
+          <div>↺</div>
+        </div>
+        <div class="rider-stats">
+          <div class="rider-stat"><span>DISTANCE</span><strong>${Number(t.distance_miles || 0).toFixed(2)} mi</strong></div>
+          <div class="rider-stat"><span>MAX</span><strong>${Number(t.max_speed_mph || 0).toFixed(1)} mph</strong></div>
+          <div class="rider-stat"><span>TIME</span><strong>${fmtTime(t.elapsed_seconds)}</strong></div>
+        </div>
+        <div class="rider-card-foot">
+          <span>${new Date(ride.ended_at).toLocaleDateString()}</span>
+          <span>${ride.event_count || 0} moments/reactions · Replay →</span>
+        </div>`;
+      els.replayGrid.appendChild(card);
+    }
+  } catch (err) {
+    fail(err.message || String(err));
+  }
+}
+
+function showExplorerPanel(mode) {
+  const replay = mode === "replays";
+  els.liveExplorerPanel?.classList.toggle("hidden", replay);
+  els.replayExplorerPanel?.classList.toggle("hidden", !replay);
+  els.liveTab?.classList.toggle("active", !replay);
+  els.replayTab?.classList.toggle("active", replay);
+
+  if (replay) loadReplays();
+}
+
+els.liveTab?.addEventListener("click", () => showExplorerPanel("live"));
+els.replayTab?.addEventListener("click", () => showExplorerPanel("replays"));
+els.refreshReplays?.addEventListener("click", loadReplays);
+
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, c => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
@@ -105,6 +173,12 @@ let viewerSessionId = null;
 let heartbeatTimer = null;
 let route = [];
 let routeReady = false;
+let replayMap = null;
+let replayMarker = null;
+let replayTelemetry = [];
+let replayEvents = [];
+let replayIndex = 0;
+let replayTimer = null;
 
 function initMap() {
   map = new maplibregl.Map({
@@ -260,9 +334,211 @@ async function connectLiveKit(info) {
   attachExistingRemoteTracks();
 }
 
+
+function initReplayMap() {
+  replayMap = new maplibregl.Map({
+    container: "replayMap",
+    style: {
+      version: 8,
+      sources: {
+        osm: {
+          type: "raster",
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: "© OpenStreetMap contributors",
+        },
+      },
+      layers: [{ id: "osm", type: "raster", source: "osm" }],
+    },
+    center: [-76.7, 39.96],
+    zoom: 12,
+  });
+
+  replayMap.on("load", () => {
+    const coords = replayTelemetry
+      .map(t => [Number(t.longitude), Number(t.latitude)])
+      .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+
+    replayMap.addSource("replay-route", {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: coords },
+      },
+    });
+
+    replayMap.addLayer({
+      id: "replay-route-line",
+      type: "line",
+      source: "replay-route",
+      paint: { "line-color": "#66ffb3", "line-width": 4, "line-opacity": .85 },
+    });
+
+    if (coords.length) {
+      const bounds = coords.reduce(
+        (b, c) => b.extend(c),
+        new maplibregl.LngLatBounds(coords[0], coords[0]),
+      );
+      replayMap.fitBounds(bounds, { padding: 50, maxZoom: 16 });
+    }
+
+    renderReplayFrame(0);
+  });
+}
+
+function replayEventSeconds(event) {
+  if (!replayTelemetry.length) return 0;
+  const start = new Date(replayTelemetry[0].captured_at).getTime();
+  return Math.max(0, Math.round((new Date(event.created_at).getTime() - start) / 1000));
+}
+
+function nearestReplayIndex(seconds) {
+  if (!replayTelemetry.length) return 0;
+  let best = 0;
+  let bestDelta = Infinity;
+  for (let i = 0; i < replayTelemetry.length; i++) {
+    const delta = Math.abs(Number(replayTelemetry[i].elapsed_seconds || 0) - seconds);
+    if (delta < bestDelta) {
+      best = i;
+      bestDelta = delta;
+    }
+  }
+  return best;
+}
+
+function renderReplayFrame(index) {
+  if (!replayTelemetry.length) return;
+
+  replayIndex = Math.max(0, Math.min(index, replayTelemetry.length - 1));
+  const t = replayTelemetry[replayIndex];
+
+  els.replaySpeed.textContent = Number(t.speed_mph || 0).toFixed(1);
+  els.replayDistance.textContent = Number(t.distance_miles || 0).toFixed(2);
+  els.replayAverageSpeed.textContent = Number(t.average_speed_mph || 0).toFixed(1);
+  els.replayMaxSpeed.textContent = Number(t.max_speed_mph || 0).toFixed(1);
+  els.replayAltitude.textContent = Math.round(Number(t.altitude_ft || 0));
+  els.replayBattery.textContent = t.phone_battery == null ? "—" : Math.round(Number(t.phone_battery) * 100);
+  els.replayGPS.textContent = String(t.gps_quality || "—").toUpperCase();
+  els.replayMoving.textContent = fmtTime(t.moving_seconds || 0);
+  els.replayElapsed.textContent = fmtTime(t.elapsed_seconds || 0);
+  els.replaySlider.value = replayIndex;
+
+  const point = [Number(t.longitude), Number(t.latitude)];
+  if (Number.isFinite(point[0]) && Number.isFinite(point[1]) && replayMap) {
+    if (!replayMarker) {
+      replayMarker = new maplibregl.Marker().setLngLat(point).addTo(replayMap);
+    } else {
+      replayMarker.setLngLat(point);
+    }
+    replayMap.easeTo({ center: point, duration: 250 });
+  }
+}
+
+function stopReplayPlayback() {
+  if (replayTimer) clearInterval(replayTimer);
+  replayTimer = null;
+  if (els.replayPlayPause) els.replayPlayPause.textContent = "▶ Play";
+}
+
+function startReplayPlayback() {
+  if (replayTimer || replayTelemetry.length < 2) return;
+  els.replayPlayPause.textContent = "❚❚ Pause";
+  replayTimer = setInterval(() => {
+    if (replayIndex >= replayTelemetry.length - 1) {
+      stopReplayPlayback();
+      return;
+    }
+    renderReplayFrame(replayIndex + 1);
+  }, 250);
+}
+
+async function startReplay(slug) {
+  els.viewerView.classList.add("hidden");
+  els.explorerView.classList.add("hidden");
+  els.replayView.classList.remove("hidden");
+  els.liveBadge.textContent = "REPLAY";
+  els.liveBadge.className = "badge offline";
+
+  try {
+    const response = await fetch(`${cfg.rideApiUrl}?action=replay&ride=${encodeURIComponent(slug)}`, { cache: "no-store" });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Unable to load replay");
+
+    replayTelemetry = body.telemetry || [];
+    replayEvents = body.events || [];
+
+    if (!replayTelemetry.length) {
+      throw new Error("This ride has no telemetry to replay.");
+    }
+
+    const ride = body.ride || {};
+    els.replayTitle.textContent = ride.title || "Scooter Ride";
+
+    const last = replayTelemetry[replayTelemetry.length - 1];
+    els.replayDuration.textContent = fmtTime(last.elapsed_seconds || 0);
+    els.replaySummary.textContent =
+      `${Number(last.distance_miles || 0).toFixed(2)} mi · ${fmtTime(last.elapsed_seconds || 0)} · ${replayEvents.length} moments/reactions`;
+
+    els.replaySlider.max = Math.max(0, replayTelemetry.length - 1);
+    els.replaySlider.value = 0;
+
+    els.replayMarkers.innerHTML = "";
+    els.replayEventsList.innerHTML = "";
+
+    for (const event of replayEvents) {
+      const seconds = replayEventSeconds(event);
+      const idx = nearestReplayIndex(seconds);
+      const pct = replayTelemetry.length > 1 ? idx / (replayTelemetry.length - 1) * 100 : 0;
+
+      const markerButton = document.createElement("button");
+      markerButton.className = "replay-marker";
+      markerButton.style.left = `${pct}%`;
+      markerButton.textContent = event.emoji || (event.event_type === "moment" ? "📸" : "👋");
+      markerButton.title = `${event.label || event.event_type} · ${fmtTime(seconds)}`;
+      markerButton.addEventListener("click", () => {
+        stopReplayPlayback();
+        renderReplayFrame(idx);
+      });
+      els.replayMarkers.appendChild(markerButton);
+
+      const card = document.createElement("div");
+      card.className = "replay-event-card";
+      card.innerHTML = `
+        <div>${event.emoji || (event.event_type === "moment" ? "📸" : "👋")}</div>
+        <strong>${escapeHtml(event.label || (event.event_type === "moment" ? "Saved moment" : "Viewer reaction"))}</strong>
+        <span>${fmtTime(seconds)}</span>`;
+      card.addEventListener("click", () => {
+        stopReplayPlayback();
+        renderReplayFrame(idx);
+      });
+      els.replayEventsList.appendChild(card);
+    }
+
+    els.replaySlider.addEventListener("input", () => {
+      stopReplayPlayback();
+      renderReplayFrame(Number(els.replaySlider.value));
+    });
+
+    els.replayPlayPause.addEventListener("click", () => {
+      if (replayTimer) stopReplayPlayback();
+      else startReplayPlayback();
+    });
+
+    els.replayRestart.addEventListener("click", () => {
+      stopReplayPlayback();
+      renderReplayFrame(0);
+    });
+
+    initReplayMap();
+  } catch (err) {
+    fail(err.message || String(err));
+  }
+}
+
 async function startViewer() {
   els.viewerView.classList.remove("hidden");
   els.explorerView.classList.add("hidden");
+  els.replayView.classList.add("hidden");
   els.liveBadge.textContent = "● LIVE";
   els.liveBadge.className = "badge live";
   initMap();
@@ -270,7 +546,19 @@ async function startViewer() {
   try {
     const response = await fetch(`${cfg.rideApiUrl}?action=viewer-token&ride=${encodeURIComponent(shareSlug)}`);
     const info = await response.json();
-    if (!response.ok) throw new Error(info.error || "Unable to open ride");
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        els.viewerView.classList.add("hidden");
+        if (map) {
+          try { map.remove(); } catch (_) {}
+          map = null;
+        }
+        await startReplay(shareSlug);
+        return;
+      }
+      throw new Error(info.error || "Unable to open ride");
+    }
 
     rideId = info.ride_id;
     viewerSessionId = info.viewer_session_id || null;

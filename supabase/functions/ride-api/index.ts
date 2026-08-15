@@ -311,6 +311,90 @@ Deno.serve(async (req) => {
       });
     }
 
+
+    if (action === "list-replays" && req.method === "GET") {
+      const { data: rides, error } = await supabase
+        .from("rides")
+        .select("id, title, share_slug, started_at, ended_at, status")
+        .eq("status", "ended")
+        .not("ended_at", "is", null)
+        .order("ended_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      const results = await Promise.all(
+        (rides ?? []).map(async (ride) => {
+          const { data: telemetry } = await supabase
+            .from("ride_telemetry")
+            .select("speed_mph, average_speed_mph, max_speed_mph, distance_miles, elapsed_seconds, moving_seconds, phone_battery, captured_at")
+            .eq("ride_id", ride.id)
+            .order("captured_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const { count: eventCount } = await supabase
+            .from("ride_events")
+            .select("id", { count: "exact", head: true })
+            .eq("ride_id", ride.id);
+
+          return {
+            id: ride.id,
+            title: ride.title,
+            share_slug: ride.share_slug,
+            started_at: ride.started_at,
+            ended_at: ride.ended_at,
+            telemetry: telemetry ?? null,
+            event_count: eventCount ?? 0,
+          };
+        }),
+      );
+
+      return json({
+        rides: results,
+        count: results.length,
+      });
+    }
+
+    if (action === "replay" && req.method === "GET") {
+      const slug = url.searchParams.get("ride");
+
+      if (!slug || slug.length < 12) {
+        return json({ error: "Invalid ride link" }, 400);
+      }
+
+      const { data: ride, error: rideError } = await supabase
+        .from("rides")
+        .select("id, title, share_slug, started_at, ended_at, status")
+        .eq("share_slug", slug)
+        .maybeSingle();
+
+      if (rideError) throw rideError;
+      if (!ride) return json({ error: "Ride not found" }, 404);
+
+      const { data: telemetry, error: telemetryError } = await supabase
+        .from("ride_telemetry")
+        .select("latitude, longitude, speed_mph, average_speed_mph, max_speed_mph, heading, altitude_ft, horizontal_accuracy_m, speed_accuracy_mps, course_accuracy_degrees, gps_quality, distance_miles, phone_battery, elapsed_seconds, moving_seconds, captured_at")
+        .eq("ride_id", ride.id)
+        .order("captured_at", { ascending: true });
+
+      if (telemetryError) throw telemetryError;
+
+      const { data: events, error: eventsError } = await supabase
+        .from("ride_events")
+        .select("id, event_type, emoji, label, created_at")
+        .eq("ride_id", ride.id)
+        .order("created_at", { ascending: true });
+
+      if (eventsError) throw eventsError;
+
+      return json({
+        ride,
+        telemetry: telemetry ?? [],
+        events: events ?? [],
+      });
+    }
+
     if (action === "send-event" && req.method === "POST") {
       const body = await req.json().catch(() => ({}));
       const slug = String(body?.ride || "");
@@ -439,7 +523,7 @@ Deno.serve(async (req) => {
     return json(
       {
         error: "Unknown action",
-        supported_actions: ["health", "create", "list-live", "viewer-token", "viewer-heartbeat", "usage-summary", "send-event", "rider-events", "telemetry", "end"],
+        supported_actions: ["health", "create", "list-live", "list-replays", "replay", "viewer-token", "viewer-heartbeat", "usage-summary", "send-event", "rider-events", "telemetry", "end"],
       },
       404,
     );

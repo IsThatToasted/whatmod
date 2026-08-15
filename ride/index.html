@@ -26,6 +26,12 @@
     <section id="errorPanel" class="error-panel hidden"></section>
 
     <section id="explorerView" class="explorer-view hidden">
+      <div class="ride-tabs">
+        <button id="liveTab" class="ride-tab active">Live</button>
+        <button id="replayTab" class="ride-tab">Replays</button>
+      </div>
+
+      <div id="liveExplorerPanel">
       <div class="explorer-hero">
         <div>
           <div class="eyebrow">LIVE EXPLORER</div>
@@ -40,6 +46,71 @@
         <h3>No public rides right now</h3>
         <p>When a rider goes live and enables Explorer visibility, they’ll appear here.</p>
       </div>
+      </div>
+
+      <div id="replayExplorerPanel" class="hidden">
+        <div class="explorer-hero">
+          <div>
+            <div class="eyebrow">RIDE ARCHIVE</div>
+            <h2>Past rides.</h2>
+            <p>Replay the route, telemetry, reactions, and saved moments.</p>
+          </div>
+          <button id="refreshReplays" class="refresh-button">↻ Refresh</button>
+        </div>
+        <div id="replayGrid" class="rider-grid"></div>
+        <div id="emptyReplays" class="empty-explorer hidden">
+          <div class="radar">↺</div>
+          <h3>No completed rides yet</h3>
+          <p>Ended rides will appear here automatically.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="replayView" class="hidden">
+      <div class="replay-header">
+        <div>
+          <div class="eyebrow">RIDE REPLAY</div>
+          <h2 id="replayTitle">Scooter Ride</h2>
+          <p id="replaySummary">Loading replay…</p>
+        </div>
+        <a class="refresh-button" href="./">← Ride Archive</a>
+      </div>
+
+      <section class="hero-grid replay-hero">
+        <div class="map-card replay-map-card">
+          <div id="replayMap"></div>
+          <div class="map-label">ROUTE REPLAY</div>
+        </div>
+
+        <div class="replay-stats-panel">
+          <article class="metric primary"><span>SPEED</span><strong id="replaySpeed">0.0</strong><small>MPH</small></article>
+          <article class="metric"><span>DISTANCE</span><strong id="replayDistance">0.00</strong><small>MI</small></article>
+          <article class="metric"><span>AVG SPEED</span><strong id="replayAverageSpeed">0.0</strong><small>MPH</small></article>
+          <article class="metric"><span>MAX SPEED</span><strong id="replayMaxSpeed">0.0</strong><small>MPH</small></article>
+          <article class="metric"><span>ALTITUDE</span><strong id="replayAltitude">0</strong><small>FT</small></article>
+          <article class="metric"><span>BATTERY</span><strong id="replayBattery">—</strong><small>%</small></article>
+          <article class="metric"><span>GPS</span><strong id="replayGPS">—</strong></article>
+          <article class="metric"><span>MOVING</span><strong id="replayMoving">00:00</strong></article>
+        </div>
+      </section>
+
+      <section class="replay-controls cardlike">
+        <div class="replay-time-row">
+          <strong id="replayElapsed">00:00</strong>
+          <span id="replayDuration">00:00</span>
+        </div>
+        <input id="replaySlider" type="range" min="0" max="0" value="0" step="1">
+        <div id="replayMarkers" class="replay-markers"></div>
+        <div class="replay-buttons">
+          <button id="replayPlayPause">▶ Play</button>
+          <button id="replayRestart">↺ Restart</button>
+        </div>
+      </section>
+
+      <section class="replay-events">
+        <div class="eyebrow">MOMENTS & REACTIONS</div>
+        <div id="replayEventsList" class="replay-events-list"></div>
+      </section>
     </section>
 
     <section id="viewerView" class="hidden">
