@@ -3,7 +3,7 @@ import CoreLocation
 import UIKit
 
 @MainActor
-final class LocationService: NSObject, ObservableObject, CLLocationManagerDelegate {
+final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocationManagerDelegate {
     @Published var location: CLLocation?
     @Published var distanceMeters: CLLocationDistance = 0
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined

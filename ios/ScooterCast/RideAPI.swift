@@ -6,8 +6,10 @@ enum RideAPIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .badResponse: return "The ScooterCast server returned an invalid response."
-        case .server(let message): return message
+        case .badResponse:
+            return "The ScooterCast server returned an invalid response."
+        case .server(let message):
+            return message
         }
     }
 }
@@ -18,15 +20,29 @@ struct RideAPI {
 
     func createRide(title: String) async throws -> RideSession {
         guard !AppConfig.riderAdminKey.isEmpty else {
-            throw RideAPIError.server("Rider credential is not configured. Build using the GitHub Actions workflow after adding RIDER_ADMIN_KEY.")
+            throw RideAPIError.server(
+                "Rider credential is not configured. Build using the GitHub Actions workflow after adding RIDER_ADMIN_KEY."
+            )
         }
-        guard let apiURL = AppConfig.rideAPIURL else { throw RideAPIError.server("Ride API URL is invalid.") }\n        var request = URLRequest(url: apiURL.appending(queryItems: [
-            URLQueryItem(name: "action", value: "create")
-        ]))
+
+        guard let apiURL = AppConfig.rideAPIURL else {
+            throw RideAPIError.server("Ride API URL is invalid.")
+        }
+
+        guard let viewerBaseURL = AppConfig.viewerBaseURL else {
+            throw RideAPIError.server("Viewer URL is invalid.")
+        }
+
+        var request = URLRequest(
+            url: apiURL.appending(queryItems: [
+                URLQueryItem(name: "action", value: "create")
+            ])
+        )
+
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(AppConfig.riderAdminKey, forHTTPHeaderField: "x-rider-key")
-        request.setValue(AppConfig.viewerBaseURL.absoluteString, forHTTPHeaderField: "x-viewer-base")
+        request.setValue(viewerBaseURL.absoluteString, forHTTPHeaderField: "x-viewer-base")
         request.httpBody = try encoder.encode(["title": title])
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -35,9 +51,20 @@ struct RideAPI {
     }
 
     func sendTelemetry(_ telemetry: TelemetryPayload) async throws {
-        guard let apiURL = AppConfig.rideAPIURL else { throw RideAPIError.server("Ride API URL is invalid.") }\n        var request = URLRequest(url: apiURL.appending(queryItems: [
-            URLQueryItem(name: "action", value: "telemetry")
-        ]))
+        guard !AppConfig.riderAdminKey.isEmpty else {
+            throw RideAPIError.server("Rider credential is not configured.")
+        }
+
+        guard let apiURL = AppConfig.rideAPIURL else {
+            throw RideAPIError.server("Ride API URL is invalid.")
+        }
+
+        var request = URLRequest(
+            url: apiURL.appending(queryItems: [
+                URLQueryItem(name: "action", value: "telemetry")
+            ])
+        )
+
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(AppConfig.riderAdminKey, forHTTPHeaderField: "x-rider-key")
@@ -48,9 +75,20 @@ struct RideAPI {
     }
 
     func endRide(_ rideID: UUID) async throws {
-        guard let apiURL = AppConfig.rideAPIURL else { throw RideAPIError.server("Ride API URL is invalid.") }\n        var request = URLRequest(url: apiURL.appending(queryItems: [
-            URLQueryItem(name: "action", value: "end")
-        ]))
+        guard !AppConfig.riderAdminKey.isEmpty else {
+            throw RideAPIError.server("Rider credential is not configured.")
+        }
+
+        guard let apiURL = AppConfig.rideAPIURL else {
+            throw RideAPIError.server("Ride API URL is invalid.")
+        }
+
+        var request = URLRequest(
+            url: apiURL.appending(queryItems: [
+                URLQueryItem(name: "action", value: "end")
+            ])
+        )
+
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(AppConfig.riderAdminKey, forHTTPHeaderField: "x-rider-key")
@@ -61,9 +99,14 @@ struct RideAPI {
     }
 
     private func validate(response: URLResponse, data: Data) throws {
-        guard let http = response as? HTTPURLResponse else { throw RideAPIError.badResponse }
+        guard let http = response as? HTTPURLResponse else {
+            throw RideAPIError.badResponse
+        }
+
         guard (200..<300).contains(http.statusCode) else {
-            let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+            let message =
+                (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+
             throw RideAPIError.server(message ?? "Server error \(http.statusCode)")
         }
     }
