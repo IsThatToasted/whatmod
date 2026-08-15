@@ -1,0 +1,48 @@
+name: ScooterCast
+
+options:
+  bundleIdPrefix: com.whatmod
+  deploymentTarget:
+    iOS: "17.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+
+packages:
+  LiveKit:
+    url: https://github.com/livekit/client-sdk-swift
+    from: 2.16.0
+
+targets:
+  ScooterCast:
+    type: application
+    platform: iOS
+
+    sources:
+      - path: .
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.whatmod.scootercast
+        PRODUCT_NAME: ScooterCast
+
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: ScooterCast
+
+        INFOPLIST_KEY_NSCameraUsageDescription: "ScooterCast uses the camera to broadcast your ride to viewers you invite."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "ScooterCast uses the microphone to include live ride audio."
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "ScooterCast uses your location for the live ride map, speed, distance and heading."
+        INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: "ScooterCast can continue recording ride telemetry while a live ride is active."
+
+        INFOPLIST_KEY_UIBackgroundModes: "location"
+        INFOPLIST_KEY_UIRequiredDeviceCapabilities: "gps"
+
+        INFOPLIST_KEY_ScooterCastRiderKey: "$(SCOOTERCAST_RIDER_KEY)"
+        SCOOTERCAST_RIDER_KEY: "NOT_CONFIGURED"
+
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+
+    dependencies:
+      - package: LiveKit
