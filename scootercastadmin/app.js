@@ -1,0 +1,104 @@
+const cfg = window.SCOOTERCAST_ADMIN_CONFIG || {};
+const $ = id => document.getElementById(id);
+
+let summary = null;
+
+const els = {
+  error: $("error"), refresh: $("refresh"),
+  activeRides: $("activeRides"), activeViewers: $("activeViewers"), updated: $("updated"),
+  participantMinutes: $("participantMinutes"), minuteBar: $("minuteBar"), minutePct: $("minutePct"),
+  minuteRemaining: $("minuteRemaining"), minuteLimitText: $("minuteLimitText"),
+  egressGB: $("egressGB"), egressBar: $("egressBar"), egressPct: $("egressPct"),
+  egressLimitText: $("egressLimitText"), riderMinutes: $("riderMinutes"), viewerMinutes: $("viewerMinutes"),
+  ridesStarted: $("ridesStarted"), viewerSessions: $("viewerSessions"), bitrate: $("bitrate"),
+  minuteLimit: $("minuteLimit"), egressLimit: $("egressLimit"), threeHourOne: $("threeHourOne"),
+  threeHourFive: $("threeHourFive"), fiveHourOne: $("fiveHourOne"), period: $("period"),
+};
+
+function gbForViewerMinutes(minutes, mbps) {
+  return (minutes * 60 * mbps) / 8 / 1000;
+}
+
+function projection(hours, viewers, mbps) {
+  const viewerMinutes = hours * 60 * viewers;
+  const riderMinutes = hours * 60;
+  const participantMinutes = riderMinutes + viewerMinutes;
+  const gb = gbForViewerMinutes(viewerMinutes, mbps);
+  return `${participantMinutes.toLocaleString()} participant-min · ${gb.toFixed(2)} GB`;
+}
+
+function render() {
+  if (!summary) return;
+
+  const bitrate = Math.max(.1, Number(els.bitrate.value || 2.5));
+  const minuteLimit = Math.max(1, Number(els.minuteLimit.value || 5000));
+  const egressLimit = Math.max(1, Number(els.egressLimit.value || 50));
+
+  const participant = Number(summary.participant_minutes || 0);
+  const viewer = Number(summary.viewer_minutes || 0);
+  const rider = Number(summary.rider_minutes || 0);
+  const estimatedGB = gbForViewerMinutes(viewer, bitrate);
+
+  els.activeRides.textContent = summary.active_rides ?? 0;
+  els.activeViewers.textContent = summary.active_viewers ?? 0;
+  els.updated.textContent = new Date(summary.as_of).toLocaleTimeString();
+
+  els.participantMinutes.textContent = participant.toFixed(0);
+  els.riderMinutes.textContent = rider.toFixed(0);
+  els.viewerMinutes.textContent = viewer.toFixed(0);
+  els.ridesStarted.textContent = summary.rides_started ?? 0;
+  els.viewerSessions.textContent = summary.viewer_sessions ?? 0;
+
+  const minutePct = Math.min(100, participant / minuteLimit * 100);
+  els.minuteBar.style.width = `${minutePct}%`;
+  els.minutePct.textContent = `${minutePct.toFixed(1)}% used`;
+  els.minuteRemaining.textContent = `${Math.max(0, minuteLimit - participant).toFixed(0)} remaining`;
+  els.minuteLimitText.textContent = minuteLimit.toLocaleString();
+
+  const egressPct = Math.min(100, estimatedGB / egressLimit * 100);
+  els.egressGB.textContent = estimatedGB.toFixed(2);
+  els.egressBar.style.width = `${egressPct}%`;
+  els.egressPct.textContent = `${egressPct.toFixed(1)}% estimated`;
+  els.egressLimitText.textContent = egressLimit.toLocaleString();
+
+  els.threeHourOne.textContent = projection(3, 1, bitrate);
+  els.threeHourFive.textContent = projection(3, 5, bitrate);
+  els.fiveHourOne.textContent = projection(5, 1, bitrate);
+
+  els.period.textContent =
+    `${new Date(summary.period_start).toLocaleDateString()} – ${new Date(summary.as_of).toLocaleDateString()}`;
+
+  localStorage.setItem("scootercast-bitrate", String(bitrate));
+  localStorage.setItem("scootercast-minute-limit", String(minuteLimit));
+  localStorage.setItem("scootercast-egress-limit", String(egressLimit));
+}
+
+async function load() {
+  els.error.classList.add("hidden");
+
+  try {
+    const response = await fetch(`${cfg.rideApiUrl}?action=usage-summary`, { cache: "no-store" });
+    const body = await response.json();
+
+    if (!response.ok) throw new Error(body.error || `Server error ${response.status}`);
+
+    summary = body;
+    render();
+  } catch (err) {
+    els.error.textContent = err.message || String(err);
+    els.error.classList.remove("hidden");
+  }
+}
+
+els.bitrate.value = localStorage.getItem("scootercast-bitrate") || "2.5";
+els.minuteLimit.value = localStorage.getItem("scootercast-minute-limit") || "5000";
+els.egressLimit.value = localStorage.getItem("scootercast-egress-limit") || "50";
+
+for (const input of [els.bitrate, els.minuteLimit, els.egressLimit]) {
+  input.addEventListener("input", render);
+}
+
+els.refresh.addEventListener("click", load);
+
+load();
+setInterval(load, 60000);

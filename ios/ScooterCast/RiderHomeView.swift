@@ -5,25 +5,33 @@ struct RiderHomeView: View {
     @StateObject private var vm = RiderViewModel()
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [.black, Color(red: 0.03, green: 0.08, blue: 0.10)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [.black, Color(red: 0.03, green: 0.08, blue: 0.10)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 18) {
-                    header
-                    cameraCard
-                    liveCard
-                    telemetryGrid
-                    controls
-                    safetyFooter
+                ScrollView {
+                    VStack(spacing: 18) {
+                        header
+                        cameraCard
+
+                        if vm.session != nil {
+                            streamControls
+                        }
+
+                        liveCard
+                        telemetryGrid
+                        controls
+                        safetyFooter
+                    }
+                    .padding()
                 }
-                .padding()
             }
+            .navigationBarHidden(true)
         }
     }
 
@@ -42,7 +50,11 @@ struct RiderHomeView: View {
                 .font(.caption.bold())
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(vm.stream.state == .live ? Color.green.opacity(0.18) : Color.white.opacity(0.08))
+                .background(
+                    vm.stream.state == .live
+                    ? Color.green.opacity(0.18)
+                    : Color.white.opacity(0.08)
+                )
                 .clipShape(Capsule())
         }
     }
@@ -57,13 +69,20 @@ struct RiderHomeView: View {
                 LiveVideoPreview(track: track)
                     .aspectRatio(16 / 9, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 24))
+                    .opacity(vm.stream.isVideoMuted ? 0.2 : 1)
             } else {
                 VStack(spacing: 10) {
                     Image(systemName: "video.fill")
                         .font(.system(size: 34))
-                    Text(vm.session == nil ? "Camera preview starts with your live ride" : "Starting camera…")
-                        .font(.subheadline.weight(.semibold))
-                    Text("The preview uses the same track being sent to viewers.")
+
+                    Text(
+                        vm.session == nil
+                        ? "Camera preview starts with your live ride"
+                        : "Starting camera…"
+                    )
+                    .font(.subheadline.weight(.semibold))
+
+                    Text("The preview is the actual LiveKit publishing track.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -71,26 +90,26 @@ struct RiderHomeView: View {
                 .aspectRatio(16 / 9, contentMode: .fit)
             }
 
-            if vm.session != nil {
-                Button {
-                    Task { await vm.stream.switchCamera() }
-                } label: {
-                    Image(systemName: "camera.rotate.fill")
-                        .font(.title3.bold())
-                        .frame(width: 46, height: 46)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Circle())
+            if vm.stream.isVideoMuted {
+                VStack(spacing: 7) {
+                    Image(systemName: "video.slash.fill")
+                        .font(.system(size: 32))
+                    Text("VIDEO PAUSED")
+                        .font(.caption.bold())
                 }
-                .disabled(vm.stream.isSwitchingCamera || vm.stream.state != .live)
-                .padding(12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .aspectRatio(16 / 9, contentMode: .fit)
             }
 
             VStack {
                 Spacer()
+
                 HStack {
                     Label(
                         vm.stream.cameraPosition == .front ? "FRONT" : "REAR",
-                        systemImage: vm.stream.cameraPosition == .front ? "person.crop.rectangle" : "road.lanes"
+                        systemImage: vm.stream.cameraPosition == .front
+                            ? "person.crop.rectangle"
+                            : "camera.fill"
                     )
                     .font(.caption.bold())
                     .padding(.horizontal, 10)
@@ -101,9 +120,9 @@ struct RiderHomeView: View {
                     Spacer()
 
                     if vm.stream.state == .live {
-                        Text("● LIVE CAMERA")
+                        Text(vm.stream.isVideoMuted ? "VIDEO MUTED" : "● LIVE CAMERA")
                             .font(.caption.bold())
-                            .foregroundStyle(.green)
+                            .foregroundStyle(vm.stream.isVideoMuted ? .orange : .green)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
                             .background(.ultraThinMaterial)
@@ -119,6 +138,57 @@ struct RiderHomeView: View {
             RoundedRectangle(cornerRadius: 24)
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
+    }
+
+    private var streamControls: some View {
+        HStack(spacing: 10) {
+            streamButton(
+                title: vm.stream.isMicrophoneMuted ? "Unmute Mic" : "Mute Mic",
+                icon: vm.stream.isMicrophoneMuted ? "mic.slash.fill" : "mic.fill",
+                active: vm.stream.isMicrophoneMuted
+            ) {
+                Task { await vm.stream.toggleMicrophoneMute() }
+            }
+
+            streamButton(
+                title: vm.stream.isVideoMuted ? "Resume Video" : "Pause Video",
+                icon: vm.stream.isVideoMuted ? "video.fill" : "video.slash.fill",
+                active: vm.stream.isVideoMuted
+            ) {
+                Task { await vm.stream.toggleVideoMute() }
+            }
+
+            streamButton(
+                title: "Flip",
+                icon: "camera.rotate.fill",
+                active: false
+            ) {
+                Task { await vm.stream.switchCamera() }
+            }
+            .disabled(vm.stream.isSwitchingCamera || vm.stream.isVideoMuted)
+        }
+    }
+
+    private func streamButton(
+        title: String,
+        icon: String,
+        active: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.title3)
+                Text(title)
+                    .font(.caption2.bold())
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(active ? Color.orange.opacity(0.16) : Color.white.opacity(0.06))
+            .clipShape(RoundedRectangle(cornerRadius: 15))
+        }
+        .buttonStyle(.plain)
     }
 
     private var liveCard: some View {
@@ -142,7 +212,7 @@ struct RiderHomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Show in Live Explorer")
                         .font(.subheadline.weight(.semibold))
-                    Text("Anyone visiting the ScooterCast ride page can discover this ride.")
+                    Text("Discoverable at whatmod.com/ride while this ride is live.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -169,7 +239,10 @@ struct RiderHomeView: View {
     }
 
     private var telemetryGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+        LazyVGrid(
+            columns: [GridItem(.flexible()), GridItem(.flexible())],
+            spacing: 12
+        ) {
             metric("SPEED", String(format: "%.1f", vm.location.speedMph), "MPH", "speedometer")
             metric("DISTANCE", String(format: "%.2f", vm.location.distanceMiles), "MI", "point.topleft.down.to.point.bottomright.curvepath")
             metric("ALTITUDE", String(format: "%.0f", vm.location.altitudeFt), "FT", "mountain.2.fill")
@@ -179,7 +252,12 @@ struct RiderHomeView: View {
         }
     }
 
-    private func metric(_ title: String, _ value: String, _ suffix: String, _ icon: String) -> some View {
+    private func metric(
+        _ title: String,
+        _ value: String,
+        _ suffix: String,
+        _ icon: String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: icon)
@@ -226,24 +304,14 @@ struct RiderHomeView: View {
                 .tint(.green)
                 .disabled(vm.isBusy)
             } else {
-                HStack(spacing: 10) {
-                    Button {
-                        Task { await vm.stream.switchCamera() }
-                    } label: {
-                        Label("Flip Camera", systemImage: "camera.rotate.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(vm.stream.isSwitchingCamera || vm.stream.state != .live)
-
-                    Button {
-                        vm.copyViewerLink()
-                    } label: {
-                        Label("Share", systemImage: "link")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+                Button {
+                    vm.copyViewerLink()
+                } label: {
+                    Label("Copy Viewer Link", systemImage: "link")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
                 }
+                .buttonStyle(.bordered)
 
                 Button(role: .destructive) {
                     Task { await vm.endRide() }
@@ -259,7 +327,7 @@ struct RiderHomeView: View {
     }
 
     private var safetyFooter: some View {
-        Text("Start ScooterCast while stopped, secure your phone, and do not operate the app while the scooter is moving.")
+        Text("Set your stream controls while stopped. Secure your phone before moving.")
             .font(.footnote)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
@@ -270,6 +338,9 @@ struct RiderHomeView: View {
         let h = seconds / 3600
         let m = (seconds % 3600) / 60
         let s = seconds % 60
-        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%02d:%02d", m, s)
+
+        return h > 0
+            ? String(format: "%d:%02d:%02d", h, m, s)
+            : String(format: "%02d:%02d", m, s)
     }
 }

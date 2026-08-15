@@ -98,6 +98,8 @@ function escapeHtml(value) {
 
 const supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 let rideId, room, map, marker;
+let viewerSessionId = null;
+let heartbeatTimer = null;
 let route = [];
 let routeReady = false;
 
@@ -248,7 +250,25 @@ async function startViewer() {
     if (!response.ok) throw new Error(info.error || "Unable to open ride");
 
     rideId = info.ride_id;
+    viewerSessionId = info.viewer_session_id || null;
     els.rideTitle.textContent = info.title || "Scooter Ride";
+
+    if (viewerSessionId) {
+      const heartbeat = async () => {
+        try {
+          await fetch(`${cfg.rideApiUrl}?action=viewer-heartbeat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ viewer_session_id: viewerSessionId }),
+            keepalive: true,
+          });
+        } catch (_) {}
+      };
+
+      await heartbeat();
+      heartbeatTimer = setInterval(heartbeat, 30000);
+    }
+
     await Promise.all([subscribeTelemetry(), connectLiveKit(info)]);
   } catch (err) {
     fail(err.message || String(err));

@@ -14,48 +14,75 @@ final class LiveStreamManager: ObservableObject {
 
     @Published var state: State = .idle
     @Published var errorMessage: String?
-    @Published var localVideoTrack: VideoTrack?
+    @Published var localVideoTrack: LocalVideoTrack?
     @Published var cameraPosition: AVCaptureDevice.Position = .back
     @Published var isSwitchingCamera = false
+    @Published var isVideoMuted = false
+    @Published var isMicrophoneMuted = false
 
     private(set) var room: Room?
+    private var videoPublication: LocalTrackPublication?
+    private var audioPublication: LocalTrackPublication?
 
-    func start(url: String, token: String) async throws {
+    func start(
+        url: String,
+        token: String,
+        preferredCamera: AVCaptureDevice.Position,
+        quality: StreamQuality,
+        microphoneEnabled: Bool
+    ) async throws {
         state = .connecting
         errorMessage = nil
         localVideoTrack = nil
+        videoPublication = nil
+        audioPublication = nil
+        cameraPosition = preferredCamera
+        isVideoMuted = false
+        isMicrophoneMuted = !microphoneEnabled
 
         do {
-            let room = Room()
+            let options = RoomOptions(
+                defaultCameraCaptureOptions: cameraOptions(
+                    position: preferredCamera,
+                    quality: quality
+                ),
+                adaptiveStream: true,
+                dynacast: true
+            )
+
+            let room = Room(options: options)
             self.room = room
 
             try await room.connect(url: url, token: token)
 
-            let publication = try await room.localParticipant.setCamera(
+            guard let publication = try await room.localParticipant.setCamera(
                 enabled: true,
-                captureOptions: cameraOptions(position: cameraPosition),
+                captureOptions: cameraOptions(position: preferredCamera, quality: quality),
                 publishOptions: nil
-            )
-
-            if let video = publication?.track as? VideoTrack {
-                localVideoTrack = video
-            } else {
-                localVideoTrack = room.localParticipant.localVideoTracks
-                    .compactMap { $0.track as? VideoTrack }
-                    .first
+            ) else {
+                throw NSError(
+                    domain: "ScooterCast",
+                    code: 1001,
+                    userInfo: [NSLocalizedDescriptionKey: "LiveKit did not create a camera publication."]
+                )
             }
 
-            _ = try await room.localParticipant.setMicrophone(
-                enabled: true,
-                captureOptions: nil,
-                publishOptions: nil
-            )
+            videoPublication = publication
+            localVideoTrack = publication.track as? LocalVideoTrack
+
+            if microphoneEnabled {
+                audioPublication = try await room.localParticipant.setMicrophone(
+                    enabled: true,
+                    captureOptions: nil,
+                    publishOptions: nil
+                )
+            }
 
             guard localVideoTrack != nil else {
                 throw NSError(
                     domain: "ScooterCast",
-                    code: 1001,
-                    userInfo: [NSLocalizedDescriptionKey: "Camera started but no publishable video track was created."]
+                    code: 1002,
+                    userInfo: [NSLocalizedDescriptionKey: "Camera published but no local video track was available."]
                 )
             }
 
@@ -68,41 +95,75 @@ final class LiveStreamManager: ObservableObject {
     }
 
     func switchCamera() async {
-        guard let room, state == .live, !isSwitchingCamera else { return }
+        guard state == .live, !isSwitchingCamera else { return }
+        guard let track = localVideoTrack else {
+            errorMessage = "No local camera track is available."
+            return
+        }
+
+        guard let capturer = track.capturer as? CameraCapturer else {
+            errorMessage = "The current video track is not using an iPhone camera capturer."
+            return
+        }
 
         isSwitchingCamera = true
         defer { isSwitchingCamera = false }
 
-        let next: AVCaptureDevice.Position = cameraPosition == .back ? .front : .back
+        do {
+            let didSwitch = try await capturer.switchCameraPosition()
+
+            if didSwitch {
+                cameraPosition = cameraPosition == .front ? .back : .front
+                errorMessage = nil
+            } else {
+                errorMessage = "No alternate camera was available."
+            }
+        } catch {
+            errorMessage = "Camera flip failed: \(error.localizedDescription)"
+        }
+    }
+
+    func toggleVideoMute() async {
+        guard let publication = videoPublication else { return }
 
         do {
-            // Re-create the camera publication with explicit capture options.
-            // This is deliberately simple and reliable for V1: viewers may see
-            // a very brief camera interruption during the switch.
-            _ = try await room.localParticipant.setCamera(
-                enabled: false,
-                captureOptions: nil,
-                publishOptions: nil
-            )
-
-            let publication = try await room.localParticipant.setCamera(
-                enabled: true,
-                captureOptions: cameraOptions(position: next),
-                publishOptions: nil
-            )
-
-            if let video = publication?.track as? VideoTrack {
-                localVideoTrack = video
+            if isVideoMuted {
+                try await publication.unmute()
+                isVideoMuted = false
             } else {
-                localVideoTrack = room.localParticipant.localVideoTracks
-                    .compactMap { $0.track as? VideoTrack }
-                    .first
+                try await publication.mute()
+                isVideoMuted = true
             }
-
-            cameraPosition = next
             errorMessage = nil
         } catch {
-            errorMessage = "Camera switch failed: \(error.localizedDescription)"
+            errorMessage = "Video control failed: \(error.localizedDescription)"
+        }
+    }
+
+    func toggleMicrophoneMute() async {
+        guard let room else { return }
+
+        do {
+            if let publication = audioPublication {
+                if isMicrophoneMuted {
+                    try await publication.unmute()
+                    isMicrophoneMuted = false
+                } else {
+                    try await publication.mute()
+                    isMicrophoneMuted = true
+                }
+            } else {
+                let publication = try await room.localParticipant.setMicrophone(
+                    enabled: true,
+                    captureOptions: nil,
+                    publishOptions: nil
+                )
+                audioPublication = publication
+                isMicrophoneMuted = false
+            }
+            errorMessage = nil
+        } catch {
+            errorMessage = "Microphone control failed: \(error.localizedDescription)"
         }
     }
 
@@ -124,18 +185,25 @@ final class LiveStreamManager: ObservableObject {
         }
 
         localVideoTrack = nil
+        videoPublication = nil
+        audioPublication = nil
         room = nil
+        isVideoMuted = false
+        isMicrophoneMuted = false
         state = .idle
     }
 
-    private func cameraOptions(position: AVCaptureDevice.Position) -> CameraCaptureOptions {
+    private func cameraOptions(
+        position: AVCaptureDevice.Position,
+        quality: StreamQuality
+    ) -> CameraCaptureOptions {
         CameraCaptureOptions(
             deviceType: nil,
             device: nil,
             position: position,
             preferredFormat: nil,
-            dimensions: Dimensions(width: 1280, height: 720),
-            fps: 30
+            dimensions: Dimensions(width: quality.width, height: quality.height),
+            fps: quality.fps
         )
     }
 }

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071013">
+  <title>ScooterCast Admin</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <div class="eyebrow">WHATMOD · STREAM OPERATIONS</div>
+        <h1>ScooterCast Admin</h1>
+        <p>Live usage estimator based on ScooterCast ride and viewer-session telemetry.</p>
+      </div>
+      <button id="refresh">Refresh</button>
+    </header>
+
+    <section id="error" class="error hidden"></section>
+
+    <section class="live-strip">
+      <div><span>ACTIVE RIDES</span><strong id="activeRides">—</strong></div>
+      <div><span>ACTIVE VIEWERS</span><strong id="activeViewers">—</strong></div>
+      <div><span>LAST UPDATE</span><strong id="updated">—</strong></div>
+    </section>
+
+    <section class="grid">
+      <article class="card hero">
+        <div class="label">WEBRTC PARTICIPANT MINUTES</div>
+        <div class="big"><span id="participantMinutes">0</span><small> / <span id="minuteLimitText">5,000</span></small></div>
+        <div class="meter"><div id="minuteBar"></div></div>
+        <div class="row"><span id="minutePct">0% used</span><span id="minuteRemaining">5,000 remaining</span></div>
+      </article>
+
+      <article class="card">
+        <div class="label">ESTIMATED DOWNSTREAM</div>
+        <div class="big"><span id="egressGB">0.00</span><small> GB</small></div>
+        <div class="meter"><div id="egressBar"></div></div>
+        <div class="row"><span id="egressPct">0% used</span><span><span id="egressLimitText">50</span> GB allowance</span></div>
+      </article>
+
+      <article class="card">
+        <div class="label">RIDER MINUTES</div>
+        <div class="big"><span id="riderMinutes">0</span><small> min</small></div>
+        <p>Time rider clients were live this month.</p>
+      </article>
+
+      <article class="card">
+        <div class="label">VIEWER MINUTES</div>
+        <div class="big"><span id="viewerMinutes">0</span><small> min</small></div>
+        <p>Estimated from viewer token sessions plus 30-second heartbeats.</p>
+      </article>
+
+      <article class="card">
+        <div class="label">RIDES STARTED</div>
+        <div class="big"><span id="ridesStarted">0</span></div>
+      </article>
+
+      <article class="card">
+        <div class="label">VIEWER SESSIONS</div>
+        <div class="big"><span id="viewerSessions">0</span></div>
+      </article>
+    </section>
+
+    <section class="calculator card">
+      <div>
+        <div class="eyebrow">ESTIMATOR SETTINGS</div>
+        <h2>Bandwidth assumptions</h2>
+        <p>LiveKit's actual adaptive bitrate varies. Use these controls to estimate your likely downstream usage.</p>
+      </div>
+
+      <div class="settings-grid">
+        <label>
+          Average video bitrate per viewer
+          <div class="input-row">
+            <input id="bitrate" type="number" step="0.1" min="0.1" value="2.5">
+            <span>Mbps</span>
+          </div>
+        </label>
+
+        <label>
+          Monthly participant-minute allowance
+          <div class="input-row">
+            <input id="minuteLimit" type="number" step="100" min="1" value="5000">
+            <span>min</span>
+          </div>
+        </label>
+
+        <label>
+          Monthly downstream allowance
+          <div class="input-row">
+            <input id="egressLimit" type="number" step="1" min="1" value="50">
+            <span>GB</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="projection">
+        <div>
+          <span>3-hour ride · 1 viewer</span>
+          <strong id="threeHourOne">—</strong>
+        </div>
+        <div>
+          <span>3-hour ride · 5 viewers</span>
+          <strong id="threeHourFive">—</strong>
+        </div>
+        <div>
+          <span>5-hour ride · 1 viewer</span>
+          <strong id="fiveHourOne">—</strong>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span id="period">Current month</span>
+      <span>This is an estimator, not LiveKit billing data.</span>
+    </footer>
+  </main>
+
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

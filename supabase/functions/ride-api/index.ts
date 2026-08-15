@@ -206,12 +206,108 @@ Deno.serve(async (req) => {
         canSubscribe: true,
       });
 
+      const { data: viewerSession, error: viewerSessionError } = await supabase
+        .from("viewer_sessions")
+        .insert({
+          ride_id: ride.id,
+          user_agent: req.headers.get("user-agent"),
+        })
+        .select("id")
+        .single();
+
+      if (viewerSessionError) throw viewerSessionError;
+
       return json({
         ride_id: ride.id,
         title: ride.title,
         started_at: ride.started_at,
         livekit_url: env("LIVEKIT_URL"),
         viewer_token: viewerToken,
+        viewer_session_id: viewerSession.id,
+      });
+    }
+
+    if (action === "viewer-heartbeat" && req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const sessionID = String(body?.viewer_session_id || "");
+
+      if (!sessionID) {
+        return json({ error: "Missing viewer_session_id" }, 400);
+      }
+
+      const { error } = await supabase
+        .from("viewer_sessions")
+        .update({ last_seen: new Date().toISOString() })
+        .eq("id", sessionID);
+
+      if (error) throw error;
+      return json({ ok: true });
+    }
+
+    if (action === "usage-summary" && req.method === "GET") {
+      const now = new Date();
+      const monthStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0)
+      );
+
+      const monthStartISO = monthStart.toISOString();
+      const nowISO = now.toISOString();
+
+      const { data: rides, error: ridesError } = await supabase
+        .from("rides")
+        .select("id, started_at, ended_at, status")
+        .gte("started_at", monthStartISO)
+        .lte("started_at", nowISO);
+
+      if (ridesError) throw ridesError;
+
+      const { data: sessions, error: sessionsError } = await supabase
+        .from("viewer_sessions")
+        .select("id, ride_id, first_seen, last_seen")
+        .gte("first_seen", monthStartISO)
+        .lte("first_seen", nowISO);
+
+      if (sessionsError) throw sessionsError;
+
+      let riderSeconds = 0;
+
+      for (const ride of rides ?? []) {
+        const start = new Date(ride.started_at).getTime();
+        const end = ride.ended_at
+          ? new Date(ride.ended_at).getTime()
+          : now.getTime();
+
+        riderSeconds += Math.max(0, Math.min(end, now.getTime()) - start) / 1000;
+      }
+
+      let viewerSeconds = 0;
+
+      for (const session of sessions ?? []) {
+        const start = new Date(session.first_seen).getTime();
+        const last = new Date(session.last_seen).getTime();
+
+        // Give the last heartbeat one additional 35-second window.
+        const estimatedEnd = Math.min(now.getTime(), last + 35_000);
+        viewerSeconds += Math.max(0, estimatedEnd - start) / 1000;
+      }
+
+      const activeRides = (rides ?? []).filter((r) => r.status === "live").length;
+
+      const activeViewerCutoff = now.getTime() - 75_000;
+      const activeViewers = (sessions ?? []).filter(
+        (s) => new Date(s.last_seen).getTime() >= activeViewerCutoff
+      ).length;
+
+      return json({
+        period_start: monthStartISO,
+        as_of: nowISO,
+        rides_started: (rides ?? []).length,
+        viewer_sessions: (sessions ?? []).length,
+        active_rides: activeRides,
+        active_viewers: activeViewers,
+        rider_minutes: riderSeconds / 60,
+        viewer_minutes: viewerSeconds / 60,
+        participant_minutes: (riderSeconds + viewerSeconds) / 60,
       });
     }
 
@@ -277,7 +373,7 @@ Deno.serve(async (req) => {
     return json(
       {
         error: "Unknown action",
-        supported_actions: ["health", "create", "list-live", "viewer-token", "telemetry", "end"],
+        supported_actions: ["health", "create", "list-live", "viewer-token", "viewer-heartbeat", "usage-summary", "telemetry", "end"],
       },
       404,
     );

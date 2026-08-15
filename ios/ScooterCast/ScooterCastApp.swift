@@ -4,8 +4,18 @@ import SwiftUI
 struct ScooterCastApp: App {
     var body: some Scene {
         WindowGroup {
-            RiderHomeView()
-                .preferredColorScheme(.dark)
+            TabView {
+                RiderHomeView()
+                    .tabItem {
+                        Label("Ride", systemImage: "scooter")
+                    }
+
+                SettingsView()
+                    .tabItem {
+                        Label("Settings", systemImage: "gearshape.fill")
+                    }
+            }
+            .preferredColorScheme(.dark)
         }
     }
 }

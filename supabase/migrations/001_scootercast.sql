@@ -81,3 +81,24 @@ alter table public.rides
 
 create index if not exists rides_live_discoverable_idx
   on public.rides (status, is_discoverable, started_at desc);
+
+
+-- V1.5 usage estimator support.
+create table if not exists public.viewer_sessions (
+  id uuid primary key default gen_random_uuid(),
+  ride_id uuid not null references public.rides(id) on delete cascade,
+  first_seen timestamptz not null default now(),
+  last_seen timestamptz not null default now(),
+  user_agent text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists viewer_sessions_ride_idx
+  on public.viewer_sessions (ride_id, first_seen desc);
+
+create index if not exists viewer_sessions_month_idx
+  on public.viewer_sessions (first_seen desc);
+
+alter table public.viewer_sessions enable row level security;
+
+-- Viewer session writes/reads are performed only through ride-api using service role.
