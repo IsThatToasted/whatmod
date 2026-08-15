@@ -123,6 +123,24 @@ jobs:
           echo "Built app Info.plist:"
           plutil -p "$APP_PATH/Info.plist"
 
+          EXECUTABLE_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP_PATH/Info.plist")
+
+          if [ -z "$EXECUTABLE_NAME" ]; then
+            echo "::error::CFBundleExecutable is missing from the built app Info.plist."
+            exit 1
+          fi
+
+          if [ ! -f "$APP_PATH/$EXECUTABLE_NAME" ]; then
+            echo "::error::Declared executable '$EXECUTABLE_NAME' does not exist inside the .app bundle."
+            echo "App bundle contents:"
+            find "$APP_PATH" -maxdepth 2 -type f | sort
+            exit 1
+          fi
+
+          echo "Executable verified:"
+          ls -lah "$APP_PATH/$EXECUTABLE_NAME"
+          file "$APP_PATH/$EXECUTABLE_NAME"
+
           echo "Linked frameworks:"
           find "$APP_PATH/Frameworks" -maxdepth 2 -type f 2>/dev/null | sort || true
 
