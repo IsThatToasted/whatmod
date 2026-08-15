@@ -36,7 +36,7 @@
         <p class="eyebrow">20 real-life choices</p>
         <h1 id="introTitle">How sharp are your online safety instincts?</h1>
         <p class="hero-copy">
-          There are no trick questions and no public leaderboard. Pick what you would <em>actually</em> do — not what you think an adult wants to hear.
+          These are quick choices about games, messages, videos, and apps you may really use. Pick what you would <em>actually</em> do — not what you think a grown-up wants to hear.
         </p>
 
         <form id="profileForm" class="profile-form">
@@ -64,6 +64,8 @@
             <p><strong>Private by design.</strong> This version does not send or save your answers anywhere. Refreshing the page clears the result.</p>
           </div>
 
+          <div class="privacy-note reader-note"><span aria-hidden="true">🔊</span><p><strong>Prefer listening?</strong> During the quiz, tap <em>Read aloud</em> to hear the question and all four choices. SafeSurf picks the most natural English voice your device provides.</p></div>
+
           <button class="primary-button" type="submit">
             Begin the quiz
             <span aria-hidden="true">→</span>
@@ -72,7 +74,7 @@
       </div>
     </section>
 
-    <section id="quizScreen" class="screen" aria-live="polite" aria-labelledby="questionText">
+    <section id="quizScreen" class="screen" aria-labelledby="questionText">
       <div class="quiz-topline">
         <div>
           <span class="progress-label" id="progressLabel">Question 1 of 20</span>
@@ -83,17 +85,24 @@
         </div>
       </div>
 
+      <div class="reader-tools" id="readerTools" aria-label="Read aloud controls">
+        <button class="reader-button" id="readQuestion" type="button" aria-describedby="readerStatus"><span aria-hidden="true">🔊</span><span>Read aloud</span></button>
+        <label class="auto-read-control"><input id="autoRead" type="checkbox" /><span>Auto-read each question</span></label>
+        <label class="voice-control" for="voiceSelect"><span class="sr-only">Voice</span><select id="voiceSelect" aria-label="Read aloud voice"><option>Best voice on this device</option></select></label>
+        <span class="reader-status sr-only" id="readerStatus" aria-live="polite">Ready to read aloud</span>
+      </div>
+
       <article class="question-card" id="questionCard">
         <div class="question-meta">
           <span class="scenario-pill" id="scenarioTag">Message</span>
           <span class="think-note">What would you really do?</span>
         </div>
-        <h2 id="questionText"></h2>
+        <h2 id="questionText" tabindex="-1"></h2>
         <p class="question-detail" id="questionDetail"></p>
         <div class="answers" id="answers"></div>
       </article>
 
-      <p class="microcopy">There may be more than one reasonable-sounding option. Choose the one closest to your real reaction.</p>
+      <p class="microcopy">A few choices may sound okay. Pick the one closest to what you would really do.</p>
     </section>
 
     <section id="resultScreen" class="screen" aria-labelledby="resultTitle">

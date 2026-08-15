@@ -310,8 +310,70 @@ const questionBank = [
       ['Close the curtains and leave everything else as it is.', 3],
       ['Use a lower video quality so details are harder to read.', 2]
     ]
+  },
+  {
+    id: 'discord-server', minAge: 13, category: 'People', tag: 'Discord invite',
+    q: 'A gaming friend invites you to a private Discord server with people you do not know.',
+    detail: 'They say it is more fun because there are fewer rules.',
+    answers: [
+      ['Join and leave if people get weird.', 3],
+      ['Check who runs it, lock down privacy, and avoid it if the setup feels unsafe.', 5],
+      ['Join only if my friend stays there too.', 3],
+      ['Make a second account just for the server.', 2]
+    ]
+  },
+  {
+    id: 'private-photo', minAge: 13, category: 'People', tag: 'Photo pressure',
+    q: 'Someone you like keeps asking for a private photo you would not normally post.',
+    detail: 'They promise they will never save or share it.',
+    answers: [
+      ['Send one if their promise feels real.', 1],
+      ['Say no and do not send something I cannot take back.', 5],
+      ['Send one that does not show my face.', 2],
+      ['Ask them to send something private first.', 1]
+    ]
   }
 ];
+
+
+// Kid-first copy. These replacements keep the original hidden scoring and age gates,
+// but use shorter, more familiar language and recognizable game/app situations.
+const kidCopy = {
+  'new-friend': ['A Roblox friend you have played with a lot asks what school you go to.', 'They say they might live close to you.', [['Tell them the school, but not my teacher.',1],['Tell them only the town I live near.',2],['Skip that question and keep talking about Roblox.',5],['Ask what school they go to first.',2]]],
+  'photo-background': ['You take a cool photo to post, but your street sign is in the background.', 'It is small, but someone could zoom in.', [['Post it because the sign is hard to see.',2],['Crop or cover the sign first.',5],['Post it only for friends or followers.',3],['Wait until tomorrow and decide then.',4]]],
+  'account-warning': ['A message says your account will be locked soon unless you tap a link.', 'It has the app logo and your username.', [['Tap it, but leave if the page looks weird.',2],['Open the real app myself and check there.',5],['Reply and ask if the message is real.',3],['Ignore it for now and see what happens.',4]]],
+  'gift-card': ['A YouTuber you follow seems to message you saying you won a prize.', 'They want a small payment for shipping.', [['Pay if the amount is small.',1],['Check the creator’s real page for the giveaway first.',5],['Ask if I can pay a different way.',2],['Send it to a friend and see what they think.',4]]],
+  'voice-chat': ['A player you know from a game asks you to join a private voice chat.', 'You have played together for a few weeks.', [['Join because we have played together a lot.',2],['Stay in normal game chat unless a trusted adult knows.',5],['Join, but keep my camera off.',3],['Ask another online friend to join too.',3]]],
+  'mean-group': ['A group chat starts making fun of one kid, and everyone is reacting to it.', 'Nobody is making fun of you.', [['Stay quiet and just watch.',3],['Add one small reaction so I fit in.',1],['Do not join in, and get help if it turns into bullying or threats.',5],['Leave the chat right away and forget about it.',4]]],
+  'location-streak': ['Your friends use an app map that shows where everyone is.', 'Most of your friends leave their location on all day.', [['Leave mine on because my friends do.',2],['Keep it private and share only when I need to.',5],['Turn it off only when I am at home.',3],['Leave it on during the day, but not at night.',3]]],
+  'password-friend': ['Your best friend asks for your game password so they can help with your account.', 'You know them in real life and trust them.', [['Give it to them, then change it later.',2],['Do not share it. Find another way they can help.',5],['Make a simple password just for today.',1],['Let them log in while I watch.',3]]],
+  'download-mod': ['A YouTube video shows a free game mod and links to a website you have never used.', 'Lots of comments say it works.', [['Download it if my antivirus says nothing.',2],['Look for the mod on an official or trusted game site first.',5],['Read the newest comments, then decide.',4],['Download it now, but do not open it yet.',3]]],
+  'secret-chat': ['An online friend says, “Do not tell your family we talk. They would not get it.”', 'They have always been nice to you.', [['Keep it secret because they have been nice.',2],['Tell a trusted adult about the secret request.',5],['Keep chatting, but share less about myself.',3],['Ask why it has to be secret first.',4]]],
+  'screen-share': ['A friend wants to help fix a game and asks you to share your whole screen.', 'Private messages or notifications might pop up.', [['Share everything because I know them.',2],['Share only the game window and close private stuff first.',5],['Turn off notifications, then share everything.',4],['Send a picture of the problem instead.',4]]],
+  'viral-claim': ['A post says something big happened at school, and lots of kids are sharing it.', 'You cannot tell who first posted it.', [['Share it and say “I do not know if this is true.”',2],['Wait until the school or another trusted source confirms it.',5],['Ask a big group chat if anyone knows.',4],['Believe it if several friends already shared it.',1]]],
+  'camera-request': ['Someone you only know online asks you to turn on your camera to prove you are real.', 'They say they will turn theirs on too.', [['Turn it on for a few seconds.',2],['Say no. I do not have to prove myself on camera.',5],['Make them turn theirs on first.',1],['Use a funny filter so my face looks different.',3]]],
+  'emotional-pressure': ['An online friend gets upset if you do not reply fast and says, “Real friends always answer.”', 'You care about them and do not want to be mean.', [['Try to answer faster so they feel better.',2],['Tell them I cannot always reply right away and get help if the pressure keeps going.',5],['Mute them for a week without saying anything.',3],['Tell them my whole schedule so they know when I am busy.',2]]],
+  'meetup': ['Someone you have known online for months says they will be nearby and wants to meet.', 'They suggest a busy public place and you have video-called before.', [['Meet because the place is public.',2],['Only consider it with a parent or guardian fully involved and there with me.',5],['Bring two friends instead of an adult.',2],['Go in daytime and share my location with family.',3]]],
+  'two-factor': ['Someone says a login code was sent to your phone by mistake and asks you to send it.', 'They know your name, so the message seems real.', [['Send it if they tell me what account it is for.',1],['Keep the code private and check my own account.',5],['Send a screenshot with some numbers covered.',4],['Wait a few minutes, then send it if nothing happens.',1]]],
+  'personal-question': ['A fun online quiz asks for your pet name, birthday month, and old street name.', 'It says it will make your perfect gamer name.', [['Use made-up answers that are not about my real life.',5],['Answer because none of those is my password.',1],['Answer only the easy questions.',2],['Use shorter versions of the real answers.',2]]],
+  'angry-post': ['You are mad at someone and have a post ready explaining what they did.', 'What you wrote feels true to you.', [['Post it, but leave their name out.',2],['Save it and look at it again after I cool down.',5],['Post it only to close friends.',3],['Ask one friend if I should post it.',4]]],
+  'girls-only-group': ['An account invites you to a “girls your age” group, but asks for a selfie first.', 'The page has lots of followers and looks normal.', [['Send a simple selfie with nothing private behind me.',2],['Do not send proof of who I am to a group I cannot verify.',5],['Ask someone in the group if it is safe.',4],['Join with a blank profile and decide later.',3]]],
+  'boys-only-group': ['An account invites you to a “boys your age” group, but asks for a selfie first.', 'The page has lots of followers and looks normal.', [['Send a simple selfie with nothing private behind me.',2],['Do not send proof of who I am to a group I cannot verify.',5],['Ask someone in the group if it is safe.',4],['Join with a blank profile and decide later.',3]]],
+  'unknown-airdrop': ['Your phone gets a nearby file request from someone you do not know.', 'The file name sounds funny, and you are in a crowded place.', [['Accept it because I can delete it later.',1],['Decline it and keep sharing set to people I know.',5],['Accept it only if it says it is a picture.',2],['Wait to see if someone nearby says it is theirs.',4]]],
+  'support-scam': ['A pop-up says your device has a virus and tells you to call or chat for help.', 'It makes a loud sound and is hard to close.', [['Contact them, but do not pay anything.',1],['Close it and use trusted device or family help to check.',5],['Restart first and contact them only if it comes back.',3],['Search the phone number before I decide.',4]]],
+  'game-trade': ['A Roblox player offers an amazing trade, but wants to finish it on another website.', 'They say the normal trade screen takes too long.', [['Use the site if it looks like Roblox.',1],['Keep the trade inside the game, even if I lose the deal.',5],['Ask them to give me their item first.',3],['Search the website name before deciding.',4]]],
+  'public-wifi': ['You are on free public Wi-Fi and need to sign in to an important account.', 'The Wi-Fi works, but you do not know who runs it.', [['Sign in normally because the website has a lock icon.',3],['Use my phone data or wait for a network I trust if I can.',5],['Use the Wi-Fi, then change my password later.',2],['Sign in only if I have used that website before.',3]]],
+  'family-info': ['Someone in a game asks what your parent or guardian does for work.', 'They are just making conversation.', [['Say something general, like “they work in an office.”',4],['Give the job name, but not the company.',3],['Tell them the company if it is a big one.',1],['Change the subject and keep family details private.',5]]],
+  'blocked-return': ['You block someone who made you uncomfortable. A new account messages you the next day.', 'It seems like the same person, but the message is polite.', [['Read what they say before deciding.',2],['Block or report again, and tell an adult if they keep coming back.',5],['Reply once and tell them to stop.',3],['Ignore the message but leave the account unblocked.',3]]],
+  'ai-chat': ['An AI chatbot gives you very confident advice about a serious problem.', 'The answer sounds smart and specific.', [['Follow it if the answer makes sense.',2],['Use it for ideas, but ask a trusted real person too.',5],['Ask the AI the same thing again in a different way.',3],['Ask another AI and see if it agrees.',3]]],
+  'stream-background': ['You want to livestream, but your room has school stuff and family photos behind you.', 'Nothing looks secret at first.', [['Go live if my account is private.',3],['Move or blur things that could show who or where I am.',5],['Close the curtains and leave the rest.',4],['Use lower video quality so details are harder to see.',2]]]
+};
+
+function useKidCopy(item) {
+  const copy = kidCopy[item.id];
+  if (!copy) return item;
+  return { ...item, q: copy[0], detail: copy[1], answers: copy[2] };
+}
 
 const screens = {
   intro: document.getElementById('introScreen'),
@@ -331,13 +393,18 @@ const progressFill = document.getElementById('progressFill');
 const restartTop = document.getElementById('restartTop');
 const tryAgain = document.getElementById('tryAgain');
 const showReview = document.getElementById('showReview');
+const readQuestionButton = document.getElementById('readQuestion');
+const autoReadToggle = document.getElementById('autoRead');
+const voiceSelect = document.getElementById('voiceSelect');
+const readerStatus = document.getElementById('readerStatus');
 
 let state = {
   age: null,
   sex: 'unspecified',
   questions: [],
   index: 0,
-  responses: []
+  responses: [],
+  renderedAnswers: []
 };
 
 function shuffle(items) {
@@ -350,15 +417,21 @@ function shuffle(items) {
 }
 
 function buildQuiz(age, sex) {
-  const eligible = questionBank.filter(item => age >= item.minAge);
+  const eligible = questionBank.filter(item => age >= item.minAge).map(useKidCopy);
   const preferred = eligible.filter(item => item.sexBias === sex);
   const general = eligible.filter(item => !item.sexBias || item.sexBias === 'any');
   const alternate = eligible.filter(item => item.sexBias && item.sexBias !== sex && item.sexBias !== 'any');
 
-  // Keep sex-specific branching subtle and non-stereotyped: at most one tailored scenario.
-  // If sex is not provided, no sex-specific scenario is required.
+  // Give older kids a few scenarios that match the online spaces they are more likely to use.
+  // The rest stays mixed so the quiz still covers basic privacy, scams, accounts and behavior.
   const picked = [];
-  if (sex !== 'unspecified' && preferred.length) picked.push(shuffle(preferred)[0]);
+  const ageFloor = age >= 13 ? 11 : age >= 9 ? 9 : 6;
+  const agePriority = shuffle(general.filter(item => item.minAge >= ageFloor));
+  const priorityCount = age >= 9 ? Math.min(4, agePriority.length) : 0;
+  picked.push(...agePriority.slice(0, priorityCount));
+
+  // Keep sex-specific branching subtle and non-stereotyped: at most one tailored scenario.
+  if (sex !== 'unspecified' && preferred.length && picked.length < TOTAL_QUESTIONS) picked.push(shuffle(preferred)[0]);
 
   const pool = shuffle(general);
   for (const q of pool) {
@@ -400,12 +473,14 @@ function renderQuestion(animate = true) {
 
   const letters = ['A', 'B', 'C', 'D'];
   const shuffledAnswers = shuffle(item.answers.map(([text, score]) => ({ text, score })));
+  state.renderedAnswers = shuffledAnswers;
   shuffledAnswers.forEach((answer, i) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'answer-button';
     button.innerHTML = `<span class="answer-letter">${letters[i]}</span><span>${escapeHtml(answer.text)}</span>`;
     button.addEventListener('click', () => chooseAnswer(item, answer));
+    button.setAttribute('aria-label', `Choice ${letters[i]}: ${answer.text}`);
     answersWrap.appendChild(button);
   });
 
@@ -413,7 +488,10 @@ function renderQuestion(animate = true) {
     questionCard.classList.remove('is-leaving');
     questionCard.classList.add('is-entering');
     window.setTimeout(() => questionCard.classList.remove('is-entering'), 350);
+    window.setTimeout(() => questionText.focus({ preventScroll: true }), 230);
   }
+
+  if (autoReadToggle?.checked) window.setTimeout(speakCurrentQuestion, animate ? 380 : 120);
 }
 
 function escapeHtml(text) {
@@ -421,6 +499,7 @@ function escapeHtml(text) {
 }
 
 function chooseAnswer(question, answer) {
+  stopSpeaking();
   answersWrap.querySelectorAll('button').forEach(btn => btn.disabled = true);
   state.responses.push({ id: question.id, category: question.category, score: answer.score, max: 5 });
 
@@ -543,7 +622,7 @@ function categoryTip(category) {
 }
 
 function resetQuiz() {
-  state = { age: null, sex: 'unspecified', questions: [], index: 0, responses: [] };
+  state = { age: null, sex: 'unspecified', questions: [], index: 0, responses: [], renderedAnswers: [] };
   profileForm.reset();
   const unspecified = profileForm.querySelector('input[name="sex"][value="unspecified"]');
   if (unspecified) unspecified.checked = true;
@@ -560,6 +639,7 @@ profileForm.addEventListener('submit', event => {
   state.questions = buildQuiz(age, sex);
   state.index = 0;
   state.responses = [];
+  state.renderedAnswers = [];
   showScreen('quiz');
   renderQuestion(false);
 });
@@ -571,3 +651,63 @@ showReview.addEventListener('click', () => {
   panel.hidden = !panel.hidden;
   showReview.textContent = panel.hidden ? 'See what to practice' : 'Hide practice tips';
 });
+
+
+// Built-in Read Aloud. This complements full screen readers such as Narrator,
+// VoiceOver, NVDA and TalkBack; it does not replace them.
+const speechSupported = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+let availableVoices = [];
+
+function stopSpeaking() {
+  if (!speechSupported) return;
+  window.speechSynthesis.cancel();
+  readQuestionButton?.classList.remove('is-speaking');
+  if (readerStatus) readerStatus.textContent = 'Ready to read aloud';
+}
+
+function voiceScore(voice) {
+  const name = `${voice.name} ${voice.voiceURI}`.toLowerCase();
+  let score = voice.lang?.toLowerCase().startsWith('en-us') ? 20 : 10;
+  if (/natural|online/.test(name)) score += 50;
+  if (/aria|jenny|ava|guy|samantha|google us english|microsoft/.test(name)) score += 25;
+  if (/compact|espeak|festival/.test(name)) score -= 30;
+  return score;
+}
+
+function loadVoices() {
+  if (!speechSupported || !voiceSelect) return;
+  availableVoices = window.speechSynthesis.getVoices().filter(v => v.lang?.toLowerCase().startsWith('en')).sort((a,b) => voiceScore(b)-voiceScore(a));
+  voiceSelect.replaceChildren();
+  if (!availableVoices.length) {
+    voiceSelect.append(new Option('Best voice on this device', ''));
+    return;
+  }
+  availableVoices.slice(0,12).forEach((voice, index) => voiceSelect.append(new Option(index === 0 ? `Best voice — ${voice.name}` : voice.name, voice.voiceURI)));
+}
+
+function speakCurrentQuestion() {
+  if (!speechSupported || !state.questions[state.index]) return;
+  stopSpeaking();
+  const item = state.questions[state.index];
+  const letters = ['A','B','C','D'];
+  const choices = state.renderedAnswers.map((answer,i) => `Choice ${letters[i]}. ${answer.text}`).join('. ');
+  const utterance = new SpeechSynthesisUtterance(`${item.q} ${item.detail} ${choices}`);
+  const voice = availableVoices.find(v => v.voiceURI === voiceSelect?.value) || availableVoices[0];
+  if (voice) utterance.voice = voice;
+  utterance.lang = voice?.lang || 'en-US';
+  utterance.rate = state.age <= 9 ? 0.90 : 0.96;
+  utterance.pitch = 1.02;
+  utterance.onstart = () => { readQuestionButton?.classList.add('is-speaking'); if (readerStatus) readerStatus.textContent = 'Reading question and choices'; };
+  utterance.onend = () => { readQuestionButton?.classList.remove('is-speaking'); if (readerStatus) readerStatus.textContent = 'Ready to read aloud'; };
+  utterance.onerror = e => { readQuestionButton?.classList.remove('is-speaking'); if (readerStatus) readerStatus.textContent = ['interrupted','canceled'].includes(e.error) ? 'Ready to read aloud' : 'Could not play this voice'; };
+  window.speechSynthesis.speak(utterance);
+}
+
+function setupReader() {
+  if (!speechSupported) { document.getElementById('readerTools')?.setAttribute('hidden',''); return; }
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+  readQuestionButton?.addEventListener('click', () => window.speechSynthesis.speaking ? stopSpeaking() : speakCurrentQuestion());
+}
+
+setupReader();

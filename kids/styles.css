@@ -201,3 +201,18 @@ select:focus { border-color: rgba(118,87,223,.45); box-shadow: 0 0 0 4px rgba(11
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+
+/* Read-aloud controls */
+.reader-note em { color: var(--ink); font-style: normal; font-weight: 900; }
+.reader-tools { width:min(760px,100%); margin:0 auto 12px; display:grid; grid-template-columns:auto 1fr minmax(190px,250px); align-items:center; gap:9px; padding:9px; border:1px solid rgba(255,255,255,.9); border-radius:20px; background:rgba(255,255,255,.66); box-shadow:0 8px 24px rgba(75,57,125,.06); backdrop-filter:blur(14px); }
+.reader-button { min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 14px; border:1px solid rgba(118,87,223,.13); border-radius:14px; background:#f4f0ff; color:var(--purple-dark); font:inherit; font-weight:900; cursor:pointer; transition:.18s ease; }
+.reader-button:hover { transform:translateY(-1px); background:#eee8ff; }
+.reader-button.is-speaking { background:#e8fbf5; color:#247965; border-color:rgba(73,190,158,.22); }
+.auto-read-control { min-height:44px; display:flex; align-items:center; gap:9px; padding:0 8px; color:var(--muted); font-size:12px; font-weight:900; cursor:pointer; }
+.auto-read-control input { width:17px; height:17px; accent-color:var(--purple); }
+.voice-control select { min-height:44px; padding-top:10px; padding-bottom:10px; border-radius:14px; font-size:12px; }
+.sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
+.answer-button:disabled { cursor:default; opacity:.72; transform:none; }
+@media (max-width:700px) { .reader-tools { grid-template-columns:1fr 1fr; } .voice-control { grid-column:1/-1; } .auto-read-control { justify-content:center; text-align:center; } }
+@media (max-width:430px) { .reader-tools { grid-template-columns:1fr; } .voice-control { grid-column:auto; } .reader-button,.auto-read-control { width:100%; justify-content:center; } }

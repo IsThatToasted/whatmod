@@ -6,14 +6,16 @@ A static, kid-friendly Internet Safety Quiz designed for GitHub Pages.
 
 - 20 one-at-a-time scenario cards
 - Animated progress and card transitions
-- Age-aware question selection (ages 6–17)
+- Age-aware question selection (ages 6–17) with shorter kid-first wording
 - Optional sex selection with only subtle, non-stereotyped branching
+- Familiar Roblox, YouTube, game-chat, app, scam, and privacy scenarios
 - Non-obvious answer choices designed to measure real judgment
 - Private, client-side scoring only
 - 1–100 safety score with animated speedometer gauge
 - Category strengths and practice areas
 - Responsive/mobile-friendly UI
-- Reduced-motion accessibility support
+- Built-in Read Aloud with automatic natural-voice preference, voice picker, and auto-read mode
+- Screen-reader-friendly focus/ARIA behavior and reduced-motion accessibility
 - No database, analytics, cookies, or answer persistence
 
 ## Run locally
@@ -45,3 +47,7 @@ This version intentionally does not save quiz responses. Results vanish on refre
 Each scenario answer has an internal 1–5 judgment score. The final raw score is normalized to 1–100. Scoring is not shown during the quiz, and the answer order is randomized for each question.
 
 The final readiness language is intentionally framed around **independent use vs. adult guidance**, rather than claiming a quiz can determine whether a child should have internet access at all.
+
+## Read Aloud
+
+SafeSurf uses the browser Web Speech API and ranks available English voices, preferring voices whose names indicate modern Natural/Online, Microsoft, Google, Aria, Jenny, Ava, Guy, or Samantha voices. Voice quality depends on the device and browser. The built-in reader complements full accessibility screen readers such as Narrator, VoiceOver, NVDA, and TalkBack.
