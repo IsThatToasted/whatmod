@@ -195,6 +195,32 @@ struct RiderHomeView: View {
         .buttonStyle(.plain)
     }
 
+
+    private func viewerEventBanner(_ event: ViewerEvent) -> some View {
+        HStack(spacing: 12) {
+            Text(event.emoji ?? (event.eventType == "moment" ? "📸" : "👋"))
+                .font(.system(size: 28))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(
+                    event.eventType == "moment"
+                    ? "Moment saved by a viewer"
+                    : "Viewer reaction"
+                )
+                .font(.subheadline.bold())
+
+                Text(event.label ?? "Someone is riding along with you.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(15)
+        .background(Color.white.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+    }
+
     private var liveCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {

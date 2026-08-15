@@ -148,4 +148,34 @@ final class RiderViewModel: ObservableObject {
 
         try? await api.sendTelemetry(payload)
     }
+
+    private func beginViewerEventLoop() {
+        eventTask?.cancel()
+
+        eventTask = Task { [weak self] in
+            guard let self else { return }
+
+            while !Task.isCancelled {
+                if let ride = self.session {
+                    do {
+                        let events = try await self.api.fetchViewerEvents(
+                            rideID: ride.id,
+                            after: self.lastEventTimestamp
+                        )
+
+                        if let newest = events.last {
+                            self.latestViewerEvent = newest
+                            self.lastEventTimestamp = newest.createdAt
+                        }
+                    } catch {
+                        // Viewer interaction is optional and must never interrupt
+                        // the active stream.
+                    }
+                }
+
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
+    }
+
 }
