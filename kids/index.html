@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f7f4ff" />
+  <meta name="description" content="A friendly, private internet-safety judgment quiz for kids." />
+  <title>SafeSurf — Internet Safety Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+  <div class="ambient ambient-c" aria-hidden="true"></div>
+
+  <main class="app-shell">
+    <header class="brandbar">
+      <a class="brand" href="#" aria-label="SafeSurf home">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span>
+          <strong>SafeSurf</strong>
+          <small>Internet Safety Check</small>
+        </span>
+      </a>
+      <button class="quiet-button" id="restartTop" type="button" hidden>Start over</button>
+    </header>
+
+    <section id="introScreen" class="screen screen-active" aria-labelledby="introTitle">
+      <div class="hero-card card-pop">
+        <div class="hero-icon" aria-hidden="true">
+          <span>✦</span>
+        </div>
+        <p class="eyebrow">20 real-life choices</p>
+        <h1 id="introTitle">How sharp are your online safety instincts?</h1>
+        <p class="hero-copy">
+          There are no trick questions and no public leaderboard. Pick what you would <em>actually</em> do — not what you think an adult wants to hear.
+        </p>
+
+        <form id="profileForm" class="profile-form">
+          <div class="field-row">
+            <label class="field-label" for="age">Your age</label>
+            <select id="age" name="age" required>
+              <option value="" selected disabled>Choose age</option>
+              <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+              <option>11</option><option>12</option><option>13</option><option>14</option><option>15</option>
+              <option>16</option><option>17</option>
+            </select>
+          </div>
+
+          <fieldset class="choice-fieldset">
+            <legend>Sex <span class="optional">(optional)</span></legend>
+            <div class="segmented" role="radiogroup" aria-label="Sex">
+              <label><input type="radio" name="sex" value="female"><span>Female</span></label>
+              <label><input type="radio" name="sex" value="male"><span>Male</span></label>
+              <label><input type="radio" name="sex" value="unspecified" checked><span>Prefer not to say</span></label>
+            </div>
+          </fieldset>
+
+          <div class="privacy-note">
+            <span aria-hidden="true">🔒</span>
+            <p><strong>Private by design.</strong> This version does not send or save your answers anywhere. Refreshing the page clears the result.</p>
+          </div>
+
+          <button class="primary-button" type="submit">
+            Begin the quiz
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section id="quizScreen" class="screen" aria-live="polite" aria-labelledby="questionText">
+      <div class="quiz-topline">
+        <div>
+          <span class="progress-label" id="progressLabel">Question 1 of 20</span>
+          <span class="progress-percent" id="progressPercent">5%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <article class="question-card" id="questionCard">
+        <div class="question-meta">
+          <span class="scenario-pill" id="scenarioTag">Message</span>
+          <span class="think-note">What would you really do?</span>
+        </div>
+        <h2 id="questionText"></h2>
+        <p class="question-detail" id="questionDetail"></p>
+        <div class="answers" id="answers"></div>
+      </article>
+
+      <p class="microcopy">There may be more than one reasonable-sounding option. Choose the one closest to your real reaction.</p>
+    </section>
+
+    <section id="resultScreen" class="screen" aria-labelledby="resultTitle">
+      <div class="result-card card-pop">
+        <div class="result-heading">
+          <p class="eyebrow">Your safety score</p>
+          <h1 id="resultTitle">Your online instincts</h1>
+          <p id="resultSummary"></p>
+        </div>
+
+        <div class="gauge-wrap" aria-label="Safety score gauge">
+          <svg class="gauge" viewBox="0 0 240 140" role="img" aria-labelledby="gaugeTitle gaugeDesc">
+            <title id="gaugeTitle">Internet safety score</title>
+            <desc id="gaugeDesc">A semicircle gauge from needs supervision to strong independent judgment.</desc>
+            <defs>
+              <linearGradient id="gaugeGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#ff829a"/>
+                <stop offset="48%" stop-color="#ffc76d"/>
+                <stop offset="100%" stop-color="#63d9bd"/>
+              </linearGradient>
+            </defs>
+            <path class="gauge-bg" d="M30 120 A90 90 0 0 1 210 120" />
+            <path class="gauge-value" id="gaugeValue" d="M30 120 A90 90 0 0 1 210 120" />
+            <g class="needle" id="needle">
+              <line x1="120" y1="120" x2="120" y2="48" />
+              <circle cx="120" cy="120" r="10" />
+              <circle cx="120" cy="120" r="4" />
+            </g>
+          </svg>
+          <div class="score-bubble">
+            <span id="scoreNumber">0</span><small>/100</small>
+          </div>
+          <div class="gauge-labels" aria-hidden="true"><span>Supervised</span><span>Ready</span></div>
+        </div>
+
+        <div class="result-status" id="resultStatus"></div>
+
+        <div class="insight-grid" id="insightGrid"></div>
+
+        <div class="result-actions">
+          <button class="primary-button" id="tryAgain" type="button">Try again <span aria-hidden="true">↻</span></button>
+          <button class="secondary-button" id="showReview" type="button">See what to practice</button>
+        </div>
+
+        <div class="review-panel" id="reviewPanel" hidden>
+          <h2>Things worth practicing</h2>
+          <div id="reviewList"></div>
+        </div>
+
+        <p class="result-footnote">This is a learning tool, not a guarantee of safety. Younger children should still have age-appropriate adult supervision, family rules, and device protections.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
