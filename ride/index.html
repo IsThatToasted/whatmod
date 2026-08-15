@@ -43,7 +43,16 @@
     </section>
 
     <section id="viewerView" class="hidden">
-      <section class="hero-grid">
+      <div class="viewer-toolbar">
+        <div class="view-modes" role="group" aria-label="Viewer layout">
+          <button data-view-mode="split" class="view-mode active">Split</button>
+          <button data-view-mode="video" class="view-mode">Video</button>
+          <button data-view-mode="map" class="view-mode">Map</button>
+        </div>
+        <div id="streamHealth" class="stream-health">CONNECTING</div>
+      </div>
+
+      <section id="heroGrid" class="hero-grid">
         <div class="video-card">
           <video id="video" autoplay playsinline></video>
           <audio id="audio" autoplay></audio>
@@ -69,6 +78,18 @@
         <article class="metric"><span>ALTITUDE</span><strong id="altitude">0</strong><small>FT</small></article>
         <article class="metric"><span>PHONE</span><strong id="battery">—</strong><small>%</small></article>
         <article class="metric"><span>RIDE TIME</span><strong id="elapsed">00:00</strong></article>
+        <article class="metric"><span>AVG SPEED</span><strong id="averageSpeed">0.0</strong><small>MPH</small></article>
+        <article class="metric"><span>MAX SPEED</span><strong id="maxSpeed">0.0</strong><small>MPH</small></article>
+        <article class="metric"><span>MOVING</span><strong id="movingTime">00:00</strong></article>
+        <article class="metric"><span>GPS QUALITY</span><strong id="gpsQuality">—</strong></article>
+      </section>
+
+      <section class="viewer-interactions">
+        <button class="reaction-button" data-emoji="👋" data-label="Viewer waved">👋 <span>Wave</span></button>
+        <button class="reaction-button" data-emoji="❤️" data-label="Viewer loved this">❤️ <span>Love it</span></button>
+        <button class="reaction-button" data-emoji="🔥" data-label="Viewer says this is awesome">🔥 <span>Awesome</span></button>
+        <button id="saveMoment" class="reaction-button moment-button">📸 <span>Save Moment</span></button>
+        <span id="reactionStatus" class="reaction-status"></span>
       </section>
 
       <section class="statusbar">

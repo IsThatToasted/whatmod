@@ -311,6 +311,66 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "send-event" && req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      const slug = String(body?.ride || "");
+      const eventType = body?.event_type === "moment" ? "moment" : "reaction";
+      const emoji = body?.emoji ? String(body.emoji).slice(0, 16) : null;
+      const label = body?.label ? String(body.label).slice(0, 80) : null;
+
+      if (!slug) return json({ error: "Missing ride" }, 400);
+
+      const { data: ride, error: rideError } = await supabase
+        .from("rides")
+        .select("id")
+        .eq("share_slug", slug)
+        .eq("status", "live")
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+
+      if (rideError) throw rideError;
+      if (!ride) return json({ error: "Ride is offline" }, 404);
+
+      const { data: event, error } = await supabase
+        .from("ride_events")
+        .insert({
+          ride_id: ride.id,
+          event_type: eventType,
+          emoji,
+          label,
+        })
+        .select("id, event_type, emoji, label, created_at")
+        .single();
+
+      if (error) throw error;
+      return json({ ok: true, event });
+    }
+
+    if (action === "rider-events" && req.method === "GET") {
+      if (!riderAuthorized(req)) {
+        return json({ error: "Unauthorized rider" }, 401);
+      }
+
+      const rideID = url.searchParams.get("ride_id");
+      const after = url.searchParams.get("after");
+
+      if (!rideID) return json({ error: "Missing ride_id" }, 400);
+
+      let query = supabase
+        .from("ride_events")
+        .select("id, event_type, emoji, label, created_at")
+        .eq("ride_id", rideID)
+        .order("created_at", { ascending: true })
+        .limit(20);
+
+      if (after) query = query.gt("created_at", after);
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return json({ events: data ?? [] });
+    }
+
     if (action === "telemetry" && req.method === "POST") {
       if (!riderAuthorized(req)) {
         return json({ error: "Unauthorized rider" }, 401);
@@ -337,12 +397,18 @@ Deno.serve(async (req) => {
           latitude: body.latitude,
           longitude: body.longitude,
           speed_mph: body.speed_mph ?? 0,
+          average_speed_mph: body.average_speed_mph ?? 0,
+          max_speed_mph: body.max_speed_mph ?? 0,
           heading: body.heading ?? 0,
           altitude_ft: body.altitude_ft ?? 0,
           horizontal_accuracy_m: body.horizontal_accuracy_m,
+          speed_accuracy_mps: body.speed_accuracy_mps,
+          course_accuracy_degrees: body.course_accuracy_degrees,
+          gps_quality: body.gps_quality,
           distance_miles: body.distance_miles ?? 0,
           phone_battery: body.phone_battery,
           elapsed_seconds: body.elapsed_seconds ?? 0,
+          moving_seconds: body.moving_seconds ?? 0,
           captured_at: body.captured_at ?? new Date().toISOString(),
         });
 
@@ -373,7 +439,7 @@ Deno.serve(async (req) => {
     return json(
       {
         error: "Unknown action",
-        supported_actions: ["health", "create", "list-live", "viewer-token", "viewer-heartbeat", "usage-summary", "telemetry", "end"],
+        supported_actions: ["health", "create", "list-live", "viewer-token", "viewer-heartbeat", "usage-summary", "send-event", "rider-events", "telemetry", "end"],
       },
       404,
     );

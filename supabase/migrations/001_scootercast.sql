@@ -102,3 +102,30 @@ create index if not exists viewer_sessions_month_idx
 alter table public.viewer_sessions enable row level security;
 
 -- Viewer session writes/reads are performed only through ride-api using service role.
+
+
+-- V2.0 motion-quality telemetry additions.
+alter table public.ride_telemetry
+  add column if not exists average_speed_mph double precision not null default 0,
+  add column if not exists max_speed_mph double precision not null default 0,
+  add column if not exists speed_accuracy_mps double precision,
+  add column if not exists course_accuracy_degrees double precision,
+  add column if not exists gps_quality text,
+  add column if not exists moving_seconds integer not null default 0;
+
+-- V2.0 viewer interactions and Save Moment.
+create table if not exists public.ride_events (
+  id uuid primary key default gen_random_uuid(),
+  ride_id uuid not null references public.rides(id) on delete cascade,
+  event_type text not null check (event_type in ('reaction', 'moment')),
+  emoji text,
+  label text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists ride_events_ride_time_idx
+  on public.ride_events (ride_id, created_at desc);
+
+alter table public.ride_events enable row level security;
+
+-- Event access goes through ride-api using its service-role client.

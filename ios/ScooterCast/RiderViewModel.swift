@@ -9,6 +9,7 @@ final class RiderViewModel: ObservableObject {
     @Published var isBusy = false
     @Published var elapsedSeconds = 0
     @Published var isDiscoverable: Bool
+    @Published var latestViewerEvent: ViewerEvent?
 
     let location = LocationService()
     let stream = LiveStreamManager()
@@ -16,6 +17,8 @@ final class RiderViewModel: ObservableObject {
 
     private let api = RideAPI()
     private var telemetryTask: Task<Void, Never>?
+    private var eventTask: Task<Void, Never>?
+    private var lastEventTimestamp: String?
     private var startedAt: Date?
 
     init() {
@@ -59,6 +62,7 @@ final class RiderViewModel: ObservableObject {
 
             statusMessage = "Live"
             beginTelemetryLoop()
+            beginViewerEventLoop()
         } catch {
             statusMessage = error.localizedDescription
             if let id = session?.id {
@@ -80,6 +84,8 @@ final class RiderViewModel: ObservableObject {
         isBusy = true
         telemetryTask?.cancel()
         telemetryTask = nil
+        eventTask?.cancel()
+        eventTask = nil
 
         await stream.stop()
         location.stop()
@@ -125,12 +131,18 @@ final class RiderViewModel: ObservableObject {
             latitude: current.coordinate.latitude,
             longitude: current.coordinate.longitude,
             speedMph: location.speedMph,
+            averageSpeedMph: location.averageSpeedMph,
+            maxSpeedMph: location.maxSpeedMph,
             heading: location.heading,
             altitudeFt: location.altitudeFt,
             horizontalAccuracyM: location.gpsAccuracy,
+            speedAccuracyMps: location.speedAccuracyMps,
+            courseAccuracyDegrees: location.courseAccuracyDegrees,
+            gpsQuality: location.gpsQuality,
             distanceMiles: location.distanceMiles,
             phoneBattery: location.batteryLevel,
             elapsedSeconds: elapsedSeconds,
+            movingSeconds: location.movingSeconds,
             capturedAt: formatter.string(from: Date())
         )
 

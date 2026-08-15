@@ -9,16 +9,19 @@ final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocat
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var diagnosticStatus: String = "Location idle"
 
+    @Published var smoothedSpeedMph: Double = 0
+    @Published var averageSpeedMph: Double = 0
+    @Published var maxSpeedMph: Double = 0
+    @Published var movingSeconds: Int = 0
+    @Published var gpsQuality: String = "—"
+
     private let manager = CLLocationManager()
-    private var lastDistanceLocation: CLLocation?
+    private let motionEngine = MotionEngine()
     private var isRideActive = false
 
     override init() {
         super.init()
 
-        // Keep startup deliberately conservative. Background location is not
-        // enabled here because doing so before the app is fully configured can
-        // terminate the process with a CoreLocation Objective-C exception.
         manager.delegate = self
         manager.activityType = .fitness
         manager.desiredAccuracy = kCLLocationAccuracyBest
@@ -35,15 +38,17 @@ final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocat
 
     func start() {
         distanceMeters = 0
-        lastDistanceLocation = nil
+        smoothedSpeedMph = 0
+        averageSpeedMph = 0
+        maxSpeedMph = 0
+        movingSeconds = 0
+        gpsQuality = "Acquiring"
+        motionEngine.reset()
         isRideActive = true
 
         manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         manager.distanceFilter = 2
         manager.pausesLocationUpdatesAutomatically = false
-
-        // The explicit Info.plist declares the 'location' background mode.
-        // Only enable this while an actual ride is active.
         manager.allowsBackgroundLocationUpdates = true
         manager.showsBackgroundLocationIndicator = true
 
@@ -60,12 +65,10 @@ final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocat
         manager.stopUpdatingLocation()
         manager.stopUpdatingHeading()
 
-        // Return to foreground-safe defaults after the ride.
         manager.allowsBackgroundLocationUpdates = false
         manager.showsBackgroundLocationIndicator = false
         manager.pausesLocationUpdatesAutomatically = true
 
-        lastDistanceLocation = nil
         diagnosticStatus = "Location stopped"
     }
 
@@ -79,24 +82,23 @@ final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocat
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard isRideActive, let newest = locations.last else { return }
+        guard isRideActive else { return }
 
-        if newest.horizontalAccuracy >= 0, newest.horizontalAccuracy <= 50 {
-            if let previous = lastDistanceLocation {
-                let segment = newest.distance(from: previous)
-                if segment > 0, segment < 200 {
-                    distanceMeters += segment
-                }
-            }
-            lastDistanceLocation = newest
+        for candidate in locations {
+            guard let snapshot = motionEngine.process(candidate) else { continue }
+
+            location = snapshot.location
+            distanceMeters = snapshot.distanceMeters
+            smoothedSpeedMph = snapshot.speedMph
+            averageSpeedMph = snapshot.averageSpeedMph
+            maxSpeedMph = snapshot.maxSpeedMph
+            movingSeconds = snapshot.movingSeconds
+            gpsQuality = snapshot.gpsQuality
         }
-
-        location = newest
     }
 
     var speedMph: Double {
-        guard let location, location.speed >= 0 else { return 0 }
-        return location.speed * 2.2369362921
+        smoothedSpeedMph
     }
 
     var altitudeFt: Double {
@@ -115,6 +117,16 @@ final class LocationService: NSObject, ObservableObject, @preconcurrency CLLocat
 
     var gpsAccuracy: Double {
         location?.horizontalAccuracy ?? -1
+    }
+
+    var speedAccuracyMps: Double {
+        guard let location, location.speedAccuracy >= 0 else { return -1 }
+        return location.speedAccuracy
+    }
+
+    var courseAccuracyDegrees: Double {
+        guard let location, location.courseAccuracy >= 0 else { return -1 }
+        return location.courseAccuracy
     }
 
     var batteryLevel: Double {

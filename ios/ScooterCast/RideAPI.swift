@@ -110,6 +110,34 @@ struct RideAPI {
         try validate(response: response, data: data)
     }
 
+    func fetchViewerEvents(rideID: UUID, after: String?) async throws -> [ViewerEvent] {
+        guard !AppConfig.riderAdminKey.isEmpty else { return [] }
+        guard let apiURL = AppConfig.rideAPIURL else {
+            throw RideAPIError.server("Ride API URL is invalid.")
+        }
+
+        var items = [
+            URLQueryItem(name: "action", value: "rider-events"),
+            URLQueryItem(name: "ride_id", value: rideID.uuidString)
+        ]
+        if let after, !after.isEmpty {
+            items.append(URLQueryItem(name: "after", value: after))
+        }
+
+        var request = URLRequest(url: apiURL.appending(queryItems: items))
+        request.httpMethod = "GET"
+        request.setValue(AppConfig.riderAdminKey, forHTTPHeaderField: "x-rider-key")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response: response, data: data)
+
+        struct EventEnvelope: Decodable {
+            let events: [ViewerEvent]
+        }
+
+        return try decoder.decode(EventEnvelope.self, from: data).events
+    }
+
     private func validate(response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else {
             throw RideAPIError.badResponse

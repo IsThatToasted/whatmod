@@ -14,6 +14,9 @@ const els = {
   videoMessage: el("videoMessage"), rideTitle: el("rideTitle"), networkLabel: el("networkLabel"),
   speed: el("speed"), distance: el("distance"), heading: el("heading"), altitude: el("altitude"),
   battery: el("battery"), elapsed: el("elapsed"), gpsStatus: el("gpsStatus"), lastUpdate: el("lastUpdate"),
+  averageSpeed: el("averageSpeed"), maxSpeed: el("maxSpeed"), movingTime: el("movingTime"),
+  gpsQuality: el("gpsQuality"), streamHealth: el("streamHealth"), heroGrid: el("heroGrid"),
+  saveMoment: el("saveMoment"), reactionStatus: el("reactionStatus"),
 };
 
 function fail(message) {
@@ -147,9 +150,29 @@ function applyTelemetry(t) {
   els.altitude.textContent = Math.round(Number(t.altitude_ft || 0));
   els.battery.textContent = t.phone_battery == null ? "—" : Math.round(Number(t.phone_battery) * 100);
   els.elapsed.textContent = fmtTime(t.elapsed_seconds);
+  if (els.averageSpeed) els.averageSpeed.textContent = Number(t.average_speed_mph || 0).toFixed(1);
+  if (els.maxSpeed) els.maxSpeed.textContent = Number(t.max_speed_mph || 0).toFixed(1);
+  if (els.movingTime) els.movingTime.textContent = fmtTime(t.moving_seconds || 0);
+  if (els.gpsQuality) els.gpsQuality.textContent = String(t.gps_quality || "—").toUpperCase();
+
   const accuracy = Number(t.horizontal_accuracy_m || 0);
   els.gpsStatus.textContent = `GPS ● ±${Math.round(accuracy)}m`;
   els.lastUpdate.textContent = `Updated ${new Date(t.captured_at).toLocaleTimeString()}`;
+
+  if (els.streamHealth) {
+    const ageSeconds = Math.max(0, (Date.now() - new Date(t.captured_at).getTime()) / 1000);
+    els.streamHealth.className = "stream-health";
+    if (ageSeconds < 6) {
+      els.streamHealth.textContent = "● STREAM HEALTH GOOD";
+      els.streamHealth.classList.add("good");
+    } else if (ageSeconds < 15) {
+      els.streamHealth.textContent = "● TELEMETRY DELAYED";
+      els.streamHealth.classList.add("warn");
+    } else {
+      els.streamHealth.textContent = "● CONNECTION WEAK";
+      els.streamHealth.classList.add("bad");
+    }
+  }
 
   const point = [Number(t.longitude), Number(t.latitude)];
   if (!Number.isFinite(point[0]) || !Number.isFinite(point[1])) return;
@@ -274,5 +297,70 @@ async function startViewer() {
     fail(err.message || String(err));
   }
 }
+
+
+async function sendViewerEvent(eventType, emoji, label) {
+  if (!shareSlug) return;
+
+  if (els.reactionStatus) els.reactionStatus.textContent = "Sending…";
+
+  try {
+    const response = await fetch(`${cfg.rideApiUrl}?action=send-event`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ride: shareSlug,
+        event_type: eventType,
+        emoji,
+        label,
+      }),
+    });
+
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Could not send");
+
+    if (els.reactionStatus) {
+      els.reactionStatus.textContent =
+        eventType === "moment" ? "Moment saved ✓" : "Sent ✓";
+      setTimeout(() => { els.reactionStatus.textContent = ""; }, 1800);
+    }
+  } catch (err) {
+    if (els.reactionStatus) els.reactionStatus.textContent = err.message || "Could not send";
+  }
+}
+
+document.querySelectorAll(".reaction-button[data-emoji]").forEach(button => {
+  button.addEventListener("click", () => {
+    sendViewerEvent(
+      "reaction",
+      button.dataset.emoji || "👋",
+      button.dataset.label || "Viewer reaction"
+    );
+  });
+});
+
+if (els.saveMoment) {
+  els.saveMoment.addEventListener("click", () => {
+    sendViewerEvent("moment", "📸", "Viewer saved this moment");
+  });
+}
+
+document.querySelectorAll(".view-mode").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".view-mode").forEach(b => b.classList.remove("active"));
+    button.classList.add("active");
+
+    if (!els.heroGrid) return;
+    els.heroGrid.classList.remove("video-only", "map-only");
+
+    const mode = button.dataset.viewMode;
+    if (mode === "video") els.heroGrid.classList.add("video-only");
+    if (mode === "map") {
+      els.heroGrid.classList.add("map-only");
+      setTimeout(() => map?.resize(), 50);
+    }
+    if (mode === "split") setTimeout(() => map?.resize(), 50);
+  });
+});
 
 shareSlug ? startViewer() : startExplorer();

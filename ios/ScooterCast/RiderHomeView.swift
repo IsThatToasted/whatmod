@@ -21,6 +21,10 @@ struct RiderHomeView: View {
 
                         if vm.session != nil {
                             streamControls
+
+                            if let event = vm.latestViewerEvent {
+                                viewerEventBanner(event)
+                            }
                         }
 
                         liveCard
@@ -249,6 +253,10 @@ struct RiderHomeView: View {
             metric("BATTERY", String(format: "%.0f", vm.location.batteryLevel * 100), "%", "battery.75percent")
             metric("HEADING", String(format: "%.0f", vm.location.heading), "°", "location.north.fill")
             metric("TIME", formattedTime(vm.elapsedSeconds), "", "timer")
+            metric("AVG SPEED", String(format: "%.1f", vm.location.averageSpeedMph), "MPH", "gauge.with.dots.needle.33percent")
+            metric("MAX SPEED", String(format: "%.1f", vm.location.maxSpeedMph), "MPH", "gauge.with.dots.needle.67percent")
+            metric("MOVING", formattedTime(vm.location.movingSeconds), "", "figure.outdoor.cycle")
+            metric("GPS", vm.location.gpsQuality.uppercased(), "", "location.fill")
         }
     }
 
