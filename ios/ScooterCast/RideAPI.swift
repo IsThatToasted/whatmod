@@ -111,8 +111,8 @@ struct RideAPI {
     }
 
 
-    func startRecording(_ rideID: UUID) async throws {
-        guard !AppConfig.riderAdminKey.isEmpty else { return }
+    func startRecording(_ rideID: UUID) async throws -> Bool {
+        guard !AppConfig.riderAdminKey.isEmpty else { return false }
         guard let apiURL = AppConfig.rideAPIURL else {
             throw RideAPIError.server("Ride API URL is invalid.")
         }
@@ -132,10 +132,11 @@ struct RideAPI {
         // Recording is an enhancement. A missing recording configuration must
         // never prevent the live ride from operating.
         if let http = response as? HTTPURLResponse, http.statusCode == 503 {
-            return
+            return false
         }
 
         try validate(response: response, data: data)
+        return true
     }
 
     func stopRecording(_ rideID: UUID) async throws {

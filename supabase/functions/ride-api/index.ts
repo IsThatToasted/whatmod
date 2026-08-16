@@ -80,6 +80,50 @@ function egressClient(): EgressClient {
   );
 }
 
+
+async function reconcileRecordingStatus(
+  supabase: ReturnType<typeof createClient>,
+  ride: {
+    id: string;
+    recording_status?: string | null;
+    recording_bucket?: string | null;
+    recording_path?: string | null;
+  },
+): Promise<string | null | undefined> {
+  if (
+    !ride.recording_bucket ||
+    !ride.recording_path ||
+    !["recording", "finalizing", "ready"].includes(ride.recording_status || "")
+  ) {
+    return ride.recording_status;
+  }
+
+  const slash = ride.recording_path.lastIndexOf("/");
+  const folder = slash >= 0 ? ride.recording_path.slice(0, slash) : "";
+  const filename = slash >= 0
+    ? ride.recording_path.slice(slash + 1)
+    : ride.recording_path;
+
+  const { data: objects, error } = await supabase.storage
+    .from(ride.recording_bucket)
+    .list(folder, { search: filename, limit: 10 });
+
+  if (!error && (objects ?? []).some((object) => object.name === filename)) {
+    if (ride.recording_status !== "ready") {
+      await supabase
+        .from("rides")
+        .update({
+          recording_status: "ready",
+          recording_error: null,
+        })
+        .eq("id", ride.id);
+    }
+    return "ready";
+  }
+
+  return ride.recording_status;
+}
+
 async function createLiveKitToken(opts: {
   identity: string;
   room: string;
@@ -360,6 +404,57 @@ Deno.serve(async (req) => {
 
 
 
+
+    if (action === "ride-status" && req.method === "GET") {
+      const slug = url.searchParams.get("ride");
+
+      if (!slug) {
+        return json({ error: "Missing ride" }, 400);
+      }
+
+      const { data: ride, error } = await supabase
+        .from("rides")
+        .select("id, status, ended_at, recording_status, recording_error")
+        .eq("share_slug", slug)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!ride) return json({ error: "Ride not found" }, 404);
+
+      let videoReady = false;
+
+      if (
+        ride.recording_status === "ready"
+      ) {
+        const { data: fullRide } = await supabase
+          .from("rides")
+          .select("recording_bucket, recording_path")
+          .eq("id", ride.id)
+          .single();
+
+        if (fullRide?.recording_bucket && fullRide?.recording_path) {
+          // Test existence by listing the exact parent folder and matching filename.
+          const slash = fullRide.recording_path.lastIndexOf("/");
+          const folder = slash >= 0 ? fullRide.recording_path.slice(0, slash) : "";
+          const filename = slash >= 0 ? fullRide.recording_path.slice(slash + 1) : fullRide.recording_path;
+
+          const { data: objects } = await supabase.storage
+            .from(fullRide.recording_bucket)
+            .list(folder, { search: filename, limit: 10 });
+
+          videoReady = Boolean((objects ?? []).some((object) => object.name === filename));
+        }
+      }
+
+      return json({
+        status: ride.status,
+        ended_at: ride.ended_at,
+        recording_status: ride.recording_status,
+        recording_error: ride.recording_error,
+        video_ready: videoReady,
+      });
+    }
+
     if (action === "start-recording" && req.method === "POST") {
       if (!riderAuthorized(req)) {
         return json({ error: "Unauthorized rider" }, 401);
@@ -416,7 +511,7 @@ Deno.serve(async (req) => {
         const info = await egressClient().startParticipantEgress(
           ride.room_name,
           `rider_${ride.id}`,
-          output,
+          { file: output },
         );
 
         const { error: updateError } = await supabase
@@ -474,12 +569,22 @@ Deno.serve(async (req) => {
       }
 
       try {
+        await supabase
+          .from("rides")
+          .update({
+            recording_status: "finalizing",
+            recording_error: null,
+          })
+          .eq("id", ride.id);
+
         const info = await egressClient().stopEgress(ride.recording_egress_id);
+
+        const nextStatus = info.error ? "error" : "finalizing";
 
         await supabase
           .from("rides")
           .update({
-            recording_status: info.error ? "error" : "ready",
+            recording_status: nextStatus,
             recording_ended_at: new Date().toISOString(),
             recording_error: info.error || null,
           })
@@ -488,7 +593,7 @@ Deno.serve(async (req) => {
         return json({
           ok: true,
           recording: false,
-          status: info.error ? "error" : "ready",
+          status: nextStatus,
         });
       } catch (error) {
         await supabase
@@ -652,8 +757,13 @@ Deno.serve(async (req) => {
 
       let recordingUrl: string | null = null;
 
+      const reconciledRecordingStatus = await reconcileRecordingStatus(
+        supabase,
+        ride,
+      );
+
       if (
-        ride.recording_status === "ready" &&
+        reconciledRecordingStatus === "ready" &&
         ride.recording_bucket &&
         ride.recording_path
       ) {
@@ -667,7 +777,10 @@ Deno.serve(async (req) => {
       }
 
       return json({
-        ride,
+        ride: {
+          ...ride,
+          recording_status: reconciledRecordingStatus,
+        },
         telemetry: telemetry ?? [],
         events: events ?? [],
         recording_url: recordingUrl,
@@ -802,7 +915,7 @@ Deno.serve(async (req) => {
     return json(
       {
         error: "Unknown action",
-        supported_actions: ["health", "create", "list-live", "list-replays", "replay", "viewer-token", "viewer-heartbeat", "usage-summary", "send-event", "rider-events", "start-recording", "stop-recording", "admin-login", "admin-list-replays", "admin-delete-replay", "telemetry", "end"],
+        supported_actions: ["health", "create", "list-live", "list-replays", "replay", "viewer-token", "viewer-heartbeat", "usage-summary", "send-event", "rider-events", "ride-status", "start-recording", "stop-recording", "admin-login", "admin-list-replays", "admin-delete-replay", "telemetry", "end"],
       },
       404,
     );

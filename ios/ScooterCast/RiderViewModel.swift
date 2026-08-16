@@ -64,8 +64,8 @@ final class RiderViewModel: ObservableObject {
 
             recordingStatus = "Starting…"
             do {
-                try await api.startRecording(newSession.id)
-                recordingStatus = "Recording"
+                let didStartRecording = try await api.startRecording(newSession.id)
+                recordingStatus = didStartRecording ? "Recording" : "Unavailable"
             } catch {
                 recordingStatus = "Unavailable"
             }

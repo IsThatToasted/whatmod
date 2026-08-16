@@ -173,6 +173,9 @@ const supabase = createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 let rideId, room, map, marker;
 let viewerSessionId = null;
 let heartbeatTimer = null;
+let rideStatusTimer = null;
+let transitioningToReplay = false;
+let replayRefreshTimer = null;
 let route = [];
 let routeReady = false;
 let replayMap = null;
@@ -482,7 +485,7 @@ function startReplayPlayback() {
   }, 250);
 }
 
-async function startReplay(slug) {
+async function startReplay(slug, fromLiveTransition = false) {
   els.viewerView.classList.add("hidden");
   els.explorerView.classList.add("hidden");
   els.replayView.classList.remove("hidden");
@@ -496,6 +499,11 @@ async function startReplay(slug) {
 
     replayTelemetry = body.telemetry || [];
     replayEvents = body.events || [];
+
+    if (replayRefreshTimer) {
+      clearInterval(replayRefreshTimer);
+      replayRefreshTimer = null;
+    }
 
     if (body.recording_url && els.replayVideo) {
       els.replayVideo.src = body.recording_url;
@@ -523,7 +531,53 @@ async function startReplay(slug) {
         els.replayVideo.removeAttribute("src");
         els.replayVideo.load();
       }
-      els.noReplayVideo?.classList.remove("hidden");
+
+      const recordingStatus = body.ride?.recording_status || "none";
+      const recordingError = body.ride?.recording_error || "";
+
+      if (els.noReplayVideo) {
+        els.noReplayVideo.classList.remove("hidden");
+
+        const heading = els.noReplayVideo.querySelector("h2");
+        const paragraph = els.noReplayVideo.querySelector("p");
+
+        if (["recording", "finalizing"].includes(recordingStatus)) {
+          if (heading) heading.textContent = "Finalizing video…";
+          if (paragraph) paragraph.textContent =
+            "The ride has ended. LiveKit is finishing and uploading the MP4.";
+
+          replayRefreshTimer = setInterval(async () => {
+            try {
+              const statusResponse = await fetch(
+                `${cfg.rideApiUrl}?action=ride-status&ride=${encodeURIComponent(slug)}`,
+                { cache: "no-store" }
+              );
+              if (!statusResponse.ok) return;
+              const state = await statusResponse.json();
+
+              if (state.video_ready || state.recording_status === "ready") {
+                clearInterval(replayRefreshTimer);
+                replayRefreshTimer = null;
+                await startReplay(slug, false);
+              } else if (state.recording_status === "error") {
+                clearInterval(replayRefreshTimer);
+                replayRefreshTimer = null;
+                if (heading) heading.textContent = "Video recording failed";
+                if (paragraph) paragraph.textContent =
+                  state.recording_error || "The telemetry/map replay is still available.";
+              }
+            } catch (_) {}
+          }, 4000);
+        } else if (recordingStatus === "error") {
+          if (heading) heading.textContent = "Video recording failed";
+          if (paragraph) paragraph.textContent =
+            recordingError || "The telemetry/map replay is still available.";
+        } else {
+          if (heading) heading.textContent = "No video recording";
+          if (paragraph) paragraph.textContent =
+            "This ride still has its full telemetry and map replay.";
+        }
+      }
     }
 
     if (!replayTelemetry.length) {
@@ -601,6 +655,63 @@ async function startReplay(slug) {
   }
 }
 
+
+function stopLiveViewerTimers() {
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = null;
+
+  if (rideStatusTimer) clearInterval(rideStatusTimer);
+  rideStatusTimer = null;
+}
+
+async function transitionLiveToReplay() {
+  if (transitioningToReplay || !shareSlug) return;
+  transitioningToReplay = true;
+
+  stopLiveViewerTimers();
+
+  try {
+    if (room) {
+      await room.disconnect();
+      room = null;
+    }
+  } catch (_) {}
+
+  try {
+    if (map) {
+      map.remove();
+      map = null;
+    }
+  } catch (_) {}
+
+  els.viewerView.classList.add("hidden");
+  await startReplay(shareSlug, true);
+}
+
+function startRideStatusWatch() {
+  if (!shareSlug || rideStatusTimer) return;
+
+  const check = async () => {
+    try {
+      const response = await fetch(
+        `${cfg.rideApiUrl}?action=ride-status&ride=${encodeURIComponent(shareSlug)}`,
+        { cache: "no-store" }
+      );
+
+      if (!response.ok) return;
+      const status = await response.json();
+
+      if (status.status === "ended") {
+        await transitionLiveToReplay();
+      }
+    } catch (_) {
+      // A temporary status-poll failure must not interrupt the live media.
+    }
+  };
+
+  rideStatusTimer = setInterval(check, 4000);
+}
+
 async function startViewer() {
   els.viewerView.classList.remove("hidden");
   els.explorerView.classList.add("hidden");
@@ -647,6 +758,7 @@ async function startViewer() {
     }
 
     await Promise.all([subscribeTelemetry(), connectLiveKit(info)]);
+    startRideStatusWatch();
   } catch (err) {
     fail(err.message || String(err));
   }
