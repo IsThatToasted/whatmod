@@ -10,9 +10,13 @@ const els = {
   minuteRemaining: $("minuteRemaining"), minuteLimitText: $("minuteLimitText"),
   egressGB: $("egressGB"), egressBar: $("egressBar"), egressPct: $("egressPct"),
   egressLimitText: $("egressLimitText"), riderMinutes: $("riderMinutes"), viewerMinutes: $("viewerMinutes"),
-  ridesStarted: $("ridesStarted"), viewerSessions: $("viewerSessions"), bitrate: $("bitrate"),
+  ridesStarted: $("ridesStarted"), viewerSessions: $("viewerSessions"),
+  recordingMinutes: $("recordingMinutes"), readyRecordings: $("readyRecordings"),
+  recordingErrors: $("recordingErrors"), coverageNote: $("coverageNote"),
+  bitrate: $("bitrate"),
   minuteLimit: $("minuteLimit"), egressLimit: $("egressLimit"), threeHourOne: $("threeHourOne"),
-  threeHourFive: $("threeHourFive"), fiveHourOne: $("fiveHourOne"), period: $("period"),
+  threeHourFive: $("threeHourFive"), fiveHourOne: $("fiveHourOne"),
+  recordingStorageEstimate: $("recordingStorageEstimate"), period: $("period"),
 };
 
 function gbForViewerMinutes(minutes, mbps) {
@@ -48,6 +52,22 @@ function render() {
   els.viewerMinutes.textContent = viewer.toFixed(0);
   els.ridesStarted.textContent = summary.rides_started ?? 0;
   els.viewerSessions.textContent = summary.viewer_sessions ?? 0;
+  if (els.recordingMinutes) {
+    els.recordingMinutes.textContent = Number(summary.recording_minutes || 0).toFixed(0);
+  }
+  if (els.readyRecordings) {
+    els.readyRecordings.textContent = summary.ready_recordings ?? 0;
+  }
+  if (els.recordingErrors) {
+    els.recordingErrors.textContent = summary.recording_errors ?? 0;
+  }
+
+  if (els.coverageNote) {
+    const start = new Date(summary.period_start).toLocaleString();
+    const asOf = new Date(summary.as_of).toLocaleString();
+    els.coverageNote.textContent =
+      `Usage shown from ${start} through ${asOf}. Rider minutes come from all rides overlapping this period; viewer minutes come from viewer-session heartbeats. Recorded-video time is tracked separately and is not added to WebRTC participant minutes.`;
+  }
 
   const minutePct = Math.min(100, participant / minuteLimit * 100);
   els.minuteBar.style.width = `${minutePct}%`;
@@ -64,6 +84,15 @@ function render() {
   els.threeHourOne.textContent = projection(3, 1, bitrate);
   els.threeHourFive.textContent = projection(3, 5, bitrate);
   els.fiveHourOne.textContent = projection(5, 1, bitrate);
+
+  if (els.recordingStorageEstimate) {
+    const recordingGB = gbForViewerMinutes(
+      Number(summary.recording_minutes || 0),
+      bitrate
+    );
+    els.recordingStorageEstimate.textContent =
+      `${recordingGB.toFixed(2)} GB @ ${bitrate.toFixed(1)} Mbps`;
+  }
 
   els.period.textContent =
     `${new Date(summary.period_start).toLocaleDateString()} – ${new Date(summary.as_of).toLocaleDateString()}`;

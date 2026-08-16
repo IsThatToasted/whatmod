@@ -72,6 +72,23 @@
         <div class="label">VIEWER SESSIONS</div>
         <div class="big"><span id="viewerSessions">0</span></div>
       </article>
+
+      <article class="card">
+        <div class="label">RECORDING TIME</div>
+        <div class="big"><span id="recordingMinutes">0</span><small> min</small></div>
+        <p>Actual recorded rider-video duration this month.</p>
+      </article>
+
+      <article class="card">
+        <div class="label">READY RECORDINGS</div>
+        <div class="big"><span id="readyRecordings">0</span></div>
+        <p><span id="recordingErrors">0</span> recording errors this month.</p>
+      </article>
+    </section>
+
+    <section class="coverage card">
+      <div class="label">DATA COVERAGE</div>
+      <p id="coverageNote">Loading usage coverage…</p>
     </section>
 
     <section class="calculator card">
@@ -119,6 +136,10 @@
         <div>
           <span>5-hour ride · 1 viewer</span>
           <strong id="fiveHourOne">—</strong>
+        </div>
+        <div>
+          <span>Current recorded-video estimate</span>
+          <strong id="recordingStorageEstimate">—</strong>
         </div>
       </div>
     </section>
