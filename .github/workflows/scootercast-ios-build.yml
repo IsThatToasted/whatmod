@@ -98,6 +98,18 @@ jobs:
             exit 1
           }
 
+      - name: Stabilization source integrity check
+        run: |
+          grep -q 'enum StabilizationPreference' StreamSettings.swift || {
+            echo "::error::StabilizationPreference is missing."
+            exit 1
+          }
+
+          grep -q 'captureSession' LiveStreamManager.swift || {
+            echo "::error::LiveKit CameraCapturer stabilization integration is missing."
+            exit 1
+          }
+
       - name: Generate Xcode project
         run: |
           xcodegen generate --spec project.yml
