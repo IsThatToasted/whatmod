@@ -10,6 +10,7 @@ final class RiderViewModel: ObservableObject {
     @Published var elapsedSeconds = 0
     @Published var isDiscoverable: Bool
     @Published var latestViewerEvent: ViewerEvent?
+    @Published var recordingStatus = "Off"
 
     let location = LocationService()
     let stream = LiveStreamManager()
@@ -61,6 +62,14 @@ final class RiderViewModel: ObservableObject {
                 microphoneEnabled: settings.startWithMicrophone
             )
 
+            recordingStatus = "Starting…"
+            do {
+                try await api.startRecording(newSession.id)
+                recordingStatus = "Recording"
+            } catch {
+                recordingStatus = "Unavailable"
+            }
+
             statusMessage = "Live"
             beginTelemetryLoop()
             beginViewerEventLoop()
@@ -88,6 +97,9 @@ final class RiderViewModel: ObservableObject {
         eventTask?.cancel()
         eventTask = nil
 
+        recordingStatus = "Finalizing…"
+        try? await api.stopRecording(current.id)
+
         await stream.stop()
         location.stop()
         UIApplication.shared.isIdleTimerDisabled = false
@@ -96,6 +108,7 @@ final class RiderViewModel: ObservableObject {
         session = nil
         startedAt = nil
         elapsedSeconds = 0
+        recordingStatus = "Off"
         statusMessage = "Ride ended"
         isBusy = false
     }

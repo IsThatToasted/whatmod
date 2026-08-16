@@ -50,6 +50,16 @@ struct RiderHomeView: View {
 
             Spacer()
 
+            if vm.session != nil {
+                Text("● REC \(vm.recordingStatus.uppercased())")
+                    .font(.caption2.bold())
+                    .foregroundStyle(vm.recordingStatus == "Recording" ? .red : .secondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 7)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(Capsule())
+            }
+
             Text(vm.stream.state.rawValue)
                 .font(.caption.bold())
                 .padding(.horizontal, 12)

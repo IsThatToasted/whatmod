@@ -76,13 +76,25 @@
         <a class="refresh-button" href="./">← Ride Archive</a>
       </div>
 
-      <section class="hero-grid replay-hero">
+      <section class="replay-media-grid">
+        <div id="replayVideoCard" class="video-card replay-video-card">
+          <video id="replayVideo" controls playsinline preload="metadata"></video>
+          <div class="video-overlay top-left">RECORDED RIDE</div>
+          <div id="noReplayVideo" class="placeholder hidden">
+            <div>
+              <h2>No video recording</h2>
+              <p>This ride still has its full telemetry and map replay.</p>
+            </div>
+          </div>
+        </div>
+
         <div class="map-card replay-map-card">
           <div id="replayMap"></div>
           <div class="map-label">ROUTE REPLAY</div>
         </div>
+      </section>
 
-        <div class="replay-stats-panel">
+      <section class="replay-stats-panel replay-stats-wide">
           <article class="metric primary"><span>SPEED</span><strong id="replaySpeed">0.0</strong><small>MPH</small></article>
           <article class="metric"><span>DISTANCE</span><strong id="replayDistance">0.00</strong><small>MI</small></article>
           <article class="metric"><span>AVG SPEED</span><strong id="replayAverageSpeed">0.0</strong><small>MPH</small></article>
@@ -91,7 +103,6 @@
           <article class="metric"><span>BATTERY</span><strong id="replayBattery">—</strong><small>%</small></article>
           <article class="metric"><span>GPS</span><strong id="replayGPS">—</strong></article>
           <article class="metric"><span>MOVING</span><strong id="replayMoving">00:00</strong></article>
-        </div>
       </section>
 
       <section class="replay-controls cardlike">

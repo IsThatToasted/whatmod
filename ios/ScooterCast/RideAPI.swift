@@ -110,6 +110,54 @@ struct RideAPI {
         try validate(response: response, data: data)
     }
 
+
+    func startRecording(_ rideID: UUID) async throws {
+        guard !AppConfig.riderAdminKey.isEmpty else { return }
+        guard let apiURL = AppConfig.rideAPIURL else {
+            throw RideAPIError.server("Ride API URL is invalid.")
+        }
+
+        var request = URLRequest(
+            url: apiURL.appending(queryItems: [
+                URLQueryItem(name: "action", value: "start-recording")
+            ])
+        )
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(AppConfig.riderAdminKey, forHTTPHeaderField: "x-rider-key")
+        request.httpBody = try encoder.encode(["ride_id": rideID.uuidString])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        // Recording is an enhancement. A missing recording configuration must
+        // never prevent the live ride from operating.
+        if let http = response as? HTTPURLResponse, http.statusCode == 503 {
+            return
+        }
+
+        try validate(response: response, data: data)
+    }
+
+    func stopRecording(_ rideID: UUID) async throws {
+        guard !AppConfig.riderAdminKey.isEmpty else { return }
+        guard let apiURL = AppConfig.rideAPIURL else {
+            throw RideAPIError.server("Ride API URL is invalid.")
+        }
+
+        var request = URLRequest(
+            url: apiURL.appending(queryItems: [
+                URLQueryItem(name: "action", value: "stop-recording")
+            ])
+        )
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(AppConfig.riderAdminKey, forHTTPHeaderField: "x-rider-key")
+        request.httpBody = try encoder.encode(["ride_id": rideID.uuidString])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response: response, data: data)
+    }
+
     func fetchViewerEvents(rideID: UUID, after: String?) async throws -> [ViewerEvent] {
         guard !AppConfig.riderAdminKey.isEmpty else { return [] }
         guard let apiURL = AppConfig.rideAPIURL else {

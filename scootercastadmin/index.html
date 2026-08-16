@@ -8,6 +8,16 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+  <div id="adminGate" class="admin-gate">
+    <form id="adminLoginForm" class="login-card">
+      <div class="eyebrow">SCOOTERCAST ADMIN</div>
+      <h2>Enter admin password</h2>
+      <p>This is a lightweight password gate, not a full user account system.</p>
+      <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Password" required>
+      <button type="submit">Unlock Admin</button>
+      <div id="loginError" class="login-error"></div>
+    </form>
+  </div>
   <main class="shell">
     <header>
       <div>
@@ -111,6 +121,19 @@
           <strong id="fiveHourOne">—</strong>
         </div>
       </div>
+    </section>
+
+    <section class="card replay-admin">
+      <div class="admin-section-head">
+        <div>
+          <div class="eyebrow">REPLAY STORAGE</div>
+          <h2>Manage Replays</h2>
+          <p>Delete a replay to permanently remove its video, telemetry, reactions, moments, and ride record.</p>
+        </div>
+        <button id="refreshReplayAdmin">Refresh Replays</button>
+      </div>
+      <div id="replayAdminList" class="replay-admin-list"></div>
+      <div id="replayAdminEmpty" class="muted hidden">No completed rides.</div>
     </section>
 
     <footer>

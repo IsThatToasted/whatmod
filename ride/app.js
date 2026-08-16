@@ -29,6 +29,8 @@ const els = {
   replaySlider: el("replaySlider"), replayMarkers: el("replayMarkers"),
   replayPlayPause: el("replayPlayPause"), replayRestart: el("replayRestart"),
   replayEventsList: el("replayEventsList"),
+  replayVideo: el("replayVideo"), replayVideoCard: el("replayVideoCard"),
+  noReplayVideo: el("noReplayVideo"),
 };
 
 function fail(message) {
@@ -393,6 +395,10 @@ function replayEventSeconds(event) {
   return Math.max(0, Math.round((new Date(event.created_at).getTime() - start) / 1000));
 }
 
+function replayIndexForElapsed(seconds) {
+  return nearestReplayIndex(Math.max(0, Math.round(seconds)));
+}
+
 function nearestReplayIndex(seconds) {
   if (!replayTelemetry.length) return 0;
   let best = 0;
@@ -407,7 +413,7 @@ function nearestReplayIndex(seconds) {
   return best;
 }
 
-function renderReplayFrame(index) {
+function renderReplayFrame(index, syncVideo = true) {
   if (!replayTelemetry.length) return;
 
   replayIndex = Math.max(0, Math.min(index, replayTelemetry.length - 1));
@@ -424,6 +430,18 @@ function renderReplayFrame(index) {
   els.replayElapsed.textContent = fmtTime(t.elapsed_seconds || 0);
   els.replaySlider.value = replayIndex;
 
+  if (
+    syncVideo &&
+    els.replayVideo &&
+    els.replayVideo.src &&
+    Number.isFinite(Number(t.elapsed_seconds))
+  ) {
+    const target = Number(t.elapsed_seconds || 0);
+    if (Math.abs((els.replayVideo.currentTime || 0) - target) > 1.0) {
+      try { els.replayVideo.currentTime = target; } catch (_) {}
+    }
+  }
+
   const point = [Number(t.longitude), Number(t.latitude)];
   if (Number.isFinite(point[0]) && Number.isFinite(point[1]) && replayMap) {
     if (!replayMarker) {
@@ -438,18 +456,29 @@ function renderReplayFrame(index) {
 function stopReplayPlayback() {
   if (replayTimer) clearInterval(replayTimer);
   replayTimer = null;
+  if (els.replayVideo && !els.replayVideo.paused) {
+    els.replayVideo.pause();
+  }
   if (els.replayPlayPause) els.replayPlayPause.textContent = "▶ Play";
 }
 
 function startReplayPlayback() {
-  if (replayTimer || replayTelemetry.length < 2) return;
+  if (replayTelemetry.length < 2) return;
+
   els.replayPlayPause.textContent = "❚❚ Pause";
+
+  if (els.replayVideo?.src) {
+    els.replayVideo.play().catch(() => {});
+    return;
+  }
+
+  if (replayTimer) return;
   replayTimer = setInterval(() => {
     if (replayIndex >= replayTelemetry.length - 1) {
       stopReplayPlayback();
       return;
     }
-    renderReplayFrame(replayIndex + 1);
+    renderReplayFrame(replayIndex + 1, false);
   }, 250);
 }
 
@@ -467,6 +496,35 @@ async function startReplay(slug) {
 
     replayTelemetry = body.telemetry || [];
     replayEvents = body.events || [];
+
+    if (body.recording_url && els.replayVideo) {
+      els.replayVideo.src = body.recording_url;
+      els.replayVideoCard?.classList.remove("hidden");
+      els.noReplayVideo?.classList.add("hidden");
+
+      els.replayVideo.addEventListener("timeupdate", () => {
+        const idx = replayIndexForElapsed(els.replayVideo.currentTime || 0);
+        renderReplayFrame(idx, false);
+      });
+
+      els.replayVideo.addEventListener("play", () => {
+        els.replayPlayPause.textContent = "❚❚ Pause";
+      });
+
+      els.replayVideo.addEventListener("pause", () => {
+        if (!replayTimer) els.replayPlayPause.textContent = "▶ Play";
+      });
+
+      els.replayVideo.addEventListener("ended", () => {
+        stopReplayPlayback();
+      });
+    } else {
+      if (els.replayVideo) {
+        els.replayVideo.removeAttribute("src");
+        els.replayVideo.load();
+      }
+      els.noReplayVideo?.classList.remove("hidden");
+    }
 
     if (!replayTelemetry.length) {
       throw new Error("This ride has no telemetry to replay.");
@@ -527,7 +585,10 @@ async function startReplay(slug) {
 
     els.replayRestart.addEventListener("click", () => {
       stopReplayPlayback();
-      renderReplayFrame(0);
+      if (els.replayVideo?.src) {
+        try { els.replayVideo.currentTime = 0; } catch (_) {}
+      }
+      renderReplayFrame(0, false);
     });
 
     initReplayMap();

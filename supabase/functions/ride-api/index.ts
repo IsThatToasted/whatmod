@@ -1,9 +1,15 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { AccessToken } from "npm:livekit-server-sdk@2.17.0";
+import {
+  AccessToken,
+  EgressClient,
+  EncodedFileOutput,
+  EncodedFileType,
+  S3Upload,
+} from "npm:livekit-server-sdk@2.17.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rider-key, x-viewer-base",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-rider-key, x-viewer-base, x-admin-password",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -35,6 +41,43 @@ function riderAuthorized(req: Request): boolean {
   const expected = Deno.env.get("RIDER_ADMIN_KEY");
   const supplied = req.headers.get("x-rider-key");
   return Boolean(expected && supplied && supplied === expected);
+}
+
+
+function adminAuthorized(req: Request): boolean {
+  const expected = Deno.env.get("ADMIN_PASSWORD");
+  const supplied = req.headers.get("x-admin-password");
+  return Boolean(expected && supplied && supplied === expected);
+}
+
+function recordingConfigured(): boolean {
+  return Boolean(
+    Deno.env.get("REPLAY_S3_ACCESS_KEY") &&
+    Deno.env.get("REPLAY_S3_SECRET_KEY")
+  );
+}
+
+function liveKitHTTPURL(): string {
+  return env("LIVEKIT_URL")
+    .replace(/^wss:/, "https:")
+    .replace(/^ws:/, "http:");
+}
+
+function replayBucket(): string {
+  return Deno.env.get("REPLAY_S3_BUCKET") || "scootercast-replays";
+}
+
+function replayS3Endpoint(): string {
+  return Deno.env.get("REPLAY_S3_ENDPOINT") ||
+    "https://pcsrsfghbmvgfqwmldfi.storage.supabase.co/storage/v1/s3";
+}
+
+function egressClient(): EgressClient {
+  return new EgressClient(
+    liveKitHTTPURL(),
+    env("LIVEKIT_API_KEY"),
+    env("LIVEKIT_API_SECRET"),
+  );
 }
 
 async function createLiveKitToken(opts: {
@@ -245,6 +288,10 @@ Deno.serve(async (req) => {
     }
 
     if (action === "usage-summary" && req.method === "GET") {
+      // Admin usage is password protected in V2.3.
+      if (!adminAuthorized(req)) {
+        return json({ error: "Unauthorized" }, 401);
+      }
       const now = new Date();
       const monthStart = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0)
@@ -312,10 +359,225 @@ Deno.serve(async (req) => {
     }
 
 
+
+    if (action === "start-recording" && req.method === "POST") {
+      if (!riderAuthorized(req)) {
+        return json({ error: "Unauthorized rider" }, 401);
+      }
+
+      if (!recordingConfigured()) {
+        return json({
+          ok: false,
+          recording: false,
+          error: "Video recording storage is not configured",
+        }, 503);
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const rideID = String(body?.ride_id || "");
+
+      const { data: ride, error: rideError } = await supabase
+        .from("rides")
+        .select("id, room_name, status, recording_status")
+        .eq("id", rideID)
+        .maybeSingle();
+
+      if (rideError) throw rideError;
+      if (!ride || ride.status !== "live") {
+        return json({ error: "Ride is not active" }, 409);
+      }
+
+      if (ride.recording_status === "recording") {
+        return json({ ok: true, recording: true, already_started: true });
+      }
+
+      const bucket = replayBucket();
+      const filepath = `rides/${ride.id}/ride.mp4`;
+
+      const output = new EncodedFileOutput({
+        fileType: EncodedFileType.MP4,
+        filepath,
+        output: {
+          case: "s3",
+          value: new S3Upload({
+            accessKey: env("REPLAY_S3_ACCESS_KEY"),
+            secret: env("REPLAY_S3_SECRET_KEY"),
+            endpoint: replayS3Endpoint(),
+            bucket,
+            region: Deno.env.get("REPLAY_S3_REGION") || "",
+            forcePathStyle: true,
+            contentDisposition: "inline",
+          }),
+        },
+      });
+
+      try {
+        // Record only the rider, not browser viewers who join the room.
+        const info = await egressClient().startParticipantEgress(
+          ride.room_name,
+          `rider_${ride.id}`,
+          output,
+        );
+
+        const { error: updateError } = await supabase
+          .from("rides")
+          .update({
+            recording_status: "recording",
+            recording_egress_id: info.egressId,
+            recording_bucket: bucket,
+            recording_path: filepath,
+            recording_started_at: new Date().toISOString(),
+            recording_error: null,
+          })
+          .eq("id", ride.id);
+
+        if (updateError) throw updateError;
+
+        return json({
+          ok: true,
+          recording: true,
+          egress_id: info.egressId,
+          path: filepath,
+        });
+      } catch (error) {
+        await supabase
+          .from("rides")
+          .update({
+            recording_status: "error",
+            recording_error: error instanceof Error ? error.message : "Recording failed",
+          })
+          .eq("id", ride.id);
+
+        throw error;
+      }
+    }
+
+    if (action === "stop-recording" && req.method === "POST") {
+      if (!riderAuthorized(req)) {
+        return json({ error: "Unauthorized rider" }, 401);
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const rideID = String(body?.ride_id || "");
+
+      const { data: ride, error: rideError } = await supabase
+        .from("rides")
+        .select("id, recording_status, recording_egress_id")
+        .eq("id", rideID)
+        .maybeSingle();
+
+      if (rideError) throw rideError;
+      if (!ride) return json({ error: "Ride not found" }, 404);
+
+      if (!ride.recording_egress_id || ride.recording_status !== "recording") {
+        return json({ ok: true, recording: false, nothing_to_stop: true });
+      }
+
+      try {
+        const info = await egressClient().stopEgress(ride.recording_egress_id);
+
+        await supabase
+          .from("rides")
+          .update({
+            recording_status: info.error ? "error" : "ready",
+            recording_ended_at: new Date().toISOString(),
+            recording_error: info.error || null,
+          })
+          .eq("id", ride.id);
+
+        return json({
+          ok: true,
+          recording: false,
+          status: info.error ? "error" : "ready",
+        });
+      } catch (error) {
+        await supabase
+          .from("rides")
+          .update({
+            recording_status: "error",
+            recording_ended_at: new Date().toISOString(),
+            recording_error: error instanceof Error ? error.message : "Stop recording failed",
+          })
+          .eq("id", ride.id);
+
+        throw error;
+      }
+    }
+
+    if (action === "admin-login" && req.method === "POST") {
+      if (!Deno.env.get("ADMIN_PASSWORD")) {
+        return json({ error: "Admin password is not configured" }, 503);
+      }
+
+      if (!adminAuthorized(req)) {
+        return json({ error: "Invalid password" }, 401);
+      }
+
+      return json({ ok: true });
+    }
+
+    if (action === "admin-list-replays" && req.method === "GET") {
+      if (!adminAuthorized(req)) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+
+      const { data: rides, error } = await supabase
+        .from("rides")
+        .select("id, title, share_slug, started_at, ended_at, recording_status, recording_bucket, recording_path, recording_error")
+        .eq("status", "ended")
+        .order("ended_at", { ascending: false })
+        .limit(250);
+
+      if (error) throw error;
+
+      return json({ rides: rides ?? [] });
+    }
+
+    if (action === "admin-delete-replay" && req.method === "POST") {
+      if (!adminAuthorized(req)) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+
+      const body = await req.json().catch(() => ({}));
+      const rideID = String(body?.ride_id || "");
+
+      const { data: ride, error: rideError } = await supabase
+        .from("rides")
+        .select("id, status, recording_bucket, recording_path")
+        .eq("id", rideID)
+        .maybeSingle();
+
+      if (rideError) throw rideError;
+      if (!ride) return json({ error: "Replay not found" }, 404);
+      if (ride.status !== "ended") {
+        return json({ error: "Only ended rides can be deleted here" }, 409);
+      }
+
+      if (ride.recording_bucket && ride.recording_path) {
+        const { error: storageError } = await supabase.storage
+          .from(ride.recording_bucket)
+          .remove([ride.recording_path]);
+
+        if (storageError) {
+          console.error("Video delete warning:", storageError);
+        }
+      }
+
+      // FK cascades remove telemetry, events and viewer sessions.
+      const { error: deleteError } = await supabase
+        .from("rides")
+        .delete()
+        .eq("id", ride.id);
+
+      if (deleteError) throw deleteError;
+
+      return json({ deleted: true, ride_id: ride.id });
+    }
+
     if (action === "list-replays" && req.method === "GET") {
       const { data: rides, error } = await supabase
         .from("rides")
-        .select("id, title, share_slug, started_at, ended_at, status")
+        .select("id, title, share_slug, started_at, ended_at, status, recording_status")
         .eq("status", "ended")
         .not("ended_at", "is", null)
         .order("ended_at", { ascending: false })
@@ -365,7 +627,7 @@ Deno.serve(async (req) => {
 
       const { data: ride, error: rideError } = await supabase
         .from("rides")
-        .select("id, title, share_slug, started_at, ended_at, status")
+        .select("id, title, share_slug, started_at, ended_at, status, recording_status, recording_bucket, recording_path, recording_error")
         .eq("share_slug", slug)
         .maybeSingle();
 
@@ -388,10 +650,27 @@ Deno.serve(async (req) => {
 
       if (eventsError) throw eventsError;
 
+      let recordingUrl: string | null = null;
+
+      if (
+        ride.recording_status === "ready" &&
+        ride.recording_bucket &&
+        ride.recording_path
+      ) {
+        const { data: signed, error: signedError } = await supabase.storage
+          .from(ride.recording_bucket)
+          .createSignedUrl(ride.recording_path, 3600);
+
+        if (!signedError) {
+          recordingUrl = signed.signedUrl;
+        }
+      }
+
       return json({
         ride,
         telemetry: telemetry ?? [],
         events: events ?? [],
+        recording_url: recordingUrl,
       });
     }
 
@@ -523,7 +802,7 @@ Deno.serve(async (req) => {
     return json(
       {
         error: "Unknown action",
-        supported_actions: ["health", "create", "list-live", "list-replays", "replay", "viewer-token", "viewer-heartbeat", "usage-summary", "send-event", "rider-events", "telemetry", "end"],
+        supported_actions: ["health", "create", "list-live", "list-replays", "replay", "viewer-token", "viewer-heartbeat", "usage-summary", "send-event", "rider-events", "start-recording", "stop-recording", "admin-login", "admin-list-replays", "admin-delete-replay", "telemetry", "end"],
       },
       404,
     );

@@ -129,3 +129,27 @@ create index if not exists ride_events_ride_time_idx
 alter table public.ride_events enable row level security;
 
 -- Event access goes through ride-api using its service-role client.
+
+
+-- V2.3 actual video replay support.
+alter table public.rides
+  add column if not exists recording_status text not null default 'none',
+  add column if not exists recording_egress_id text,
+  add column if not exists recording_bucket text,
+  add column if not exists recording_path text,
+  add column if not exists recording_started_at timestamptz,
+  add column if not exists recording_ended_at timestamptz,
+  add column if not exists recording_error text;
+
+-- Private Storage bucket. Egress writes through Supabase's S3-compatible
+-- server-side credentials. Replay playback uses short-lived signed URLs.
+insert into storage.buckets (id, name, public, allowed_mime_types)
+values (
+  'scootercast-replays',
+  'scootercast-replays',
+  false,
+  array['video/mp4']
+)
+on conflict (id) do update
+set public = false,
+    allowed_mime_types = excluded.allowed_mime_types;
