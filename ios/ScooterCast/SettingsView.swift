@@ -19,6 +19,16 @@ struct SettingsView: View {
                         }
                     }
 
+                    Picker("Stabilization", selection: $settings.stabilization) {
+                        ForEach(StabilizationPreference.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+
+                    Text(settings.stabilization.detail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
                     Toggle("Start with Microphone", isOn: $settings.startWithMicrophone)
                     Toggle("Keep Screen Awake", isOn: $settings.keepScreenAwake)
                 }
@@ -42,7 +52,7 @@ struct SettingsView: View {
                 }
 
                 Section("Version") {
-                    LabeledContent("ScooterCast", value: "1.5.0")
+                    LabeledContent("ScooterCast", value: "2.2.0")
                 }
             }
             .navigationTitle("Settings")

@@ -19,16 +19,20 @@ final class LiveStreamManager: ObservableObject {
     @Published var isSwitchingCamera = false
     @Published var isVideoMuted = false
     @Published var isMicrophoneMuted = false
+    @Published var activeStabilizationLabel = "Off"
+    @Published var stabilizationSupported = false
 
     private(set) var room: Room?
 
     private var selectedQuality: StreamQuality = .p720
+    private var selectedStabilization: StabilizationPreference = .cinematic
 
     func start(
         url: String,
         token: String,
         preferredCamera: AVCaptureDevice.Position,
         quality: StreamQuality,
+        stabilization: StabilizationPreference,
         microphoneEnabled: Bool
     ) async throws {
         state = .connecting
@@ -36,6 +40,9 @@ final class LiveStreamManager: ObservableObject {
         localVideoTrack = nil
         cameraPosition = preferredCamera
         selectedQuality = quality
+        selectedStabilization = stabilization
+        activeStabilizationLabel = "Configuring…"
+        stabilizationSupported = false
         isVideoMuted = false
         isMicrophoneMuted = !microphoneEnabled
 
@@ -86,6 +93,8 @@ final class LiveStreamManager: ObservableObject {
                 )
             }
 
+            applyConfiguredStabilization()
+            scheduleStabilizationStatusRefresh()
             state = .live
         } catch {
             state = .failed
@@ -115,6 +124,8 @@ final class LiveStreamManager: ObservableObject {
                 if switched {
                     cameraPosition = cameraPosition == .front ? .back : .front
                     localVideoTrack = localTrack
+                    applyConfiguredStabilization()
+                    scheduleStabilizationStatusRefresh()
                     errorMessage = nil
                     return
                 }
@@ -152,6 +163,8 @@ final class LiveStreamManager: ObservableObject {
             }
 
             cameraPosition = next
+            applyConfiguredStabilization()
+            scheduleStabilizationStatusRefresh()
             errorMessage = nil
         } catch {
             errorMessage = "Camera flip failed: \(error.localizedDescription)"
@@ -181,6 +194,8 @@ final class LiveStreamManager: ObservableObject {
                 }
 
                 isVideoMuted = false
+                applyConfiguredStabilization()
+                scheduleStabilizationStatusRefresh()
             } else {
                 _ = try await room.localParticipant.setCamera(
                     enabled: false,
@@ -247,7 +262,178 @@ final class LiveStreamManager: ObservableObject {
         room = nil
         isVideoMuted = false
         isMicrophoneMuted = false
+        activeStabilizationLabel = "Off"
+        stabilizationSupported = false
         state = .idle
+    }
+
+
+    private func currentCameraCapturer() -> CameraCapturer? {
+        guard let room else { return nil }
+
+        return room.localParticipant.localVideoTracks
+            .compactMap { $0.track as? LocalVideoTrack }
+            .compactMap { $0.capturer as? CameraCapturer }
+            .first
+    }
+
+    private func applyConfiguredStabilization() {
+        guard let capturer = currentCameraCapturer() else {
+            stabilizationSupported = false
+            activeStabilizationLabel = "Unavailable"
+            return
+        }
+
+        let session = capturer.captureSession
+
+        let cameraDevice = session.inputs
+            .compactMap { $0 as? AVCaptureDeviceInput }
+            .map(\.device)
+            .first { $0.hasMediaType(.video) }
+
+        let preferredMode = resolvedStabilizationMode(
+            preference: selectedStabilization,
+            device: cameraDevice
+        )
+
+        var foundVideoConnection = false
+
+        for output in session.outputs {
+            for connection in output.connections {
+                let hasVideoPort = connection.inputPorts.contains {
+                    $0.mediaType == .video
+                }
+
+                guard hasVideoPort else { continue }
+                guard connection.isVideoStabilizationSupported else { continue }
+
+                foundVideoConnection = true
+                connection.preferredVideoStabilizationMode = preferredMode
+            }
+        }
+
+        stabilizationSupported = foundVideoConnection
+
+        if !foundVideoConnection {
+            activeStabilizationLabel = "Unsupported"
+        } else if selectedStabilization == .off {
+            activeStabilizationLabel = "Off"
+        } else {
+            activeStabilizationLabel = "Requested \(selectedStabilization.rawValue)"
+        }
+    }
+
+    private func resolvedStabilizationMode(
+        preference: StabilizationPreference,
+        device: AVCaptureDevice?
+    ) -> AVCaptureVideoStabilizationMode {
+        switch preference {
+        case .off:
+            return .off
+
+        case .auto:
+            return .auto
+
+        case .standard:
+            return supportedMode(
+                preferred: .standard,
+                fallbacks: [.auto],
+                device: device
+            )
+
+        case .cinematic:
+            return supportedMode(
+                preferred: .cinematic,
+                fallbacks: [.standard, .auto],
+                device: device
+            )
+
+        case .maximum:
+            // Extended cinematic is intentionally the strongest mode we request
+            // directly here. If the active format can't use it, fall back safely.
+            return supportedMode(
+                preferred: .cinematicExtended,
+                fallbacks: [.cinematic, .standard, .auto],
+                device: device
+            )
+        }
+    }
+
+    private func supportedMode(
+        preferred: AVCaptureVideoStabilizationMode,
+        fallbacks: [AVCaptureVideoStabilizationMode],
+        device: AVCaptureDevice?
+    ) -> AVCaptureVideoStabilizationMode {
+        guard let format = device?.activeFormat else {
+            return preferred
+        }
+
+        if format.isVideoStabilizationModeSupported(preferred) {
+            return preferred
+        }
+
+        for fallback in fallbacks {
+            if fallback == .auto || format.isVideoStabilizationModeSupported(fallback) {
+                return fallback
+            }
+        }
+
+        return .off
+    }
+
+    private func scheduleStabilizationStatusRefresh() {
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard let self else { return }
+            self.refreshActiveStabilizationStatus()
+        }
+    }
+
+    private func refreshActiveStabilizationStatus() {
+        guard let capturer = currentCameraCapturer() else {
+            activeStabilizationLabel = "Unavailable"
+            stabilizationSupported = false
+            return
+        }
+
+        let connections = capturer.captureSession.outputs
+            .flatMap(\.connections)
+            .filter { connection in
+                connection.inputPorts.contains { $0.mediaType == .video }
+                    && connection.isVideoStabilizationSupported
+            }
+
+        guard let connection = connections.first else {
+            activeStabilizationLabel = "Unsupported"
+            stabilizationSupported = false
+            return
+        }
+
+        stabilizationSupported = true
+        activeStabilizationLabel = stabilizationName(
+            connection.activeVideoStabilizationMode
+        )
+    }
+
+    private func stabilizationName(
+        _ mode: AVCaptureVideoStabilizationMode
+    ) -> String {
+        switch mode {
+        case .off:
+            return "Off"
+        case .standard:
+            return "Standard"
+        case .cinematic:
+            return "Cinematic"
+        case .cinematicExtended:
+            return "Cinematic+"
+        case .auto:
+            return "Auto"
+        default:
+            // Covers newer iOS stabilization modes without making this
+            // LiveKit 2.16 / iOS 17 project depend on newer enum cases.
+            return "Enhanced"
+        }
     }
 
     private func cameraOptions(

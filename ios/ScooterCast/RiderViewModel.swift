@@ -57,6 +57,7 @@ final class RiderViewModel: ObservableObject {
                 token: newSession.riderToken,
                 preferredCamera: settings.preferredCamera.position,
                 quality: settings.quality,
+                stabilization: settings.stabilization,
                 microphoneEnabled: settings.startWithMicrophone
             )
 

@@ -44,6 +44,32 @@ enum PreferredCamera: String, CaseIterable, Identifiable {
     }
 }
 
+
+enum StabilizationPreference: String, CaseIterable, Identifiable {
+    case off = "Off"
+    case auto = "Auto"
+    case standard = "Standard"
+    case cinematic = "Cinematic"
+    case maximum = "Maximum"
+
+    var id: String { rawValue }
+
+    var detail: String {
+        switch self {
+        case .off:
+            return "No camera stabilization. Lowest processing and widest field of view."
+        case .auto:
+            return "Lets iOS select an appropriate stabilization mode for the current camera and format."
+        case .standard:
+            return "Moderate stabilization with some crop and a small latency tradeoff."
+        case .cinematic:
+            return "Stronger smoothing for riding footage, with more crop and additional latency."
+        case .maximum:
+            return "Chooses the strongest supported stabilization mode for the active camera format."
+        }
+    }
+}
+
 @MainActor
 final class StreamSettings: ObservableObject {
     static let shared = StreamSettings()
@@ -54,6 +80,11 @@ final class StreamSettings: ObservableObject {
 
     @Published var preferredCamera: PreferredCamera {
         didSet { UserDefaults.standard.set(preferredCamera.rawValue, forKey: "preferredCamera") }
+    }
+
+
+    @Published var stabilization: StabilizationPreference {
+        didSet { UserDefaults.standard.set(stabilization.rawValue, forKey: "stabilizationPreference") }
     }
 
     @Published var startWithMicrophone: Bool {
@@ -78,6 +109,12 @@ final class StreamSettings: ObservableObject {
         preferredCamera = PreferredCamera(
             rawValue: defaults.string(forKey: "preferredCamera") ?? PreferredCamera.back.rawValue
         ) ?? .back
+
+
+        stabilization = StabilizationPreference(
+            rawValue: defaults.string(forKey: "stabilizationPreference")
+                ?? StabilizationPreference.cinematic.rawValue
+        ) ?? .cinematic
 
         startWithMicrophone = defaults.object(forKey: "startWithMicrophone") as? Bool ?? true
         explorerDefault = defaults.object(forKey: "explorerDefault") as? Bool ?? true

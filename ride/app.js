@@ -354,13 +354,8 @@ function initReplayMap() {
     zoom: 12,
   });
 
-  replayMap.on("error", (event) => {
-    console.error("Replay map error:", event?.error || event);
-  });
-
   replayMap.on("load", () => {
     replayMap.resize();
-
     const coords = replayTelemetry
       .map(t => [Number(t.longitude), Number(t.latitude)])
       .filter(p => Number.isFinite(p[0]) && Number.isFinite(p[1]));
@@ -537,8 +532,6 @@ async function startReplay(slug) {
 
     initReplayMap();
 
-    // MapLibre can initialize before the browser has completed layout for the
-    // newly-unhidden replay view. Force a second layout pass.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => replayMap?.resize());
     });

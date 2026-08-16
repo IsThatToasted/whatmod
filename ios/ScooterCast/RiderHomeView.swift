@@ -121,6 +121,20 @@ struct RiderHomeView: View {
                     .background(.ultraThinMaterial)
                     .clipShape(Capsule())
 
+                    if vm.stream.state == .live {
+                        Label(
+                            vm.stream.activeStabilizationLabel,
+                            systemImage: vm.stream.stabilizationSupported
+                                ? "camera.filters"
+                                : "exclamationmark.triangle"
+                        )
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 7)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                    }
+
                     Spacer()
 
                     if vm.stream.state == .live {
