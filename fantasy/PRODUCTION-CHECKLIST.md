@@ -1,68 +1,89 @@
-# Afterglow Production Verification
+# Afterglow Distribution v3 — Live Acceptance Checklist
 
-Complete this after running `supabase-schema.sql` and deploying the updated static files.
+## Database migration
 
-## 1. Authentication and boot
+- [ ] Open a new Supabase SQL Editor query.
+- [ ] Run `supabase-distribution-v3.sql` on the existing project after v2.1 hardening.
+- [ ] Confirm the query completes without an error and commits.
+- [ ] Confirm `fv_premium_entitlements` exists.
+- [ ] Confirm `fv_purchase_premium_30d`, `fv_get_directory`, `fv_admin_health_summary`, and `fv_admin_export_backup` are callable by authenticated users as intended.
 
-- Sign out, hard-refresh, and sign in with Google.
-- Confirm the age gate and existing login redirect still work at `https://whatmod.com/fantasy/`.
-- Confirm the profile name/avatar load and the app does not show a blank profile.
-- Confirm the Data Safety status says **protected cloud sync** after the first sync.
+## Login and persistence regression
 
-## 2. Vault persistence and recovery
+- [ ] Sign in with Google as an existing member.
+- [ ] Confirm existing display name, photo, bio, Vault answers, likes/matches, inventory, Glow Coins, streak, and weekly progress remain intact.
+- [ ] Answer a new Vault prompt, reload, and confirm it remains answered.
+- [ ] Sign in on a second browser/device, change a different field, then return to the first device and confirm no older state silently erases newer answers.
+- [ ] Temporarily disconnect from the network, make a safe profile/Vault change, reconnect, and confirm it syncs.
 
-- Answer at least three previously unanswered Vault prompts.
-- Refresh the page, sign out/in, and verify the answers remain.
-- Open the same account in another browser/device and verify the answers arrive from cloud sync. Change different answers on both devices, sync the newer device first, then confirm the stale device merges instead of overwriting it.
-- Disconnect the network, change one answer, reconnect, and verify the queued sync completes.
-- Download a personal JSON backup in the Data Safety panel. As the owner, also download a Server Backup and confirm it contains profiles, wallets, ledger, inventory, activity events, and album metadata.
-- Restore the latest local copy and verify no answers disappear.
-- Confirm cloud revisions appear after protected changes; restore one and verify the wallet remains unchanged.
-- Clear only localStorage in browser developer tools, reload, and confirm the IndexedDB recovery mirror can restore the richer local copy before cloud sync.
+## Profile and public preview
 
-## 3. Glow Coins and streaks
+- [ ] Open Profile and confirm the profile avatar does not overlap the Profile Style panel.
+- [ ] Confirm there are no Production Health Check or Server Backup controls on the member Profile page.
+- [ ] Choose **View Live Profile**.
+- [ ] Confirm the preview shows only public-facing profile information.
+- [ ] Confirm **Back to Edit** clearly returns to Profile.
+- [ ] Open another profile from Discover and confirm **Back** returns to the grid.
 
-- Claim the daily gift once. A second claim on the same local calendar date must return **already claimed**.
-- Verify a `daily_reward` entry exists in `fv_wallet_ledger` and the balance matches `fv_wallets`.
-- Purchase an item and verify the wallet debit and inventory grant happen together.
-- Refresh and confirm the balance, owned item, and equipped item remain unchanged.
-- Confirm the streak resets to 1 after a missed day and increments across consecutive dates in the wallet timezone.
-- If a legacy local balance is higher than the migrated server balance, confirm a pending wallet review appears in Admin instead of silently granting or deleting it.
+## Location and privacy
 
-## 4. Weekly goals
+- [ ] Test from the HTTPS production URL; browser location APIs should not be tested from an insecure HTTP deployment.
+- [ ] Sign in with an account that has no saved location and confirm the browser asks for device location rather than assigning York, PA.
+- [ ] Grant permission and confirm Profile shows that device location is on.
+- [ ] Use **Update Location** and confirm it refreshes successfully.
+- [ ] Deny permission in a separate browser and confirm the app gives a useful retry message rather than inventing a location.
+- [ ] With two test accounts in known different areas, confirm Discover shows a sensible approximate whole-mile distance.
+- [ ] Inspect a `fv_get_directory` response and confirm another member's latitude/longitude are not present.
 
-- Set a mood, upload a private album photo, answer three Vault prompts, and send a message.
-- Verify each reward can be claimed only once for the current ISO week.
-- Confirm the database refuses a weekly claim when its supporting action has not occurred. An unchanged old mood or old Vault answers must not become eligible from a plain profile resync.
-- Confirm old completed goals do not display as completed after a new ISO week starts.
+## Discover grid and filters
 
-## 5. Profiles, matches, and messaging
+- [ ] Confirm Discover displays a dense profile grid on phone and desktop layouts.
+- [ ] Confirm Nearby sorts by distance, Chemistry sorts by score, and New sorts by recency/order as expected.
+- [ ] Confirm Show Me and Minimum Chemistry filters work.
+- [ ] Confirm unknown-distance profiles remain represented but are locked for a free member until a safe distance can be calculated or Afterglow+ is active.
+- [ ] As a free member, select 100 miles and confirm profiles beyond 50 miles are locked.
+- [ ] Confirm tapping a locked profile routes to the Afterglow+ offer instead of exposing the full profile.
+- [ ] Inspect the network/RPC response as a free member and confirm >50-mile or unknown-distance rows contain only a non-identifying locked shell, not the member bio/photo/Vault data.
 
-- Verify Discover loads other users through the protected directory RPC.
-- Confirm a nonmatched user cannot request a private album.
-- Confirm a mutual match can request access; the owner can accept/deny; the permission remains after the request message expires.
-- Confirm only the sender and recipient can sign private chat media URLs.
-- Send a private photo, clear the conversation, and verify the sender-owned storage object is removed.
-- Let a test message expire, revisit chat, and verify expired rows are pruned without exposing old media.
+## Afterglow+ and Glow Coins
 
-## 6. Admin and security
+- [ ] Confirm Shop shows the 30-Day Afterglow+ Pass for 2,300 Glow Coins.
+- [ ] With fewer than 2,300 coins, confirm purchase is rejected without changing the wallet.
+- [ ] With at least 2,300 coins, purchase the pass and confirm exactly 2,300 coins are deducted once.
+- [ ] Reload and sign in on another device; confirm the entitlement remains active.
+- [ ] Confirm the user can now open profiles beyond 50 miles when the 100-mile filter is selected.
+- [ ] Confirm the public profile displays the Afterglow+ badge.
+- [ ] Retry the same purchase request/idempotency path and confirm it does not double-charge.
 
-- Sign in as `ra1nonit1@gmail.com` and run the Production Data Safety health check.
-- Verify normal users cannot open Admin tools.
-- Verify the Admin wallet adjustment creates a ledger entry and cannot create a negative balance.
-- Approve and reject a test wallet recovery request.
-- In Supabase, confirm RLS is enabled on profile revisions, activity events, wallets, ledger, shop inventory, weekly claims, wallet recovery requests, album access, messages, and private album metadata.
-- Confirm direct authenticated insert/update/delete privileges are absent for `fv_profiles`, profile revisions, activity events, wallet tables, inventory, album access, and wallet recovery requests.
+## Daily Glow Gift
 
-## 7. Release acceptance
+- [ ] Before claiming, confirm the modal shows **Total Glow Coins** and a separate **Today** reward amount.
+- [ ] Confirm the seven reward cells show weekday abbreviations and coin amounts.
+- [ ] Claim the gift once and confirm **Today** becomes **Claimed**.
+- [ ] Confirm the total wallet increases by exactly the server-returned reward.
+- [ ] Reload and confirm the gift remains claimed for that server day.
+- [ ] Confirm a consecutive-day login increments the streak and a missed day resets the streak appropriately.
 
-Release only when all of these remain true after a full refresh:
+## Shop, chat, album, and rewards regression
 
-- Vault answers persist.
-- Profile fields persist.
-- Glow Coin balance matches the server wallet.
-- Daily claim cannot duplicate.
-- Weekly claims cannot duplicate.
-- Purchased unlocks persist and cannot be forged through profile JSON.
-- Private album and chat media are inaccessible without authorization.
-- Data Safety personal export, Server Backup, local/IndexedDB recovery, cloud revision restore, and health check work.
+- [ ] Buy a normal shop item and confirm it is charged exactly once server-side.
+- [ ] Equip a cosmetic, reload, and confirm it remains equipped.
+- [ ] Complete an eligible weekly goal and confirm its reward cannot be claimed twice.
+- [ ] Match two accounts and confirm they can message each other.
+- [ ] Confirm unmatched accounts cannot bypass mutual-match messaging rules.
+- [ ] Test private album request, accept/deny/revoke, and signed photo access with two matched accounts.
+
+## Owner Admin
+
+- [ ] Sign in with the owner account on a desktop-sized browser.
+- [ ] Open Admin → Tools and confirm **Data Operations** is visible there only.
+- [ ] Run **Check Data Health** and confirm profile/wallet/recovery/active-Plus counts load.
+- [ ] Run **Download Server Backup** and confirm a JSON backup downloads.
+- [ ] Confirm a non-owner cannot access owner admin RPCs.
+
+## Final release check
+
+- [ ] Hard-refresh the production URL and verify the new cache version loads.
+- [ ] Check browser console for uncaught errors while visiting Discover, Matches, Vault, Chat, Profile, Shop, and Admin as applicable.
+- [ ] Verify mobile layout on iPhone Safari and Android Chrome or equivalent device emulation.
+- [ ] Keep a fresh server backup before public launch.

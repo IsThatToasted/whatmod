@@ -1,48 +1,49 @@
-# Afterglow — Production Data-Safety Build
+# Afterglow — Distribution Build v3
 
-This build is a production hardening pass for the existing Afterglow web app. The current Google/Supabase login flow is preserved.
+This folder is the production-ready web build of Afterglow.
 
-## What changed
+## Deploying this update
 
-- **Vault answers are protected from empty/stale cloud rows.** Login now merges durable fields instead of replacing browser data with an empty response.
-- **Local-first saving.** Every meaningful change is saved on-device immediately and cloud sync retries automatically after a pause, outage, or reconnect.
-- **Recovery copies.** The app keeps up to 25 rotating local snapshots, a second IndexedDB recovery mirror, and cloud profile revisions. A Data Safety panel supports manual sync, JSON export/import, and restores.
-- **Server-authoritative Glow Coins.** Daily rewards, weekly rewards, purchases, equips, and admin adjustments use atomic database functions and an immutable wallet ledger.
-- **Legacy wallet review.** If a browser backup contains more coins than the new server wallet, the higher local value is snapshotted and submitted for owner review instead of silently disappearing.
-- **Accurate streak dates.** Daily claims use a validated IANA timezone and preserve the full consecutive-day count beyond day seven. The reward schedule still caps at the day-seven reward.
-- **Correct weekly resets and proof.** Weekly goals use ISO weeks, and mood/Vault rewards require server-recorded activity from the current week rather than an ordinary profile resync.
-- **Private data hardening.** Raw directory rows, full like lists, private album paths, chat media, wallets, and inventory are no longer broadly readable.
-- **Durable album permissions.** Private album approvals persist separately from expiring chat messages and require a mutual match.
-- **Stale-build and multi-device protection.** Direct profile writes are disabled after migration, and every protected save must be based on the latest observed server revision before it can commit.
-- **Cache-busted assets.** The deployment references a production build version so browsers do not keep running an old `app.js` after upload.
-- **Owner backups.** Admin → Production Data Safety can export all durable database records to JSON. Supabase Storage file bytes remain a separate provider/storage backup responsibility.
+### Existing Supabase project
 
-## Required deployment order
+If the v2.1 production-hardening migration is already installed, run **only**:
 
-1. In the existing Supabase project, open **SQL Editor**.
-2. Run `supabase-schema.sql` in full. It contains the original non-destructive base schema followed by the production hardening migration.
-   - For an already-complete base schema, `supabase-production-hardening.sql` can be run by itself.
-   - The hardening migration is transactional and safe to run repeatedly.
-3. Confirm the SQL completes without an error before uploading the website files.
-4. Upload the **contents of this folder** to the live `/fantasy/` directory. Do not upload the outer folder.
-5. Keep `index.html`, `app.js`, `styles.css`, and `config.js` together at the same level.
-6. Sign in with the owner account and open **Admin → Tools → Production Data Safety**. Run the health check and complete the tests in `PRODUCTION-CHECKLIST.md`.
+`supabase-distribution-v3.sql`
 
-## Existing-data recovery behavior
+Then deploy the contents of this folder to the live Afterglow web path.
 
-On the first login after deployment, the app checks the user-specific browser save, its IndexedDB recovery mirror, the legacy `afterglowDatingV1` browser save, and the Supabase profile row. It combines nonempty profile fields, Vault answers, likes, unlocks, and current-week state, then performs a protected sync.
+Do not rerun an older failed SQL/error transcript in the Supabase editor. Start with a new SQL query and paste only the contents of the migration file.
 
-If the old browser data still exists, this build can recover and re-upload it. If both the Supabase row and all browser storage/backups were already erased before this build was installed, the missing historical answers cannot be reconstructed. Cloud revision history and server-observed weekly activity begin after the migration and the next successful protected sync.
+### Fresh Supabase project
 
-Glow Coins found only in an older browser save are not automatically trusted as spendable currency. They are preserved in a local snapshot and submitted as a **wallet recovery request**. The owner can approve or reject that preserved balance in the Admin user wallet panel.
+For a new database, use `supabase-schema.sql`. It contains the base schema, production hardening, and the v3 distribution additions.
 
-## Files
+## What v3 adds
 
-- `supabase-schema.sql` — complete install/upgrade script.
-- `supabase-production-hardening.sql` — production migration only.
-- `supabase-schema-base.sql` — preserved original non-destructive base schema.
-- `PRODUCTION-CHECKLIST.md` — release verification steps.
+- Device/browser geolocation for nearby discovery. A member must grant browser permission; the saved coordinates are used on the server to calculate distance.
+- Privacy-safe directory results. Other members receive only an approximate whole-mile distance, not another user's coordinates.
+- Dense photo-first Discover grid with nearby, chemistry, and new sorting plus member filters.
+- Full public-profile viewer and a **View Live Profile** preview from Edit Profile.
+- Afterglow+ 30-day entitlement purchased server-side for 2,300 Glow Coins.
+- Server-enforced free discovery up to 50 miles. Choosing the 100-mile filter shows non-identifying locked distant profiles until Afterglow+ is active; profiles with unavailable distance are also locked for free members.
+- Clear Daily Glow Gift display separating total wallet balance from today's reward and labeling the seven reward days by weekday.
+- Owner-only database health and server backup controls moved to Admin → Tools instead of member Profile.
+- Production cleanup of QA/test profile assets and user-facing development controls.
 
-## Supabase dormancy
+## Location requirement
 
-A paused Supabase project cannot provide live cross-device cloud access while it is offline. This build keeps changes in localStorage plus IndexedDB, shows the degraded sync state, and retries when Supabase returns. It prevents an empty/stale response from replacing richer data, but it cannot keep the external service itself from pausing.
+Browser geolocation normally requires a secure context. Deploy the app over **HTTPS** and allow location permission for the site. If a member denies permission, they can enable it later in their browser and use **Use Current Location** from Profile.
+
+The City / Area field remains optional and is not inferred from coordinates. Afterglow does not need reverse geocoding to calculate nearby distance.
+
+## Afterglow+ pricing
+
+The live in-app coin entitlement is **2,300 Glow Coins for 30 days**. No fake cash checkout is exposed in this web build. Add Stripe/App Store/Google Play billing only when the corresponding payment integration is configured.
+
+When paid Glow Coin packs are introduced, price them so acquiring 2,300 coins costs more than a direct monthly Afterglow+ subscription. A sensible direct subscription target is around **$9.99/month**, with coin packs priced so they do not undercut that subscription.
+
+## Data safety
+
+Profile/Vault state saves locally first, mirrors to IndexedDB, syncs with revision conflict protection, keeps local snapshots, and stores cloud recovery revisions. Glow Coins, streaks, rewards, shop purchases, premium entitlement, album permissions, and related protected mutations are server-authoritative.
+
+See `PRODUCTION-CHECKLIST.md` before public distribution.

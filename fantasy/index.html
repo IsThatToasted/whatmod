@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2026.07.13-production" />
+  <link rel="stylesheet" href="styles.css?v=2026.08.17-distribution" />
 </head>
 <body>
   <div id="ageGate" class="age-gate">
@@ -26,8 +26,6 @@
       <button id="googleGate" class="google full" disabled>Continue with Google</button>
       <button id="enterApp" class="primary full hidden">Enter Afterglow</button>
       <button id="gateSignOut" class="ghost full hidden">Use a different Google account</button>
-      <button id="gateResetLocal" class="danger full">Reset local app data</button>
-      <p class="tiny-note">Google login requires the Supabase + Google Cloud OAuth setup in the README.</p>
     </div>
   </div>
 
@@ -49,12 +47,7 @@
           <button class="pill" data-mode="compatible">💘 Chemistry</button>
           <button class="pill" data-mode="new">✨ New</button>
         </div>
-        <div id="cardStack" class="card-stack"></div>
-        <div class="swipe-actions">
-          <button id="passBtn" class="action pass" aria-label="Pass">✕</button>
-          <button id="vaultBtn" class="action vault" aria-label="Open vault preview">🔐</button>
-          <button id="likeBtn" class="action like" aria-label="Like">♥</button>
-        </div>
+        <div id="cardStack" class="card-stack discovery-grid" aria-live="polite"></div>
       </section>
 
       <section id="matches" class="screen">
@@ -85,12 +78,13 @@
       <section id="shop" class="screen">
         <div class="screen-title shop-title">
           <h2>Glow Shop</h2>
-          <p>Spend earned Glow Coins on cosmetic unlocks. No paid items yet.</p>
+          <p>Use Glow Coins for profile cosmetics, effects, and Afterglow+ access.</p>
         </div>
         <div class="shop-wallet-card">
-          <div><span class="wallet-kicker">Balance</span><strong><span id="shopGlowCoins">0</span> Glow Coins</strong><small id="shopInventoryCount">0 owned unlocks</small></div>
+          <div><span class="wallet-kicker">Total Glow Coins</span><strong><span id="shopGlowCoins">0</span> Glow Coins</strong><small id="shopInventoryCount">0 owned unlocks</small></div>
           <button id="shopDailyShortcut" class="gift-small">🎁 Daily Gift</button>
         </div>
+        <div id="premiumPassMount"></div>
         <div class="shop-categories" id="shopCategoryTabs"></div>
         <div id="shopFeatured" class="shop-featured"></div>
         <div id="shopGrid" class="shop-grid"></div>
@@ -99,6 +93,11 @@
 
       <section id="profile" class="screen">
         <div class="profile-hero"><div class="profile-banner"></div><div class="profile-avatar">B</div></div>
+        <button id="viewLiveProfile" class="ghost full live-profile-button" type="button">👁 View Live Profile</button>
+        <div class="location-card profile-panel">
+          <div><b>Location</b><p id="locationStatus">Use your device location to sort nearby profiles and calculate distance.</p></div>
+          <button id="useCurrentLocation" class="ghost" type="button">📍 Use Current Location</button>
+        </div>
         <div class="photo-card">
           <div>
             <b>Profile photo</b>
@@ -109,10 +108,11 @@
         </div>
         <div class="edit-card">
           <label>Name<input id="displayName" placeholder="Your display name" /></label>
+          <label>Age<input id="age" type="number" min="18" max="99" inputmode="numeric" placeholder="Age" /></label>
           <label>Headline<input id="headline" placeholder="Chemistry-first, sex-positive, playful" /></label>
-          <label>City / Area<input id="city" placeholder="York, PA" /></label>
+          <label>City / Area <span class="field-optional">optional</span><input id="city" placeholder="City or area" /></label>
           <label>Sex / Gender<select id="sex"><option value="">Prefer not to say</option><option>Woman</option><option>Man</option><option>Non-binary</option><option>Trans woman</option><option>Trans man</option><option>Gender fluid</option><option>Other</option></select></label>
-          <label>Distance radius<select id="radius"><option>10 miles</option><option selected>25 miles</option><option>50 miles</option><option>100 miles</option></select></label>
+          <label>Distance radius<select id="radius"><option>10 miles</option><option>25 miles</option><option selected>50 miles</option><option>100 miles</option></select></label>
           <label>Looking for<select id="lookingFor"><option>Dating</option><option selected>Intimate connection</option><option>Friends with chemistry</option><option>Long-term partner</option><option>Exploring</option></select></label>
           <label>Interests<input id="interests" placeholder="flirting, chemistry, kink-friendly, cuddling" /></label>
           <label>Bio<textarea id="bio" placeholder="Write a tasteful dating intro..."></textarea></label>
@@ -126,13 +126,13 @@
       <section id="admin" class="screen admin-screen">
         <div class="screen-title">
           <h2>Admin Studio 🛠️</h2>
-          <p>Build Afterglow from forms instead of JSON. Owner-only saves for <b>ra1nonit1@gmail.com</b>.</p>
+          <p>Manage live Vault content, rewards, members, and app configuration.</p>
         </div>
         <div id="adminLock" class="admin-lock hidden">Admin access is restricted to the owner account.</div>
         <div id="adminPanel" class="admin-panel hidden">
           <div class="admin-hero glass">
-            <div><span class="admin-kicker">Live content controls</span><h3>Vault Builder</h3><p>Add categories, fantasy cards, and answer choices. Changes save to Supabase and immediately refresh the public Vault.</p></div>
-            <div class="admin-actions"><button id="adminReload" class="ghost full">Reload</button><button id="adminSeed" class="primary full">Seed Defaults</button></div>
+            <div><span class="admin-kicker">Live content controls</span><h3>Vault Builder</h3><p>Add categories, Vault prompts, and answer choices, then publish them to the live app.</p></div>
+            <div class="admin-actions"><button id="adminReload" class="ghost full">Reload</button><button id="adminSeed" class="primary full">Restore Published Defaults</button></div>
           </div>
           <div class="admin-stats">
             <div><b id="adminCardCount">0</b><span>Vault prompts</span></div>
@@ -163,7 +163,7 @@
                 <label>Prompt type<select id="adminCardMode"><option value="global">Use global answer set</option><option value="yesno">Yes / No</option><option value="custom">Custom choices for this prompt</option><option value="text">Short written answer</option><option value="textarea">Long written answer</option></select></label>
                 <div class="admin-custom-answer-builder" id="adminCustomAnswerBuilder">
                   <div class="builder-head">
-                    <div><b>Custom answers</b><span>Use fields instead of JSON. These choices only apply when prompt type is Custom choices.</span></div>
+                    <div><b>Custom answers</b><span>Add the choices members can select for this prompt.</span></div>
                     <button id="adminAddCustomAnswer" type="button" class="ghost-mini">+ Add answer</button>
                   </div>
                   <div id="adminCustomAnswerRows" class="custom-answer-rows"></div>
@@ -250,7 +250,7 @@
                   <button id="adminAddCoins" type="submit" class="primary full">Add / Subtract Coins</button>
                   <button id="adminSetCoins" type="button" class="ghost full">Set Exact Balance</button>
                 </div>
-                <p class="tiny-note">This updates the selected user's profile rewards in Supabase. Existing shop/inventory features are unchanged.</p>
+                <p class="tiny-note">This updates the selected user's protected wallet and records the adjustment in the wallet ledger.</p>
               </form>
             </div>
           </div>
@@ -261,8 +261,8 @@
                 <h3>Bulk Tools</h3>
                 <button id="adminExportJson" class="ghost full" type="button">Export Config JSON</button>
                 <button id="adminImportJson" class="ghost full" type="button">Import Config From Box</button>
-                <button id="adminResetDefaults" class="danger full" type="button">Load App Defaults Into Editor</button>
-                <button id="adminSaveAll" class="primary full" type="button">Save All To Supabase</button>
+                <button id="adminResetDefaults" class="danger full" type="button">Restore Defaults In Editor</button>
+                <button id="adminSaveAll" class="primary full" type="button">Publish All Changes</button>
               </div>
               <div class="edit-card admin-editor">
                 <label>Config JSON<textarea id="adminJsonBox" spellcheck="false" placeholder="Export or paste full config here..."></textarea></label>
@@ -278,7 +278,10 @@
           <div class="daily-present">🎁</div>
           <h2 id="dailyGiftTitle">Claim your Glow Coins</h2>
           <p id="dailyGiftText">Come back daily to build your streak and unlock more Glow Coins.</p>
-          <div class="glow-balance"><b id="glowCoinBalance">0</b><span>Glow Coins</span></div>
+          <div class="daily-coin-summary">
+            <div class="glow-balance total-balance"><span>Total Glow Coins</span><b id="glowCoinBalance">0</b></div>
+            <div class="glow-balance daily-earned"><span id="dailyRewardState">Today</span><b id="dailyRewardAmount">0</b><small>Glow Coins</small></div>
+          </div>
           <div class="daily-streak-row" id="dailyStreakRow"></div>
           <button id="claimDailyGift" class="primary full">Claim gift</button>
         </div>
@@ -287,9 +290,9 @@
       <section id="filters" class="modal hidden">
         <div class="modal-card glass">
           <div class="modal-head"><h3>Discovery filters</h3><button id="closeFilters" class="round ghost-mini">×</button></div>
-          <label>Show me<select><option>Everyone</option><option>Women</option><option>Men</option><option>Non-binary people</option></select></label>
-          <label>Distance<select><option>10 miles</option><option selected>25 miles</option><option>50 miles</option><option>100 miles</option></select></label>
-          <label>Minimum chemistry<select><option>Any</option><option selected>70%+</option><option>80%+</option><option>90%+</option></select></label>
+          <label>Show me<select id="filterShowMe"><option>Everyone</option><option>Women</option><option>Men</option><option>Non-binary people</option></select></label>
+          <label>Distance<select id="filterDistance"><option>10 miles</option><option>25 miles</option><option selected>50 miles</option><option>100 miles</option></select></label>
+          <label>Minimum chemistry<select id="filterChemistry"><option>Any</option><option selected>70%+</option><option>80%+</option><option>90%+</option></select></label>
           <button id="applyFilters" class="primary full">Apply</button>
         </div>
       </section>
@@ -306,7 +309,7 @@
     </section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=2026.07.13-production"></script>
-  <script src="app.js?v=2026.07.13-production"></script>
+  <script src="config.js?v=2026.08.17-distribution"></script>
+  <script src="app.js?v=2026.08.17-distribution"></script>
 </body>
 </html>

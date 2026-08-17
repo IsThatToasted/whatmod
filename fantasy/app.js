@@ -92,7 +92,7 @@ function defaultProfileForAuth(user){
     headline:'',
     city:'',
     sex:'',
-    radius:'25 miles',
+    radius:'50 miles',
     lookingFor:'Intimate connection',
     interests:'',
     bio:'',
@@ -372,18 +372,6 @@ function syncPayloadFromState(source=state){
   const publicProfile={...s.profile}; delete publicProfile.rewards; delete publicProfile.inventory; delete publicProfile.weeklyGoals;
   return {profile:publicProfile,ratings:s.ratings,liked:(s.liked||[]).filter(isUuidValue),passed:(s.passed||[]).filter(isUuidValue),inventory:s.inventory,weeklyGoals:s.weeklyGoals};
 }
-async function legacySafeSync(show=false){
-  const {data:remote,error:readError}=await supa.from('fv_profiles').select('*').eq('user_id',authUser.id).maybeSingle();
-  if(readError) throw readError;
-  if(remote) state=mergeDurableStates(state,remoteRowToState(remote,authUser),authUser);
-  const payload=syncPayloadFromState(state);
-  const legacyProfile={...payload.profile,rewards:state.rewards,inventory:state.inventory,weeklyGoals:state.weeklyGoals};
-  const {error}=await supa.from('fv_profiles').upsert({user_id:authUser.id,email:authUser.email||null,profile:legacyProfile,ratings:payload.ratings,liked:payload.liked,passed:payload.passed,updated_at:new Date().toISOString()},{onConflict:'user_id'});
-  if(error) throw error;
-  state.meta.lastSyncedAt=new Date().toISOString(); persistStateLocalOnly('legacy_sync');
-  if(show) showToast('Synced using compatibility mode. Run the production SQL migration.');
-  setSync('synced — compatibility mode');
-}
 async function syncToSupabase(show=true,reason='sync',retrying=false){
   if(bootingRemote) return;
   if(!supa){setSync('offline-safe local save'); if(show) showToast('Saved safely on this device.'); return;}
@@ -398,7 +386,7 @@ async function syncToSupabase(show=true,reason='sync',retrying=false){
       p_client_id:getClientId(),p_state_version:2,p_reason:String(reason||'sync').slice(0,80),p_base_revision:Number(state.meta?.lastServerRevision||0)
     });
     if(error){
-      if(isMissingRpcError(error)){ await legacySafeSync(show); return; }
+      if(isMissingRpcError(error)) throw new Error('Protected cloud sync is unavailable.');
       throw error;
     }
     const result=Array.isArray(data)?data[0]:data;
@@ -593,7 +581,7 @@ function renderAdmin(){
 
 async function saveAdminConfig(seedDefaults=false){
   if(!isAdmin()){ showToast('Admin access is restricted.'); return; }
-  if(!supa){ showToast('Supabase unavailable.'); return; }
+  if(!supa){ showToast('Cloud service is temporarily unavailable.'); return; }
   try{
     const cfg = seedDefaults ? {labels:DEFAULT_LABELS, categories:DEFAULT_CATEGORY_META, cards:DEFAULT_VAULT_CARDS} : parseAdminEditors();
     if(!Array.isArray(cfg.cards)) throw new Error('Vault cards must be a JSON array.');
@@ -607,8 +595,8 @@ async function saveAdminConfig(seedDefaults=false){
     applyAdminConfig(cfg, true);
     localStorage.setItem('fvAdminConfigCache', JSON.stringify(cfg));
     renderAdmin();
-    showToast(seedDefaults ? 'Default Vault config seeded.' : 'Admin config saved.');
-  }catch(err){ console.warn(err); showToast('Admin save failed. Check JSON, schema, and RLS.'); }
+    showToast(seedDefaults ? 'Published Vault defaults restored.' : 'Admin configuration saved.');
+  }catch(err){ console.warn(err); showToast('Admin save failed. No changes were published.'); }
 }
 
 async function compactImageDataUrl(file,maxDimension=1200){
@@ -738,14 +726,9 @@ async function loadPeopleDirectory(options={}){
   if(!supa || !authUser){ renderStack(); renderMatches(); renderChats(); return; }
   const currentKey = preserveIndex ? personKey(orderedPeople()[index]) : '';
   try{
-    let data=null, error=null;
     const rpcResult=await supa.rpc('fv_get_directory',{p_limit:80});
-    if(!rpcResult.error){ data=rpcResult.data; }
-    else if(isMissingRpcError(rpcResult.error)){
-      const fallback=await supa.from('fv_profiles').select('id,user_id,email,profile,ratings,liked,updated_at').neq('user_id',authUser.id).order('updated_at',{ascending:false}).limit(80);
-      data=fallback.data; error=fallback.error;
-    }else error=rpcResult.error;
-    if(error) throw error;
+    if(rpcResult.error) throw rpcResult.error;
+    const data=rpcResult.data;
     people=(data||[]).map(profileRowToPerson);
     directoryLoaded = true;
     const fingerprint = JSON.stringify((data||[]).map(r=>[r.user_id, r.updated_at, r.liked]));
@@ -755,7 +738,7 @@ async function loadPeopleDirectory(options={}){
     console.warn('Directory load failed', err);
     directoryLoaded = false;
     people=[];
-    setSync('signed in — directory migration or policy needs attention');
+    setSync('signed in — profile discovery temporarily unavailable');
   }
   if(preserveIndex && currentKey){
     const nextIndex = orderedPeople().findIndex(p=>personKey(p)===currentKey);
@@ -810,9 +793,8 @@ function authRedirectUrl(){
 }
 
 async function signInWithGoogle(){
-  if(!supa){ showToast('Supabase is not available. Check config.js.'); return; }
+  if(!supa){ showToast('Sign-in is temporarily unavailable. Please try again shortly.'); return; }
   const redirectTo = authRedirectUrl();
-  console.log('[Afterglow] OAuth redirectTo:', redirectTo);
   const {error}=await supa.auth.signInWithOAuth({
     provider:'google',
     options:{
@@ -934,7 +916,7 @@ async function saveProfileManually(){
 
 
 function hydrateProfileForm(){
-  ['displayName','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); if(el) el.value=state.profile[id]||'';});
+  ['displayName','age','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); if(el) el.value=state.profile[id]||'';});
   updateAvatar();
 }
 
@@ -949,7 +931,7 @@ async function init(){
   $('#filterOpen').onclick=()=>$('#filters').classList.remove('hidden');
   $('#closeFilters').onclick=$('#applyFilters').onclick=()=>$('#filters').classList.add('hidden');
   $$('.pill').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; $$('.pill').forEach(x=>x.classList.toggle('active',x===b)); index=0; renderStack();});
-  $('#passBtn').onclick=()=>act('pass'); $('#likeBtn').onclick=()=>act('like'); $('#vaultBtn').onclick=()=>{showToast('Mutual Vault details unlock after a match.'); showScreen('vault');};
+  $('#passBtn')?.addEventListener('click',()=>act('pass')); $('#likeBtn')?.addEventListener('click',()=>act('like')); $('#vaultBtn')?.addEventListener('click',()=>{showToast('Mutual Vault details unlock after a match.'); showScreen('vault');});
   const exportData=$('#exportData'); if(exportData) exportData.onclick=()=>{const box=$('#exportBox'); if(box) box.textContent=JSON.stringify(state,null,2);};
   $('#googleLogin').onclick=signInWithGoogle;
   $('#signOut').onclick=signOut;
@@ -961,7 +943,7 @@ async function init(){
   const adminReload=$('#adminReload'); if(adminReload) adminReload.onclick=()=>loadAdminConfig();
   const adminSave=$('#adminSave'); if(adminSave) adminSave.onclick=()=>saveAdminConfig(false);
   const adminResetDefaults=$('#adminResetDefaults'); if(adminResetDefaults) adminResetDefaults.onclick=resetAdminEditorsToDefaults;
-  ['displayName','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();};});
+  ['displayName','age','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();};});
   $('#searchCards').oninput=renderVault; $('#categoryFilter').onchange=renderVault;
   applyAdminConfig(currentAdminConfig(), false); populateCats(); updateAvatar(); renderStack(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); await initAuth(); updateGateUi(); if(canEnter()) openApp(); syncToSupabase(false);
 }
@@ -1097,7 +1079,7 @@ async function resetConnections(){
   renderMatches();
   renderChats();
   syncToSupabase(false);
-  showToast('Likes, passes, matches, and test chats reset for this account.');
+  showToast('Likes, passes, matches, and conversations were reset for this account.');
 }
 
 function showToast(msg){ const old=$('.toast'); if(old)old.remove(); const t=document.createElement('div'); t.className='toast'; t.textContent=msg; $('.phone').appendChild(t); setTimeout(()=>t.remove(),2100); }
@@ -1117,7 +1099,7 @@ function miniAvatarMarkup(p){
 function renderMatches(){
   const incoming=incomingLikes();
   const matched=mutualMatches();
-  let html='<div class="match-tools"><button class="ghost small-control" id="resetConnections">Reset likes & matches</button></div>';
+  let html='';
   if(incoming.length){
     html += `<div class="match-section"><h3>Liked you</h3>${incoming.map(p=>`<article class="match-card incoming-like">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h3><p>${escapeHtml(p.distanceLabel || 'Nearby')} • ${escapeHtml(p.mutual[0] || 'Vault compatibility')}</p></div><div class="match-actions"><button class="primary match-action accept-like" data-key="${personKey(p)}">Like back</button><button class="ghost match-action ignore-like" data-key="${personKey(p)}">Ignore</button></div></article>`).join('')}</div>`;
   }
@@ -1128,7 +1110,6 @@ function renderMatches(){
     html += '<div class="empty-state"><h3>No matches yet</h3><p>When someone likes you, they will appear here. Like them back to open a chat.</p></div>';
   }
   $('#matchesList').innerHTML = html;
-  $('#resetConnections')?.addEventListener('click', resetConnections);
   $$('.accept-like').forEach(btn=>btn.onclick=()=>acceptLike(btn.dataset.key));
   $$('.ignore-like').forEach(btn=>btn.onclick=()=>ignoreLike(btn.dataset.key));
   $$('.unmatch').forEach(btn=>btn.onclick=()=>unmatch(btn.dataset.key));
@@ -1175,7 +1156,7 @@ async function loadChatMessages(key, quiet=true){
     setCachedChat(key, mapped);
     if(!quiet && before !== JSON.stringify(mapped)) renderChats();
     return mapped;
-  }catch(err){ console.warn('Could not load chat messages', err); if(!quiet) showToast('Could not load messages. Check message schema/RLS.'); return getCachedChat(key); }
+  }catch(err){ console.warn('Could not load chat messages', err); if(!quiet) showToast('Messages could not be loaded right now.'); return getCachedChat(key); }
 }
 async function deleteConversationMessages(key){
   if(!supa || !authUser || !key) return;
@@ -1314,7 +1295,7 @@ async function sendChatMessage(){
     renderChatMessages();
     renderChats();
     input.focus();
-  }catch(err){ console.warn('Message send failed', err); showToast('Message failed. Run the updated message SQL schema.'); }
+  }catch(err){ console.warn('Message send failed', err); showToast('Message could not be sent right now. Please try again.'); }
   finally{ if(sendBtn) sendBtn.disabled = false; }
 }
 function startChatAutoRefresh(){
@@ -1578,7 +1559,7 @@ function importAdminJson(){
 
 async function saveAdminConfig(seedDefaults=false){
   if(!isAdmin()){ showToast('Admin access is restricted.'); return; }
-  if(!supa){ showToast('Supabase unavailable.'); return; }
+  if(!supa){ showToast('Cloud service is temporarily unavailable.'); return; }
   try{
     const cfg = seedDefaults ? {labels:structuredClone(DEFAULT_LABELS), categories:structuredClone(DEFAULT_CATEGORY_META), cards:structuredClone(DEFAULT_VAULT_CARDS)} : adminConfigObject();
     if(!cfg.labels || !cfg.categories || !Array.isArray(cfg.cards)) throw new Error('Invalid admin config.');
@@ -1593,8 +1574,8 @@ async function saveAdminConfig(seedDefaults=false){
     localStorage.setItem('fvAdminConfigCache', JSON.stringify(cfg));
     const saved=$('#adminLastSaved'); if(saved) saved.textContent = 'Saved now';
     renderAdminWorkspace();
-    showToast(seedDefaults ? 'Default Vault config seeded.' : 'Admin changes saved.');
-  }catch(err){ console.warn(err); showToast('Admin save failed. Check schema/RLS.'); }
+    showToast(seedDefaults ? 'Published Vault defaults restored.' : 'Admin changes saved.');
+  }catch(err){ console.warn(err); showToast('Admin save failed. No changes were published.'); }
 }
 
 
@@ -1775,7 +1756,7 @@ function openMemberProfile(key){
 function renderMatches(){
   const incoming=incomingLikes();
   const matched=mutualMatches();
-  let html='<div class="match-tools"><button id="resetConnections" class="ghost small-control" type="button">Reset testing likes</button></div>';
+  let html='';
   if(incoming.length){
     html += `<div class="match-section"><h3>Liked you</h3>${incoming.map(p=>`<article class="match-card incoming-like">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}${p.age?`, ${escapeHtml(p.age)}`:''}</h3><p>${escapeHtml(p.distanceLabel || 'Nearby')} • wants to connect</p></div><div class="match-actions"><button class="ghost match-action view-profile" data-key="${personKey(p)}">Profile</button><button class="primary match-action accept-like" data-key="${personKey(p)}">Like back</button><button class="ghost match-action ignore-like" data-key="${personKey(p)}">Ignore</button></div></article>`).join('')}</div>`;
   }
@@ -1786,7 +1767,6 @@ function renderMatches(){
     html += '<div class="empty-state"><h3>No matches yet</h3><p>When someone likes you, they will appear here. Like them back to open a chat and unlock profile compatibility.</p></div>';
   }
   $('#matchesList').innerHTML = html;
-  $('#resetConnections')?.addEventListener('click', resetConnections);
   $$('.accept-like').forEach(btn=>btn.onclick=()=>acceptLike(btn.dataset.key));
   $$('.ignore-like').forEach(btn=>btn.onclick=()=>ignoreLike(btn.dataset.key));
   $$('.unmatch').forEach(btn=>btn.onclick=()=>unmatch(btn.dataset.key));
@@ -1888,7 +1868,7 @@ async function loadChatMessages(key, quiet=true){
     setCachedChat(key, mapped);
     if(!quiet && before !== JSON.stringify(mapped)) renderChats();
     return mapped;
-  }catch(err){ console.warn('Could not load chat messages', err); if(!quiet) showToast('Could not load messages. Check message schema/RLS.'); return getCachedChat(key); }
+  }catch(err){ console.warn('Could not load chat messages', err); if(!quiet) showToast('Messages could not be loaded right now.'); return getCachedChat(key); }
 }
 
 function chatPreview(p){
@@ -1972,7 +1952,7 @@ async function sendChatMessage(){
     input.value='';
     await loadChatMessages(activeChatKey, true);
     renderChatMessages(); renderChats(); input.focus();
-  }catch(err){ console.warn('Message send failed', err); showToast('Message failed. Run the updated message SQL schema.'); }
+  }catch(err){ console.warn('Message send failed', err); showToast('Message could not be sent right now. Please try again.'); }
   finally{ if(sendBtn) sendBtn.disabled = false; }
 }
 
@@ -2068,32 +2048,18 @@ async function claimDailyGift(){
     try{
       const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const {data,error}=await supa.rpc('fv_claim_daily_glow',{p_timezone:timezone});
-      if(error && !isMissingRpcError(error)) throw error;
-      if(!error){
-        const result=Array.isArray(data)?data[0]:data;
-        applyEconomyPayload(result);
-        ensureRewards().claimedToday=ensureRewards().lastClaimDate===todayKey();
-        persistStateLocalOnly('daily_reward');
-        renderDailyGift(); renderShop(); updateGlowCoinDisplays();
-        if(result?.status==='already_claimed') showToast('Daily gift already claimed.');
-        else showToast(`You earned ${Number(result?.reward||0)} Glow Coins.`);
-        return;
-      }
-    }catch(err){ console.warn('Server daily reward failed',err); showToast('Daily reward could not reach the secure wallet. Try again after sync reconnects.'); return; }
+      if(error) throw error;
+      const result=Array.isArray(data)?data[0]:data;
+      applyEconomyPayload(result);
+      ensureRewards().claimedToday=ensureRewards().lastClaimDate===todayKey();
+      persistStateLocalOnly('daily_reward');
+      renderDailyGift(); renderShop(); updateGlowCoinDisplays();
+      if(result?.status==='already_claimed') showToast('Daily gift already claimed.');
+      else showToast(`You earned ${Number(result?.reward||0)} Glow Coins.`);
+      return;
+    }catch(err){ console.warn('Server daily reward failed',err); showToast('Daily reward is temporarily unavailable. No wallet change was made.'); return; }
   }
-  // Compatibility fallback for projects that have not run the production SQL yet.
-  const last=r.lastClaimDate;
-  const continuing = last === yesterdayKey();
-  r.streak = continuing ? Number(r.streak||0)+1 : 1;
-  const reward=DAILY_GLOW_REWARDS[Math.min(r.streak,7)-1];
-  r.glowCoins += reward;
-  r.lastClaimDate = todayKey();
-  r.claimedToday = true;
-  state.profile.rewards = r;
-  save('daily_reward_compatibility');
-  renderDailyGift();
-  await syncToSupabase(false,'daily_reward_compatibility');
-  showToast(`You earned ${reward} Glow Coins. Run the production SQL to secure rewards server-side.`);
+  showToast('Daily rewards are temporarily unavailable. Please try again later.');
 }
 function openDailyGift(){ renderDailyGift(); $('#dailyModal')?.classList.remove('hidden'); }
 function closeDailyGift(){ $('#dailyModal')?.classList.add('hidden'); }
@@ -2376,7 +2342,7 @@ function init(){
   $('#closeDailyGift')?.addEventListener('click', closeDailyGift);
   $('#claimDailyGift')?.addEventListener('click', claimDailyGift);
   $$('.pill').forEach(b=>b.onclick=()=>{mode=b.dataset.mode; $$('.pill').forEach(x=>x.classList.toggle('active',x===b)); index=0; renderStack();});
-  $('#passBtn').onclick=()=>act('pass'); $('#likeBtn').onclick=()=>act('like'); $('#vaultBtn').onclick=()=>{showToast('Mutual Vault details unlock after a match.'); showScreen('vault');};
+  $('#passBtn')?.addEventListener('click',()=>act('pass')); $('#likeBtn')?.addEventListener('click',()=>act('like')); $('#vaultBtn')?.addEventListener('click',()=>{showToast('Mutual Vault details unlock after a match.'); showScreen('vault');});
   const exportData=$('#exportData'); if(exportData) exportData.onclick=()=>{const box=$('#exportBox'); if(box) box.textContent=JSON.stringify(state,null,2);};
   $('#googleLogin').onclick=signInWithGoogle;
   $('#signOut').onclick=signOut;
@@ -2388,7 +2354,7 @@ function init(){
   const adminReload=$('#adminReload'); if(adminReload) adminReload.onclick=()=>loadAdminConfig();
   const adminSave=$('#adminSave'); if(adminSave) adminSave.onclick=()=>saveAdminConfig(false);
   const adminResetDefaults=$('#adminResetDefaults'); if(adminResetDefaults) adminResetDefaults.onclick=resetAdminEditorsToDefaults;
-  ['displayName','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); if(el){ el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();}; }});
+  ['displayName','age','headline','city','sex','radius','lookingFor','interests','bio'].forEach(id=>{const el=$('#'+id); if(el){ el.value=state.profile[id]||''; el.oninput=e=>{state.profile[id]=e.target.value; updateAvatar(); save();}; }});
   $('#searchCards').oninput=renderVault; $('#categoryFilter').onchange=renderVault;
   ensureRewards(); renderDailyGift(); applyAdminConfig(currentAdminConfig(), false); populateCats(); updateAvatar(); renderStack(); renderVault(); renderVaultStats(); renderMatches(); renderChats(); initAuth().then(()=>{ ensureRewards(); renderDailyGift(); updateGateUi(); if(canEnter()) openApp(); syncToSupabase(false); });
 }
@@ -2396,8 +2362,7 @@ function init(){
 init();
 
 /* =========================================================
-   Afterglow patch: Glow Shop, wallet header, and cosmetic inventory
-   Additive only. Uses profile JSON for now so no destructive schema changes.
+   Afterglow Glow Shop, wallet header, and cosmetic inventory
    ========================================================= */
 const SHOP_ITEMS = [
   {id:'frame-neon',cat:'Profile',icon:'💖',title:'Neon Profile Ring',desc:'Adds a hot pink glow around your profile photo.',price:35,type:'avatarFrame',value:'frame-neon',featured:true},
@@ -2407,14 +2372,14 @@ const SHOP_ITEMS = [
   {id:'theme-rose-gold',cat:'Themes',icon:'🌹',title:'Rose Gold Banner',desc:'A soft rose-gold gradient for your profile.',price:30,type:'profileTheme',value:'theme-rose-gold',featured:true},
   {id:'theme-cyber',cat:'Themes',icon:'⚡',title:'Cyber Glow Banner',desc:'Electric blue and violet banner energy.',price:40,type:'profileTheme',value:'theme-cyber'},
   {id:'theme-velvet',cat:'Themes',icon:'🖤',title:'Dark Velvet Banner',desc:'A moody, intimate velvet profile vibe.',price:40,type:'profileTheme',value:'theme-velvet'},
-  {id:'badge-early',cat:'Badges',icon:'🏆',title:'Early Glower Badge',desc:'A placeholder profile badge for early users.',price:50,type:'badge',value:'early-glower'},
+  {id:'badge-early',cat:'Badges',icon:'🏆',title:'Early Glower Badge',desc:'A collectible badge for members who joined Afterglow early.',price:50,type:'badge',value:'early-glower'},
   {id:'badge-streak',cat:'Badges',icon:'🔥',title:'Streak Keeper Badge',desc:'Show off that you keep coming back.',price:75,type:'badge',value:'streak-keeper'},
-  {id:'chat-hearts',cat:'Chat',icon:'💕',title:'Heart Reaction Pack',desc:'Placeholder chat reaction pack for future message effects.',price:20,type:'chatPack',value:'chat-hearts'},
-  {id:'chat-fire',cat:'Chat',icon:'🔥',title:'Fire Reaction Pack',desc:'Placeholder spicy reaction pack for matched chats.',price:20,type:'chatPack',value:'chat-fire'},
-  {id:'vault-spark',cat:'Vault',icon:'✨',title:'Spark Vault Cards',desc:'Placeholder cosmetic style for Vault cards.',price:30,type:'vaultStyle',value:'vault-spark'},
-  {id:'vault-gold',cat:'Vault',icon:'🔐',title:'Gold Vault Accent',desc:'Placeholder premium accent for Vault compatibility cards.',price:45,type:'vaultStyle',value:'vault-gold'},
-  {id:'sticker-flirt',cat:'Stickers',icon:'😏',title:'Flirty Sticker Pack',desc:'Placeholder sticker pack for future chat media.',price:25,type:'stickerPack',value:'flirty'},
-  {id:'sticker-soft',cat:'Stickers',icon:'🥰',title:'Soft Romance Stickers',desc:'Placeholder sticker pack for warm, sweet chats.',price:25,type:'stickerPack',value:'soft-romance'}
+  {id:'chat-hearts',cat:'Chat',icon:'💕',title:'Heart Reaction Pack',desc:'Adds heart reactions to matched conversations.',price:20,type:'chatPack',value:'chat-hearts'},
+  {id:'chat-fire',cat:'Chat',icon:'🔥',title:'Fire Reaction Pack',desc:'Adds fire reactions to matched conversations.',price:20,type:'chatPack',value:'chat-fire'},
+  {id:'vault-spark',cat:'Vault',icon:'✨',title:'Spark Vault Cards',desc:'Adds a luminous spark accent to your Vault cards.',price:30,type:'vaultStyle',value:'vault-spark'},
+  {id:'vault-gold',cat:'Vault',icon:'🔐',title:'Gold Vault Accent',desc:'Adds a polished gold accent to Vault compatibility cards.',price:45,type:'vaultStyle',value:'vault-gold'},
+  {id:'sticker-flirt',cat:'Stickers',icon:'😏',title:'Flirty Sticker Pack',desc:'A playful sticker pack for matched chats.',price:25,type:'stickerPack',value:'flirty'},
+  {id:'sticker-soft',cat:'Stickers',icon:'🥰',title:'Soft Romance Stickers',desc:'A warm sticker pack for affectionate conversations.',price:25,type:'stickerPack',value:'soft-romance'}
 ];
 let activeShopCategory = 'Featured';
 function ensureEconomy(){
@@ -2456,7 +2421,7 @@ function renderShop(){
   const items=SHOP_ITEMS.filter(i=>activeShopCategory==='Featured'? i.featured || !isShopOwned(i.id) : i.cat===activeShopCategory);
   const grid=$('#shopGrid');
   if(grid){
-    grid.innerHTML=items.map(item=>`<article class="shop-card ${isShopOwned(item.id)?'owned':''} ${isShopEquipped(item)?'equipped':''}"><div class="shop-icon">${item.icon}</div><div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.desc)}</p><div class="shop-meta"><span class="price-badge">🪙 ${item.price}</span>${isShopOwned(item.id)?'<span class="owned-badge">Owned</span>':''}${isShopEquipped(item)?'<span class="equipped-badge">Equipped</span>':''}${shopButtonHtml(item)}</div></div></article>`).join('') || '<div class="empty-state"><h3>No shop items yet</h3><p>More earned unlocks will appear here soon.</p></div>';
+    grid.innerHTML=items.map(item=>`<article class="shop-card ${isShopOwned(item.id)?'owned':''} ${isShopEquipped(item)?'equipped':''}"><div class="shop-icon">${item.icon}</div><div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.desc)}</p><div class="shop-meta"><span class="price-badge">🪙 ${item.price}</span>${isShopOwned(item.id)?'<span class="owned-badge">Owned</span>':''}${isShopEquipped(item)?'<span class="equipped-badge">Equipped</span>':''}${shopButtonHtml(item)}</div></div></article>`).join('') || '<div class="empty-state"><h3>No items in this view</h3><p>Choose another shop category.</p></div>';
     grid.querySelectorAll('[data-buy-item]').forEach(btn=>btn.onclick=e=>buyShopItem(e.currentTarget.dataset.buyItem));
     grid.querySelectorAll('[data-equip-item]').forEach(btn=>btn.onclick=e=>equipShopItem(e.currentTarget.dataset.equipItem));
   }
@@ -2472,63 +2437,34 @@ function shopButtonHtml(item){
 }
 async function buyShopItem(id){
   const item=SHOP_ITEMS.find(i=>i.id===id); if(!item) return;
-  const {rewards, inventory}=ensureEconomy();
   if(isShopOwned(id)) return equipShopItem(id);
-  if(supa && authUser){
-    try{
-      const {data,error}=await supa.rpc('fv_purchase_shop_item',{p_item_id:id});
-      if(error && !isMissingRpcError(error)) throw error;
-      if(!error){
-        let result=Array.isArray(data)?data[0]:data;
-        applyEconomyPayload(result);
-        if(result?.status==='insufficient'){
-          showToast(`Not enough Glow Coins yet. You need ${Number(result.needed||0)} more.`);
-          return;
-        }
-        if(['avatarFrame','profileTheme','avatarEffect','profileEffect','colorway'].includes(item.type)){
-          const equipResult=await supa.rpc('fv_equip_shop_item',{p_item_id:id});
-          if(!equipResult.error){ result=Array.isArray(equipResult.data)?equipResult.data[0]:equipResult.data; applyEconomyPayload(result); }
-        }
-        state.profile.inventory=state.inventory;
-        persistStateLocalOnly('shop_purchase');
-        updateAvatar(); renderShop(); await syncToSupabase(false,'shop_purchase');
-        showToast(result?.status==='owned' ? `${item.title} is already unlocked.` : `Unlocked ${item.title}.`);
-        return;
-      }
-    }catch(err){ console.warn('Secure shop purchase failed',err); showToast('Purchase could not reach the secure wallet. No coins were removed.'); return; }
-  }
-  // Compatibility fallback until the production SQL migration is installed.
-  if((rewards.glowCoins||0) < item.price) return showToast('Not enough Glow Coins yet. Claim daily gifts to earn more.');
-  rewards.glowCoins -= item.price;
-  inventory.owned.push(id);
-  if(['avatarFrame','profileTheme','avatarEffect','profileEffect','colorway'].includes(item.type)) inventory.equipped[item.type]=item.value;
-  state.profile.rewards=rewards; state.profile.inventory=inventory;
-  updateAvatar(); save('shop_purchase_compatibility'); renderShop();
-  await syncToSupabase(false,'shop_purchase_compatibility');
-  showToast(`Unlocked ${item.title}. Run the production SQL to secure the wallet.`);
+  if(!supa || !authUser) return showToast('Purchases are temporarily unavailable. No Glow Coins were removed.');
+  try{
+    const {data,error}=await supa.rpc('fv_purchase_shop_item',{p_item_id:id});
+    if(error) throw error;
+    let result=Array.isArray(data)?data[0]:data;
+    applyEconomyPayload(result);
+    if(result?.status==='insufficient') return showToast(`Not enough Glow Coins yet. You need ${Number(result.needed||0)} more.`);
+    if(['avatarFrame','profileTheme','avatarEffect','profileEffect','colorway'].includes(item.type)){
+      const equipResult=await supa.rpc('fv_equip_shop_item',{p_item_id:id});
+      if(equipResult.error) throw equipResult.error;
+      result=Array.isArray(equipResult.data)?equipResult.data[0]:equipResult.data; applyEconomyPayload(result);
+    }
+    state.profile.inventory=state.inventory; persistStateLocalOnly('shop_purchase'); updateAvatar(); renderShop();
+    await syncToSupabase(false,'shop_purchase');
+    showToast(result?.status==='owned' ? `${item.title} is already unlocked.` : `Unlocked ${item.title}.`);
+  }catch(err){ console.warn('Secure shop purchase failed',err); showToast('Purchase is temporarily unavailable. No Glow Coins were removed.'); }
 }
 async function equipShopItem(id){
   const item=SHOP_ITEMS.find(i=>i.id===id); if(!item) return;
-  const {inventory}=ensureEconomy();
   if(!isShopOwned(id)) return buyShopItem(id);
-  if(supa && authUser){
-    try{
-      const {data,error}=await supa.rpc('fv_equip_shop_item',{p_item_id:id});
-      if(error && !isMissingRpcError(error)) throw error;
-      if(!error){
-        applyEconomyPayload(data);
-        state.profile.inventory=state.inventory;
-        persistStateLocalOnly('shop_equip');
-        updateAvatar(); renderShop(); await syncToSupabase(false,'shop_equip');
-        showToast(`${item.title} equipped.`); return;
-      }
-    }catch(err){ console.warn('Secure equip failed',err); showToast('Could not equip this item right now.'); return; }
-  }
-  inventory.equipped[item.type]=item.value;
-  state.profile.inventory=inventory;
-  updateAvatar(); save('shop_equip_compatibility'); renderShop();
-  await syncToSupabase(false,'shop_equip_compatibility');
-  showToast(`${item.title} equipped.`);
+  if(!supa || !authUser) return showToast('Could not equip this item right now.');
+  try{
+    const {data,error}=await supa.rpc('fv_equip_shop_item',{p_item_id:id});
+    if(error) throw error;
+    applyEconomyPayload(data); state.profile.inventory=state.inventory; persistStateLocalOnly('shop_equip');
+    updateAvatar(); renderShop(); await syncToSupabase(false,'shop_equip'); showToast(`${item.title} equipped.`);
+  }catch(err){ console.warn('Secure equip failed',err); showToast('Could not equip this item right now.'); }
 }
 function applyCosmetics(){
   const inv=ensureEconomy().inventory;
@@ -2618,18 +2554,14 @@ function selectAdminUser(userId){
 }
 async function loadAdminUsers(){
   if(!isAdmin()) return;
-  if(!supa || !authUser){ showToast('Supabase unavailable.'); return; }
+  if(!supa || !authUser){ showToast('Cloud service is temporarily unavailable.'); return; }
   try{
     const rpc=await supa.rpc('fv_admin_list_users',{p_limit:250});
-    if(!rpc.error){ adminUsers=rpc.data||[]; }
-    else if(isMissingRpcError(rpc.error)){
-      const fallback=await supa.from('fv_profiles').select('id,user_id,email,profile,updated_at').order('updated_at',{ascending:false}).limit(250);
-      if(fallback.error) throw fallback.error;
-      adminUsers=fallback.data||[];
-    }else throw rpc.error;
+    if(rpc.error) throw rpc.error;
+    adminUsers=rpc.data||[];
     if(adminSelectedUserId && !adminUsers.some(r=>r.user_id===adminSelectedUserId)) adminSelectedUserId=null;
     renderAdminUsers();
-  }catch(err){ console.warn('Admin users load failed',err); showToast('Could not load users. Run the production SQL migration.'); }
+  }catch(err){ console.warn('Admin users load failed',err); showToast('Could not load users right now.'); }
 }
 async function adjustAdminUserCoins({setExact=false}={}){
   if(!isAdmin()) return showToast('Admin access is restricted.');
@@ -2648,17 +2580,7 @@ async function adjustAdminUserCoins({setExact=false}={}){
       $('#adminCoinAmount').value=''; renderAdminUsers();
       showToast(`${adminUserName(row)} now has ${row.glow_coins} Glow Coins.`); return;
     }
-    if(!isMissingRpcError(rpc.error)) throw rpc.error;
-    // Compatibility fallback for an older schema.
-    const profile={...(row.profile||{})}; const rewards={...(profile.rewards||{})}; const current=Number(rewards.glowCoins||0);
-    rewards.glowCoins=Math.max(0,Math.round(setExact?amount:current+amount));
-    rewards.adminLastAdjustment={by:authUser.email,amount:setExact?rewards.glowCoins-current:amount,mode:setExact?'set':'adjust',reason,at:new Date().toISOString()};
-    profile.rewards=rewards;
-    const {error}=await supa.from('fv_profiles').update({profile,updated_at:new Date().toISOString()}).eq('user_id',row.user_id);
-    if(error) throw error;
-    row.profile=profile; row.glow_coins=rewards.glowCoins;
-    if(row.user_id===authUser.id){state.rewards=rewards;state.profile.rewards=rewards;save('admin_wallet_compatibility');}
-    $('#adminCoinAmount').value=''; renderAdminUsers(); showToast(`${adminUserName(row)} now has ${rewards.glowCoins} Glow Coins. Run the production SQL migration.`);
+    throw rpc.error;
   }catch(err){ console.warn('Admin coin update failed',err); showToast('Coin update failed. No wallet change was applied.'); }
 }
 async function resolveAdminWalletRecovery(approve){
@@ -3170,13 +3092,7 @@ renderAdminWorkspace = function(){
           return true;
         }
       }
-      // Compatibility fallback until the production SQL migration is installed.
-      wg.completed[id]=nowIso();
-      const r=rewardsObj(); r.glowCoins=Number(r.glowCoins||0)+goal.coins;
-      state.profile=state.profile||{}; state.profile.weeklyGoals=wg; state.profile.rewards=r;
-      renderWeeklyGoals(); save('weekly_goal_compatibility');
-      showToast(`+${goal.coins} Glow Coins: ${goal.title}. Run the production SQL to secure rewards.`);
-      return true;
+      return false;
     }catch(err){ console.warn('Weekly goal claim failed',err); return false; }
     finally{ weeklyGoalPending.delete(id); }
   }
@@ -3332,15 +3248,7 @@ renderAdminWorkspace = function(){
     try{
       const access=await supa.from('fv_album_access').select('status').eq('owner_id',ownerId).eq('requester_id',authUser.id).maybeSingle();
       if(!access.error){ const ok=access.data?.status==='accepted'; albumAccessCache[cacheKey]=ok; return ok; }
-      if(!isMissingRpcError(access.error) && access.error?.code!=='42P01') throw access.error;
-      // Compatibility fallback for legacy builds that stored approval in expiring messages.
-      const me=authUser.id;
-      const {data,error}=await supa.from('fv_messages').select('id,media,created_at').eq('message_type',ALBUM_REQUEST_TYPE)
-        .or(`and(sender_id.eq.${me},recipient_id.eq.${ownerId}),and(sender_id.eq.${ownerId},recipient_id.eq.${me})`)
-        .order('created_at',{ascending:false}).limit(20);
-      if(error) throw error;
-      const ok=(data||[]).some(m=>Array.isArray(m.media) && m.media.some(x=>x.kind==='album_request' && x.owner_id===ownerId && x.requester_id===me && x.status==='accepted'));
-      albumAccessCache[cacheKey]=ok; return ok;
+      throw access.error;
     }catch(err){ console.warn('album access check failed',err); return false; }
   }
   async function requestAlbumAccess(ownerId){
@@ -3350,53 +3258,24 @@ renderAdminWorkspace = function(){
     if(p && !isMutual(p)) return showToast('Private album requests unlock after a match.');
     try{
       const grant=await supa.rpc('fv_request_album_access',{p_owner_id:ownerId});
-      const compatibilityMode=!!grant.error && isMissingRpcError(grant.error);
-      if(grant.error && !compatibilityMode) throw grant.error;
-
-      // The production RPC creates the durable permission and visible request
-      // message atomically. Keep this branch only for pre-migration installs.
-      if(compatibilityMode){
-        const conv=conversationIdFor(ownerId);
-        const expiresAt=new Date(Date.now()+72*60*60*1000).toISOString();
-        const media=[{kind:'album_request',owner_id:ownerId,requester_id:authUser.id,status:'pending',created_at:nowIso()}];
-        const payload={sender_id:authUser.id,recipient_id:ownerId,conversation_id:conv,body:'🔒 Private album access request',message_type:ALBUM_REQUEST_TYPE,media,expires_at:expiresAt,retention_hours:72};
-        const {error}=await supa.from('fv_messages').insert(payload);
-        if(error) throw error;
-      }
-
+      if(grant.error) throw grant.error;
       albumAccessCache[`${ownerId}|${authUser.id}`]=false;
       if(typeof loadChatMessages==='function') await loadChatMessages(ownerId,true);
       if(typeof renderChats==='function') renderChats();
-      showToast(compatibilityMode?'Private album request sent. Run the production SQL migration.':'Private album request sent and saved atomically.');
-    }catch(err){ console.warn('request failed',err); showToast('Could not send request. Run the production SQL migration.'); }
+      showToast('Private album request sent.');
+    }catch(err){ console.warn('request failed',err); showToast('Could not send the private album request right now.'); }
   }
   async function respondAlbumRequest(messageId, ownerId, requesterId, status){
     if(!authUser || !supa || authUser.id!==ownerId) return showToast('Only the album owner can respond.');
     try{
       const grant=await supa.rpc('fv_respond_album_access',{p_requester_id:requesterId,p_status:status});
-      const compatibilityMode=!!grant.error && isMissingRpcError(grant.error);
-      if(grant.error && !compatibilityMode) throw grant.error;
-
-      // Production updates the durable grant, request payload, and notification
-      // in one transaction. Direct message updates remain only for old schemas.
-      if(compatibilityMode){
-        const {data,error:readErr}=await supa.from('fv_messages').select('media,sender_id,recipient_id,conversation_id').eq('id',messageId).maybeSingle();
-        if(readErr) throw readErr;
-        const media=(data?.media||[]).map(x=>x.kind==='album_request'?{...x,status,responded_at:nowIso()}:x);
-        const {error}=await supa.from('fv_messages').update({media,body:status==='accepted'?'✅ Private album access approved':'🚫 Private album access denied'}).eq('id',messageId);
-        if(error) throw error;
-        const notify={sender_id:ownerId,recipient_id:requesterId,conversation_id:conversationIdFor(requesterId),body:status==='accepted'?'✅ Private album access approved':'🚫 Private album access denied',message_type:'text',media:[],expires_at:new Date(Date.now()+72*60*60*1000).toISOString()};
-        const sent=await supa.from('fv_messages').insert(notify);
-        if(sent.error) throw sent.error;
-      }
-
+      if(grant.error) throw grant.error;
       albumAccessCache[`${ownerId}|${requesterId}`]=status==='accepted';
       if(activeChatKey===String(requesterId)){ await loadChatMessages(activeChatKey,true); renderChatMessages(); }
       if(typeof renderChats==='function') renderChats();
-      showToast(status==='accepted'?'Album access approved and saved permanently.':'Album access denied.');
-    }catch(err){ console.warn('album response failed',err); showToast('Could not update album request. Run the production SQL migration.'); }
+      showToast(status==='accepted'?'Album access approved.':'Album access denied.');
+    }catch(err){ console.warn('album response failed',err); showToast('Could not update the album request right now.'); }
   }
-
   function albumRequestHtml(m){
     const req=(m.media||[]).find(x=>x.kind==='album_request') || {};
     const status=['accepted','denied'].includes(req.status)?req.status:'pending';
@@ -3671,13 +3550,15 @@ renderAdminWorkspace = function(){
       panel = document.createElement('div');
       panel.id = 'profileStyleShowcase';
       panel.className = 'profile-style-showcase profile-panel';
+      const livePreview = profileScreen.querySelector('#viewLiveProfile');
       const hero = profileScreen.querySelector('.profile-hero');
-      if(hero) hero.insertAdjacentElement('afterend', panel);
+      if(livePreview) livePreview.insertAdjacentElement('afterend', panel);
+      else if(hero) hero.insertAdjacentElement('afterend', panel);
       else profileScreen.prepend(panel);
     }
     const owned = ownedItems();
     const badges = owned.filter(i=>i.type==='badge').slice(0,4);
-    panel.innerHTML = `<div class="style-showcase-head"><div><b>✨ Profile Style</b><p>Your Steam-style cosmetic showcase.</p></div><button class="ghost-mini" type="button" data-go-shop-effects>Shop</button></div><div class="style-summary-grid">${styleSummaryHtml()}</div>${badges.length?`<div class="profile-badge-row">${badges.map(b=>`<span>${b.icon} ${esc(b.title)}</span>`).join('')}</div>`:'<div class="profile-badge-row muted"><span>Unlock badges in the Glow Shop</span></div>'}`;
+    panel.innerHTML = `<div class="style-showcase-head"><div><b>✨ Profile Style</b><p>Customize how your profile appears to other members.</p></div><button class="ghost-mini" type="button" data-go-shop-effects>Shop</button></div><div class="style-summary-grid">${styleSummaryHtml()}</div>${badges.length?`<div class="profile-badge-row">${badges.map(b=>`<span>${b.icon} ${esc(b.title)}</span>`).join('')}</div>`:'<div class="profile-badge-row muted"><span>Unlock badges in the Glow Shop</span></div>'}`;
     panel.querySelector('[data-go-shop-effects]')?.addEventListener('click',()=>{ if(typeof showScreen==='function') showScreen('shop'); activeShopCategory='Effects'; if(typeof renderShop==='function') renderShop(); });
   }
 
@@ -3943,225 +3824,6 @@ renderAdminWorkspace = function(){
 })();
 
 /* =========================================================
-   Afterglow test profile pack + admin QA controls
-   - Additive only: does not remove real Supabase directory users
-   - Uses curated local test profiles with filled Vault answers
-   - Adds owner Admin tools for resetting/simulating profile states
-   ========================================================= */
-(function(){
-  const TEST_PROFILE_COUNT = 20;
-  const TEST_PROFILE_KEY = 'afterglowTestProfilesEnabled';
-  const TEST_LIKES_KEY = 'afterglowTestProfilesLikedMe';
-  const TEST_MATCHED_KEY = 'afterglowTestProfilesMatched';
-  const TEST_CHAT_PREFIX = 'afterglowTestChat:';
-  const TEST_BASE_ID = '00000000-0000-4000-8000-0000000000';
-  const names = ['Arielle Vale','Maya Rose','Selene Hart','Brielle Skye','Nina Sol','Vivian Rae','Isla Monroe','Zara Quinn','Lena Wilde','Jade Loren','Camila Snow','Sienna Lux','Elara Fox','Mila Voss','Avery Belle','Gia Lane','Noelle Storm','Talia Moon','Kira West','Sasha Bloom'];
-  const cities = ['York, PA','Lancaster, PA','Harrisburg, PA','Baltimore, MD','Philadelphia, PA','Reading, PA','Pittsburgh, PA','Frederick, MD','Allentown, PA','King of Prussia, PA'];
-  const moods = ['🔥 Flirty','💬 Chatty','🌹 Romantic','😈 Playful','✨ Curious','🛋️ Cozy','🥂 Date night','🎧 Low-key'];
-  const goals = ['Intimate connection','Dating','Friends with chemistry','Exploring','Long-term partner'];
-  const interestSets = [
-    'flirting, lingerie, soft dominance, late-night talks',
-    'romance, teasing, cuddling, chemistry',
-    'kink-friendly, role-play, aftercare, trust',
-    'date nights, sensory play, private albums',
-    'playful banter, praise, fantasy writing',
-    'adventure, photos, direct talk, confidence',
-    'slow burn, massage, soft romance, curiosity',
-    'spontaneous chemistry, flirting, quality time'
-  ];
-  const headlines = [
-    'Chemistry-first and playful, with a soft spot for good conversation.',
-    'Looking for honest attraction, flirt energy, and mutual curiosity.',
-    'Sweet outside, adventurous once trust is there.',
-    'Into confidence, connection, and a little mystery.',
-    'Here for sparks, respect, and shared exploration.',
-    'Romantic, sensual, and very conversation-driven.'
-  ];
-  function testProfilesEnabled(){ return localStorage.getItem(TEST_PROFILE_KEY) !== '0'; }
-  function setTestProfilesEnabled(v){ localStorage.setItem(TEST_PROFILE_KEY, v ? '1' : '0'); }
-  function getTestLikedMe(){ try{return JSON.parse(localStorage.getItem(TEST_LIKES_KEY)||'[]').map(String);}catch{return [];} }
-  function setTestLikedMe(arr){ localStorage.setItem(TEST_LIKES_KEY, JSON.stringify([...new Set((arr||[]).map(String))])); }
-  function getTestMatched(){ try{return JSON.parse(localStorage.getItem(TEST_MATCHED_KEY)||'[]').map(String);}catch{return [];} }
-  function setTestMatched(arr){ localStorage.setItem(TEST_MATCHED_KEY, JSON.stringify([...new Set((arr||[]).map(String))])); }
-  function testId(i){ return TEST_BASE_ID + String(i+1).padStart(2,'0'); }
-  function seededPick(arr, i){ return arr[i % arr.length]; }
-  function testRatings(seed){
-    const allKeys = Object.keys(labels||{});
-    const preferred = ['love','enjoy','curious','neutral','no','limit'].filter(k=>allKeys.includes(k));
-    const keys = preferred.length ? preferred : allKeys;
-    const out={};
-    (vaultCards||[]).forEach((card, idx)=>{
-      if(card.mode === 'text') out[card.id] = seededPick(['Intimate chemistry with someone who communicates clearly.','A slow-burn fantasy with lots of teasing.','Something playful, private, and trust-based.'], seed+idx);
-      else if(card.mode === 'textarea') out[card.id] = seededPick(['I like building anticipation through conversation, flirting, and thoughtful attention.','For me, the fantasy is usually about chemistry, trust, confidence, and shared curiosity.'], seed+idx);
-      else if(card.mode === 'yesno') out[card.id] = ((idx+seed)%4===0) ? 'no' : 'yes';
-      else if(keys.length) out[card.id] = keys[(idx + seed) % keys.length];
-    });
-    return out;
-  }
-  function makeTestProfile(i){
-    const id=testId(i);
-    const name=names[i];
-    const matched = getTestMatched().includes(id);
-    return {
-      id,
-      name,
-      age: 24 + (i % 12),
-      distance: 2 + ((i*7)%48),
-      distanceLabel: `📍 ${cities[i % cities.length]}`,
-      score: 80 + (i % 18),
-      vibe: headlines[i % headlines.length],
-      gradient: deterministicGradient ? deterministicGradient(id) : ['#ff3f91','#8b5cff'],
-      initial: name[0],
-      avatarUrl: `assets/test-profiles/profile_${String(i+1).padStart(2,'0')}.jpg`,
-      tags: ['Woman', goals[i % goals.length], seededPick(moods,i), 'Verified'],
-      mutual: [],
-      likesMe: matched || getTestLikedMe().includes(id),
-      isTestProfile: true,
-      email: `test${i+1}@afterglow.local`,
-      ratings: testRatings(i),
-      profile: {
-        displayName: name,
-        headline: headlines[i % headlines.length],
-        bio: `${name.split(' ')[0]} is a fully-filled Afterglow test profile for QA. She has complete Vault answers, interests, mood, and profile cosmetics so layouts can be tested without waiting for real users.`,
-        city: cities[i % cities.length],
-        sex: 'Woman',
-        age: 24 + (i % 12),
-        radius: `${10 + (i%5)*10} miles`,
-        lookingFor: goals[i % goals.length],
-        interests: interestSets[i % interestSets.length],
-        mood: seededPick(moods,i),
-        avatarUrl: `assets/test-profiles/profile_${String(i+1).padStart(2,'0')}.jpg`,
-        privateAlbums: {count: 3 + (i%6), previewOnly: true},
-        rewards: {glowCoins: 250 + i*25}
-      }
-    };
-  }
-  function computeTestCompatibility(p){
-    try{
-      const comp = compatibilityForRatings(p.ratings||{});
-      p.score = comp.score;
-      p.mutual = comp.shared && comp.shared.length ? comp.shared : ['Complete Vault test profile'];
-    }catch(e){ p.mutual=['Complete Vault test profile']; }
-    return p;
-  }
-  function testProfiles(){
-    if(!testProfilesEnabled()) return [];
-    return Array.from({length:TEST_PROFILE_COUNT},(_,i)=>computeTestCompatibility(makeTestProfile(i)));
-  }
-  function mergeTestProfilesIntoDirectory(){
-    if(!testProfilesEnabled()) return;
-    const existing = new Set((people||[]).map(p=>String(p.id)));
-    testProfiles().forEach(p=>{ if(!existing.has(String(p.id))) people.push(p); });
-  }
-  window.AfterglowTestProfiles = {testProfiles, setTestProfilesEnabled, getTestLikedMe, setTestLikedMe, getTestMatched, setTestMatched};
-
-  const baseLoadPeopleDirectory = loadPeopleDirectory;
-  loadPeopleDirectory = async function(options={}){
-    try{ await baseLoadPeopleDirectory.call(this, options); }catch(e){ console.warn('Base directory failed before test merge', e); }
-    mergeTestProfilesIntoDirectory();
-    if(!(options&&options.preserveIndex)) index = Math.min(index||0, Math.max(orderedPeople().length-1,0));
-    renderStack(); renderMatches(); renderChats();
-  };
-
-  const baseRenderStack = renderStack;
-  renderStack = function(){ mergeTestProfilesIntoDirectory(); return baseRenderStack.apply(this, arguments); };
-  const baseRenderMatches = renderMatches;
-  renderMatches = function(){ mergeTestProfilesIntoDirectory(); return baseRenderMatches.apply(this, arguments); };
-  const baseRenderChats = renderChats;
-  renderChats = function(){ mergeTestProfilesIntoDirectory(); return baseRenderChats.apply(this, arguments); };
-
-  function isTestKey(key){ return String(key||'').startsWith(TEST_BASE_ID); }
-  function testChatKey(key){ return `${TEST_CHAT_PREFIX}${authUser?.id||state.userId||'local'}:${key}`; }
-  function readTestChat(key){ try{return JSON.parse(localStorage.getItem(testChatKey(key))||'[]');}catch{return [];} }
-  function writeTestChat(key,msgs){ localStorage.setItem(testChatKey(key), JSON.stringify((msgs||[]).slice(-80))); }
-  const baseLoadChatMessages = loadChatMessages;
-  loadChatMessages = async function(key, quiet=true){
-    if(isTestKey(key)){ const msgs=readTestChat(key); setCachedChat(key,msgs); return msgs; }
-    return baseLoadChatMessages.apply(this, arguments);
-  };
-  const baseDeleteConversationMessages = deleteConversationMessages;
-  deleteConversationMessages = async function(key){
-    if(isTestKey(key)){ localStorage.removeItem(testChatKey(key)); setCachedChat(key,[]); return; }
-    return baseDeleteConversationMessages.apply(this, arguments);
-  };
-  const baseSendChatMessage = sendChatMessage;
-  sendChatMessage = async function(){
-    if(activeChatKey && isTestKey(activeChatKey)){
-      const input=$('#chatInput');
-      const text=(input?.value||'').trim();
-      if(!text){ input?.focus(); return; }
-      const msgs=readTestChat(activeChatKey);
-      msgs.push({id:crypto.randomUUID(), from:'me', text, at:new Date().toISOString()});
-      // tiny local automated reply so the thread feels alive during testing
-      if(msgs.length % 2 === 1){
-        const p=people.find(x=>personKey(x)===String(activeChatKey));
-        msgs.push({id:crypto.randomUUID(), from:'them', text:`${p?.name?.split(' ')[0]||'Test'} received your test message 💬`, at:new Date(Date.now()+500).toISOString()});
-      }
-      writeTestChat(activeChatKey,msgs); setCachedChat(activeChatKey,msgs);
-      if(input) input.value='';
-      renderChatMessages(); renderChats(); input?.focus(); return;
-    }
-    return baseSendChatMessage.apply(this, arguments);
-  };
-
-  function resetMyConnections(){
-    state.liked=[]; state.passed=[]; save(); renderStack(); renderMatches(); renderChats(); syncToSupabase(false); showToast('Your likes, passes, and matches were reset.');
-  }
-  async function clearAllTestChats(){
-    Object.keys(localStorage).filter(k=>k.startsWith(TEST_CHAT_PREFIX)).forEach(k=>localStorage.removeItem(k));
-    chatCache={}; if(activeChatKey && isTestKey(activeChatKey)) renderChatMessages(); renderChats(); showToast('All local test chats cleared.');
-  }
-  function simulateIncomingLikes(count=5){
-    const ids=testProfiles().slice(0,count).map(p=>p.id); setTestLikedMe(ids); setTestMatched([]); loadPeopleDirectory({preserveIndex:true, quiet:true}); showToast(`${ids.length} test profiles now like you.`);
-  }
-  function simulateMatches(count=5){
-    const ids=testProfiles().slice(0,count).map(p=>p.id); setTestLikedMe(ids); setTestMatched(ids); state.liked=[...new Set([...(state.liked||[]),...ids])]; save(); loadPeopleDirectory({preserveIndex:true, quiet:true}); showToast(`${ids.length} test matches created.`);
-  }
-  function clearTestSignals(){
-    setTestLikedMe([]); setTestMatched([]); state.liked=(state.liked||[]).filter(k=>!isTestKey(k)); state.passed=(state.passed||[]).filter(k=>!isTestKey(k)); save(); loadPeopleDirectory({preserveIndex:true, quiet:true}); showToast('Test profile likes and matches cleared.');
-  }
-  function injectAdminTestTools(){
-    if(!isAdmin()) return;
-    const pane=$('#adminPaneTools .admin-two-col');
-    if(!pane || $('#adminTestProfileTools')) return;
-    const card=document.createElement('div');
-    card.className='edit-card admin-form admin-test-tools';
-    card.id='adminTestProfileTools';
-    card.innerHTML=`
-      <h3>Test Profile Tools</h3>
-      <p class="tiny-note">Local QA tools for the 20 built-in test profiles. These do not remove real users or real Supabase profiles.</p>
-      <div class="admin-grid">
-        <button id="adminToggleTestProfiles" type="button" class="ghost full"></button>
-        <button id="adminRefreshDirectory" type="button" class="ghost full">Refresh Profiles</button>
-        <button id="adminResetMyConnections" type="button" class="danger full">Reset My Likes/Matches</button>
-        <button id="adminClearTestSignals" type="button" class="ghost full">Clear Test Likes/Matches</button>
-        <button id="adminSimLikes" type="button" class="primary full">Make 5 Test Profiles Like Me</button>
-        <button id="adminSimMatches" type="button" class="primary full">Create 5 Test Matches</button>
-        <button id="adminClearTestChats" type="button" class="ghost full">Clear Test Chats</button>
-      </div>
-      <p class="tiny-note" id="adminTestStatus"></p>`;
-    pane.prepend(card);
-    const refresh=()=>{
-      $('#adminToggleTestProfiles').textContent = testProfilesEnabled() ? 'Hide Test Profiles' : 'Show Test Profiles';
-      $('#adminTestStatus').textContent = `${testProfilesEnabled()?TEST_PROFILE_COUNT:0} local test profiles active • ${getTestLikedMe().length} simulated incoming likes • ${getTestMatched().length} simulated matches`;
-    };
-    $('#adminToggleTestProfiles').onclick=()=>{ setTestProfilesEnabled(!testProfilesEnabled()); if(!testProfilesEnabled()) people=(people||[]).filter(p=>!p.isTestProfile); loadPeopleDirectory({preserveIndex:false, quiet:true}); refresh(); };
-    $('#adminRefreshDirectory').onclick=()=>loadPeopleDirectory({preserveIndex:true, quiet:false});
-    $('#adminResetMyConnections').onclick=resetMyConnections;
-    $('#adminClearTestSignals').onclick=()=>{ clearTestSignals(); refresh(); };
-    $('#adminSimLikes').onclick=()=>{ simulateIncomingLikes(5); refresh(); };
-    $('#adminSimMatches').onclick=()=>{ simulateMatches(5); refresh(); };
-    $('#adminClearTestChats').onclick=clearAllTestChats;
-    refresh();
-  }
-  const baseRenderAdminWorkspace = renderAdminWorkspace;
-  renderAdminWorkspace = function(){ const r=baseRenderAdminWorkspace.apply(this, arguments); injectAdminTestTools(); return r; };
-  const baseRenderAdmin = renderAdmin;
-  renderAdmin = function(){ const r=baseRenderAdmin.apply(this, arguments); setTimeout(injectAdminTestTools,0); return r; };
-  setTimeout(()=>{ mergeTestProfilesIntoDirectory(); renderStack(); renderMatches(); renderChats(); injectAdminTestTools(); }, 500);
-})();
-
-/* =========================================================
    Afterglow production data-safety console
    Local recovery snapshots, export/import, cloud revisions,
    offline retry, and owner health checks.
@@ -4211,8 +3873,8 @@ renderAdminWorkspace = function(){
     box.innerHTML='<p class="tiny-note">Loading protected cloud revisions…</p>';
     try{
       const {data,error}=await supa.from('fv_profile_revisions').select('id,revision,reason,created_at,ratings,inventory').order('created_at',{ascending:false}).limit(12);
-      if(error){ if(isMissingRpcError(error)||error.code==='42P01'){box.innerHTML='<p class="tiny-note">Run the production SQL migration to enable cloud revision history.</p>';return;} throw error; }
-      box.innerHTML=(data||[]).map(r=>`<div class="safety-revision"><div><b>${new Date(r.created_at).toLocaleString()}</b><span>Revision ${Number(r.revision||0)} • ${Object.keys(r.ratings||{}).length} answers • ${(r.inventory?.owned||[]).length} unlocks</span><small>${escSafe(r.reason||'sync')}</small></div><button type="button" class="ghost-mini" data-restore-revision="${escSafe(r.id)}">Restore</button></div>`).join('')||'<p class="tiny-note">Cloud revisions begin after the production migration and the next protected sync.</p>';
+      if(error){ if(isMissingRpcError(error)||error.code==='42P01'){box.innerHTML='<p class="tiny-note">Cloud recovery is temporarily unavailable.</p>';return;} throw error; }
+      box.innerHTML=(data||[]).map(r=>`<div class="safety-revision"><div><b>${new Date(r.created_at).toLocaleString()}</b><span>Revision ${Number(r.revision||0)} • ${Object.keys(r.ratings||{}).length} answers • ${(r.inventory?.owned||[]).length} unlocks</span><small>${escSafe(r.reason||'sync')}</small></div><button type="button" class="ghost-mini" data-restore-revision="${escSafe(r.id)}">Restore</button></div>`).join('')||'<p class="tiny-note">No cloud recovery points are available yet.</p>';
       box.querySelectorAll('[data-restore-revision]').forEach(btn=>btn.onclick=()=>restoreCloudRevision(btn.dataset.restoreRevision));
     }catch(err){console.warn(err);box.innerHTML='<p class="tiny-note">Cloud revisions could not be loaded.</p>';}
   }
@@ -4234,7 +3896,7 @@ renderAdminWorkspace = function(){
     const out=document.querySelector('#afterglowHealthOutput'); if(!out||!isAdmin()||!supa) return;
     out.textContent='Checking…';
     try{const {data,error}=await supa.rpc('fv_admin_health_summary');if(error)throw error;out.textContent=`${data.profiles||0} profiles • ${data.profiles_with_answers||0} with answers • ${data.wallets||0} wallets • ${data.pending_wallet_recoveries||0} wallet reviews • ${data.revision_backups||0} cloud backups • ${data.private_album_photos||0} private photos`;}
-    catch(err){console.warn(err);out.textContent='Health summary unavailable until the production SQL migration is installed.';}
+    catch(err){console.warn(err);out.textContent='Data health summary is temporarily unavailable.';}
   }
   async function downloadOwnerServerBackup(){
     if(!isAdmin()||!supa) return showToast('Admin access is required.');
@@ -4244,20 +3906,18 @@ renderAdminWorkspace = function(){
       downloadJson(`afterglow-server-backup-${todayKey()}.json`,data);
       if(out) out.textContent='Server backup downloaded. Storage photo bytes require a separate provider backup.';
       showToast('Protected server backup downloaded.');
-    }catch(err){console.warn(err);if(out)out.textContent='Server backup unavailable until the production SQL migration is installed.';}
+    }catch(err){console.warn(err);if(out)out.textContent='Server backup is temporarily unavailable.';}
   }
   function injectSafetyPanel(){
     const profile=document.querySelector('#profile'); if(!profile||document.querySelector('#afterglowDataSafety')) return;
     const panel=document.createElement('div'); panel.id='afterglowDataSafety'; panel.className='profile-panel afterglow-data-safety';
-    panel.innerHTML=`<div class="panel-heading"><div><b>🛡️ Data Safety</b><p>Your answers save locally first, merge safely after downtime, and keep recovery copies.</p></div><span class="safety-live-dot">Protected</span></div><p id="afterglowSafetyStatus" class="tiny-note"></p><p class="tiny-note">Sync status: <b id="afterglowSyncLive">${escSafe(state.meta?.syncStatus||'checking…')}</b></p><div class="safety-actions"><button type="button" class="primary" id="afterglowExportBackup">Download Backup</button><label class="ghost safety-import">Import Backup<input type="file" id="afterglowImportBackup" accept="application/json,.json"></label><button type="button" class="ghost" id="afterglowRestoreLocal">Restore Latest Local Copy</button><button type="button" class="ghost" id="afterglowSyncNow">Sync Now</button><button type="button" class="ghost" id="afterglowRefreshRevisions">Cloud Recovery Points</button></div><div id="afterglowCloudRevisions" class="safety-revisions hidden"></div>${isAdmin()?'<div class="safety-health"><button type="button" class="ghost-mini" id="afterglowHealthCheck">Run Production Health Check</button><button type="button" class="ghost-mini" id="afterglowServerBackup">Download Server Backup</button><span id="afterglowHealthOutput"></span></div>':''}`;
+    panel.innerHTML=`<div class="panel-heading"><div><b>🛡️ Data Safety</b><p>Your answers save locally first, merge safely after downtime, and keep recovery copies.</p></div><span class="safety-live-dot">Protected</span></div><p id="afterglowSafetyStatus" class="tiny-note"></p><p class="tiny-note">Sync status: <b id="afterglowSyncLive">${escSafe(state.meta?.syncStatus||'checking…')}</b></p><div class="safety-actions"><button type="button" class="primary" id="afterglowExportBackup">Download Backup</button><label class="ghost safety-import">Import Backup<input type="file" id="afterglowImportBackup" accept="application/json,.json"></label><button type="button" class="ghost" id="afterglowRestoreLocal">Restore Latest Local Copy</button><button type="button" class="ghost" id="afterglowSyncNow">Sync Now</button><button type="button" class="ghost" id="afterglowRefreshRevisions">Recovery History</button></div><div id="afterglowCloudRevisions" class="safety-revisions hidden"></div>`;
     const saveBtn=document.querySelector('#saveProfile'); if(saveBtn) profile.insertBefore(panel,saveBtn); else profile.appendChild(panel);
     document.querySelector('#afterglowExportBackup').onclick=exportProtectedBackup;
     document.querySelector('#afterglowImportBackup').onchange=e=>{importProtectedBackup(e.target.files?.[0]);e.target.value='';};
     document.querySelector('#afterglowRestoreLocal').onclick=restoreLatestLocal;
     document.querySelector('#afterglowSyncNow').onclick=()=>syncToSupabase(true,'manual_sync');
     document.querySelector('#afterglowRefreshRevisions').onclick=()=>{const box=document.querySelector('#afterglowCloudRevisions');box.classList.toggle('hidden');if(!box.classList.contains('hidden'))renderCloudRevisions();};
-    document.querySelector('#afterglowHealthCheck')?.addEventListener('click',loadOwnerHealth);
-    document.querySelector('#afterglowServerBackup')?.addEventListener('click',downloadOwnerServerBackup);
     renderSafetyStatus();
   }
   window.AfterglowDataSafety={exportBackup:exportProtectedBackup,restoreLatestLocal,renderCloudRevisions,snapshot:()=>snapshotLocalState(state,'manual_snapshot',true)};
@@ -4271,4 +3931,604 @@ renderAdminWorkspace = function(){
   const baseHydrate=typeof hydrateProfileForm==='function'?hydrateProfileForm:null;
   if(baseHydrate){hydrateProfileForm=function(){const r=baseHydrate.apply(this,arguments);setTimeout(injectSafetyPanel,50);return r;};}
   setTimeout(injectSafetyPanel,1300);
+})();
+
+/* ============================================================
+   Afterglow distribution UI v3
+   Production-facing discovery, live profile preview, device
+   location, Afterglow+ entitlement, daily reward clarity, and
+   owner-only data operations. This patch intentionally layers on
+   top of the hardened persistence/economy code above.
+   ============================================================ */
+(()=>{
+  'use strict';
+
+  const DIST_FILTER_KEY='afterglowDiscoveryFiltersV1';
+  const PREMIUM_COST=2300;
+  const PREMIUM_DAYS=30;
+  const FREE_DISTANCE_MILES=50;
+  const DEFAULT_FILTERS={showMe:'Everyone',distance:50,chemistry:70};
+  let distFilters=loadDistributionFilters();
+
+  function numberOrNull(value){
+    const n=Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  function clamp(value,min,max){ return Math.max(min,Math.min(max,Number(value)||0)); }
+  function parseDistanceOption(value){
+    const match=String(value||'').match(/\d+/);
+    return match ? Number(match[0]) : DEFAULT_FILTERS.distance;
+  }
+  function parseChemistryOption(value){
+    const match=String(value||'').match(/\d+/);
+    return match ? Number(match[0]) : 0;
+  }
+  function loadDistributionFilters(){
+    try{
+      const raw=JSON.parse(localStorage.getItem(DIST_FILTER_KEY)||'null');
+      return {...DEFAULT_FILTERS,...(raw&&typeof raw==='object'?raw:{})};
+    }catch{return {...DEFAULT_FILTERS};}
+  }
+  function saveDistributionFilters(){
+    try{localStorage.setItem(DIST_FILTER_KEY,JSON.stringify(distFilters));}catch{}
+  }
+  function premiumIsActive(){
+    const p=state?.meta?.premium||{};
+    if(!p.active) return false;
+    const until=Date.parse(p.premium_until||p.premiumUntil||'');
+    return !Number.isFinite(until) || until>Date.now();
+  }
+  function premiumUntilText(){
+    const raw=state?.meta?.premium?.premium_until||state?.meta?.premium?.premiumUntil||'';
+    const d=new Date(raw);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  }
+
+  // Preserve premium information returned by the server-authoritative economy RPC.
+  const distBaseApplyEconomyPayload=typeof applyEconomyPayload==='function'?applyEconomyPayload:null;
+  if(distBaseApplyEconomyPayload){
+    applyEconomyPayload=function(payload,options){
+      const result=distBaseApplyEconomyPayload.apply(this,arguments);
+      const economy=payload?.economy||payload||{};
+      if(economy?.premium && typeof economy.premium==='object'){
+        state.meta={...(state.meta||{}),premium:{...economy.premium}};
+        if(options?.persist!==false) persistStateLocalOnly('premium_status');
+      }
+      setTimeout(()=>{renderPremiumPassCard();renderStack();},0);
+      return result;
+    };
+  }
+
+  function renderPremiumPassCard(){
+    const mount=document.querySelector('#premiumPassMount');
+    if(!mount) return;
+    const active=premiumIsActive();
+    const until=premiumUntilText();
+    mount.innerHTML=`<article class="premium-pass-card ${active?'premium-active':''}">
+      <div class="premium-pass-icon">✦</div>
+      <div class="premium-pass-copy">
+        <span class="premium-kicker">Afterglow+</span>
+        <h3>${active?'Your Plus pass is active':'30-Day Afterglow+ Pass'}</h3>
+        <p>${active
+          ? `Explore beyond ${FREE_DISTANCE_MILES} miles, display your Plus badge, and keep premium discovery active${until?` through ${escapeHtml(until)}`:''}.`
+          : `Unlock profiles beyond ${FREE_DISTANCE_MILES} miles for 30 days and add an Afterglow+ badge to your profile.`}</p>
+        <div class="premium-meta"><span>30 days</span><span>${active?'Active':'🪙 2,300 Glow Coins'}</span></div>
+      </div>
+      <button id="buyPremiumPass" class="${active?'ghost':'primary'} premium-pass-action" type="button" ${active?'disabled':''}>${active?'Active':'Unlock for 2,300'}</button>
+    </article>`;
+    const btn=mount.querySelector('#buyPremiumPass');
+    if(btn&&!active) btn.onclick=purchasePremiumPass;
+  }
+
+  async function purchasePremiumPass(){
+    if(!supa||!authUser) return showToast('Sign in to unlock Afterglow+.');
+    const current=Number(ensureRewards()?.glowCoins||0);
+    if(current<PREMIUM_COST) return showToast(`You need ${PREMIUM_COST-current} more Glow Coins for Afterglow+.`);
+    const btn=document.querySelector('#buyPremiumPass');
+    if(btn){btn.disabled=true;btn.textContent='Unlocking…';}
+    try{
+      const pendingKeyName=`afterglowPremiumPurchaseKey:${authUser.id}`;
+      let purchaseKey='';
+      try{purchaseKey=localStorage.getItem(pendingKeyName)||'';}catch{}
+      if(!purchaseKey){purchaseKey=crypto.randomUUID();try{localStorage.setItem(pendingKeyName,purchaseKey);}catch{}}
+      const {data,error}=await supa.rpc('fv_purchase_premium_30d',{p_purchase_key:purchaseKey});
+      if(error) throw error;
+      const result=Array.isArray(data)?data[0]:data;
+      if(result?.economy) applyEconomyPayload(result.economy);
+      else applyEconomyPayload(result);
+      if(result?.status==='insufficient'){
+        showToast(`You need ${Number(result.needed||0)} more Glow Coins.`);
+      }else{
+        try{localStorage.removeItem(pendingKeyName);}catch{}
+        showToast(`Afterglow+ unlocked for ${PREMIUM_DAYS} days.`);
+        await loadServerEconomy().catch(()=>{});
+        await loadPeopleDirectory({preserveIndex:true,quiet:true}).catch(()=>{});
+        renderPremiumPassCard();
+        renderStack();
+      }
+    }catch(err){
+      console.warn('Afterglow+ purchase failed',err);
+      showToast('Afterglow+ is temporarily unavailable. No Glow Coins were removed.');
+    }finally{
+      const next=document.querySelector('#buyPremiumPass');
+      if(next&&!premiumIsActive()){next.disabled=false;next.textContent='Unlock for 2,300';}
+    }
+  }
+
+  const distBaseRenderShop=typeof renderShop==='function'?renderShop:null;
+  if(distBaseRenderShop){
+    renderShop=function(){
+      const result=distBaseRenderShop.apply(this,arguments);
+      renderPremiumPassCard();
+      return result;
+    };
+  }
+
+  // Server directory rows contain only approximate whole-mile distance. Exact
+  // coordinates never reach another member's browser.
+  const distBaseProfileRowToPerson=typeof profileRowToPerson==='function'?profileRowToPerson:null;
+  if(distBaseProfileRowToPerson){
+    profileRowToPerson=function(row){
+      const p=distBaseProfileRowToPerson.apply(this,arguments);
+      const profile=row?.profile||{};
+      const miles=numberOrNull(profile.distanceMiles);
+      const city=String(profile.city||profile.area||'').trim();
+      p.distance=miles===null?999999:miles;
+      p.distanceMiles=miles;
+      p.distanceLabel=miles===null
+        ? (city?`📍 ${city}`:'Distance unavailable')
+        : `${miles<1?'<1':Math.round(miles)} mi away${city?` • ${city}`:''}`;
+      p.premium=!!profile.premiumActive;
+      return p;
+    };
+  }
+
+  function genderPassesFilter(person){
+    const wanted=String(distFilters.showMe||'Everyone');
+    if(wanted==='Everyone') return true;
+    const sex=String(person?.profile?.sex||'').toLowerCase();
+    if(!sex) return false;
+    if(wanted==='Women') return sex.includes('woman') || sex==='female';
+    if(wanted==='Men') return (sex==='man'||sex.includes('trans man')||sex==='male') && !sex.includes('woman');
+    if(wanted==='Non-binary people') return sex.includes('non-binary')||sex.includes('nonbinary')||sex.includes('gender fluid');
+    return true;
+  }
+  function distancePassesFilter(person){
+    const miles=numberOrNull(person?.distanceMiles);
+    if(miles===null) return true;
+    const requested=Number(distFilters.distance||FREE_DISTANCE_MILES);
+    // Free members receive the nearby experience up to 50 miles. Plus members
+    // can deliberately expand discovery to the 100-mile filter.
+    const allowed=premiumIsActive()?requested:Math.min(requested,FREE_DISTANCE_MILES);
+    return miles<=allowed;
+  }
+  function chemistryPassesFilter(person){
+    const min=Number(distFilters.chemistry||0);
+    return min<=0 || Number(person?.score||0)>=min;
+  }
+  function personIsPremiumDistanceLocked(person){
+    if(premiumIsActive()) return false;
+    if(person?.profile?.premiumLocked===true) return true;
+    const miles=numberOrNull(person?.distanceMiles);
+    return miles!==null && miles>FREE_DISTANCE_MILES;
+  }
+
+  const distBaseOrderedPeople=typeof orderedPeople==='function'?orderedPeople:null;
+  if(distBaseOrderedPeople){
+    orderedPeople=function(){
+      const base=distBaseOrderedPeople.apply(this,arguments);
+      // We keep >50-mile profiles in the source array so the grid can show a
+      // tasteful locked preview rather than pretending no one exists there.
+      return base.filter(p=>genderPassesFilter(p)&&chemistryPassesFilter(p)).filter(p=>{
+        const miles=numberOrNull(p?.distanceMiles);
+        if(miles===null) return true;
+        const requested=Number(distFilters.distance||FREE_DISTANCE_MILES);
+        return miles<=requested;
+      });
+    };
+  }
+
+  function syncFilterControls(){
+    const show=document.querySelector('#filterShowMe');
+    const dist=document.querySelector('#filterDistance');
+    const chem=document.querySelector('#filterChemistry');
+    if(show) show.value=distFilters.showMe||'Everyone';
+    if(dist){
+      const desired=`${Number(distFilters.distance||FREE_DISTANCE_MILES)} miles`;
+      if([...dist.options].some(o=>o.value===desired||o.textContent===desired)) dist.value=desired;
+    }
+    if(chem){
+      const desired=Number(distFilters.chemistry||0)===0?'Any':`${Number(distFilters.chemistry)}%+`;
+      if([...chem.options].some(o=>o.value===desired||o.textContent===desired)) chem.value=desired;
+    }
+  }
+  function applyDistributionFilters(){
+    const show=document.querySelector('#filterShowMe');
+    const dist=document.querySelector('#filterDistance');
+    const chem=document.querySelector('#filterChemistry');
+    distFilters={
+      showMe:show?.value||'Everyone',
+      distance:parseDistanceOption(dist?.value),
+      chemistry:parseChemistryOption(chem?.value)
+    };
+    saveDistributionFilters();
+    index=0;
+    renderStack();
+    document.querySelector('#filters')?.classList.add('hidden');
+  }
+
+  function discoveryTileHtml(p){
+    const key=personKey(p);
+    const avatar=safeImageUrl(p?.avatarUrl);
+    const fallback=Array.isArray(p?.gradient)?p.gradient:['#8a3ffc','#ff4fa3'];
+    const bg=avatar
+      ? `background-image:linear-gradient(180deg,transparent 42%,rgba(6,4,11,.90) 100%),url(&quot;${escapeHtml(avatar)}&quot;)`
+      : `background-image:linear-gradient(145deg,${fallback[0]},${fallback[1]})`;
+    const age=p?.age?`, ${escapeHtml(p.age)}`:'';
+    const score=clamp(p?.score,0,100);
+    const locked=personIsPremiumDistanceLocked(p);
+    const distance=escapeHtml(p?.distanceLabel||'Distance unavailable');
+    return `<button class="discovery-tile ${locked?'distance-locked':''}" type="button" data-profile-key="${escapeHtml(key)}" aria-label="View ${escapeHtml(p?.name||'profile')}">
+      <span class="discovery-photo" style="${bg};background-size:cover;background-position:center">
+        ${avatar?'':`<span class="discovery-initial">${escapeHtml(p?.initial||'M')}</span>`}
+        <span class="discovery-top-badges">${p?.premium?'<em class="plus-mini">PLUS</em>':''}${p?.email?'<em class="verified-mini">✓</em>':''}</span>
+        ${locked?'<span class="distance-lock"><b>🔒</b><small>Afterglow+</small></span>':''}
+        <span class="discovery-bottom">
+          <strong>${escapeHtml(p?.name||'Member')}${age}</strong>
+          <small>${distance}</small>
+          <em>${score}% chemistry</em>
+        </span>
+      </span>
+    </button>`;
+  }
+
+  renderStack=function(){
+    const mount=document.querySelector('#cardStack');
+    if(!mount) return;
+    const arr=orderedPeople();
+    if(!arr.length){
+      mount.innerHTML=`<div class="empty-state discovery-empty"><h3>No profiles match these filters</h3><p>Try a wider distance or a lower chemistry minimum.</p><button id="emptyAdjustFilters" class="primary" type="button">Adjust filters</button></div>`;
+      mount.querySelector('#emptyAdjustFilters')?.addEventListener('click',()=>{syncFilterControls();document.querySelector('#filters')?.classList.remove('hidden');});
+      return;
+    }
+    mount.innerHTML=arr.map(discoveryTileHtml).join('');
+    mount.querySelectorAll('[data-profile-key]').forEach(tile=>tile.onclick=()=>{
+      const p=people.find(x=>personKey(x)===String(tile.dataset.profileKey));
+      if(p&&personIsPremiumDistanceLocked(p)){
+        showToast(`Afterglow+ unlocks profiles beyond ${FREE_DISTANCE_MILES} miles.`);
+        showScreen('shop');
+        setTimeout(()=>document.querySelector('#premiumPassMount')?.scrollIntoView({behavior:'smooth',block:'center'}),100);
+        return;
+      }
+      openBrowseProfile(tile.dataset.profileKey,false);
+    });
+  };
+
+  function ensureBrowseProfileModal(){
+    let modal=document.querySelector('#browseProfileModal');
+    if(modal) return modal;
+    modal=document.createElement('section');
+    modal.id='browseProfileModal';
+    modal.className='browse-profile-modal hidden';
+    modal.setAttribute('role','dialog');
+    modal.setAttribute('aria-modal','true');
+    modal.innerHTML=`<div class="browse-profile-shell">
+      <div class="browse-profile-nav"><button id="browseProfileBack" class="browse-back" type="button">← Back</button><span class="browse-wordmark">Afterglow</span></div>
+      <div id="browseProfileBody" class="browse-profile-body"></div>
+    </div>`;
+    document.querySelector('.phone')?.appendChild(modal);
+    modal.querySelector('#browseProfileBack').onclick=closeBrowseProfile;
+    return modal;
+  }
+  function closeBrowseProfile(){
+    const modal=document.querySelector('#browseProfileModal');
+    if(!modal) return;
+    modal.classList.add('hidden');
+    modal.removeAttribute('data-key');
+    modal.removeAttribute('data-self');
+  }
+  function selfAsPerson(){
+    const profile=state.profile||{};
+    const name=(profile.displayName||authUser?.user_metadata?.full_name||authUser?.email?.split('@')[0]||'Your profile').trim();
+    const initial=(name[0]||'Y').toUpperCase();
+    return {
+      id:authUser?.id||state.userId||'self',name,initial,age:profile.age||'',avatarUrl:profile.avatarUrl||'',
+      gradient:deterministicGradient(authUser?.id||name),score:100,vibe:profile.headline||profile.bio||'',
+      profile,ratings:state.ratings||{},email:authUser?.email||'',distanceLabel:profile.city?`📍 ${profile.city}`:'',premium:premiumIsActive(),self:true
+    };
+  }
+  function profileInterestChips(profile){
+    const raw=String(profile?.interests||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const items=[profile?.sex,profile?.lookingFor,...raw].filter(Boolean).slice(0,10);
+    return items.length?items.map(x=>`<span>${escapeHtml(x)}</span>`).join(''):'<span>Still building this profile</span>';
+  }
+  function selfVaultHtml(person){
+    const count=Object.keys(person?.ratings||{}).length;
+    if(!count) return '';
+    return topVaultHtml(person);
+  }
+  function browseStyleSummaryHtml(p){
+    const equipped=p?.profile?.inventory?.equipped||{};
+    const types=[['avatarFrame','Profile frame'],['profileTheme','Banner theme'],['avatarEffect','Avatar effect'],['profileEffect','Profile effect']];
+    const rows=types.map(([type,label])=>{
+      const value=equipped[type];
+      if(!value) return null;
+      const item=(typeof SHOP_ITEMS!=='undefined'?SHOP_ITEMS:[]).find(x=>x.type===type&&x.value===value);
+      return item?`<span>${item.icon} ${escapeHtml(item.title)}</span>`:`<span>${escapeHtml(label)}</span>`;
+    }).filter(Boolean);
+    return rows.length?`<article class="browse-card browse-style-card"><h3>✨ Profile style</h3><div class="browse-chips">${rows.join('')}</div></article>`:'';
+  }
+  function renderBrowseActions(p,isSelf){
+    if(isSelf) return '';
+    const key=personKey(p);
+    const liked=iLike(p);
+    const mutual=isMutual(p);
+    return `<div class="browse-actions">
+      <button class="browse-pass" type="button" data-browse-pass="${escapeHtml(key)}">✕<span>Pass</span></button>
+      <button class="browse-like ${liked?'selected':''}" type="button" data-browse-like="${escapeHtml(key)}">♥<span>${mutual?'Matched':liked?'Liked':'Like'}</span></button>
+      ${mutual?`<button class="browse-message" type="button" data-browse-message="${escapeHtml(key)}">💬<span>Message</span></button>`:''}
+    </div>`;
+  }
+  function renderBrowseProfileBody(p,isSelf=false){
+    const body=document.querySelector('#browseProfileBody');
+    if(!body) return;
+    const avatar=safeImageUrl(p?.avatarUrl);
+    const fallback=Array.isArray(p?.gradient)?p.gradient:['#7c5cff','#ff4fa3'];
+    const hero=avatar
+      ? `background-image:linear-gradient(180deg,rgba(4,3,8,.06),rgba(4,3,8,.90)),url(&quot;${escapeHtml(avatar)}&quot;)`
+      : `background-image:radial-gradient(circle at 25% 20%,${fallback[0]},transparent 38%),linear-gradient(135deg,${fallback[1]},#100817 72%)`;
+    const profile=p?.profile||{};
+    const vault=isSelf?selfVaultHtml(p):topVaultHtml(p);
+    const equipped=profile?.inventory?.equipped||{};
+    const heroClasses=['browse-hero','member-hero',equipped.profileEffect||'',equipped.profileTheme||''].filter(Boolean).join(' ');
+    const avatarClasses=['browse-profile-avatar','member-avatar-large',equipped.avatarFrame||'',equipped.avatarEffect||''].filter(Boolean).join(' ');
+    const avatarChipStyle=avatar?`background-image:url(&quot;${escapeHtml(avatar)}&quot;);background-size:cover;background-position:center`:`background:linear-gradient(135deg,${fallback[0]},${fallback[1]})`;
+    body.innerHTML=`
+      <div class="${escapeHtml(heroClasses)}" style="${hero};background-size:cover;background-position:center">
+        ${avatar?'':`<div class="browse-hero-initial">${escapeHtml(p?.initial||'M')}</div>`}
+        <div class="${escapeHtml(avatarClasses)}" style="${avatarChipStyle}">${avatar?'':escapeHtml(p?.initial||'M')}</div>
+        <div class="browse-hero-copy">
+          <div class="browse-name-line"><h2>${escapeHtml(p?.name||'Member')}${p?.age?`, ${escapeHtml(p.age)}`:''}</h2>${p?.email?'<span class="browse-verified">✓ Verified</span>':''}${p?.premium?'<span class="browse-plus">Afterglow+</span>':''}</div>
+          ${p?.distanceLabel?`<p>${escapeHtml(p.distanceLabel)}</p>`:''}
+          ${p?.vibe?`<strong>${escapeHtml(p.vibe)}</strong>`:''}
+        </div>
+      </div>
+      ${renderBrowseActions(p,isSelf)}
+      <article class="browse-card"><h3>About</h3><p>${escapeHtml(profile.bio||profile.headline||(isSelf?'Add a bio from Edit Profile.':'No bio added yet.'))}</p><div class="browse-chips">${profileInterestChips(profile)}</div></article>
+      ${browseStyleSummaryHtml(p)}
+      ${vault?`<article class="browse-card"><div class="browse-card-title"><h3>Vault highlights</h3>${!isSelf?`<span>${clamp(p?.score,0,100)}% chemistry</span>`:''}</div><div class="interest-grid browse-vault-grid">${vault}</div></article>`:''}
+      ${isSelf?'<p class="browse-preview-note">This is how your public profile appears to other members. Exact device coordinates, wallet details, and private account data are never shown here.</p>':''}
+    `;
+    body.querySelector('[data-browse-pass]')?.addEventListener('click',e=>browsePass(e.currentTarget.dataset.browsePass));
+    body.querySelector('[data-browse-like]')?.addEventListener('click',e=>browseLike(e.currentTarget.dataset.browseLike));
+    body.querySelector('[data-browse-message]')?.addEventListener('click',e=>{const key=e.currentTarget.dataset.browseMessage;closeBrowseProfile();openChat(key);});
+  }
+  function openBrowseProfile(key,isSelf=false){
+    const modal=ensureBrowseProfileModal();
+    const p=isSelf?selfAsPerson():people.find(x=>personKey(x)===String(key));
+    if(!p) return showToast('Profile is not available right now.');
+    if(!isSelf&&personIsPremiumDistanceLocked(p)) return showToast(`Afterglow+ unlocks profiles beyond ${FREE_DISTANCE_MILES} miles.`);
+    modal.dataset.key=personKey(p);
+    modal.dataset.self=isSelf?'1':'0';
+    const back=modal.querySelector('#browseProfileBack');
+    if(back) back.textContent=isSelf?'← Back to Edit':'← Back';
+    renderBrowseProfileBody(p,isSelf);
+    modal.classList.remove('hidden');
+    modal.querySelector('.browse-profile-shell')?.scrollTo({top:0,behavior:'instant'});
+  }
+  function browsePass(key){
+    const p=people.find(x=>personKey(x)===String(key));
+    if(!p) return;
+    const id=personKey(p);
+    if(!passedKeys().includes(id)) state.passed.push(id);
+    state.liked=(state.liked||[]).filter(x=>String(x)!==id);
+    save('discovery_pass');
+    syncToSupabase(false,'discovery_pass');
+    closeBrowseProfile();
+    renderStack();renderMatches();renderChats();
+    showToast(`Passed on ${p.name}.`);
+  }
+  function browseLike(key){
+    const p=people.find(x=>personKey(x)===String(key));
+    if(!p) return;
+    const id=personKey(p);
+    if(!likedKeys().includes(id)) state.liked.push(id);
+    state.passed=(state.passed||[]).filter(x=>String(x)!==id);
+    save('discovery_like');
+    syncToSupabase(false,'discovery_like');
+    renderMatches();renderChats();
+    if(p.likesMe){
+      showToast(`It's a match with ${p.name}!`);
+      renderBrowseProfileBody(p,false);
+    }else{
+      showToast(`Liked ${p.name}.`);
+      closeBrowseProfile();renderStack();
+    }
+  }
+  window.AfterglowProfilePreview={open:(key)=>openBrowseProfile(key,false),openMine:()=>openBrowseProfile(null,true),close:closeBrowseProfile};
+
+  function hasSavedLocation(){
+    const loc=state?.profile?.location||{};
+    const lat=numberOrNull(loc.lat),lng=numberOrNull(loc.lng);
+    return lat!==null&&lng!==null&&lat>=-90&&lat<=90&&lng>=-180&&lng<=180;
+  }
+  function renderLocationStatus(){
+    const status=document.querySelector('#locationStatus');
+    const btn=document.querySelector('#useCurrentLocation');
+    if(!status) return;
+    if(hasSavedLocation()){
+      const captured=state.profile?.location?.capturedAt?new Date(state.profile.location.capturedAt):null;
+      const when=captured&&!Number.isNaN(captured.getTime())?` • updated ${captured.toLocaleDateString(undefined,{month:'short',day:'numeric'})}`:'';
+      status.textContent=`Device location is on${when}. Other members only receive an approximate distance, never your coordinates.`;
+      if(btn) btn.textContent='📍 Update Location';
+      return;
+    }
+    if(state?.profile?.locationConsentState==='denied'){
+      status.textContent='Location access is blocked in this browser. Allow location for this site, then choose Use Current Location.';
+      if(btn) btn.textContent='📍 Try Location Again';
+      return;
+    }
+    status.textContent='Use your device location to sort nearby profiles and calculate approximate distance.';
+    if(btn) btn.textContent='📍 Use Current Location';
+  }
+  async function requestDeviceLocation({force=false}={}){
+    if(!authUser) return showToast('Sign in before setting your location.');
+    if(!navigator.geolocation){
+      state.profile.locationConsentState='unsupported';save('location_unsupported');renderLocationStatus();
+      return showToast('Location is not supported by this browser.');
+    }
+    const button=document.querySelector('#useCurrentLocation');
+    if(button){button.disabled=true;button.textContent='📍 Locating…';}
+    state.profile.locationPromptedAt=new Date().toISOString();
+    try{
+      const pos=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:12000,maximumAge:300000}));
+      const lat=Number(pos.coords.latitude),lng=Number(pos.coords.longitude);
+      if(!Number.isFinite(lat)||!Number.isFinite(lng)) throw new Error('Invalid location');
+      state.profile.location={lat:Number(lat.toFixed(5)),lng:Number(lng.toFixed(5)),accuracy:Math.round(Number(pos.coords.accuracy||0)),capturedAt:new Date().toISOString()};
+      state.profile.locationConsentState='granted';
+      save('device_location');
+      await syncToSupabase(false,'device_location');
+      await loadPeopleDirectory({preserveIndex:true,quiet:true}).catch(()=>{});
+      renderLocationStatus();renderStack();
+      showToast('Location updated. Only approximate distance is shared.');
+    }catch(err){
+      const denied=Number(err?.code)===1;
+      state.profile.locationConsentState=denied?'denied':'unavailable';
+      save('location_permission');
+      renderLocationStatus();
+      showToast(denied?'Location permission is blocked. You can enable it in your browser and try again.':'Could not get your location. Please try again.');
+    }finally{
+      if(button) button.disabled=false;
+      renderLocationStatus();
+    }
+  }
+  function maybeRequestSignupLocation(){
+    if(!authUser||hasSavedLocation()||state?.profile?.locationConsentState==='denied') return;
+    const key=`afterglowLocationPrompted:${authUser.id}`;
+    if(localStorage.getItem(key)) return;
+    try{localStorage.setItem(key,new Date().toISOString());}catch{}
+    setTimeout(()=>requestDeviceLocation({force:false}),800);
+  }
+
+  function weekdayForDateKey(key){
+    const d=new Date(`${key}T12:00:00`);
+    return Number.isNaN(d.getTime())?'Day':new Intl.DateTimeFormat(undefined,{weekday:'short'}).format(d);
+  }
+  function renderDistributionDailyGift(){
+    const r=ensureRewards();
+    const claimed=!!r.claimedToday;
+    const continuing=r.lastClaimDate===yesterdayKey()||r.lastClaimDate===todayKey();
+    const claimDay=claimed?Math.max(1,Number(r.streak||1)):(continuing?Number(r.streak||0)+1:1);
+    const rewardIndex=Math.min(Math.max(claimDay,1),7)-1;
+    const reward=DAILY_GLOW_REWARDS[rewardIndex];
+    const balance=document.querySelector('#glowCoinBalance');if(balance) balance.textContent=Number(r.glowCoins||0).toLocaleString();
+    const stateEl=document.querySelector('#dailyRewardState');if(stateEl) stateEl.textContent=claimed?'Claimed':'Today';
+    const amount=document.querySelector('#dailyRewardAmount');if(amount) amount.textContent=Number(reward||0).toLocaleString();
+    const btn=document.querySelector('#claimDailyGift');
+    if(btn){btn.disabled=claimed;btn.textContent=claimed?'Claimed today':`Claim ${reward} Glow Coins`;}
+    const title=document.querySelector('#dailyGiftTitle');if(title) title.textContent=claimed?'Gift claimed ✨':`Today’s Glow Gift`;
+    const text=document.querySelector('#dailyGiftText');
+    if(text) text.textContent=claimed?`You are on a ${Math.max(1,Number(r.streak||1))}-day streak. Come back tomorrow to keep it going.`:'Claim today’s reward and keep your streak alive for the 50-coin day-seven gift.';
+    const row=document.querySelector('#dailyStreakRow');
+    if(row){
+      const anchorIndex=rewardIndex;
+      row.innerHTML=DAILY_GLOW_REWARDS.map((coins,i)=>{
+        const date=shiftDateKey(todayKey(),i-anchorIndex);
+        const completed=claimed ? i<=anchorIndex : i<anchorIndex;
+        const current=i===anchorIndex;
+        return `<span class="streak-dot ${completed?'done':''} ${current?'current':''}"><b>${escapeHtml(weekdayForDateKey(date))}</b><small>${coins}</small></span>`;
+      }).join('');
+    }
+    const gift=document.querySelector('#dailyGift');if(gift) gift.title=`Total Glow Coins: ${Number(r.glowCoins||0).toLocaleString()}`;
+  }
+  const distBaseRenderDailyGift=typeof renderDailyGift==='function'?renderDailyGift:null;
+  if(distBaseRenderDailyGift){
+    renderDailyGift=function(){
+      distBaseRenderDailyGift.apply(this,arguments);
+      renderDistributionDailyGift();
+    };
+  }
+
+  function injectAdminDataOperations(){
+    if(!isAdmin()) return;
+    const pane=document.querySelector('#adminPaneTools .admin-two-col');
+    if(!pane||document.querySelector('#adminDataOperations')) return;
+    const card=document.createElement('div');
+    card.id='adminDataOperations';
+    card.className='edit-card admin-form admin-data-operations';
+    card.innerHTML=`<h3>Data Operations</h3><p class="tiny-note">Owner-only integrity and backup controls.</p><button id="adminCheckDataHealth" class="ghost full" type="button">Check Data Health</button><button id="adminDownloadServerBackup" class="ghost full" type="button">Download Server Backup</button><div id="afterglowHealthOutput" class="admin-data-output">Ready.</div>`;
+    pane.appendChild(card);
+    card.querySelector('#adminCheckDataHealth').onclick=async()=>{
+      const out=card.querySelector('#afterglowHealthOutput');out.textContent='Checking…';
+      if(!supa) return out.textContent='Cloud service is unavailable.';
+      try{
+        const {data,error}=await supa.rpc('fv_admin_health_summary');if(error)throw error;
+        out.textContent=`${Number(data?.profiles||0)} profiles • ${Number(data?.profiles_with_answers||0)} with answers • ${Number(data?.wallets||0)} wallets • ${Number(data?.active_premium||0)} active Plus passes • ${Number(data?.revision_backups||0)} recovery points`;
+      }catch(err){console.warn(err);out.textContent='Data health summary is temporarily unavailable.';}
+    };
+    card.querySelector('#adminDownloadServerBackup').onclick=async()=>{
+      const out=card.querySelector('#afterglowHealthOutput');out.textContent='Preparing backup…';
+      if(!supa) return out.textContent='Cloud service is unavailable.';
+      try{
+        const {data,error}=await supa.rpc('fv_admin_export_backup');if(error)throw error;
+        downloadJson(`afterglow-server-backup-${todayKey()}.json`,data);
+        out.textContent='Server backup downloaded.';
+        showToast('Server backup downloaded.');
+      }catch(err){console.warn(err);out.textContent='Server backup is temporarily unavailable.';}
+    };
+  }
+
+  function bindDistributionUi(){
+    const live=document.querySelector('#viewLiveProfile');
+    if(live&&!live.dataset.boundDistribution){live.dataset.boundDistribution='1';live.onclick=()=>openBrowseProfile(null,true);}
+    const location=document.querySelector('#useCurrentLocation');
+    if(location&&!location.dataset.boundDistribution){location.dataset.boundDistribution='1';location.onclick=()=>requestDeviceLocation({force:true});}
+    const apply=document.querySelector('#applyFilters');
+    if(apply&&!apply.dataset.boundDistribution){apply.dataset.boundDistribution='1';apply.onclick=applyDistributionFilters;}
+    const filterOpen=document.querySelector('#filterOpen');
+    if(filterOpen&&!filterOpen.dataset.boundDistribution){filterOpen.dataset.boundDistribution='1';filterOpen.onclick=()=>{syncFilterControls();document.querySelector('#filters')?.classList.remove('hidden');};}
+    const close=document.querySelector('#closeFilters');
+    if(close&&!close.dataset.boundDistribution){close.dataset.boundDistribution='1';close.onclick=()=>document.querySelector('#filters')?.classList.add('hidden');}
+    syncFilterControls();renderLocationStatus();renderPremiumPassCard();injectAdminDataOperations();
+  }
+
+  const distBaseOpenApp=typeof openApp==='function'?openApp:null;
+  if(distBaseOpenApp){
+    openApp=function(){
+      const result=distBaseOpenApp.apply(this,arguments);
+      setTimeout(()=>{bindDistributionUi();maybeRequestSignupLocation();renderStack();},80);
+      return result;
+    };
+  }
+  const distBaseShowScreen=typeof showScreen==='function'?showScreen:null;
+  if(distBaseShowScreen){
+    showScreen=function(id){
+      const result=distBaseShowScreen.apply(this,arguments);
+      if(id==='discover') setTimeout(renderStack,0);
+      if(id==='profile') setTimeout(()=>{renderLocationStatus();bindDistributionUi();},0);
+      if(id==='shop') setTimeout(renderPremiumPassCard,0);
+      if(id==='admin') setTimeout(injectAdminDataOperations,0);
+      return result;
+    };
+  }
+  const distBaseHydrateProfileForm=typeof hydrateProfileForm==='function'?hydrateProfileForm:null;
+  if(distBaseHydrateProfileForm){
+    hydrateProfileForm=function(){
+      const result=distBaseHydrateProfileForm.apply(this,arguments);
+      setTimeout(()=>{renderLocationStatus();bindDistributionUi();},0);
+      return result;
+    };
+  }
+  const distBaseRenderAdmin=typeof renderAdmin==='function'?renderAdmin:null;
+  if(distBaseRenderAdmin){
+    renderAdmin=function(){const result=distBaseRenderAdmin.apply(this,arguments);setTimeout(injectAdminDataOperations,0);return result;};
+  }
+  const distBaseRenderAdminWorkspace=typeof renderAdminWorkspace==='function'?renderAdminWorkspace:null;
+  if(distBaseRenderAdminWorkspace){
+    renderAdminWorkspace=function(){const result=distBaseRenderAdminWorkspace.apply(this,arguments);setTimeout(injectAdminDataOperations,0);return result;};
+  }
+
+  bindDistributionUi();
+  renderDistributionDailyGift();
+  setTimeout(()=>{bindDistributionUi();renderStack();renderPremiumPassCard();renderDistributionDailyGift();},1200);
 })();
