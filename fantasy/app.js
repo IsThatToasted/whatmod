@@ -1032,9 +1032,24 @@ function updateAvatar(){
 function personKey(p){ return String(p?.id || p?.name || ''); }
 function likedKeys(){ return (state.liked||[]).map(String); }
 function passedKeys(){ return (state.passed||[]).map(String); }
-function iLike(p){ const liked=likedKeys(); return liked.includes(personKey(p)) || liked.includes(p?.name); }
-function isMutual(p){ return !!p?.likesMe && iLike(p); }
-function incomingLikes(){ return people.filter(p=>p.likesMe && !iLike(p)); }
+function iLike(p){
+  // Relationship flags returned by Supabase are authoritative. Local liked[]
+  // remains as an offline/fallback source, but it must never be the only way
+  // an established connection is recognized on a new device/session.
+  if(p?.serverILike===true || p?.serverMutual===true) return true;
+  const liked=likedKeys();
+  return liked.includes(personKey(p)) || liked.includes(p?.name);
+}
+function isMutual(p){
+  return p?.serverMutual===true || (!!p?.likesMe && iLike(p));
+}
+function incomingLikes(){
+  const passed=passedKeys();
+  return people.filter(p=>{
+    const key=personKey(p);
+    return (p?.serverLikesMe===true || p?.likesMe) && !isMutual(p) && !iLike(p) && !passed.includes(key) && !passed.includes(p?.name);
+  });
+}
 function mutualMatches(){ return people.filter(p=>isMutual(p)); }
 function orderedPeople(){
   let arr=[...people];
@@ -1076,7 +1091,12 @@ function renderStack(){
 function act(type){
   const arr=orderedPeople(); const p=arr[index]; if(!p)return;
   const key=personKey(p);
-  if(type==='like'&&!likedKeys().includes(key)){state.liked.push(key); showToast(p.likesMe ? `It's a match with ${p.name}!` : `Liked ${p.name}.`);}
+  if(type==='like'&&!likedKeys().includes(key)){
+    state.liked.push(key);
+    p.serverILike=true;
+    if(p.serverLikesMe===true || p.likesMe) p.serverMutual=true;
+    showToast(p.likesMe ? `It's a match with ${p.name}!` : `Liked ${p.name}.`);
+  }
   if(type==='pass'&&!passedKeys().includes(key)){state.passed.push(key); showToast(`Passed on ${p.name}.`);}
   index++; save(); renderStack(); renderMatches(); renderChats(); syncToSupabase(false);
 }
@@ -1084,6 +1104,8 @@ function acceptLike(key){
   const p=people.find(x=>personKey(x)===String(key));
   if(!p) return;
   if(!likedKeys().includes(personKey(p))) state.liked.push(personKey(p));
+  p.serverILike=true;
+  if(p.serverLikesMe===true || p.likesMe) p.serverMutual=true;
   save();
   renderStack();
   renderMatches();
@@ -1109,6 +1131,7 @@ async function unmatch(key){
   const label=p?.name || 'this person';
   const k=String(key);
   state.liked=(state.liked||[]).map(String).filter(x=>x!==k);
+  if(p){p.serverILike=false;p.serverMutual=false;}
   if(!passedKeys().includes(k)) state.passed.push(k);
   if(activeChatKey===k) closeChatModal();
   chatCache[k]=[];
@@ -3999,6 +4022,11 @@ renderAdminWorkspace = function(){
         ? (city?`📍 ${city}`:'Distance unavailable')
         : `${miles<1?'<1':Math.round(miles)} mi away${city?` • ${city}`:''}`;
       p.premium=!!profile.premiumActive;
+      const relationship=(profile.relationship&&typeof profile.relationship==='object')?profile.relationship:{};
+      p.serverILike=relationship.iLike===true;
+      p.serverLikesMe=relationship.likesMe===true;
+      p.serverMutual=relationship.mutual===true;
+      if(p.serverLikesMe) p.likesMe=true;
       return p;
     };
   }
@@ -4027,6 +4055,9 @@ renderAdminWorkspace = function(){
     return min<=0 || Number(person?.score||0)>=min;
   }
   function personIsPremiumDistanceLocked(person){
+    // Established connections and incoming likes are relationship-scoped, not
+    // discovery-scoped. Distance can never make an existing connection vanish.
+    if(isMutual(person) || person?.serverLikesMe===true || person?.likesMe) return false;
     if(premiumIsActive()) return false;
     if(person?.profile?.premiumLocked===true) return true;
     const miles=numberOrNull(person?.distanceMiles);
@@ -4036,10 +4067,23 @@ renderAdminWorkspace = function(){
   const distBaseOrderedPeople=typeof orderedPeople==='function'?orderedPeople:null;
   if(distBaseOrderedPeople){
     orderedPeople=function(){
-      const base=distBaseOrderedPeople.apply(this,arguments);
-      // We keep >50-mile profiles in the source array so the grid can show a
-      // tasteful locked preview rather than pretending no one exists there.
-      return base.filter(p=>genderPassesFilter(p)&&chemistryPassesFilter(p)).filter(p=>{
+      const fresh=distBaseOrderedPeople.apply(this,arguments);
+      // Discovery normally hides profiles once they have been liked/matched.
+      // For Afterglow's Explorer grid we deliberately keep established matches
+      // visible at the front, regardless of distance or current filter radius.
+      // This makes the Explorer a durable people view rather than a disposable
+      // swipe queue and prevents long-distance matches from disappearing.
+      const matches=(people||[]).filter(p=>isMutual(p));
+      const seen=new Set();
+      const merged=[...matches,...fresh].filter(p=>{
+        const key=String(personKey(p));
+        if(!key||seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return merged.filter(p=>{
+        if(isMutual(p)) return true;
+        if(!genderPassesFilter(p)||!chemistryPassesFilter(p)) return false;
         const miles=numberOrNull(p?.distanceMiles);
         if(miles===null) return true;
         const requested=Number(distFilters.distance||FREE_DISTANCE_MILES);
@@ -4086,17 +4130,18 @@ renderAdminWorkspace = function(){
       : `background-image:linear-gradient(145deg,${fallback[0]},${fallback[1]})`;
     const age=p?.age?`, ${escapeHtml(p.age)}`:'';
     const score=clamp(p?.score,0,100);
+    const matched=isMutual(p);
     const locked=personIsPremiumDistanceLocked(p);
     const distance=escapeHtml(p?.distanceLabel||'Distance unavailable');
-    return `<button class="discovery-tile ${locked?'distance-locked':''}" type="button" data-profile-key="${escapeHtml(key)}" aria-label="View ${escapeHtml(p?.name||'profile')}">
+    return `<button class="discovery-tile ${locked?'distance-locked':''} ${matched?'is-match':''}" type="button" data-profile-key="${escapeHtml(key)}" aria-label="View ${escapeHtml(p?.name||'profile')}">
       <span class="discovery-photo" style="${bg};background-size:cover;background-position:center">
         ${avatar?'':`<span class="discovery-initial">${escapeHtml(p?.initial||'M')}</span>`}
-        <span class="discovery-top-badges">${p?.premium?'<em class="plus-mini">PLUS</em>':''}${p?.email?'<em class="verified-mini">✓</em>':''}</span>
+        <span class="discovery-top-badges">${matched?'<em class="match-mini">♥ MATCHED</em>':''}${p?.premium?'<em class="plus-mini">PLUS</em>':''}${p?.email?'<em class="verified-mini">✓</em>':''}</span>
         ${locked?'<span class="distance-lock"><b>🔒</b><small>Afterglow+</small></span>':''}
         <span class="discovery-bottom">
           <strong>${escapeHtml(p?.name||'Member')}${age}</strong>
           <small>${distance}</small>
-          <em>${score}% chemistry</em>
+          <em>${matched?'Matched • ':''}${score}% chemistry</em>
         </span>
       </span>
     </button>`;
@@ -4183,10 +4228,15 @@ renderAdminWorkspace = function(){
     const key=personKey(p);
     const liked=iLike(p);
     const mutual=isMutual(p);
+    if(mutual){
+      return `<div class="browse-actions browse-actions-matched">
+        <div class="browse-match-status" aria-label="You are matched">♥<span>Matched</span></div>
+        <button class="browse-message" type="button" data-browse-message="${escapeHtml(key)}">💬<span>Message</span></button>
+      </div>`;
+    }
     return `<div class="browse-actions">
       <button class="browse-pass" type="button" data-browse-pass="${escapeHtml(key)}">✕<span>Pass</span></button>
-      <button class="browse-like ${liked?'selected':''}" type="button" data-browse-like="${escapeHtml(key)}">♥<span>${mutual?'Matched':liked?'Liked':'Like'}</span></button>
-      ${mutual?`<button class="browse-message" type="button" data-browse-message="${escapeHtml(key)}">💬<span>Message</span></button>`:''}
+      <button class="browse-like ${liked?'selected':''}" type="button" data-browse-like="${escapeHtml(key)}">♥<span>${liked?'Liked':'Like'}</span></button>
     </div>`;
   }
   function renderBrowseProfileBody(p,isSelf=false){
@@ -4254,6 +4304,8 @@ renderAdminWorkspace = function(){
     const id=personKey(p);
     if(!likedKeys().includes(id)) state.liked.push(id);
     state.passed=(state.passed||[]).filter(x=>String(x)!==id);
+    p.serverILike=true;
+    if(p.serverLikesMe===true || p.likesMe) p.serverMutual=true;
     save('discovery_like');
     syncToSupabase(false,'discovery_like');
     renderMatches();renderChats();

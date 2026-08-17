@@ -1,4 +1,4 @@
-# Afterglow — Vault & Efficiency Build v4
+# Afterglow — Vault, Efficiency & Persistent Matches v4.1
 
 This is the production Afterglow web build with the expanded Glow Vault Builder and the database/storage efficiency pass.
 
@@ -32,3 +32,8 @@ Use `supabase-schema-v4.sql`, which combines the existing production schema with
 - Owner-only Usage Breakdown for database tables, Storage buckets, and legacy embedded images.
 
 Read `VAULT-EFFICIENCY-SWEEP-v4.md` for the full audit and `PRODUCTION-CHECKLIST-v4.md` before distribution.
+
+
+## v4.1 persistent-match patch
+
+If v4 is already installed, run `supabase-match-persistence-v4.1.sql` and deploy this folder. The patch makes mutual matches and incoming likes independent of discovery distance/premium locking, keeps established matches visible in Explorer, and makes server relationship flags authoritative on fresh login. See `MATCH-PERSISTENCE-SWEEP-v4.1.md`.

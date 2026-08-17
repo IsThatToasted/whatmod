@@ -691,3 +691,10 @@ body.customized-unlocks .profile-avatar.frame-neon,body.customized-unlocks .nav-
 @media(max-width:900px){.admin-config-grid,.admin-slider-anchor-grid{grid-template-columns:1fr}.slider-anchor-editor>div{grid-template-columns:58px 1fr}}
 .custom-answer-row{grid-template-columns:minmax(105px,.65fr) minmax(180px,1.2fr) auto auto}
 @media(max-width:900px){.custom-answer-row{grid-template-columns:1fr}.custom-answer-row .choice-order{justify-content:flex-start}}
+
+/* Afterglow v4.1 — durable long-distance match presentation */
+.match-mini{background:linear-gradient(135deg,#ff4f9c,#9b6cff);color:#fff;border:1px solid rgba(255,255,255,.22);box-shadow:0 8px 20px rgba(255,79,156,.25)}
+.discovery-tile.is-match .discovery-photo{box-shadow:inset 0 0 0 1px rgba(255,95,170,.34),0 10px 30px rgba(255,70,150,.14)}
+.browse-actions-matched{grid-template-columns:1fr 1fr;align-items:stretch}
+.browse-match-status{min-height:60px;border-radius:18px;border:1px solid rgba(255,96,174,.28);background:linear-gradient(135deg,rgba(255,71,151,.18),rgba(139,92,255,.16));color:#ff85bd;font-size:1.15rem;font-weight:950;display:grid;place-items:center;gap:2px}
+.browse-match-status span{font-size:.62rem;color:rgba(255,255,255,.76)}
