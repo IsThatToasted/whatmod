@@ -26,8 +26,8 @@ let people = [];
 let directoryLoaded = false;
 let directoryRefreshTimer = null;
 let lastDirectoryFingerprint = '';
-const DIRECTORY_REFRESH_MS = 8000;
-const CHAT_REFRESH_MS = 3000;
+const DIRECTORY_REFRESH_MS = 120000;
+const CHAT_REFRESH_MS = 120000;
 const MESSAGE_RETENTION_HOURS = 72;
 let activeChatKey = null;
 let chatRefreshTimer = null;
@@ -370,10 +370,18 @@ function scheduleSyncRetry(){
 function syncPayloadFromState(source=state){
   const s=normalizeState(source,authUser);
   const publicProfile={...s.profile}; delete publicProfile.rewards; delete publicProfile.inventory; delete publicProfile.weeklyGoals;
+  // Base64 previews can be hundreds of KB or more. They belong only in the
+  // browser while an image is being prepared; durable avatars live in Storage.
+  // Omitting the key is safe because fv_save_my_state merges profile keys with
+  // the existing server profile rather than clearing omitted values.
+  if(/^data:image\//i.test(String(publicProfile.avatarUrl||''))) delete publicProfile.avatarUrl;
   return {profile:publicProfile,ratings:s.ratings,liked:(s.liked||[]).filter(isUuidValue),passed:(s.passed||[]).filter(isUuidValue),inventory:s.inventory,weeklyGoals:s.weeklyGoals};
 }
 async function syncToSupabase(show=true,reason='sync',retrying=false){
   if(bootingRemote) return;
+  // An explicit sync supersedes any pending debounce for the same local state.
+  // This prevents save()+sync call sites from producing a second write ~900ms later.
+  clearTimeout(syncTimer); syncTimer=null;
   if(!supa){setSync('offline-safe local save'); if(show) showToast('Saved safely on this device.'); return;}
   if(!authUser){setSync('local only — sign in to sync'); if(show) showToast('Sign in with Google before syncing.'); return;}
   if(syncInFlight){syncQueued=true; return;}
@@ -618,6 +626,29 @@ async function compactImageDataUrl(file,maxDimension=1200){
   if(!blob) throw new Error('Could not prepare image preview.');
   return await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob);});
 }
+async function prepareImageUpload(file,{maxDimension=1600,maxBytes=1400000,quality=.86}={}){
+  if(!file || !String(file.type||'').startsWith('image/')) throw new Error('Image file required.');
+  if(file.size>12*1024*1024) throw new Error('Image is too large.');
+  if(!window.createImageBitmap || !document.createElement){
+    if(file.size>maxBytes) throw new Error('This browser cannot safely compress that image.');
+    return {blob:file,contentType:file.type||'image/jpeg',ext:(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg',originalBytes:file.size,storedBytes:file.size};
+  }
+  const bitmap=await createImageBitmap(file);
+  const scale=Math.min(1,maxDimension/Math.max(bitmap.width,bitmap.height));
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(bitmap.width*scale)); canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  const ctx=canvas.getContext('2d',{alpha:false}); ctx.drawImage(bitmap,0,0,canvas.width,canvas.height); bitmap.close?.();
+  let q=quality, blob=null;
+  do{
+    blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',q));
+    if(!blob) break;
+    if(blob.size<=maxBytes || q<=.5) break;
+    q=Math.max(.5,q-.08);
+  }while(true);
+  if(!blob) throw new Error('Could not prepare image.');
+  return {blob,contentType:'image/jpeg',ext:'jpg',originalBytes:file.size,storedBytes:blob.size};
+}
+
 function profilePhotoStoragePath(url){
   if(!url || !authUser) return '';
   try{
@@ -638,6 +669,7 @@ async function deleteStoredProfilePhoto(url){
 }
 async function removeAvatarPhoto(){
   const previous=state.profile?.avatarUrl||'';
+  transientAvatarPreviewUrl='';
   state.profile.avatarUrl=''; updateAvatar(); save('profile_photo_removed');
   try{
     if(supa&&authUser) await syncToSupabase(false,'profile_photo_removed');
@@ -645,30 +677,63 @@ async function removeAvatarPhoto(){
     showToast('Photo removed.');
   }catch(err){console.warn('Stored avatar cleanup failed',err);showToast('Photo removed from your profile; old storage cleanup will need retrying.');}
 }
+let transientAvatarPreviewUrl='';
 async function handleAvatarUpload(file){
   if(!file) return;
   if(!file.type.startsWith('image/')){ showToast('Please choose an image file.'); return; }
-  if(file.size>8*1024*1024){showToast('Profile photos must be 8MB or smaller.');return;}
+  if(file.size>12*1024*1024){showToast('Profile photos must be 12MB or smaller before compression.');return;}
   let localDataUrl='';
   try{ localDataUrl=await compactImageDataUrl(file); }
   catch(err){console.warn(err);showToast('That photo could not be prepared safely.');return;}
   const previousCloudUrl=state.profile?.avatarUrl||'';
-  state.profile.avatarUrl = localDataUrl;
-  updateAvatar(); save('profile_photo_local_preview');
-  if(!supa || !authUser){ showToast('Photo saved locally. Sign in to sync cloud photo.'); return; }
+  transientAvatarPreviewUrl=localDataUrl;
+  updateAvatar();
+  if(!supa || !authUser){
+    state.profile.avatarUrl=localDataUrl;
+    transientAvatarPreviewUrl='';
+    save('profile_photo_local_only');
+    showToast('Photo saved on this device. Sign in to store it securely in the cloud.');
+    return;
+  }
   try{
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
-    const path = `${authUser.id}/avatar-${Date.now()}.${ext}`;
-    const {error:uploadError}=await supa.storage.from('fv-profile-photos').upload(path, file, {cacheControl:'3600', upsert:true});
+    const prepared=await prepareImageUpload(file,{maxDimension:1400,maxBytes:750000,quality:.84});
+    const path = `${authUser.id}/avatar-${Date.now()}.${prepared.ext}`;
+    const {error:uploadError}=await supa.storage.from('fv-profile-photos').upload(path, prepared.blob, {cacheControl:'86400', upsert:false, contentType:prepared.contentType});
     if(uploadError) throw uploadError;
     const {data}=supa.storage.from('fv-profile-photos').getPublicUrl(path);
     state.profile.avatarUrl = data.publicUrl;
+    transientAvatarPreviewUrl='';
     updateAvatar(); save('profile_photo_uploaded'); await syncToSupabase(false,'profile_photo_uploaded');
     if(previousCloudUrl && previousCloudUrl!==data.publicUrl){
       try{await deleteStoredProfilePhoto(previousCloudUrl);}catch(cleanupErr){console.warn('Previous avatar cleanup failed',cleanupErr);}
     }
     showToast('Profile photo updated.');
-  }catch(err){ console.warn(err); showToast('Photo saved locally. Create the storage bucket/policies to sync online.'); }
+  }catch(err){
+    transientAvatarPreviewUrl=''; updateAvatar();
+    console.warn(err); showToast('The photo upload could not finish. Your previous profile photo was kept.');
+  }
+}
+
+async function migrateLegacyEmbeddedAvatar(){
+  const raw=String(state.profile?.avatarUrl||'');
+  if(!/^data:image\//i.test(raw) || !supa || !authUser) return false;
+  try{
+    const response=await fetch(raw);
+    const blob=await response.blob();
+    if(!blob.type?.startsWith('image/')) throw new Error('Legacy avatar is not an image.');
+    const file=new File([blob],'legacy-avatar.jpg',{type:blob.type||'image/jpeg'});
+    const prepared=await prepareImageUpload(file,{maxDimension:1400,maxBytes:750000,quality:.84});
+    const path=`${authUser.id}/avatar-migrated-${Date.now()}.${prepared.ext}`;
+    const upload=await supa.storage.from('fv-profile-photos').upload(path,prepared.blob,{cacheControl:'86400',upsert:false,contentType:prepared.contentType});
+    if(upload.error) throw upload.error;
+    const {data}=supa.storage.from('fv-profile-photos').getPublicUrl(path);
+    state.profile.avatarUrl=data.publicUrl;
+    transientAvatarPreviewUrl='';
+    updateAvatar(); save('legacy_avatar_migrated');
+    await syncToSupabase(false,'legacy_avatar_migrated');
+    try{const scrub=await supa.rpc('fv_scrub_my_legacy_avatar_revisions');if(scrub.error&&!isMissingRpcError(scrub.error))throw scrub.error;}catch(scrubErr){console.warn('Legacy avatar revision cleanup deferred',scrubErr);}
+    return true;
+  }catch(err){console.warn('Legacy embedded avatar migration failed',err);return false;}
 }
 
 function deterministicGradient(seed='member'){
@@ -750,26 +815,15 @@ async function loadPeopleDirectory(options={}){
 }
 
 function startDirectoryAutoRefresh(){
-  if(directoryRefreshTimer) clearInterval(directoryRefreshTimer);
-  if(!supa || !authUser) return;
-  directoryRefreshTimer = setInterval(()=>{
-    if(document.hidden || !authUser) return;
-    loadPeopleDirectory({preserveIndex:true, quiet:true});
-  }, DIRECTORY_REFRESH_MS);
+  // Legacy interval intentionally disabled. Afterglow v4 uses one filtered
+  // Realtime channel plus a low-frequency safety refresh instead of polling.
+  stopDirectoryAutoRefresh();
 }
 
 function stopDirectoryAutoRefresh(){
   if(directoryRefreshTimer) clearInterval(directoryRefreshTimer);
   directoryRefreshTimer = null;
 }
-
-window.addEventListener('focus', ()=>{
-  if(authUser){ loadPeopleDirectory({preserveIndex:true, quiet:true}); if(activeChatKey){ loadChatMessages(activeChatKey, true).then(()=>{renderChatMessages(); renderChats();}); } }
-});
-
-document.addEventListener('visibilitychange', ()=>{
-  if(!document.hidden && authUser){ loadPeopleDirectory({preserveIndex:true, quiet:true}); if(activeChatKey){ loadChatMessages(activeChatKey, true).then(()=>{renderChatMessages(); renderChats();}); } }
-});
 
 function normalizeUrl(url){
   try {
@@ -952,7 +1006,7 @@ function closeApp(){ $('#app').classList.add('hidden'); $('#ageGate').classList.
 function showScreen(id){ $$('.screen').forEach(s=>s.classList.toggle('active-screen',s.id===id)); $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.screen===id)); }
 function updateAvatar(){
   const initial=(state.profile.displayName||'V').trim()[0]?.toUpperCase()||'V';
-  const url=safeImageUrl(state.profile.avatarUrl);
+  const url=safeImageUrl(transientAvatarPreviewUrl || state.profile.avatarUrl);
 
   const profileHero=$('.profile-avatar');
   const navAvatars=[$('#topProfileAvatar'), $('#bottomProfileAvatar')].filter(Boolean);
@@ -1299,14 +1353,9 @@ async function sendChatMessage(){
   finally{ if(sendBtn) sendBtn.disabled = false; }
 }
 function startChatAutoRefresh(){
+  // Incoming messages are pushed through Supabase Realtime in v4. Own sends
+  // refresh immediately, so a per-chat polling timer would only waste requests.
   stopChatAutoRefresh();
-  if(!supa || !authUser || !activeChatKey) return;
-  chatRefreshTimer=setInterval(async()=>{
-    if(document.hidden || !activeChatKey) return;
-    await loadChatMessages(activeChatKey, true);
-    renderChatMessages();
-    renderChats();
-  }, CHAT_REFRESH_MS);
 }
 function stopChatAutoRefresh(){
   if(chatRefreshTimer) clearInterval(chatRefreshTimer);
@@ -1776,7 +1825,9 @@ function renderMatches(){
 
 function renderChats(){
   const matched=mutualMatches();
-  if(supa && authUser){ matched.forEach(p=>{ const k=personKey(p); if(!chatCache[k]) loadChatMessages(k, true).then(()=>renderChats()); }); }
+  // Chat history is loaded on demand when a conversation opens, and targeted
+  // Realtime events update only the conversation that changed. Avoid N queries
+  // just to draw the chat list for users with many matches.
   $('#chatList').innerHTML= matched.length ? matched.map(p=>`<article class="chat-row" data-key="${personKey(p)}">${miniAvatarMarkup(p)}<div><h3>${escapeHtml(p.name)}</h3><p>${escapeHtml(chatPreview(p))}</p></div><button class="ghost mini-profile-open" data-profile-key="${personKey(p)}" type="button">Profile</button></article>`).join('') : '<div class="empty-state"><h3>No conversations yet</h3><p>Chats appear only after both people like each other.</p></div>';
   $$('.chat-row').forEach(row=>row.onclick=(e)=>{ if(e.target.closest('[data-profile-key]')) return; openChat(row.dataset.key); });
   $$('[data-profile-key]').forEach(btn=>btn.onclick=(e)=>{e.stopPropagation(); openMemberProfile(btn.dataset.profileKey);});
@@ -1814,36 +1865,11 @@ function stableChatSignature(msgs){
   }
 }
 
-async function signedMediaItems(media=[]){
-  if(!supa || !Array.isArray(media)) return [];
-  const now=Date.now();
-  const out=[];
-  for(const item of media){
-    if(item?.expires_at && new Date(item.expires_at).getTime() <= now) continue;
-    if(!item?.path) continue;
-    const cacheKey = `${item.path}|${item.expires_at || ''}`;
-    const cached = signedMediaUrlCache.get(cacheKey);
-    if(cached?.signedUrl && cached.validUntil > now + 60000){
-      out.push({...item, signedUrl:cached.signedUrl});
-      continue;
-    }
-    try{
-      const expiresIn=Math.max(300, Math.min(3600, Math.floor(((new Date(item.expires_at||Date.now()+3600000)).getTime()-now)/1000)));
-      const {data,error}=await supa.storage.from(CHAT_MEDIA_BUCKET).createSignedUrl(item.path, expiresIn);
-      if(error) throw error;
-      const signedUrl=data.signedUrl;
-      signedMediaUrlCache.set(cacheKey, {signedUrl, validUntil: now + expiresIn*1000});
-      out.push({...item, signedUrl});
-    }catch(err){ console.warn('Could not sign media URL', err); }
-  }
-  return out;
-}
-
+// Signed chat media is batched inside loadChatMessages().
 async function loadChatMessages(key, quiet=true){
   if(!supa || !authUser || !key){ setCachedChat(key, []); return []; }
   try{
-    const me=authUser.id;
-    const other=String(key);
+    const me=authUser.id,other=String(key),now=Date.now();
     const {data,error}=await supa
       .from('fv_messages')
       .select('id,sender_id,recipient_id,body,message_type,media,created_at,expires_at')
@@ -1852,23 +1878,25 @@ async function loadChatMessages(key, quiet=true){
       .order('created_at',{ascending:true})
       .limit(120);
     if(error) throw error;
-    const mapped=[];
-    for(const m of (data||[])){
-      mapped.push({
-        id:m.id,
-        from:m.sender_id===me?'me':'them',
-        text:m.body || '',
-        type:m.message_type || 'text',
-        media: await signedMediaItems(m.media || []),
-        at:m.created_at,
-        expiresAt:m.expires_at
-      });
+    const rows=data||[],activeMedia=[];
+    rows.forEach(m=>(Array.isArray(m.media)?m.media:[]).forEach(item=>{if(item?.path&&(!item.expires_at||new Date(item.expires_at).getTime()>now))activeMedia.push(item);}));
+    const missing=[];
+    for(const item of activeMedia){const cacheKey=`${item.path}|${item.expires_at||''}`,cached=signedMediaUrlCache.get(cacheKey);if(!(cached?.signedUrl&&cached.validUntil>now+60000))missing.push(item);}
+    if(missing.length){
+      const unique=[...new Map(missing.map(item=>[item.path,item])).values()];
+      const shortest=Math.min(...unique.map(item=>Math.max(300,Math.floor(((new Date(item.expires_at||Date.now()+3600000)).getTime()-now)/1000))));
+      const expiresIn=Math.max(300,Math.min(3600,shortest));
+      const batch=await supa.storage.from(CHAT_MEDIA_BUCKET).createSignedUrls(unique.map(x=>x.path),expiresIn);
+      if(batch.error) throw batch.error;
+      (batch.data||[]).forEach((entry,i)=>{const item=unique[i],path=entry?.path||item?.path,signedUrl=entry?.signedUrl||entry?.signedURL||'';if(item&&path&&signedUrl)signedMediaUrlCache.set(`${item.path}|${item.expires_at||''}`,{signedUrl,validUntil:now+expiresIn*1000});});
     }
-    const before=JSON.stringify(getCachedChat(key));
-    setCachedChat(key, mapped);
-    if(!quiet && before !== JSON.stringify(mapped)) renderChats();
-    return mapped;
-  }catch(err){ console.warn('Could not load chat messages', err); if(!quiet) showToast('Messages could not be loaded right now.'); return getCachedChat(key); }
+    const mapped=rows.map(m=>({
+      id:m.id,from:m.sender_id===me?'me':'them',text:m.body||'',type:m.message_type||'text',
+      media:(Array.isArray(m.media)?m.media:[]).filter(item=>item?.path&&(!item.expires_at||new Date(item.expires_at).getTime()>now)).map(item=>({...item,signedUrl:signedMediaUrlCache.get(`${item.path}|${item.expires_at||''}`)?.signedUrl||''})).filter(item=>item.signedUrl),
+      at:m.created_at,expiresAt:m.expires_at
+    }));
+    const before=JSON.stringify(getCachedChat(key));setCachedChat(key,mapped);if(!quiet&&before!==JSON.stringify(mapped))renderChats();return mapped;
+  }catch(err){console.warn('Could not load chat messages',err);if(!quiet)showToast('Messages could not be loaded right now.');return getCachedChat(key);}
 }
 
 function chatPreview(p){
@@ -1970,12 +1998,12 @@ async function sendPrivatePhotos(files){
     const conv=conversationIdFor(activeChatKey).replace(/[^a-zA-Z0-9_-]/g,'_');
     for(const file of files.slice(0,8)){
       if(!file.type.startsWith('image/')) continue;
-      if(file.size > 8*1024*1024){ showToast('One photo was over 8MB and skipped.'); continue; }
-      const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
-      const path=`${authUser.id}/${conv}/${crypto.randomUUID()}.${ext}`;
-      const {error}=await supa.storage.from(CHAT_MEDIA_BUCKET).upload(path, file, {cacheControl:'3600', upsert:false, contentType:file.type});
+      if(file.size > 12*1024*1024){ showToast('One photo was too large to prepare and was skipped.'); continue; }
+      const prepared=await prepareImageUpload(file,{maxDimension:1600,maxBytes:950000,quality:.82});
+      const path=`${authUser.id}/${conv}/${crypto.randomUUID()}.${prepared.ext}`;
+      const {error}=await supa.storage.from(CHAT_MEDIA_BUCKET).upload(path, prepared.blob, {cacheControl:'3600', upsert:false, contentType:prepared.contentType});
       if(error) throw error;
-      uploaded.push({path,name:file.name,type:file.type,size:file.size,expires_at:expiresAt});
+      uploaded.push({path,name:file.name,type:prepared.contentType,size:prepared.storedBytes,original_size:file.size,expires_at:expiresAt});
     }
     if(!uploaded.length) return;
     const payload={sender_id:authUser.id,recipient_id:String(activeChatKey),conversation_id:conversationIdFor(activeChatKey),body:`📷 Private photo${uploaded.length>1?' album':''}`,message_type:'photo',media:uploaded,expires_at:expiresAt};
@@ -2069,7 +2097,7 @@ function ratingText(v){ return (typeof v === 'object' && v) ? (v.text ?? v.value
 function cardAnswerOptions(card){
   const mode=card?.answerMode || card?.mode || 'global';
   if(mode === 'yesno') return {yes:'✅ Yes', no:'🙅 No'};
-  if(mode === 'custom' && card?.answers && typeof card.answers === 'object') return card.answers;
+  if((mode === 'custom' || mode === 'dropdown') && card?.answers && typeof card.answers === 'object') return card.answers;
   return labels;
 }
 function isTextPrompt(card){ const m=card?.answerMode || card?.mode; return m === 'text' || m === 'textarea'; }
@@ -2778,99 +2806,22 @@ renderAdminWorkspace = function(){
   setTimeout(()=>{ try{ ensureEconomy(); applyCosmetics(); renderShop(); renderMyUnlocks(); }catch(e){ console.warn('Unlock patch init skipped', e); } }, 800);
 })();
 
-/* =========================================================
-   Afterglow patch: incoming chat popups
-   Additive only: detects new incoming messages during refresh
-   and shows a small in-app notification without changing storage.
-   ========================================================= */
-(function(){
-  if(typeof loadChatMessages !== 'function') return;
-  const baseLoadChatMessages = loadChatMessages;
-  const primedKeys = new Set();
-  const seenStorageKey = () => `afterglowSeenIncoming:${authUser?.id || 'guest'}`;
-  function readSeenIncoming(){
-    try{ return new Set(JSON.parse(localStorage.getItem(seenStorageKey()) || '[]')); }
-    catch{ return new Set(); }
-  }
-  function writeSeenIncoming(ids){
-    try{ localStorage.setItem(seenStorageKey(), JSON.stringify([...ids].slice(-500))); }catch{}
-  }
-  function messageFingerprint(m){
-    return String(m?.id || `${m?.from || ''}|${m?.at || ''}|${m?.type || ''}|${m?.text || ''}`);
-  }
-  function incomingPreview(m){
-    if(m?.type === 'photo') return 'sent you a private photo';
-    const txt = String(m?.text || 'sent you a message').trim();
-    return txt.length > 86 ? txt.slice(0,83) + '…' : txt;
-  }
-  function ensureChatNotifyStyles(){
-    if(document.getElementById('afterglowChatNotifyStyles')) return;
-    const style=document.createElement('style');
-    style.id='afterglowChatNotifyStyles';
-    style.textContent=`
-      .chat-notify-pop{position:fixed;left:50%;top:86px;transform:translateX(-50%) translateY(-12px);z-index:9999;width:min(92vw,390px);display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:22px;background:rgba(26,22,35,.94);border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 60px rgba(0,0,0,.38);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;pointer-events:auto;cursor:pointer;transition:opacity .18s ease,transform .18s ease;}
-      .chat-notify-pop.show{opacity:1;transform:translateX(-50%) translateY(0);}
-      .chat-notify-pop .mini-avatar{width:42px;height:42px;min-width:42px;border-radius:16px;}
-      .chat-notify-copy{min-width:0;flex:1;text-align:left;}
-      .chat-notify-copy b{display:block;font-size:14px;line-height:1.15;color:#fff;}
-      .chat-notify-copy span{display:block;margin-top:3px;font-size:12px;line-height:1.25;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-      .chat-notify-open{font-size:12px;color:#ffd37a;font-weight:800;white-space:nowrap;}
-      @media (min-width:760px){.chat-notify-pop{top:24px;right:24px;left:auto;transform:translateY(-12px);}.chat-notify-pop.show{transform:translateY(0);}}
-    `;
-    document.head.appendChild(style);
-  }
-  function showIncomingChatPopup(key, msg){
-    if(!msg || msg.from !== 'them' || document.hidden) return;
-    const person = (typeof people !== 'undefined' ? people : []).find(p=>String(personKey(p))===String(key));
-    const name = person?.name || 'New message';
-    ensureChatNotifyStyles();
-    document.querySelectorAll('.chat-notify-pop').forEach(n=>n.remove());
-    const pop=document.createElement('button');
-    pop.type='button';
-    pop.className='chat-notify-pop';
-    pop.innerHTML=`${person ? miniAvatarMarkup(person) : '<div class="mini-avatar">💬</div>'}<div class="chat-notify-copy"><b>${escapeHtml(name)}</b><span>${escapeHtml(incomingPreview(msg))}</span></div><div class="chat-notify-open">Open</div>`;
-    pop.onclick=()=>{ pop.remove(); if(typeof openChat === 'function') openChat(key); };
-    document.body.appendChild(pop);
-    requestAnimationFrame(()=>pop.classList.add('show'));
-    setTimeout(()=>{ pop.classList.remove('show'); setTimeout(()=>pop.remove(),220); }, 4200);
-  }
-  loadChatMessages = async function(key, quiet=true){
-    const keyStr=String(key || '');
-    const seen=readSeenIncoming();
-    const wasPrimed=primedKeys.has(keyStr);
-    const result=await baseLoadChatMessages(key, quiet);
-    const msgs=(typeof getCachedChat === 'function' ? getCachedChat(key) : (result || [])) || [];
-    const incoming=msgs.filter(m=>m && m.from === 'them');
-    if(!wasPrimed){
-      incoming.forEach(m=>seen.add(messageFingerprint(m)));
-      primedKeys.add(keyStr);
-      writeSeenIncoming(seen);
-      return result;
-    }
-    const fresh=incoming.filter(m=>!seen.has(messageFingerprint(m)));
-    incoming.forEach(m=>seen.add(messageFingerprint(m)));
-    writeSeenIncoming(seen);
-    if(fresh.length){
-      const latest=fresh[fresh.length-1];
-      showIncomingChatPopup(keyStr, latest);
-      try{ if(typeof renderChats === 'function') renderChats(); }catch{}
-    }
-    return result;
-  };
-})();
+/* Incoming-message notifications are handled by the v4 Realtime service below. */
 
 /* =========================================================
-   Afterglow patch: global notification service
-   Additive only: keeps polling matched chats even when the
-   message thread is closed, adds nav badges, and routes all
-   incoming message/photo notices through the existing popup.
+   Afterglow v4: efficient realtime notification service
+   Replaces aggressive 5-second directory/chat polling with one
+   Supabase Realtime subscription plus a low-frequency safety poll.
    ========================================================= */
 (function(){
-  const GLOBAL_NOTIFY_MS = 5000;
-  let globalNotifyTimer = null;
-  let globalNotifyStartedFor = '';
+  const FALLBACK_REFRESH_MS = 120000;
+  let realtimeChannel = null;
+  let fallbackTimer = null;
+  let startedFor = '';
   let lastLikeKeys = new Set();
   let unreadByChat = {};
+  let safetyRefreshInFlight=false;
+  let lastSafetyRefreshAt=0;
   const seenKey = () => `afterglowGlobalIncomingSeen:${authUser?.id || 'guest'}`;
   const unreadKey = () => `afterglowUnreadByChat:${authUser?.id || 'guest'}`;
   function readSet(){ try{return new Set(JSON.parse(localStorage.getItem(seenKey())||'[]'));}catch{return new Set();} }
@@ -2878,156 +2829,102 @@ renderAdminWorkspace = function(){
   function readUnread(){ try{return JSON.parse(localStorage.getItem(unreadKey())||'{}')||{};}catch{return {};} }
   function writeUnread(){ try{localStorage.setItem(unreadKey(), JSON.stringify(unreadByChat));}catch{} }
   function msgId(m){ return String(m?.id || `${m?.from||''}|${m?.at||''}|${m?.type||''}|${m?.text||''}`); }
-  function matchedConversationKeys(){
-    try{ return (typeof mutualMatches === 'function' ? mutualMatches() : []).map(p=>String(personKey(p))).filter(Boolean); }
-    catch{return [];}
-  }
   function ensureBadgeStyles(){
     if(document.getElementById('afterglowGlobalBadgeStyles')) return;
-    const st=document.createElement('style');
-    st.id='afterglowGlobalBadgeStyles';
-    st.textContent=`
-      .tab{position:relative;}
-      .nav-badge{position:absolute;top:6px;right:10px;min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:linear-gradient(135deg,#ff3f91,#ffd37a);color:#160d18;font-size:10px;font-weight:900;line-height:17px;box-shadow:0 8px 18px rgba(255,63,145,.34);display:none;}
-      .tab.has-badge .nav-badge{display:block;}
-      .global-notice-pop{position:fixed;left:50%;top:86px;transform:translateX(-50%) translateY(-12px);z-index:10000;width:min(92vw,400px);display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:22px;background:rgba(26,22,35,.95);border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 60px rgba(0,0,0,.38);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);opacity:0;pointer-events:auto;cursor:pointer;transition:opacity .18s ease,transform .18s ease;}
-      .global-notice-pop.show{opacity:1;transform:translateX(-50%) translateY(0);}
-      .global-notice-pop .mini-avatar{width:42px;height:42px;min-width:42px;border-radius:16px;}
-      .global-notice-copy{min-width:0;flex:1;text-align:left;}
-      .global-notice-copy b{display:block;font-size:14px;line-height:1.15;color:#fff;}
-      .global-notice-copy span{display:block;margin-top:3px;font-size:12px;line-height:1.25;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-      .global-notice-open{font-size:12px;color:#ffd37a;font-weight:900;white-space:nowrap;}
-      @media (min-width:760px){.global-notice-pop{top:24px;right:24px;left:auto;transform:translateY(-12px);}.global-notice-pop.show{transform:translateY(0);}}
-    `;
+    const st=document.createElement('style'); st.id='afterglowGlobalBadgeStyles';
+    st.textContent=`.tab{position:relative}.nav-badge{position:absolute;top:6px;right:10px;min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:linear-gradient(135deg,#ff3f91,#ffd37a);color:#160d18;font-size:10px;font-weight:900;line-height:17px;box-shadow:0 8px 18px rgba(255,63,145,.34);display:none}.tab.has-badge .nav-badge{display:block}.global-notice-pop{position:fixed;left:50%;top:86px;transform:translateX(-50%) translateY(-12px);z-index:10000;width:min(92vw,400px);display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:22px;background:rgba(26,22,35,.95);border:1px solid rgba(255,255,255,.14);box-shadow:0 22px 60px rgba(0,0,0,.38);backdrop-filter:blur(18px);opacity:0;cursor:pointer;transition:opacity .18s ease,transform .18s ease}.global-notice-pop.show{opacity:1;transform:translateX(-50%) translateY(0)}.global-notice-pop .mini-avatar{width:42px;height:42px;min-width:42px;border-radius:16px}.global-notice-copy{min-width:0;flex:1;text-align:left}.global-notice-copy b{display:block;font-size:14px;color:#fff}.global-notice-copy span{display:block;margin-top:3px;font-size:12px;color:rgba(255,255,255,.72);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.global-notice-open{font-size:12px;color:#ffd37a;font-weight:900;white-space:nowrap}@media(min-width:760px){.global-notice-pop{top:24px;right:24px;left:auto;transform:translateY(-12px)}.global-notice-pop.show{transform:translateY(0)}}`;
     document.head.appendChild(st);
   }
   function badgeFor(screen){
-    const tab=document.querySelector(`.tab[data-screen="${screen}"]`);
-    if(!tab) return null;
-    let badge=tab.querySelector('.nav-badge');
-    if(!badge){ badge=document.createElement('span'); badge.className='nav-badge'; tab.appendChild(badge); }
-    return badge;
+    const tab=document.querySelector(`.tab[data-screen="${screen}"]`); if(!tab) return null;
+    let badge=tab.querySelector('.nav-badge'); if(!badge){badge=document.createElement('span');badge.className='nav-badge';tab.appendChild(badge);} return badge;
   }
   function totalUnread(){ return Object.values(unreadByChat||{}).reduce((a,b)=>a+Number(b||0),0); }
   function updateBadges(){
     ensureBadgeStyles();
-    const chatCount=totalUnread();
-    const chat=badgeFor('chat');
-    if(chat){ chat.textContent=chatCount>9?'9+':String(chatCount); chat.closest('.tab')?.classList.toggle('has-badge', chatCount>0); }
-    let likeCount=0;
-    try{ likeCount=(typeof incomingLikes === 'function' ? incomingLikes() : []).length; }catch{}
-    const match=badgeFor('matches');
-    if(match){ match.textContent=likeCount>9?'9+':String(likeCount); match.closest('.tab')?.classList.toggle('has-badge', likeCount>0); }
+    const chatCount=totalUnread(), chat=badgeFor('chat');
+    if(chat){chat.textContent=chatCount>9?'9+':String(chatCount);chat.closest('.tab')?.classList.toggle('has-badge',chatCount>0);}
+    let likeCount=0; try{likeCount=(typeof incomingLikes==='function'?incomingLikes():[]).length;}catch{}
+    const match=badgeFor('matches'); if(match){match.textContent=likeCount>9?'9+':String(likeCount);match.closest('.tab')?.classList.toggle('has-badge',likeCount>0);}
   }
-  function showGlobalNotice({kind='💬', title='Afterglow', body='New update', key='', action='Open', onClick=null}){
-    if(document.hidden) return;
-    ensureBadgeStyles();
-    document.querySelectorAll('.global-notice-pop').forEach(n=>n.remove());
-    let person=null;
-    try{ person=(people||[]).find(p=>String(personKey(p))===String(key)); }catch{}
-    const pop=document.createElement('button');
-    pop.type='button';
-    pop.className='global-notice-pop';
-    pop.innerHTML=`${person ? miniAvatarMarkup(person) : `<div class="mini-avatar">${kind}</div>`}<div class="global-notice-copy"><b>${escapeHtml(title)}</b><span>${escapeHtml(body)}</span></div><div class="global-notice-open">${escapeHtml(action)}</div>`;
-    pop.onclick=()=>{ pop.remove(); if(onClick) onClick(); else if(key && typeof openChat==='function') openChat(key); };
-    document.body.appendChild(pop);
-    requestAnimationFrame(()=>pop.classList.add('show'));
-    setTimeout(()=>{ pop.classList.remove('show'); setTimeout(()=>pop.remove(),220); }, 4800);
+  function showGlobalNotice({kind='💬',title='Afterglow',body='New update',key='',action='Open',onClick=null}){
+    if(document.hidden) return; ensureBadgeStyles(); document.querySelectorAll('.global-notice-pop').forEach(n=>n.remove());
+    let person=null; try{person=(people||[]).find(p=>String(personKey(p))===String(key));}catch{}
+    const pop=document.createElement('button'); pop.type='button'; pop.className='global-notice-pop';
+    pop.innerHTML=`${person?miniAvatarMarkup(person):`<div class="mini-avatar">${kind}</div>`}<div class="global-notice-copy"><b>${escapeHtml(title)}</b><span>${escapeHtml(body)}</span></div><div class="global-notice-open">${escapeHtml(action)}</div>`;
+    pop.onclick=()=>{pop.remove();if(onClick)onClick();else if(key&&typeof openChat==='function')openChat(key);}; document.body.appendChild(pop); requestAnimationFrame(()=>pop.classList.add('show')); setTimeout(()=>pop.remove(),5000);
   }
-  // Wrap message loading so unread badges update no matter what triggered the load.
-  if(typeof loadChatMessages === 'function' && !loadChatMessages.__afterglowGlobalWrapped){
-    const baseLoad = loadChatMessages;
-    loadChatMessages = async function(key, quiet=true){
-      const keyStr=String(key||'');
-      const seen=readSet();
-      const result=await baseLoad(key, quiet);
-      const msgs=(typeof getCachedChat==='function' ? getCachedChat(keyStr) : (result||[])) || [];
-      const incoming=msgs.filter(m=>m && m.from==='them');
-      const fresh=incoming.filter(m=>!seen.has(msgId(m)));
-      incoming.forEach(m=>seen.add(msgId(m)));
-      writeSet(seen);
-      if(fresh.length && keyStr !== String(activeChatKey||'')){
-        unreadByChat[keyStr]=(Number(unreadByChat[keyStr]||0)+fresh.length);
-        writeUnread();
-      }
-      updateBadges();
-      return result;
+  if(typeof loadChatMessages==='function' && !loadChatMessages.__afterglowRealtimeWrapped){
+    const baseLoad=loadChatMessages;
+    loadChatMessages=async function(key,quiet=true){
+      const keyStr=String(key||''), seen=readSet(), result=await baseLoad(key,quiet);
+      const msgs=(typeof getCachedChat==='function'?getCachedChat(keyStr):(result||[]))||[];
+      const incoming=msgs.filter(m=>m&&m.from==='them'), fresh=incoming.filter(m=>!seen.has(msgId(m)));
+      incoming.forEach(m=>seen.add(msgId(m))); writeSet(seen);
+      if(fresh.length && keyStr!==String(activeChatKey||'')){unreadByChat[keyStr]=Number(unreadByChat[keyStr]||0)+fresh.length;writeUnread();}
+      updateBadges(); return result;
     };
-    loadChatMessages.__afterglowGlobalWrapped = true;
+    loadChatMessages.__afterglowRealtimeWrapped=true;
   }
-  // Wrap openChat so opening a conversation clears its unread badge.
-  if(typeof openChat === 'function' && !openChat.__afterglowGlobalWrapped){
-    const baseOpenChat = openChat;
-    openChat = async function(key){
-      const keyStr=String(key||'');
-      unreadByChat[keyStr]=0;
-      writeUnread();
-      updateBadges();
-      return baseOpenChat.apply(this, arguments);
-    };
-    openChat.__afterglowGlobalWrapped = true;
+  if(typeof openChat==='function' && !openChat.__afterglowRealtimeWrapped){
+    const baseOpen=openChat; openChat=async function(key){const k=String(key||'');unreadByChat[k]=0;writeUnread();updateBadges();return baseOpen.apply(this,arguments);}; openChat.__afterglowRealtimeWrapped=true;
   }
-  async function checkIncomingLikes(){
-    let current=[];
-    try{ current=(typeof incomingLikes==='function' ? incomingLikes() : []).map(p=>String(personKey(p))).filter(Boolean); }catch{}
-    const currentSet=new Set(current);
-    const added=current.filter(k=>!lastLikeKeys.has(k));
-    lastLikeKeys=currentSet;
-    updateBadges();
-    if(added.length){
-      const key=added[added.length-1];
-      const p=(people||[]).find(x=>String(personKey(x))===key);
-      showGlobalNotice({kind:'💞', title:'Someone liked you', body:p?`${p.name} wants to connect.`:'You have a new incoming like.', key, action:'View', onClick:()=>{ if(typeof showScreen==='function') showScreen('matches'); }});
-    }
+  async function refreshLikes(){
+    const before=new Set(lastLikeKeys);
+    let current=[]; try{current=(typeof incomingLikes==='function'?incomingLikes():[]).map(p=>String(personKey(p))).filter(Boolean);}catch{}
+    lastLikeKeys=new Set(current); const added=current.filter(k=>!before.has(k)); updateBadges();
+    if(added.length && before.size){const key=added.at(-1),p=(people||[]).find(x=>String(personKey(x))===key);showGlobalNotice({kind:'💞',title:'Someone liked you',body:p?`${p.name} wants to connect.`:'You have a new incoming like.',key,action:'View',onClick:()=>showScreen('matches')});}
   }
-  async function globalNotificationTick(){
-    if(!authUser || !supa) return;
+  async function safetyRefresh(){
+    if(!authUser||!supa||document.hidden||safetyRefreshInFlight)return;
+    const now=Date.now();
+    // visibilitychange + focus often fire together; coalesce them into one read.
+    if(now-lastSafetyRefreshAt<10000)return;
+    safetyRefreshInFlight=true;lastSafetyRefreshAt=now;
     try{
-      if(typeof loadPeopleDirectory === 'function') await loadPeopleDirectory({preserveIndex:true, quiet:true});
-      const keys=matchedConversationKeys();
-      for(const k of keys){ await loadChatMessages(k, true); }
-      await checkIncomingLikes();
-      if(typeof renderChats === 'function') renderChats();
-      if(typeof renderMatches === 'function') renderMatches();
-    }catch(err){ console.warn('Global notification tick failed', err); }
+      if(typeof loadPeopleDirectory==='function') await loadPeopleDirectory({preserveIndex:true,quiet:true});
+      await refreshLikes();
+      if(activeChatKey && typeof loadChatMessages==='function'){await loadChatMessages(activeChatKey,true);renderChatMessages();renderChats();}
+    }catch(err){console.warn('Realtime safety refresh failed',err);}
+    finally{safetyRefreshInFlight=false;}
   }
-  function startGlobalNotifications(){
-    if(!authUser || !supa) return;
-    const id=authUser.id;
-    if(globalNotifyTimer && globalNotifyStartedFor===id) return;
-    stopGlobalNotifications();
-    globalNotifyStartedFor=id;
-    unreadByChat=readUnread();
-    lastLikeKeys=new Set();
-    ensureBadgeStyles();
-    updateBadges();
-    // Prime existing state without noisy historical notification, then monitor continuously.
-    globalNotificationTick();
-    globalNotifyTimer=setInterval(globalNotificationTick, GLOBAL_NOTIFY_MS);
+  async function handleIncomingMessage(payload){
+    const row=payload?.new||{}; if(!row.sender_id)return; const key=String(row.sender_id);
+    try{
+      if(typeof loadChatMessages==='function') await loadChatMessages(key,true);
+      if(key===String(activeChatKey||'')){renderChatMessages();renderChats();return;}
+      const person=(people||[]).find(p=>String(personKey(p))===key);
+      const body=row.message_type==='photo'?'sent you a private photo':(row.message_type==='album_request'?'sent a private album update':String(row.body||'New message'));
+      showGlobalNotice({kind:row.message_type==='photo'?'📷':'💬',title:person?.name||'New message',body,key,action:'Open'});
+      renderChats();
+    }catch(err){console.warn('Incoming realtime message refresh failed',err);}
   }
-  function stopGlobalNotifications(){
-    if(globalNotifyTimer) clearInterval(globalNotifyTimer);
-    globalNotifyTimer=null;
-    globalNotifyStartedFor='';
+  function stopRealtimeNotifications(){
+    if(fallbackTimer)clearInterval(fallbackTimer); fallbackTimer=null;
+    if(realtimeChannel&&supa){try{supa.removeChannel(realtimeChannel);}catch{}} realtimeChannel=null; startedFor='';
   }
-  // Wrap auth/UI lifecycle where available.
-  if(typeof openApp === 'function' && !openApp.__afterglowGlobalNotifyWrapped){
-    const baseOpenApp=openApp;
-    openApp=function(){ const r=baseOpenApp.apply(this,arguments); setTimeout(startGlobalNotifications,250); return r; };
-    openApp.__afterglowGlobalNotifyWrapped=true;
+  async function runDailyMediaMaintenance(){
+    if(!authUser||!supa||typeof cleanupExpiredMessages!=='function')return;
+    const key=`afterglowMediaMaintenance:${authUser.id}`;
+    let last=0;try{last=Date.parse(localStorage.getItem(key)||'')||0;}catch{}
+    if(Date.now()-last<24*60*60*1000)return;
+    try{await cleanupExpiredMessages();try{localStorage.setItem(key,new Date().toISOString());}catch{}}catch(err){console.warn('Daily media maintenance failed',err);}
   }
-  if(typeof signOut === 'function' && !signOut.__afterglowGlobalNotifyWrapped){
-    const baseSignOut=signOut;
-    signOut=async function(){ stopGlobalNotifications(); return baseSignOut.apply(this,arguments); };
-    signOut.__afterglowGlobalNotifyWrapped=true;
+  function startRealtimeNotifications(){
+    if(!authUser||!supa)return; const id=String(authUser.id); if(startedFor===id&&realtimeChannel)return; stopRealtimeNotifications(); startedFor=id; unreadByChat=readUnread(); ensureBadgeStyles(); updateBadges();
+    try{
+      realtimeChannel=supa.channel(`afterglow-inbox-${id}`)
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'fv_messages',filter:`recipient_id=eq.${id}`},handleIncomingMessage)
+        .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Afterglow realtime degraded; safety refresh remains active.');});
+    }catch(err){console.warn('Realtime subscription unavailable',err);}
+    safetyRefresh(); runDailyMediaMaintenance(); migrateLegacyEmbeddedAvatar(); fallbackTimer=setInterval(safetyRefresh,FALLBACK_REFRESH_MS);
   }
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) globalNotificationTick(); });
-  document.addEventListener('click',(e)=>{
-    const tab=e.target.closest?.('.tab[data-screen="chat"]');
-    if(tab){ unreadByChat={}; writeUnread(); updateBadges(); }
-  });
-  // Start shortly after this script runs if the user is already signed in.
-  setTimeout(startGlobalNotifications,1200);
+  if(typeof openApp==='function'&&!openApp.__afterglowRealtimeLifecycle){const base=openApp;openApp=function(){const r=base.apply(this,arguments);setTimeout(startRealtimeNotifications,250);return r;};openApp.__afterglowRealtimeLifecycle=true;}
+  if(typeof signOut==='function'&&!signOut.__afterglowRealtimeLifecycle){const base=signOut;signOut=async function(){stopRealtimeNotifications();return base.apply(this,arguments);};signOut.__afterglowRealtimeLifecycle=true;}
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)safetyRefresh();});
+  window.addEventListener('focus',safetyRefresh);
+  document.addEventListener('click',e=>{if(e.target.closest?.('.tab[data-screen="chat"]')){unreadByChat={};writeUnread();updateBadges();}});
+  setTimeout(startRealtimeNotifications,1200);
 })();
 
 
@@ -3164,16 +3061,25 @@ renderAdminWorkspace = function(){
   }
   async function uploadPrivateAlbumPhotos(files){
     if(!authUser || !supa){ showToast('Sign in is required to upload private album photos.'); return; }
-    const valid=files.filter(f=>f.type?.startsWith('image/')).slice(0,12);
+    let existingCount=0;
+    try{
+      const countResult=await supa.from(PRIVATE_ALBUM_TABLE).select('id',{count:'exact',head:true}).eq('owner_id',authUser.id);
+      if(countResult.error) throw countResult.error;
+      existingCount=Number(countResult.count||0);
+    }catch(err){console.warn('Private album count failed',err);showToast('Could not verify private album capacity. Try again.');return;}
+    const remaining=Math.max(0,24-existingCount);
+    if(!remaining){showToast('Your private album is full. Remove a photo before adding another.');return;}
+    const valid=files.filter(f=>f.type?.startsWith('image/')).slice(0,Math.min(12,remaining));
     if(!valid.length) return;
+    if(files.length>valid.length) showToast(`Private albums hold up to 24 photos. Adding ${valid.length} now.`);
     const rows=[];
     let metadataSaved=false;
     try{
       for(const file of valid){
-        if(file.size > 8*1024*1024){ showToast('One private photo was over 8MB and skipped.'); continue; }
-        const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
-        const path=`${authUser.id}/album/${crypto.randomUUID()}.${ext}`;
-        const {error:upErr}=await supa.storage.from(PRIVATE_ALBUM_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});
+        if(file.size > 12*1024*1024){ showToast('One private photo was too large to prepare and was skipped.'); continue; }
+        const prepared=await prepareImageUpload(file,{maxDimension:1600,maxBytes:950000,quality:.82});
+        const path=`${authUser.id}/album/${crypto.randomUUID()}.${prepared.ext}`;
+        const {error:upErr}=await supa.storage.from(PRIVATE_ALBUM_BUCKET).upload(path,prepared.blob,{cacheControl:'3600',upsert:false,contentType:prepared.contentType});
         if(upErr) throw upErr;
         rows.push({owner_id:authUser.id,path,caption:'',created_at:nowIso()});
       }
@@ -3194,10 +3100,17 @@ renderAdminWorkspace = function(){
   async function refreshMyPrivateAlbum(){
     if(!authUser || !supa) return;
     try{
-      const {data,error}=await supa.from(PRIVATE_ALBUM_TABLE).select('id,path,caption,created_at').eq('owner_id',authUser.id).order('created_at',{ascending:false}).limit(48);
+      const {data,error}=await supa.from(PRIVATE_ALBUM_TABLE).select('id,path,caption,created_at').eq('owner_id',authUser.id).order('created_at',{ascending:false}).limit(24);
       if(error) throw error;
-      const signed=[];
-      for(const row of data||[]){ signed.push({...row, signedUrl: await signAlbumUrl(row.path)}); }
+      const rows=data||[];
+      const paths=rows.map(row=>row.path).filter(Boolean);
+      let signedMap={};
+      if(paths.length){
+        const batch=await supa.storage.from(PRIVATE_ALBUM_BUCKET).createSignedUrls(paths,3600);
+        if(batch.error) throw batch.error;
+        (batch.data||[]).forEach((entry,i)=>{ const path=entry?.path||paths[i]; if(path) signedMap[path]=entry?.signedUrl||entry?.signedURL||''; });
+      }
+      const signed=rows.map(row=>({...row,signedUrl:signedMap[row.path]||''}));
       albumCache[authUser.id]=signed;
       state.profile=state.profile||{};
       state.profile.privateAlbumCount=signed.length;
@@ -3214,16 +3127,16 @@ renderAdminWorkspace = function(){
   async function deletePrivateAlbumPhoto(id,path){
     if(!authUser || !supa || !id) return;
     try{
-      await supa.from(PRIVATE_ALBUM_TABLE).delete().eq('id',id).eq('owner_id',authUser.id);
-      if(path) await supa.storage.from(PRIVATE_ALBUM_BUCKET).remove([path]);
+      // Remove the object first. If metadata deletion later fails, the row is
+      // recoverable/repairable; deleting metadata first could orphan paid bytes.
+      if(path){const storageDelete=await supa.storage.from(PRIVATE_ALBUM_BUCKET).remove([path]);if(storageDelete.error)throw storageDelete.error;}
+      const metadataDelete=await supa.from(PRIVATE_ALBUM_TABLE).delete().eq('id',id).eq('owner_id',authUser.id);
+      if(metadataDelete.error) throw metadataDelete.error;
       await refreshMyPrivateAlbum();
       showToast('Private photo removed.');
     }catch(err){ console.warn(err); showToast('Could not remove private photo.'); }
   }
-  async function signAlbumUrl(path){
-    if(!supa || !path) return '';
-    try{ const {data,error}=await supa.storage.from(PRIVATE_ALBUM_BUCKET).createSignedUrl(path,3600); if(error) throw error; return data.signedUrl; }catch(err){ console.warn('album sign failed',err); return ''; }
-  }
+  // Album signed URLs are batched inside fetchAlbumItems().
   async function fetchAlbumItems(ownerId, allowSigned=false){
     if(!supa || !authUser || !ownerId) return [];
     try{
@@ -3235,9 +3148,13 @@ renderAdminWorkspace = function(){
       const {data,error}=await supa.from(PRIVATE_ALBUM_TABLE).select('id,path,caption,created_at').eq('owner_id',ownerId).order('created_at',{ascending:false}).limit(24);
       if(error) throw error;
       if(!allowSigned) return data||[];
-      const out=[];
-      for(const r of data||[]) out.push({...r,signedUrl:await signAlbumUrl(r.path)});
-      return out;
+      const rows=data||[], paths=rows.map(r=>r.path).filter(Boolean);
+      if(!paths.length) return rows;
+      const batch=await supa.storage.from(PRIVATE_ALBUM_BUCKET).createSignedUrls(paths,3600);
+      if(batch.error) throw batch.error;
+      const signedMap={};
+      (batch.data||[]).forEach((entry,i)=>{ const path=entry?.path||paths[i]; if(path) signedMap[path]=entry?.signedUrl||entry?.signedURL||''; });
+      return rows.map(r=>({...r,signedUrl:signedMap[r.path]||''}));
     }catch(err){ console.warn('album fetch failed',err); return []; }
   }
   async function hasAlbumAccess(ownerId){
@@ -3327,6 +3244,9 @@ renderAdminWorkspace = function(){
     renderVault=function(){ const r=baseRenderVault.apply(this,arguments); const count=Object.values(state.ratings||{}).filter(Boolean).length; if(count>=3) awardWeeklyGoal('vault3'); return r; };
     renderVault.__weeklyWrapped=true;
   }
+  // Later Vault renderers can preserve weekly-goal behavior without reaching
+  // into this closure directly.
+  window.afterglowAwardWeeklyGoal=awardWeeklyGoal;
 
   // Enhance member profile with mood and private album panel.
   const baseOpenMemberProfile = (typeof openMemberProfile==='function') ? openMemberProfile : null;
@@ -4456,7 +4376,7 @@ renderAdminWorkspace = function(){
     const card=document.createElement('div');
     card.id='adminDataOperations';
     card.className='edit-card admin-form admin-data-operations';
-    card.innerHTML=`<h3>Data Operations</h3><p class="tiny-note">Owner-only integrity and backup controls.</p><button id="adminCheckDataHealth" class="ghost full" type="button">Check Data Health</button><button id="adminDownloadServerBackup" class="ghost full" type="button">Download Server Backup</button><div id="afterglowHealthOutput" class="admin-data-output">Ready.</div>`;
+    card.innerHTML=`<h3>Data Operations</h3><p class="tiny-note">Owner-only integrity, usage, and backup controls.</p><button id="adminCheckDataHealth" class="ghost full" type="button">Check Data Health</button><button id="adminCheckUsage" class="ghost full" type="button">View Usage Breakdown</button><button id="adminDownloadServerBackup" class="ghost full" type="button">Download Server Backup</button><div id="afterglowHealthOutput" class="admin-data-output">Ready.</div>`;
     pane.appendChild(card);
     card.querySelector('#adminCheckDataHealth').onclick=async()=>{
       const out=card.querySelector('#afterglowHealthOutput');out.textContent='Checking…';
@@ -4465,6 +4385,19 @@ renderAdminWorkspace = function(){
         const {data,error}=await supa.rpc('fv_admin_health_summary');if(error)throw error;
         out.textContent=`${Number(data?.profiles||0)} profiles • ${Number(data?.profiles_with_answers||0)} with answers • ${Number(data?.wallets||0)} wallets • ${Number(data?.active_premium||0)} active Plus passes • ${Number(data?.revision_backups||0)} recovery points`;
       }catch(err){console.warn(err);out.textContent='Data health summary is temporarily unavailable.';}
+    };
+    card.querySelector('#adminCheckUsage').onclick=async()=>{
+      const out=card.querySelector('#afterglowHealthOutput');out.textContent='Measuring usage…';
+      if(!supa) return out.textContent='Cloud service is unavailable.';
+      try{
+        const {data,error}=await supa.rpc('fv_admin_usage_summary');if(error)throw error;
+        const mb=n=>`${(Number(n||0)/1048576).toFixed(1)} MB`;
+        const buckets=data?.storage_buckets||{};
+        const bucketText=Object.entries(buckets).map(([name,v])=>`${name}: ${mb(v?.bytes)} / ${Number(v?.objects||0)} objects`).join(' • ');
+        const orphans=data?.orphan_candidates||{},orphanBytes=Object.values(orphans).reduce((n,v)=>n+Number(v?.bytes||0),0),orphanObjects=Object.values(orphans).reduce((n,v)=>n+Number(v?.objects||0),0);
+        const legacy=data?.legacy_embedded_images||{},legacyBytes=Number(legacy.profile_bytes||0)+Number(legacy.revision_bytes||0),legacyRows=Number(legacy.profile_rows||0)+Number(legacy.revision_rows||0);
+        out.textContent=`Database ${mb(data?.database_bytes)} • Profiles ${mb(data?.table_bytes?.profiles)} • Revisions ${mb(data?.table_bytes?.revisions)} • Messages ${mb(data?.table_bytes?.messages)} • Activity ${mb(data?.table_bytes?.activity)}${bucketText?` • Storage: ${bucketText}`:''}${orphanObjects?` • Potential unreferenced Storage: ${mb(orphanBytes)} / ${orphanObjects} objects`:''}${legacyRows?` • Legacy embedded images: ${mb(legacyBytes)} / ${legacyRows} copies (migrate automatically as those users sign in)`:''}`;
+      }catch(err){console.warn(err);out.textContent='Usage summary is unavailable until the v4 Supabase migration is installed.';}
     };
     card.querySelector('#adminDownloadServerBackup').onclick=async()=>{
       const out=card.querySelector('#afterglowHealthOutput');out.textContent='Preparing backup…';
@@ -4531,4 +4464,213 @@ renderAdminWorkspace = function(){
   bindDistributionUi();
   renderDistributionDailyGift();
   setTimeout(()=>{bindDistributionUi();renderStack();renderPremiumPassCard();renderDistributionDailyGift();},1200);
+})();
+
+/* =========================================================
+   Afterglow v4: robust Vault response engine + Builder
+   Adds dropdown, numeric, and configurable slider prompt types.
+   Existing Vault data remains backwards compatible.
+   ========================================================= */
+(function(){
+  const V4_SLIDER_DEFAULT={min:1,max:10,step:1,showValue:true,anchors:{left:{emoji:'🤢',label:'Yuck'},mid:{emoji:'😐',label:'Meh'},right:{emoji:'😍',label:'Love'}}};
+  const V4_NUMBER_DEFAULT={min:null,max:null,step:1,unit:'',placeholder:'Enter a number'};
+  function numOrNull(v){if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null;}
+  function promptMode(card){return card?.answerMode||card?.mode||'global';}
+  function isDropdownPrompt(card){return promptMode(card)==='dropdown';}
+  function isNumberPrompt(card){return promptMode(card)==='number';}
+  function isSliderPrompt(card){return promptMode(card)==='slider';}
+  function sliderConfig(card){
+    const raw=card?.sliderConfig||{}; const a=raw.anchors||{};
+    let min=numOrNull(raw.min); if(min===null)min=1;
+    let max=numOrNull(raw.max); if(max===null||max<=min)max=Math.max(min+1,10);
+    let step=numOrNull(raw.step); if(step===null||step<=0)step=1;
+    return {min,max,step,showValue:raw.showValue!==false,anchors:{
+      left:{emoji:String(a.left?.emoji||V4_SLIDER_DEFAULT.anchors.left.emoji),label:String(a.left?.label||V4_SLIDER_DEFAULT.anchors.left.label)},
+      mid:{emoji:String(a.mid?.emoji||V4_SLIDER_DEFAULT.anchors.mid.emoji),label:String(a.mid?.label||V4_SLIDER_DEFAULT.anchors.mid.label)},
+      right:{emoji:String(a.right?.emoji||V4_SLIDER_DEFAULT.anchors.right.emoji),label:String(a.right?.label||V4_SLIDER_DEFAULT.anchors.right.label)}
+    }};
+  }
+  function numberConfig(card){
+    const raw=card?.numberConfig||{};
+    let step=numOrNull(raw.step); if(step===null||step<=0)step=1;
+    return {min:numOrNull(raw.min),max:numOrNull(raw.max),step,unit:String(raw.unit||''),placeholder:String(raw.placeholder||'Enter a number')};
+  }
+  function selectedNumericValue(v){
+    if(v&&typeof v==='object'&&!Array.isArray(v)) return numOrNull(v.value??v.key);
+    return numOrNull(v);
+  }
+  function sliderAnchorFor(card,value){
+    const cfg=sliderConfig(card), n=selectedNumericValue(value); if(n===null)return cfg.anchors.mid;
+    const t=(n-cfg.min)/Math.max(.000001,cfg.max-cfg.min);
+    return t<.34?cfg.anchors.left:(t>.66?cfg.anchors.right:cfg.anchors.mid);
+  }
+  function hasRatingValue(v){
+    if(v===null||v===undefined||v==='')return false;
+    if(typeof v==='object'&&!Array.isArray(v))return v.value!==''&&v.value!==null&&v.value!==undefined || !!v.key;
+    return String(v).trim()!=='';
+  }
+  function optionEntries(card){return Object.entries(cardAnswerOptions(card)||{});}
+  function normalizeChoiceLabel(card,v){
+    const key=ratingKey(v); const opts=cardAnswerOptions(card); return String(opts?.[key]||v?.text||v?.label||key||'');
+  }
+  function numericSimilarity(card,a,b){
+    const av=selectedNumericValue(a),bv=selectedNumericValue(b); if(av===null||bv===null)return null;
+    let range=1;
+    if(isSliderPrompt(card)){const c=sliderConfig(card);range=Math.max(c.step,c.max-c.min);}
+    else{const c=numberConfig(card);if(c.min!==null&&c.max!==null&&c.max>c.min)range=c.max-c.min;else range=Math.max(Math.abs(av),Math.abs(bv),1);}
+    return Math.max(0,Math.min(1,1-Math.abs(av-bv)/Math.max(range,.000001)));
+  }
+
+  answerLabel=function(card,val){
+    const mode=promptMode(card);
+    if(isTextPrompt(card)) return ratingText(val)?'✍️ Written':'Unanswered';
+    if(mode==='number'){
+      const n=selectedNumericValue(val); if(n===null)return 'Unanswered'; const cfg=numberConfig(card); return `${n}${cfg.unit?` ${cfg.unit}`:''}`;
+    }
+    if(mode==='slider'){
+      const n=selectedNumericValue(val); if(n===null)return 'Unanswered'; const cfg=sliderConfig(card),anchor=sliderAnchorFor(card,n); return `${anchor.emoji} ${anchor.label}${cfg.showValue?` • ${n}`:''}`;
+    }
+    if(mode==='dropdown'){
+      const text=normalizeChoiceLabel(card,val); return text||'Unanswered';
+    }
+    const key=ratingKey(val), opts=cardAnswerOptions(card); return opts[key]||labels[key]||key||'Unanswered';
+  };
+
+  compatibilityForRatings=function(otherRatings={}){
+    const mine=state.ratings||{},shared=[]; let positive=0,conflicts=0,compared=0;
+    Object.entries(otherRatings||{}).forEach(([id,their])=>{
+      const my=mine[id],card=vaultCards.find(c=>c.id===id); if(!card||!hasRatingValue(my)||!hasRatingValue(their)||isTextPrompt(card))return;
+      const meta=categoryMeta[card.cat]||{},label=`${meta.emoji||'✨'} ${card.title}`;
+      if(isSliderPrompt(card)||isNumberPrompt(card)){
+        const sim=numericSimilarity(card,my,their); if(sim===null)return; compared++; positive+=sim; if(sim>=.8)shared.push(label); return;
+      }
+      const myKey=String(ratingKey(my)||''),theirKey=String(ratingKey(their)||''); if(!myKey||!theirKey)return; compared++;
+      const myPositive=isPositiveAnswer(myKey),theirPositive=isPositiveAnswer(theirKey);
+      if(myKey===theirKey){positive+=1;shared.push(label);}
+      else if(myPositive&&theirPositive){positive+=.8;shared.push(label);}
+      if((isLimitAnswer(myKey)&&theirPositive)||(isLimitAnswer(theirKey)&&myPositive))conflicts++;
+    });
+    let score=compared?Math.round(62+(positive/Math.max(compared,1))*35-conflicts*10):70;
+    score=Math.max(0,Math.min(99,score)); return {score,shared:[...new Set(shared)].slice(0,4),conflicts};
+  };
+
+  function refreshPeopleCompatibilityFromLocalVault(){
+    people=(people||[]).map(p=>{if(!p?.ratings)return p;const c=compatibilityForRatings(p.ratings);return {...p,score:c.score,mutual:c.shared.length?c.shared:['Vault overlap appears after both people answer more cards']};});
+    try{renderStack();renderMatches();renderChats();}catch{}
+  }
+
+  compareVaultWithPerson=function(p){
+    const mine=state.ratings||{},theirs=p?.ratings||{},shared=[],curious=[],different=[],limits=[],written=[];
+    Object.entries(theirs).forEach(([id,their])=>{
+      const my=mine[id],card=vaultCards.find(c=>c.id===id); if(!card)return;
+      if(isTextPrompt(card)){const html=publicTextAnswerHtml(card,their);if(html)written.push({html});return;}
+      if(!hasRatingValue(my)||!hasRatingValue(their))return;
+      const meta=categoryMeta[card.cat]||{},row={id,title:card.title,cat:card.cat,emoji:meta.emoji||'✨',mine:ratingKey(my),theirs:ratingKey(their),mineLabel:answerLabel(card,my),theirLabel:answerLabel(card,their)};
+      if(isSliderPrompt(card)||isNumberPrompt(card)){const sim=numericSimilarity(card,my,their);(sim!==null&&sim>=.8?shared:different).push(row);return;}
+      const myKey=String(ratingKey(my)||''),theirKey=String(ratingKey(their)||''),myPositive=isPositiveAnswer(myKey),theirPositive=isPositiveAnswer(theirKey);
+      if(isLimitAnswer(myKey)||isLimitAnswer(theirKey))limits.push(row);
+      else if(myKey===theirKey||(myPositive&&theirPositive))shared.push(row);
+      else if(myKey==='curious'||theirKey==='curious')curious.push(row);
+      else different.push(row);
+    });
+    return {shared,curious,different,limits,written};
+  };
+
+  topVaultHtml=function(p){
+    const ratings=p?.ratings||{},rows=[];
+    Object.entries(ratings).forEach(([id,val])=>{
+      if(rows.length>=8||!hasRatingValue(val))return; const card=vaultCards.find(c=>c.id===id); if(!card||isTextPrompt(card))return;
+      const key=String(ratingKey(val)||''),mode=promptMode(card),shouldShow=!!card.profileVisible||isPositiveAnswer(key)||['slider','number','dropdown'].includes(mode)&&!!card.profileVisible;
+      if(!shouldShow)return; const meta=categoryMeta[card.cat]||{}; rows.push({title:card.title,cat:card.cat,emoji:meta.emoji||'✨',label:answerLabel(card,val)});
+    });
+    if(!rows.length)return '<div class="profile-empty-mini">They have not shared many Vault answers yet.</div>';
+    return rows.map(r=>`<div class="interest-tile"><span>${escapeHtml(r.emoji)}</span><b>${escapeHtml(r.title)}</b><small>${escapeHtml(r.label)}</small></div>`).join('');
+  };
+
+  renderVault=function(){
+    const searchEl=$('#searchCards'),catEl=$('#categoryFilter'),q=(searchEl?.value||'').toLowerCase(),cat=catEl?.value||'all',cardsEl=$('#cards'); if(!cardsEl)return;
+    const list=vaultCards.filter(c=>(cat==='all'||c.cat===cat)&&(!q||`${c.title} ${c.desc} ${c.cat}`.toLowerCase().includes(q)));
+    cardsEl.innerHTML=list.map(card=>{
+      const cur=state.ratings?.[card.id],meta=categoryMeta[card.cat]||{emoji:'✨',theme:'theme-fantasy'},mode=promptMode(card); let control='';
+      if(isTextPrompt(card)){
+        const val=escapeHtml(String(ratingText(cur)||'')),multiline=mode==='textarea';
+        control=multiline?`<textarea class="vault-written-answer" data-id="${adminEscape(card.id)}" placeholder="Write your answer...">${val}</textarea>`:`<input class="vault-written-answer" data-id="${adminEscape(card.id)}" value="${val}" placeholder="Write your answer..." />`;
+      }else if(mode==='dropdown'){
+        const key=String(ratingKey(cur)||''); control=`<select class="vault-dropdown-answer" data-id="${adminEscape(card.id)}"><option value="">Choose an answer…</option>${optionEntries(card).map(([k,v])=>`<option value="${adminEscape(k)}" ${key===String(k)?'selected':''}>${adminEscape(v)}</option>`).join('')}</select>`;
+      }else if(mode==='number'){
+        const cfg=numberConfig(card),n=selectedNumericValue(cur); control=`<div class="vault-number-shell"><input class="vault-number-answer" type="number" data-id="${adminEscape(card.id)}" ${cfg.min!==null?`min="${cfg.min}"`:''} ${cfg.max!==null?`max="${cfg.max}"`:''} step="${cfg.step}" value="${n===null?'':n}" placeholder="${adminEscape(cfg.placeholder)}" />${cfg.unit?`<span class="vault-number-unit">${adminEscape(cfg.unit)}</span>`:''}</div>`;
+      }else if(mode==='slider'){
+        const cfg=sliderConfig(card),saved=selectedNumericValue(cur),visual=saved===null?(cfg.min+cfg.max)/2:saved,anchor=saved===null?null:sliderAnchorFor(card,saved);
+        control=`<div class="vault-slider-control"><div class="vault-slider-anchors"><span><b>${adminEscape(cfg.anchors.left.emoji)}</b>${adminEscape(cfg.anchors.left.label)}</span><span><b>${adminEscape(cfg.anchors.mid.emoji)}</b>${adminEscape(cfg.anchors.mid.label)}</span><span><b>${adminEscape(cfg.anchors.right.emoji)}</b>${adminEscape(cfg.anchors.right.label)}</span></div><input class="vault-slider-answer" type="range" data-id="${adminEscape(card.id)}" min="${cfg.min}" max="${cfg.max}" step="${cfg.step}" value="${visual}"/><div class="vault-slider-readout ${saved===null?'unanswered':''}" data-slider-readout="${adminEscape(card.id)}">${saved===null?'Move the slider to answer':`${adminEscape(anchor.emoji)} ${adminEscape(anchor.label)}${cfg.showValue?` <strong>${saved}</strong>`:''}`}</div></div>`;
+      }else{
+        const opts=cardAnswerOptions(card),key=String(ratingKey(cur)||''); control=`<div class="answers">${Object.entries(opts).map(([k,v])=>`<button class="answer-btn ${key===String(k)?'selected':''}" data-id="${adminEscape(card.id)}" data-answer="${adminEscape(k)}">${adminEscape(v)}</button>`).join('')}</div>`;
+      }
+      return `<article class="vcard ${meta.theme}"><div class="vcard-top"><span class="cat-badge">${meta.emoji||'✨'} ${adminEscape(card.cat)}</span><span class="rating-badge">${hasRatingValue(cur)?adminEscape(answerLabel(card,cur)):'❔ Unanswered'}</span></div><h3>${adminEscape(card.title)}</h3><p>${adminEscape(card.desc||'')}</p>${control}</article>`;
+    }).join('')||'<div class="empty-state"><h3>No Vault prompts yet</h3><p>New prompts will appear here when they are published.</p></div>';
+    $$('.answer-btn').forEach(b=>b.onclick=()=>{state.ratings[b.dataset.id]=b.dataset.answer;save('vault_answer');renderVault();refreshPeopleCompatibilityFromLocalVault();});
+    $$('.vault-written-answer').forEach(el=>el.onchange=()=>{const value=el.value.trim();if(value)state.ratings[el.dataset.id]={type:'text',value};else delete state.ratings[el.dataset.id];save('vault_written_answer');renderVaultStats();refreshPeopleCompatibilityFromLocalVault();});
+    $$('.vault-dropdown-answer').forEach(el=>el.onchange=()=>{const card=vaultCards.find(c=>c.id===el.dataset.id),value=el.value;if(value)state.ratings[el.dataset.id]={type:'dropdown',key:value,text:cardAnswerOptions(card)?.[value]||value};else delete state.ratings[el.dataset.id];save('vault_dropdown_answer');renderVault();refreshPeopleCompatibilityFromLocalVault();});
+    $$('.vault-number-answer').forEach(el=>el.onchange=()=>{const card=vaultCards.find(c=>c.id===el.dataset.id),cfg=numberConfig(card);let n=numOrNull(el.value);if(n===null){delete state.ratings[el.dataset.id];}else{const base=cfg.min??0;n=base+Math.round((n-base)/cfg.step)*cfg.step;const decimals=Math.max(0,(String(cfg.step).split('.')[1]||'').length);n=Number(n.toFixed(Math.min(decimals,10)));if(cfg.min!==null)n=Math.max(cfg.min,n);if(cfg.max!==null)n=Math.min(cfg.max,n);state.ratings[el.dataset.id]={type:'number',value:n};}save('vault_number_answer');renderVault();refreshPeopleCompatibilityFromLocalVault();});
+    $$('.vault-slider-answer').forEach(el=>{el.oninput=()=>{const card=vaultCards.find(c=>c.id===el.dataset.id),cfg=sliderConfig(card),n=Number(el.value),a=sliderAnchorFor(card,n),read=document.querySelector(`[data-slider-readout="${CSS.escape(el.dataset.id)}"]`);if(read){read.classList.remove('unanswered');read.innerHTML=`${adminEscape(a.emoji)} ${adminEscape(a.label)}${cfg.showValue?` <strong>${n}</strong>`:''}`;}};el.onchange=()=>{state.ratings[el.dataset.id]={type:'slider',value:Number(el.value)};save('vault_slider_answer');renderVault();refreshPeopleCompatibilityFromLocalVault();};});
+    const answeredCount=Object.values(state.ratings||{}).filter(hasRatingValue).length;
+    if(answeredCount>=3 && typeof window.afterglowAwardWeeklyGoal==='function') window.afterglowAwardWeeklyGoal('vault3');
+  };
+
+  renderVaultStats=function(){const vals=Object.values(state.ratings||{}).filter(hasRatingValue);const rated=$('#ratedCount'),limits=$('#limitCount'),pct=$('#vaultPct');if(rated)rated.textContent=vals.length;if(limits)limits.textContent=vals.filter(v=>isLimitAnswer(ratingKey(v))).length;if(pct)pct.textContent=(vaultCards.length?Math.round(vals.length/vaultCards.length*100):0)+'%';};
+
+  function defaultCustomAnswerRowsV4(){return [{key:'option_1',label:'✨ Option one'},{key:'option_2',label:'💫 Option two'}];}
+  adminAnswersToRows=function(answers){if(answers&&typeof answers==='object'&&!Array.isArray(answers))return Object.entries(answers).map(([key,label])=>({key:String(key),label:String(label)}));return defaultCustomAnswerRowsV4();};
+  function adminChoiceMode(){const m=$('#adminCardMode')?.value||'global';return m==='custom'||m==='dropdown';}
+  getAdminCustomAnswersFromRows=function(){const out={};document.querySelectorAll('#adminCustomAnswerRows .custom-answer-row').forEach(row=>{const raw=row.querySelector('.custom-answer-key')?.value||'',label=(row.querySelector('.custom-answer-label')?.value||'').trim(),key=normalizeAdminCustomAnswerKey(raw||label);if(key&&label&&!out[key])out[key]=label;});return out;};
+  syncAdminCustomAnswersHidden=function(){const hidden=$('#adminCardAnswers');if(hidden)hidden.value=adminChoiceMode()?JSON.stringify(getAdminCustomAnswersFromRows(),null,2):'';renderAdminPromptPreviewV4();};
+  function moveChoiceRow(row,dir){const parent=row?.parentElement;if(!parent)return;const sibling=dir<0?row.previousElementSibling:row.nextElementSibling;if(!sibling)return;if(dir<0)parent.insertBefore(row,sibling);else parent.insertBefore(sibling,row);syncAdminCustomAnswersHidden();}
+  renderAdminCustomAnswerRows=function(answers){
+    const wrap=$('#adminCustomAnswerRows'),builder=$('#adminCustomAnswerBuilder'),mode=$('#adminCardMode')?.value||'global';if(!wrap||!builder)return;
+    const active=mode==='custom'||mode==='dropdown';builder.classList.toggle('hidden',!active);
+    const title=$('#adminChoiceBuilderTitle'),help=$('#adminChoiceBuilderHelp');if(title)title.textContent=mode==='dropdown'?'Dropdown choices':'Custom button choices';if(help)help.textContent=mode==='dropdown'?'Build the dropdown exactly as members will see it.':'Add the buttons members can choose from.';
+    if(active){const rows=adminAnswersToRows(answers).filter(r=>r.key||r.label);wrap.innerHTML=(rows.length?rows:defaultCustomAnswerRowsV4()).map(row=>`<div class="custom-answer-row"><input class="custom-answer-key" placeholder="answer_key" value="${adminEscape(row.key)}"/><input class="custom-answer-label" placeholder="Emoji + label" value="${adminEscape(row.label)}"/><div class="choice-order"><button type="button" class="choice-up" title="Move up">↑</button><button type="button" class="choice-down" title="Move down">↓</button></div><button type="button" class="danger remove-custom-answer" title="Remove choice">×</button></div>`).join('');
+      wrap.querySelectorAll('input').forEach(i=>i.oninput=syncAdminCustomAnswersHidden);wrap.querySelectorAll('.remove-custom-answer').forEach(b=>b.onclick=()=>{b.closest('.custom-answer-row')?.remove();syncAdminCustomAnswersHidden();});wrap.querySelectorAll('.choice-up').forEach(b=>b.onclick=()=>moveChoiceRow(b.closest('.custom-answer-row'),-1));wrap.querySelectorAll('.choice-down').forEach(b=>b.onclick=()=>moveChoiceRow(b.closest('.custom-answer-row'),1));
+    }else wrap.innerHTML='';
+    const num=$('#adminNumberConfig'),slider=$('#adminSliderConfig');if(num)num.classList.toggle('hidden',mode!=='number');if(slider)slider.classList.toggle('hidden',mode!=='slider');syncAdminCustomAnswersHidden();renderAdminPromptPreviewV4();
+  };
+  addAdminCustomAnswerRow=function(){const mode=$('#adminCardMode');if(mode&&!['custom','dropdown'].includes(mode.value))mode.value='custom';const wrap=$('#adminCustomAnswerRows');if(!wrap)return;if(!adminChoiceMode())renderAdminCustomAnswerRows({});const row=document.createElement('div');row.className='custom-answer-row';row.innerHTML='<input class="custom-answer-key" placeholder="answer_key"/><input class="custom-answer-label" placeholder="Emoji + label"/><div class="choice-order"><button type="button" class="choice-up">↑</button><button type="button" class="choice-down">↓</button></div><button type="button" class="danger remove-custom-answer">×</button>';wrap.appendChild(row);row.querySelectorAll('input').forEach(i=>i.oninput=syncAdminCustomAnswersHidden);row.querySelector('.remove-custom-answer').onclick=()=>{row.remove();syncAdminCustomAnswersHidden();};row.querySelector('.choice-up').onclick=()=>moveChoiceRow(row,-1);row.querySelector('.choice-down').onclick=()=>moveChoiceRow(row,1);row.querySelector('.custom-answer-label')?.focus();syncAdminCustomAnswersHidden();};
+
+  function fillNumberAdmin(card){const c=numberConfig(card);[['adminNumberMin',c.min],['adminNumberMax',c.max],['adminNumberStep',c.step],['adminNumberUnit',c.unit],['adminNumberPlaceholder',c.placeholder]].forEach(([id,v])=>{const el=$('#'+id);if(el)el.value=v??'';});}
+  function fillSliderAdmin(card){const c=sliderConfig(card),map={adminSliderMin:c.min,adminSliderMax:c.max,adminSliderStep:c.step,adminSliderLeftEmoji:c.anchors.left.emoji,adminSliderLeftLabel:c.anchors.left.label,adminSliderMidEmoji:c.anchors.mid.emoji,adminSliderMidLabel:c.anchors.mid.label,adminSliderRightEmoji:c.anchors.right.emoji,adminSliderRightLabel:c.anchors.right.label};Object.entries(map).forEach(([id,v])=>{const el=$('#'+id);if(el)el.value=v;});const show=$('#adminSliderShowValue');if(show)show.checked=c.showValue;}
+  function readNumberAdmin(){return {min:numOrNull($('#adminNumberMin')?.value),max:numOrNull($('#adminNumberMax')?.value),step:numOrNull($('#adminNumberStep')?.value)||1,unit:($('#adminNumberUnit')?.value||'').trim().slice(0,40),placeholder:($('#adminNumberPlaceholder')?.value||'Enter a number').trim().slice(0,80)};}
+  function readSliderAdmin(){let min=numOrNull($('#adminSliderMin')?.value),max=numOrNull($('#adminSliderMax')?.value),step=numOrNull($('#adminSliderStep')?.value);if(min===null)min=1;if(max===null)max=10;if(step===null||step<=0)step=1;return {min,max,step,showValue:!!$('#adminSliderShowValue')?.checked,anchors:{left:{emoji:($('#adminSliderLeftEmoji')?.value||'🤢').trim().slice(0,12),label:($('#adminSliderLeftLabel')?.value||'Yuck').trim().slice(0,40)},mid:{emoji:($('#adminSliderMidEmoji')?.value||'😐').trim().slice(0,12),label:($('#adminSliderMidLabel')?.value||'Meh').trim().slice(0,40)},right:{emoji:($('#adminSliderRightEmoji')?.value||'😍').trim().slice(0,12),label:($('#adminSliderRightLabel')?.value||'Love').trim().slice(0,40)}}};}
+
+  function previewControl(mode,card){
+    if(mode==='dropdown')return `<select disabled><option>Choose an answer…</option>${optionEntries(card).map(([,v])=>`<option>${adminEscape(v)}</option>`).join('')}</select>`;
+    if(mode==='number'){const c=numberConfig(card);return `<div class="vault-number-shell"><input type="number" disabled placeholder="${adminEscape(c.placeholder)}"/><span class="vault-number-unit">${adminEscape(c.unit)}</span></div>`;}
+    if(mode==='slider'){const c=sliderConfig(card),mid=(c.min+c.max)/2;return `<div class="vault-slider-control"><div class="vault-slider-anchors"><span><b>${adminEscape(c.anchors.left.emoji)}</b>${adminEscape(c.anchors.left.label)}</span><span><b>${adminEscape(c.anchors.mid.emoji)}</b>${adminEscape(c.anchors.mid.label)}</span><span><b>${adminEscape(c.anchors.right.emoji)}</b>${adminEscape(c.anchors.right.label)}</span></div><input type="range" min="${c.min}" max="${c.max}" step="${c.step}" value="${mid}" disabled/><div class="vault-slider-readout">${adminEscape(c.anchors.mid.emoji)} ${adminEscape(c.anchors.mid.label)}${c.showValue?` <strong>${mid}</strong>`:''}</div></div>`;}
+    if(mode==='text')return '<input disabled placeholder="Write your answer..."/>'; if(mode==='textarea')return '<textarea disabled placeholder="Write your answer..."></textarea>';
+    return `<div class="answers">${optionEntries(card).map(([,v])=>`<button type="button" class="answer-btn" disabled>${adminEscape(v)}</button>`).join('')}</div>`;
+  }
+  function renderAdminPromptPreviewV4(){const body=$('#adminPromptPreviewBody');if(!body)return;const mode=$('#adminCardMode')?.value||'global',cat=$('#adminCardCat')?.value||Object.keys(categoryMeta)[0]||'Vault',card={id:'preview',title:($('#adminCardTitle')?.value||'Your prompt title').trim(),desc:($('#adminCardDesc')?.value||'Prompt description appears here.').trim(),cat,answerMode:mode,profileVisible:!!$('#adminCardProfileVisible')?.checked};if(mode==='custom'||mode==='dropdown')card.answers=getAdminCustomAnswersFromRows();if(mode==='number')card.numberConfig=readNumberAdmin();if(mode==='slider')card.sliderConfig=readSliderAdmin();const meta=categoryMeta[cat]||{emoji:'✨',theme:'theme-fantasy'};body.innerHTML=`<article class="vcard ${meta.theme}"><div class="vcard-top"><span class="cat-badge">${adminEscape(meta.emoji||'✨')} ${adminEscape(cat)}</span><span class="rating-badge">❔ Unanswered</span></div><h3>${adminEscape(card.title)}</h3><p>${adminEscape(card.desc)}</p>${previewControl(mode,card)}</article>`;}
+
+  selectAdminCard=function(id){adminSelectedCardId=id;const card=vaultCards.find(c=>c.id===id)||{id:'',title:'',cat:Object.keys(categoryMeta)[0]||'',desc:'',answerMode:'global',answers:null,profileVisible:false};$('#adminCardId').value=card.id||'';$('#adminCardTitle').value=card.title||'';populateAdminCardCategorySelect();$('#adminCardCat').value=card.cat||Object.keys(categoryMeta)[0]||'';$('#adminCardDesc').value=card.desc||'';const mode=$('#adminCardMode');if(mode)mode.value=promptMode(card);const answers=$('#adminCardAnswers');if(answers)answers.value=card.answers?JSON.stringify(card.answers,null,2):'';fillNumberAdmin(card);fillSliderAdmin(card);renderAdminCustomAnswerRows(card.answers||null);const visible=$('#adminCardProfileVisible');if(visible)visible.checked=!!card.profileVisible;const title=$('#adminCardFormTitle');if(title)title.textContent=id?'Edit Vault Prompt':'Add New Vault Prompt';renderAdminCards();renderAdminPromptPreviewV4();};
+
+  saveAdminCard=function(){
+    if(!isAdmin())return showToast('Admin access is restricted.'); const id=adminSlug($('#adminCardId').value||$('#adminCardTitle').value),mode=$('#adminCardMode')?.value||'global',title=($('#adminCardTitle').value||'').trim(),cat=$('#adminCardCat').value,desc=($('#adminCardDesc').value||'').trim();
+    if(!id||!title)return showToast('Add a prompt title and ID.'); if(!cat)return showToast('Choose a category.');
+    const card={id,title,cat,desc,answerMode:mode,profileVisible:!!$('#adminCardProfileVisible')?.checked,configVersion:2};
+    if(mode==='custom'||mode==='dropdown'){const answers=getAdminCustomAnswersFromRows();if(Object.keys(answers).length<2)return showToast('Add at least two unique choices.');card.answers=answers;}
+    if(mode==='number'){const cfg=readNumberAdmin();if(cfg.step<=0)return showToast('Number step must be greater than zero.');if(cfg.min!==null&&cfg.max!==null&&cfg.max<cfg.min)return showToast('Number maximum must be greater than or equal to minimum.');card.numberConfig=cfg;}
+    if(mode==='slider'){const cfg=readSliderAdmin();if(!(cfg.max>cfg.min))return showToast('Slider maximum must be greater than minimum.');if(!(cfg.step>0) || cfg.step>(cfg.max-cfg.min))return showToast('Slider step must be greater than zero and no larger than the slider range.');if(!cfg.anchors.left.label||!cfg.anchors.mid.label||!cfg.anchors.right.label)return showToast('Add labels for all three slider anchors.');card.sliderConfig=cfg;}
+    const oldIndex=vaultCards.findIndex(c=>c.id===adminSelectedCardId||c.id===id);if(oldIndex>=0)vaultCards[oldIndex]=card;else vaultCards.push(card);adminSelectedCardId=id;applyAdminConfig(adminConfigObject(),true);renderAdminWorkspace();saveAdminConfig(false);
+  };
+
+  const baseBindAdmin=bindAdminStudio;
+  bindAdminStudio=function(){
+    baseBindAdmin();
+    const watchIds=['adminCardTitle','adminCardDesc','adminCardCat','adminCardProfileVisible','adminNumberMin','adminNumberMax','adminNumberStep','adminNumberUnit','adminNumberPlaceholder','adminSliderMin','adminSliderMax','adminSliderStep','adminSliderLeftEmoji','adminSliderLeftLabel','adminSliderMidEmoji','adminSliderMidLabel','adminSliderRightEmoji','adminSliderRightLabel','adminSliderShowValue'];
+    watchIds.forEach(id=>{const el=$('#'+id);if(el&&!el.dataset.v4preview){el.dataset.v4preview='1';el.addEventListener(el.type==='checkbox'||el.tagName==='SELECT'?'change':'input',renderAdminPromptPreviewV4);}});
+    const mode=$('#adminCardMode');if(mode){mode.onchange=()=>{renderAdminCustomAnswerRows();renderAdminPromptPreviewV4();};}
+  };
+
+  profileWrittenAnswersHtml=function(p){const ratings=p?.ratings||{},rows=[];Object.entries(ratings).forEach(([id,val])=>{const card=vaultCards.find(c=>c.id===id),html=card?publicTextAnswerHtml(card,val):'';if(html)rows.push(html);});return rows.length?rows.slice(0,6).join(''):'<div class="profile-empty-mini">No written profile prompts shared yet.</div>';};
+
+  // Re-render once after all v4 overrides are installed.
+  try{renderVault();renderVaultStats();refreshPeopleCompatibilityFromLocalVault();}catch(err){console.warn('Vault v4 initial render skipped',err);}
 })();

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2026.08.17-distribution" />
+  <link rel="stylesheet" href="styles.css?v=2026.08.17-vault-v4" />
 </head>
 <body>
   <div id="ageGate" class="age-gate">
@@ -160,15 +160,49 @@
                 <label>Title<input id="adminCardTitle" placeholder="Praise and encouragement" /></label>
                 <label>Category<select id="adminCardCat"></select></label>
                 <label>Description<textarea id="adminCardDesc" placeholder="Short, tasteful explanation users will see..."></textarea></label>
-                <label>Prompt type<select id="adminCardMode"><option value="global">Use global answer set</option><option value="yesno">Yes / No</option><option value="custom">Custom choices for this prompt</option><option value="text">Short written answer</option><option value="textarea">Long written answer</option></select></label>
+                <label>Prompt type<select id="adminCardMode">
+                  <option value="global">Global answer buttons</option>
+                  <option value="yesno">Yes / No buttons</option>
+                  <option value="custom">Custom answer buttons</option>
+                  <option value="dropdown">Custom dropdown</option>
+                  <option value="number">Numbers only</option>
+                  <option value="slider">1–10 slider scale</option>
+                  <option value="text">Short written answer</option>
+                  <option value="textarea">Long written answer</option>
+                </select></label>
                 <div class="admin-custom-answer-builder" id="adminCustomAnswerBuilder">
                   <div class="builder-head">
-                    <div><b>Custom answers</b><span>Add the choices members can select for this prompt.</span></div>
-                    <button id="adminAddCustomAnswer" type="button" class="ghost-mini">+ Add answer</button>
+                    <div><b id="adminChoiceBuilderTitle">Custom choices</b><span id="adminChoiceBuilderHelp">Add the choices members can select for this prompt.</span></div>
+                    <button id="adminAddCustomAnswer" type="button" class="ghost-mini">+ Add choice</button>
                   </div>
                   <div id="adminCustomAnswerRows" class="custom-answer-rows"></div>
                   <textarea id="adminCardAnswers" class="hidden" aria-hidden="true"></textarea>
                 </div>
+                <div id="adminNumberConfig" class="admin-mode-config hidden">
+                  <div class="builder-head"><div><b>Number settings</b><span>Restrict the response to a numeric value. Min/max can be left blank.</span></div></div>
+                  <div class="admin-config-grid">
+                    <label>Minimum<input id="adminNumberMin" type="number" step="any" placeholder="Optional" /></label>
+                    <label>Maximum<input id="adminNumberMax" type="number" step="any" placeholder="Optional" /></label>
+                    <label>Step<input id="adminNumberStep" type="number" min="0.000001" step="any" value="1" /></label>
+                    <label>Unit / suffix<input id="adminNumberUnit" placeholder="e.g. times/week" maxlength="40" /></label>
+                  </div>
+                  <label>Placeholder<input id="adminNumberPlaceholder" placeholder="Enter a number" maxlength="80" /></label>
+                </div>
+                <div id="adminSliderConfig" class="admin-mode-config hidden">
+                  <div class="builder-head"><div><b>Slider settings</b><span>Defaults to 1–10. Customize the three anchor reactions shown under the scale.</span></div></div>
+                  <div class="admin-config-grid admin-slider-numbers">
+                    <label>Minimum<input id="adminSliderMin" type="number" step="1" value="1" /></label>
+                    <label>Maximum<input id="adminSliderMax" type="number" step="1" value="10" /></label>
+                    <label>Step<input id="adminSliderStep" type="number" min="0.000001" step="any" value="1" /></label>
+                  </div>
+                  <div class="admin-slider-anchor-grid">
+                    <div class="slider-anchor-editor"><b>Left</b><div><input id="adminSliderLeftEmoji" class="emoji-input" value="🤢" maxlength="12" /><input id="adminSliderLeftLabel" value="Yuck" maxlength="40" /></div></div>
+                    <div class="slider-anchor-editor"><b>Middle</b><div><input id="adminSliderMidEmoji" class="emoji-input" value="😐" maxlength="12" /><input id="adminSliderMidLabel" value="Meh" maxlength="40" /></div></div>
+                    <div class="slider-anchor-editor"><b>Right</b><div><input id="adminSliderRightEmoji" class="emoji-input" value="😍" maxlength="12" /><input id="adminSliderRightLabel" value="Love" maxlength="40" /></div></div>
+                  </div>
+                  <label class="admin-check compact"><input id="adminSliderShowValue" type="checkbox" checked /> Show the selected number to the member</label>
+                </div>
+                <div id="adminPromptPreview" class="admin-prompt-preview"><span class="admin-preview-kicker">Live preview</span><div id="adminPromptPreviewBody"></div></div>
                 <label class="admin-check"><input id="adminCardProfileVisible" type="checkbox" /> Show this answer on matched profiles when appropriate</label>
                 <div class="admin-grid">
                   <button id="adminCardNew" type="button" class="ghost full">New Card</button>
@@ -309,7 +343,7 @@
     </section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js?v=2026.08.17-distribution"></script>
-  <script src="app.js?v=2026.08.17-distribution"></script>
+  <script src="config.js?v=2026.08.17-vault-v4"></script>
+  <script src="app.js?v=2026.08.17-vault-v4"></script>
 </body>
 </html>
