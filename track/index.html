@@ -7,7 +7,18 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=521" />
+  <script>
+  // V3.1 display boot: choose V1/V2 before first paint to prevent layout flash.
+  try {
+    const p = JSON.parse(localStorage.getItem('itineraryTrackerV2.settings') || '{}');
+    document.documentElement.dataset.displayVersion = p.displayVersion === 'v1' ? 'v1' : 'v2';
+    document.documentElement.dataset.v2Workspace = sessionStorage.getItem('wetrack.v2.workspace') || 'home';
+  } catch (_) {
+    document.documentElement.dataset.displayVersion = 'v2';
+    document.documentElement.dataset.v2Workspace = 'home';
+  }
+</script>
+  <link rel="stylesheet" href="./styles.css?v=530" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -19,6 +30,20 @@
     <button id="mobileNavMustDo" type="button"><span>⭐</span><strong>Must Do</strong></button>
     <button id="mobileNavPacking" type="button"><span>🎒</span><strong>Packing</strong></button>
   </nav>
+
+  <nav id="v2MobileNav" class="v2-mobile-nav" aria-label="WeTrack workspace navigation">
+    <button type="button" data-v2-go="home"><span>⌂</span><strong>Home</strong></button>
+    <button type="button" data-v2-go="plan"><span>▣</span><strong>Plan</strong></button>
+    <button type="button" data-v2-go="explore"><span>⌖</span><strong>Explore</strong></button>
+    <button type="button" data-v2-go="memories"><span>♡</span><strong>Memories</strong></button>
+    <button type="button" id="v2MoreBtn"><span>•••</span><strong>More</strong></button>
+  </nav>
+
+  <div id="v2MoreMenu" class="v2-more-menu hidden" role="dialog" aria-label="More WeTrack spaces">
+    <button type="button" data-v2-go="tools"><span>⌘</span><strong>Travel Toolkit</strong><small>Packing, Must Do, gas & activity ideas</small></button>
+    <button type="button" data-v2-go="people"><span>👥</span><strong>People</strong><small>Travelers and invitations</small></button>
+    <a href="./settings.html"><span>⚙️</span><strong>Settings</strong><small>Display, reminders and account</small></a>
+  </div>
 
   <div class="app-shell">
     <aside class="sidebar">
@@ -35,6 +60,15 @@
         <a href="#activityGeneratorPanel"><span>✨</span>Ideas</a>
         <a href="#collabList"><span>👥</span>People</a>
         <a href="./settings.html"><span>⚙️</span>Settings</a>
+      </nav>
+      <nav class="v2-side-nav" aria-label="Workspace navigation">
+        <button type="button" data-v2-go="home"><span>⌂</span><strong>Home</strong><small>Trip command center</small></button>
+        <button type="button" data-v2-go="plan"><span>▣</span><strong>Plan</strong><small>Days & itinerary</small></button>
+        <button type="button" data-v2-go="explore"><span>⌖</span><strong>Explore</strong><small>Maps & route</small></button>
+        <button type="button" data-v2-go="memories"><span>♡</span><strong>Memories</strong><small>Photos & recap</small></button>
+        <button type="button" data-v2-go="tools"><span>⌘</span><strong>Tools</strong><small>Travel toolkit</small></button>
+        <button type="button" data-v2-go="people"><span>👥</span><strong>People</strong><small>Travelers</small></button>
+        <a href="./settings.html"><span>⚙️</span><strong>Settings</strong><small>Preferences</small></a>
       </nav>
       <div class="new-trip-card">
         <div class="mini-illustration">☁️🌴<br>🧳</div>
@@ -63,6 +97,20 @@
         </div>
       </header>
 
+      <div class="v2-workspace-top">
+        <div class="v2-trip-switch">
+          <span class="v2-trip-kicker">Current trip</span>
+          <strong id="v2CurrentTripLabel">Trip</strong>
+        </div>
+        <nav class="v2-workspace-tabs" aria-label="Current workspace">
+          <button type="button" data-v2-go="home">Home</button>
+          <button type="button" data-v2-go="plan">Plan</button>
+          <button type="button" data-v2-go="explore">Explore</button>
+          <button type="button" data-v2-go="memories">Memories</button>
+          <button type="button" data-v2-go="tools">Tools</button>
+        </nav>
+      </div>
+
       <main>
         <section id="signedOut" class="hero-card">
           <h2>Track trips, drives, events, stops, and budgets.</h2>
@@ -73,6 +121,20 @@
         </section>
 
         <section id="appArea" class="hidden dashboard-grid">
+          <section id="v2WorkspaceHeading" class="v2-workspace-heading">
+            <div>
+              <p class="eyebrow" id="v2WorkspaceKicker">Your trip</p>
+              <h1 id="v2WorkspaceTitle">Home</h1>
+              <p id="v2WorkspaceSubtitle">Everything important, without everything at once.</p>
+            </div>
+            <div id="v2WorkspaceActions" class="v2-workspace-actions"></div>
+          </section>
+          <nav id="v2ToolNav" class="v2-tool-nav" aria-label="Travel toolkit">
+            <button type="button" data-v2-tool="packing">🧳 Packing</button>
+            <button type="button" data-v2-tool="mustdo">⭐ Must Do</button>
+            <button type="button" data-v2-tool="gas">⛽ Gas</button>
+            <button type="button" data-v2-tool="activities">✨ Activities</button>
+          </nav>
           <div class="content-column">
             <section class="home-dashboard glass" id="homeDashboard">
               <div class="home-orb orb-one"></div>
@@ -562,7 +624,8 @@
   </template>
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./shop-config.js?v=520"></script>
-  <script src="./app.js?v=521"></script>
+  <script src="./shop-config.js?v=530"></script>
+  <script src="./app.js?v=530"></script>
+  <script src="./display-v2.js?v=530"></script>
 </body>
 </html>

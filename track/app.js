@@ -1408,7 +1408,7 @@ function renderItem(item, isTimed = false) {
   const budget = Number(item.budget || 0);
   const travelCost = itemTravelExpense(item);
   const assignee = memberAvatarHtml(item.assigned_to || '');
-  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${travelCost ? `<span class="travel-cost-pill">✈️ Travel ${money(travelCost)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a>` : ''}`;
+  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${travelCost ? `<span class="travel-cost-pill">✈️ Travel ${money(travelCost)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a><span class="mobile-card-map-actions" aria-label="Open this location in maps"><a class="mobile-map-btn apple" rel="noopener" href="${mapsUrl(mapQuery, 'apple')}"> Apple Maps</a><a class="mobile-map-btn google" rel="noopener" href="${mapsUrl(mapQuery, 'google')}">Google Maps</a></span>` : ''}`;
   tpl.querySelector('.item-notes').textContent = item.notes || '';
   const overlap = findOverlap(item);
   const softOverlap = !overlap ? findSoftOverlap(item) : null;
@@ -6250,3 +6250,6 @@ window.WETRACK_RELEASE='2.9.9';
 
 /* WeTrack V3.0 licensing redemption stabilization */
 window.WETRACK_RELEASE='3.0.0';
+
+/* WeTrack V3.1 workspace presentation + mobile card maps */
+window.WETRACK_RELEASE='3.1.0';

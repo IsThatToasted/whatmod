@@ -353,6 +353,28 @@ struct WeTrackWebView: UIViewRepresentable {
                 return
             }
 
+            // V3.1: explicit event-card map buttons should open the native/external
+            // mapping app instead of navigating the embedded WeTrack web view.
+            let host = requestURL.host?.lowercased() ?? ""
+            if host == "maps.apple.com" ||
+               host == "www.google.com" && requestURL.path.hasPrefix("/maps/") ||
+               host == "google.com" && requestURL.path.hasPrefix("/maps/") ||
+               host == "waze.com" || host == "www.waze.com" {
+                UIApplication.shared.open(requestURL, options: [:], completionHandler: nil)
+                decisionHandler(.cancel)
+                return
+            }
+
+            // target=_blank links have no separate browser inside this wrapper.
+            // Open external links with the system instead.
+            if navigationAction.targetFrame == nil,
+               let scheme = requestURL.scheme?.lowercased(),
+               scheme == "http" || scheme == "https" {
+                UIApplication.shared.open(requestURL, options: [:], completionHandler: nil)
+                decisionHandler(.cancel)
+                return
+            }
+
             decisionHandler(.allow)
         }
     }
