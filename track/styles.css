@@ -5087,1206 +5087,390 @@ html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover{background:#46536a}
 
 
 /* ============================================================
-   WeTrack V3.1 — V2 Workspace Presentation Layer
-   V1 remains unchanged unless data-display-version="v2".
+   WeTrack V3.2.0 — Clean V2 Workspace Layer
+   IMPORTANT: intentionally does not redefine timeline/card geometry.
    ============================================================ */
-.v2-side-nav,.v2-workspace-top,.v2-workspace-heading,.v2-mobile-nav,.v2-more-menu,
-.mobile-card-map-actions{display:none}
 
-html[data-display-version="v2"] body{
-  --v2-workspace-max: 1500px;
+.v2-side-nav,
+.v2-mobile-nav,
+.v2-more-sheet{
+  display:none;
 }
-html[data-display-version="v2"] .side-nav{display:none!important}
+
+/* V2 desktop navigation */
+html[data-display-version="v2"] .side-nav{
+  display:none!important;
+}
 html[data-display-version="v2"] .v2-side-nav{
-  display:flex;
-  flex-direction:column;
+  display:grid;
   gap:7px;
   margin-top:18px;
 }
 html[data-display-version="v2"] .v2-side-nav button,
 html[data-display-version="v2"] .v2-side-nav a{
   appearance:none;
-  border:1px solid transparent;
+  width:100%;
+  border:0;
+  box-shadow:none;
   background:transparent;
   color:var(--ink);
-  text-decoration:none;
-  border-radius:16px;
-  min-height:58px;
-  padding:9px 12px;
   display:grid;
-  grid-template-columns:32px 1fr;
-  grid-template-rows:auto auto;
-  column-gap:8px;
-  text-align:left;
+  grid-template-columns:34px minmax(0,1fr);
   align-items:center;
+  gap:10px;
+  text-align:left;
+  padding:12px 13px;
+  border-radius:15px;
+  text-decoration:none;
+  font:inherit;
   cursor:pointer;
 }
-html[data-display-version="v2"] .v2-side-nav button>span,
-html[data-display-version="v2"] .v2-side-nav a>span{
-  grid-row:1/3;
-  width:30px;height:30px;border-radius:10px;
-  display:grid;place-items:center;
-  background:color-mix(in srgb,var(--panel-solid) 78%,var(--accent) 8%);
-  font-size:17px;
+html[data-display-version="v2"] .v2-side-nav button span,
+html[data-display-version="v2"] .v2-side-nav a span{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  border-radius:11px;
+  color:var(--muted);
 }
-html[data-display-version="v2"] .v2-side-nav strong{font-size:14px;font-weight:760}
-html[data-display-version="v2"] .v2-side-nav small{font-size:11px;color:var(--muted);margin-top:1px}
+html[data-display-version="v2"] .v2-side-nav button strong,
+html[data-display-version="v2"] .v2-side-nav a strong{
+  font-size:.92rem;
+  font-weight:780;
+}
 html[data-display-version="v2"] .v2-side-nav button:hover,
 html[data-display-version="v2"] .v2-side-nav a:hover{
-  background:color-mix(in srgb,var(--panel-solid) 84%,var(--accent) 6%);
-  border-color:var(--line);
+  background:color-mix(in srgb,var(--purple) 6%,transparent);
 }
 html[data-display-version="v2"] .v2-side-nav button.active{
-  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 14%,var(--panel-solid)),color-mix(in srgb,var(--accent2) 9%,var(--panel-solid)));
-  border-color:color-mix(in srgb,var(--accent) 35%,transparent);
+  color:#7547f5;
+  background:linear-gradient(135deg,rgba(128,80,255,.11),rgba(245,98,178,.07));
+  border:1px solid rgba(126,83,246,.13);
 }
-html[data-display-version="v2"] .v2-side-nav button.active>span{
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  color:#fff;
-}
-
-html[data-display-version="v2"] .v2-workspace-top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:18px;
-  margin:0 26px 16px;
-  padding:10px 12px 10px 16px;
-  border:1px solid var(--line);
-  border-radius:18px;
-  background:color-mix(in srgb,var(--panel-solid) 94%,transparent);
-  box-shadow:0 10px 28px rgba(20,18,60,.05);
-  position:sticky;
-  top:10px;
-  z-index:70;
-  backdrop-filter:blur(18px);
-}
-html[data-display-version="v2"] .v2-trip-switch{display:flex;flex-direction:column;min-width:150px}
-html[data-display-version="v2"] .v2-trip-kicker{
-  font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:800
-}
-html[data-display-version="v2"] #v2CurrentTripLabel{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
-html[data-display-version="v2"] .v2-workspace-tabs{
-  display:flex;gap:4px;padding:4px;border-radius:14px;background:color-mix(in srgb,var(--line) 28%,transparent)
-}
-html[data-display-version="v2"] .v2-workspace-tabs button{
-  border:0;background:transparent;color:var(--muted);padding:8px 13px;border-radius:11px;font-size:13px;font-weight:720;cursor:pointer
-}
-html[data-display-version="v2"] .v2-workspace-tabs button.active{
-  background:var(--panel-solid);color:var(--ink);box-shadow:0 3px 12px rgba(20,18,60,.08)
+html[data-display-version="v2"] .v2-side-nav button.active span{
+  color:#7547f5;
+  background:rgba(126,83,246,.09);
 }
 
-html[data-display-version="v2"] #appArea.dashboard-grid:not(.hidden){
+/* V2 is a workspace, not a three-column mega page. */
+html[data-display-version="v2"] #appArea{
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:20px!important;
+}
+html[data-display-version="v2"] #appArea > .content-column,
+html[data-display-version="v2"] #appArea > .right-column{
+  min-width:0;
+  width:100%;
+}
+html[data-display-version="v2"] #appArea > .right-column{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+}
+
+/* Hide all major workspace modules, then reveal only the selected workspace.
+   No elements are moved or recreated. */
+html[data-display-version="v2"] #appArea .home-dashboard,
+html[data-display-version="v2"] #appArea .toolbar,
+html[data-display-version="v2"] #appArea .trip-hero,
+html[data-display-version="v2"] #appArea .summary-grid,
+html[data-display-version="v2"] #appArea .planner-panel,
+html[data-display-version="v2"] #appArea .daily-map-panel,
+html[data-display-version="v2"] #appArea .timeline-controls,
+html[data-display-version="v2"] #appArea .share-panel,
+html[data-display-version="v2"] #appArea .details-panel,
+html[data-display-version="v2"] #appArea .packing-panel,
+html[data-display-version="v2"] #appArea .mustdo-panel,
+html[data-display-version="v2"] #appArea .gas-panel,
+html[data-display-version="v2"] #appArea .activity-generator-panel,
+html[data-display-version="v2"] #appArea .memory-panel,
+html[data-display-version="v2"] #appArea .progress-panel{
+  display:none!important;
+}
+
+/* Home */
+html[data-display-version="v2"][data-v2-workspace="home"] #appArea .home-dashboard,
+html[data-display-version="v2"][data-v2-workspace="home"] #appArea .toolbar,
+html[data-display-version="v2"][data-v2-workspace="home"] #appArea .trip-hero,
+html[data-display-version="v2"][data-v2-workspace="home"] #appArea .summary-grid,
+html[data-display-version="v2"][data-v2-workspace="home"] #appArea .details-panel{
+  display:grid!important;
+}
+html[data-display-version="v2"][data-v2-workspace="home"] #appArea .toolbar{
+  display:flex!important;
+}
+html[data-display-version="v2"][data-v2-workspace="home"] #appArea .right-column{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+}
+
+/* Plan */
+html[data-display-version="v2"][data-v2-workspace="plan"] #appArea .planner-panel{
   display:block!important;
-  max-width:var(--v2-workspace-max);
-  margin:0 auto;
-  padding:0 26px 80px;
 }
-html[data-display-version="v2"] #appArea>.content-column,
-html[data-display-version="v2"] #appArea>.right-column{
-  display:contents!important;
+html[data-display-version="v2"][data-v2-workspace="plan"] #appArea .timeline-controls{
+  display:flex!important;
 }
-html[data-display-version="v2"] .v2-workspace-heading{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  gap:20px;
-  padding:20px 2px 18px;
-}
-html[data-display-version="v2"] .v2-workspace-heading h1{
-  margin:3px 0 5px;font-size:clamp(29px,3vw,44px);line-height:1;letter-spacing:-.035em
-}
-html[data-display-version="v2"] .v2-workspace-heading>div>p:last-child{
-  margin:0;color:var(--muted);max-width:720px;font-size:14px
-}
-html[data-display-version="v2"] .v2-workspace-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-html[data-display-version="v2"] .v2-workspace-actions button,
-html[data-display-version="v2"] .v2-workspace-actions a{
-  min-height:42px;padding:0 16px;border-radius:13px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center
-}
-html[data-display-version="v2"] .v2-primary-action{
-  border:0!important;background:linear-gradient(135deg,var(--accent),var(--accent2))!important;color:white!important;font-weight:780!important
-}
-html[data-display-version="v2"] .v2-secondary-action{
-  background:var(--panel-solid)!important;color:var(--ink)!important;border:1px solid var(--line)!important
+html[data-display-version="v2"][data-v2-workspace="plan"] #appArea .right-column{
+  display:none!important;
 }
 
-/* All V2 content becomes full workspace width instead of one tall two-column page. */
-html[data-display-version="v2"] [data-v2-space]{
+/* Explore */
+html[data-display-version="v2"][data-v2-workspace="explore"] #appArea .daily-map-panel{
+  display:block!important;
+  min-height:calc(100vh - 150px);
+}
+html[data-display-version="v2"][data-v2-workspace="explore"] #dailyRouteMap{
+  min-height:clamp(440px,68vh,780px);
+}
+html[data-display-version="v2"][data-v2-workspace="explore"] #appArea .right-column{
+  display:none!important;
+}
+
+/* Memories */
+html[data-display-version="v2"][data-v2-workspace="memories"] #appArea > .content-column{
+  display:none!important;
+}
+html[data-display-version="v2"][data-v2-workspace="memories"] #appArea .right-column{
+  display:block!important;
+}
+html[data-display-version="v2"][data-v2-workspace="memories"] #appArea .memory-panel{
+  display:block!important;
   width:100%!important;
   max-width:none!important;
-  margin-left:0!important;
-  margin-right:0!important;
 }
-html[data-display-version="v2"][data-v2-workspace="home"] [data-v2-space]:not([data-v2-space~="home"]),
-html[data-display-version="v2"][data-v2-workspace="plan"] [data-v2-space]:not([data-v2-space~="plan"]),
-html[data-display-version="v2"][data-v2-workspace="explore"] [data-v2-space]:not([data-v2-space~="explore"]),
-html[data-display-version="v2"][data-v2-workspace="memories"] [data-v2-space]:not([data-v2-space~="memories"]),
-html[data-display-version="v2"][data-v2-workspace="tools"] [data-v2-space]:not([data-v2-space~="tools"]),
-html[data-display-version="v2"][data-v2-workspace="people"] [data-v2-space]:not([data-v2-space~="people"]){
+
+/* Tools */
+html[data-display-version="v2"][data-v2-workspace="tools"] #appArea > .content-column{
   display:none!important;
 }
-
-/* Home is a concise command center. */
-html[data-display-version="v2"][data-v2-workspace="home"] .home-dashboard{
-  min-height:360px;
-  grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);
-}
-html[data-display-version="v2"][data-v2-workspace="home"] .toolbar{
-  margin-top:18px;
-}
-html[data-display-version="v2"][data-v2-workspace="home"] .trip-hero{
-  margin-top:18px;
-}
-html[data-display-version="v2"][data-v2-workspace="home"] .summary-grid{
-  margin-top:18px;
-}
-html[data-display-version="v2"][data-v2-workspace="home"] .details-panel{
-  margin-top:18px;
-}
-html[data-display-version="v2"][data-v2-workspace="home"] .share-panel{
-  margin-top:18px;
-}
-
-/* Focused planner */
-html[data-display-version="v2"][data-v2-workspace="plan"] .planner-panel{
-  min-height:72vh;
-  padding:24px;
-}
-html[data-display-version="v2"][data-v2-workspace="plan"] .timeline-controls{
-  margin-top:14px;
-  justify-content:flex-end;
-}
-
-/* Explore uses a large map canvas. */
-html[data-display-version="v2"][data-v2-workspace="explore"] #dailyMapPanel{
-  min-height:calc(100vh - 230px);
-  padding:24px;
-  display:flex!important;
-  flex-direction:column;
-}
-html[data-display-version="v2"][data-v2-workspace="explore"] .daily-route-map{
-  min-height:clamp(460px,65vh,780px)!important;
-  flex:1;
-  border-radius:22px;
-}
-html[data-display-version="v2"][data-v2-workspace="explore"] .daily-map-stops{
-  margin-top:16px;
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
-  gap:10px;
-}
-
-/* Memories become a photo-first space. */
-html[data-display-version="v2"][data-v2-workspace="memories"] #memoryPanel{
-  padding:26px;
-  min-height:60vh;
-}
-html[data-display-version="v2"][data-v2-workspace="memories"] .memory-gallery{
+html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .right-column{
   display:grid!important;
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-  gap:14px!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
 }
-html[data-display-version="v2"][data-v2-workspace="memories"] .progress-panel{
-  margin-top:16px;
-}
-
-/* Toolkit: discrete mini-app cards instead of sidebar widgets. */
-html[data-display-version="v2"][data-v2-workspace="tools"] #packingPanel,
-html[data-display-version="v2"][data-v2-workspace="tools"] #mustDoPanel,
-html[data-display-version="v2"][data-v2-workspace="tools"] #gasPanel,
-html[data-display-version="v2"][data-v2-workspace="tools"] #activityGeneratorPanel{
-  margin:0 0 16px!important;
-  padding:24px!important;
-}
-html[data-display-version="v2"][data-v2-workspace="tools"] #gasPanel,
-html[data-display-version="v2"][data-v2-workspace="tools"] #activityGeneratorPanel{
-  min-height:260px;
-}
-
-/* People gets breathing room. */
-html[data-display-version="v2"][data-v2-workspace="people"] .share-panel{
-  max-width:940px!important;
-  margin:0 auto!important;
-  padding:28px!important;
-}
-html[data-display-version="v2"][data-v2-workspace="people"] .details-panel{
-  max-width:940px!important;
-  margin:16px auto 0!important;
-}
-
-/* Hide old mobile quick nav/footer in V2. */
-html[data-display-version="v2"] .mobile-settings-footer{display:none!important}
-
-/* Mobile map actions are explicit and reliable. */
-.mobile-card-map-actions{
-  width:100%;
-  gap:7px;
-  margin-top:7px;
-}
-.mobile-card-map-actions .mobile-map-btn{
-  min-height:36px;
-  border-radius:12px;
-  border:1px solid var(--line);
-  padding:0 12px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-decoration:none;
-  color:var(--ink);
-  background:color-mix(in srgb,var(--panel-solid) 92%,var(--accent) 3%);
-  font-size:12px;
-  font-weight:760;
-  white-space:nowrap;
-}
-.mobile-card-map-actions .mobile-map-btn.apple{color:var(--ink)}
-.mobile-card-map-actions .mobile-map-btn.google{color:var(--accent)}
-
-@media (max-width:760px){
-  html[data-display-version="v2"] .mobile-quick-nav{display:none!important}
-  html[data-display-version="v2"] .v2-workspace-top{display:none!important}
-  html[data-display-version="v2"] #appArea.dashboard-grid{
-    padding:0 14px 112px!important;
-  }
-  html[data-display-version="v2"] .v2-workspace-heading{
-    padding:18px 4px 14px;
-    align-items:flex-start;
-    flex-direction:column;
-    gap:12px;
-  }
-  html[data-display-version="v2"] .v2-workspace-heading h1{font-size:31px}
-  html[data-display-version="v2"] .v2-workspace-actions{width:100%}
-  html[data-display-version="v2"] .v2-workspace-actions>*{flex:1;min-width:130px}
-
-  html[data-display-version="v2"] .v2-mobile-nav{
-    position:fixed;
-    left:12px;right:12px;bottom:max(10px,env(safe-area-inset-bottom));
-    z-index:10000;
-    display:grid;
-    grid-template-columns:repeat(5,1fr);
-    min-height:72px;
-    padding:7px 7px 6px;
-    border-radius:24px;
-    border:1px solid color-mix(in srgb,var(--line) 80%,transparent);
-    background:color-mix(in srgb,var(--panel-solid) 92%,transparent);
-    backdrop-filter:blur(24px) saturate(1.25);
-    box-shadow:0 18px 44px rgba(19,18,55,.18);
-  }
-  html[data-display-version="v2"] .v2-mobile-nav button{
-    border:0;background:transparent;color:var(--muted);
-    border-radius:17px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:3px;padding:4px 2px;min-width:0;
-  }
-  html[data-display-version="v2"] .v2-mobile-nav button>span{font-size:20px;line-height:1}
-  html[data-display-version="v2"] .v2-mobile-nav button>strong{font-size:10px;font-weight:760;white-space:nowrap}
-  html[data-display-version="v2"] .v2-mobile-nav button.active{
-    color:var(--accent);
-    background:color-mix(in srgb,var(--accent) 10%,transparent);
-  }
-
-  html[data-display-version="v2"] .v2-more-menu{
-    position:fixed;
-    left:14px;right:14px;bottom:94px;
-    z-index:10001;
-    border:1px solid var(--line);
-    background:var(--panel-solid);
-    border-radius:22px;
-    padding:9px;
-    box-shadow:0 18px 48px rgba(20,18,55,.24);
-  }
-  html[data-display-version="v2"] .v2-more-menu:not(.hidden){display:grid;gap:6px}
-  html[data-display-version="v2"] .v2-more-menu button,
-  html[data-display-version="v2"] .v2-more-menu a{
-    border:0;background:transparent;text-decoration:none;color:var(--ink);
-    display:grid;grid-template-columns:38px 1fr;grid-template-rows:auto auto;
-    text-align:left;column-gap:8px;padding:10px;border-radius:15px;
-  }
-  html[data-display-version="v2"] .v2-more-menu button:hover,
-  html[data-display-version="v2"] .v2-more-menu a:hover{background:color-mix(in srgb,var(--accent) 8%,transparent)}
-  html[data-display-version="v2"] .v2-more-menu span{grid-row:1/3;font-size:22px;align-self:center}
-  html[data-display-version="v2"] .v2-more-menu strong{font-size:14px}
-  html[data-display-version="v2"] .v2-more-menu small{font-size:11px;color:var(--muted);margin-top:2px}
-
-  html[data-display-version="v2"][data-v2-workspace="home"] .home-dashboard{
-    display:block!important;min-height:0!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="home"] .home-planning-card{margin-top:16px}
-  html[data-display-version="v2"][data-v2-workspace="explore"] #dailyMapPanel{padding:16px!important;min-height:calc(100vh - 190px)}
-  html[data-display-version="v2"][data-v2-workspace="explore"] .daily-route-map{
-    min-height:58vh!important;border-radius:18px
-  }
-  html[data-display-version="v2"][data-v2-workspace="tools"] #packingPanel,
-  html[data-display-version="v2"][data-v2-workspace="tools"] #mustDoPanel,
-  html[data-display-version="v2"][data-v2-workspace="tools"] #gasPanel,
-  html[data-display-version="v2"][data-v2-workspace="tools"] #activityGeneratorPanel{
-    padding:18px!important;
-  }
-  .mobile-card-map-actions{display:flex!important}
-  .item-meta .location-link.full-row{
-    pointer-events:none; /* explicit map buttons below are the mobile action */
-  }
-}
-
-/* V1 explicitly keeps the classic navigation and page behavior. */
-html[data-display-version="v1"] .v2-side-nav,
-html[data-display-version="v1"] .v2-workspace-top,
-html[data-display-version="v1"] .v2-workspace-heading,
-html[data-display-version="v1"] .v2-mobile-nav,
-html[data-display-version="v1"] .v2-more-menu{display:none!important}
-
-.settings-field-help{
-  display:block;margin-top:6px;color:var(--muted);font-size:11px;line-height:1.45;font-weight:500
-}
-
-
-/* V3.1 toolkit sub-navigation: each tool is a focused mini-workspace. */
-.v2-tool-nav{display:none}
-html[data-display-version="v2"][data-v2-workspace="tools"] .v2-tool-nav{
-  display:flex;
-  gap:7px;
-  margin:0 0 14px;
-  padding:6px;
-  border:1px solid var(--line);
-  border-radius:17px;
-  background:color-mix(in srgb,var(--panel-solid) 94%,transparent);
-  overflow-x:auto;
-  scrollbar-width:none;
-}
-html[data-display-version="v2"][data-v2-workspace="tools"] .v2-tool-nav::-webkit-scrollbar{display:none}
-html[data-display-version="v2"] .v2-tool-nav button{
-  border:0;
-  background:transparent;
-  color:var(--muted);
-  border-radius:12px;
-  min-height:38px;
-  padding:0 14px;
-  white-space:nowrap;
-  font-weight:730;
-}
-html[data-display-version="v2"] .v2-tool-nav button.active{
-  color:var(--ink);
-  background:color-mix(in srgb,var(--accent) 11%,var(--panel-solid));
-  box-shadow:0 3px 12px rgba(20,18,60,.06);
-}
-html[data-display-version="v2"][data-v2-workspace="tools"] #packingPanel:not(.v2-tool-active),
-html[data-display-version="v2"][data-v2-workspace="tools"] #mustDoPanel:not(.v2-tool-active),
-html[data-display-version="v2"][data-v2-workspace="tools"] #gasPanel:not(.v2-tool-active),
-html[data-display-version="v2"][data-v2-workspace="tools"] #activityGeneratorPanel:not(.v2-tool-active){
-  display:none!important;
-}
-html[data-display-version="v2"][data-v2-workspace="tools"] .v2-tool-active{
+html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .packing-panel,
+html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .mustdo-panel,
+html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .gas-panel,
+html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .activity-generator-panel,
+html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .progress-panel{
   display:block!important;
-  min-height:55vh!important;
-}
-@media (max-width:760px){
-  html[data-display-version="v2"][data-v2-workspace="tools"] .v2-tool-nav{
-    margin:0 0 12px;
-    border-radius:15px;
-  }
 }
 
-/* Signed-out V2 chrome stays quiet and does not expose empty workspaces. */
-body.auth-signed-out .v2-mobile-nav,
-body.auth-signed-out .v2-more-menu,
-body.auth-signed-out .v2-workspace-top{
+/* People */
+html[data-display-version="v2"][data-v2-workspace="people"] #appArea > .content-column{
   display:none!important;
 }
-@media (min-width:761px){
-  body.auth-signed-out .v2-side-nav{display:none!important}
+html[data-display-version="v2"][data-v2-workspace="people"] #appArea .right-column{
+  display:block!important;
+}
+html[data-display-version="v2"][data-v2-workspace="people"] #appArea .share-panel{
+  display:block!important;
+  width:100%!important;
 }
 
-
-/* ============================================================
-   WeTrack V3.1.1 — V2 Mobile Timeline Card + Map Action Polish
-   This is intentionally scoped to V2 + mobile only.
-   ============================================================ */
-
-/* Map actions are mobile-only. Desktop retains the clickable address. */
-.mobile-card-map-actions{
+/* Mobile map shortcuts: deliberately small and below the existing address.
+   This adds no card/grid sizing rules. */
+.mobile-map-shortcuts{
   display:none;
 }
-
-@media (max-width:760px){
-
-  /* Restore usable horizontal space in the V2 planner timeline. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .timeline-board{
-    margin-left:0!important;
-    margin-right:0!important;
-    padding-left:38px!important;
-    padding-right:2px!important;
-    overflow:visible!important;
+@media(max-width:760px){
+  .item-meta .mobile-map-shortcuts{
+    flex-basis:100%;
+    width:100%;
+    display:flex;
+    justify-content:flex-start;
+    gap:7px;
+    margin-top:5px;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .timeline-board:before{
-    left:16px!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item{
-    left:42px!important;
-    right:2px!important;
-    width:auto!important;
-    max-width:none!important;
-    min-width:0!important;
-    box-sizing:border-box!important;
-    overflow:visible!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .agenda-view .timeline-item:before,
-  html[data-display-version="v2"][data-v2-workspace="plan"].agenda-view .timeline-item:before{
-    left:-31px!important;
-  }
-
-  /*
-   * Card structure:
-   *   [ time ] [ icon + title + pills + address ]
-   *   [          action row                      ]
-   *
-   * Keeping actions out of the content column is what prevents the
-   * "squeezed vertical card" seen in V3.1.
-   */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item > .card-front{
-    display:grid!important;
-    grid-template-columns:82px minmax(0,1fr)!important;
-    grid-template-areas:
-      "time main"
-      "actions actions"!important;
-    column-gap:11px!important;
-    row-gap:12px!important;
-    align-items:start!important;
-    width:100%!important;
-    min-width:0!important;
-    height:auto!important;
-    min-height:118px!important;
-    padding:13px!important;
-    border-radius:22px!important;
-    overflow:visible!important;
-    box-sizing:border-box!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .time-chip{
-    grid-area:time!important;
-    width:82px!important;
-    max-width:82px!important;
-    min-width:82px!important;
-    min-height:58px!important;
-    height:auto!important;
-    padding:8px 6px!important;
-    align-self:start!important;
-    justify-self:start!important;
-    border-radius:17px!important;
-    font-size:.78rem!important;
-    line-height:1.08!important;
-    text-align:center!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main{
-    grid-area:main!important;
-    display:grid!important;
-    grid-template-columns:44px minmax(0,1fr)!important;
-    grid-template-areas:"eventicon eventcopy"!important;
-    align-items:start!important;
-    gap:10px!important;
-    width:100%!important;
-    min-width:0!important;
-    overflow:visible!important;
+  .mobile-map-shortcut{
+    width:34px;
+    height:34px;
+    min-width:34px;
+    min-height:34px;
+    display:grid;
+    place-items:center;
     padding:0!important;
+    border-radius:11px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.76);
+    text-decoration:none;
+    box-shadow:0 4px 12px rgba(45,38,94,.07);
+    line-height:1;
+    box-sizing:border-box;
+  }
+  .mobile-map-shortcut.apple{
+    color:#171b2b;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;
+    font-size:1rem;
+    font-weight:800;
+  }
+  .mobile-map-shortcut.google span{
+    width:21px;
+    height:21px;
+    display:grid;
+    place-items:center;
+    border-radius:7px 7px 7px 2px;
+    background:linear-gradient(135deg,#4285f4 0 38%,#34a853 38% 57%,#fbbc05 57% 75%,#ea4335 75%);
+    color:#fff;
+    font:800 .68rem/1 Arial,sans-serif;
   }
 
-  /* The icon lives inside .item-main in the actual DOM. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main > .item-type{
-    display:grid!important;
-    grid-area:eventicon!important;
-    width:44px!important;
-    height:44px!important;
-    min-width:44px!important;
-    border-radius:15px!important;
-    place-items:center!important;
-    align-self:start!important;
-    font-size:1.08rem!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main > div:last-child{
-    grid-area:eventcopy!important;
-    min-width:0!important;
-    width:100%!important;
-    overflow:visible!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main h3{
-    margin:1px 0 7px!important;
-    max-width:100%!important;
-    white-space:normal!important;
-    overflow:visible!important;
-    text-overflow:clip!important;
-    font-size:1.02rem!important;
-    line-height:1.16!important;
-    letter-spacing:-.018em!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-meta{
-    display:flex!important;
-    flex-wrap:wrap!important;
-    align-items:center!important;
-    gap:6px!important;
-    width:100%!important;
-    max-width:100%!important;
-    max-height:none!important;
-    overflow:visible!important;
-    white-space:normal!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-meta > span:not(.mobile-card-map-actions),
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-meta > button{
-    max-width:100%!important;
-  }
-
-  /* "Added by" is redundant on the narrow card and is still available in expanded details. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .created-pill{
+  /* Replace old quick bar only in V2. */
+  html[data-display-version="v2"] .mobile-quick-nav,
+  html[data-display-version="v2"] .mobile-settings-footer{
     display:none!important;
   }
-
-  /* Address becomes a clean readable row instead of a tall skinny pill. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .location-link.full-row{
-    order:20!important;
-    flex:1 0 100%!important;
+  html[data-display-version="v2"] .sidebar{
+    display:none!important;
+  }
+  html[data-display-version="v2"] .main-wrap{
     width:100%!important;
     max-width:100%!important;
-    min-width:0!important;
-    min-height:38px!important;
-    padding:8px 10px!important;
-    border-radius:13px!important;
-    white-space:normal!important;
-    overflow:visible!important;
-    overflow-wrap:anywhere!important;
-    line-height:1.22!important;
-    font-size:.77rem!important;
-    box-sizing:border-box!important;
   }
-
-  /* Compact map launcher row directly below address. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .mobile-card-map-actions{
-    order:21!important;
-    flex:1 0 100%!important;
-    width:100%!important;
-    display:flex!important;
-    align-items:center!important;
-    justify-content:flex-start!important;
-    gap:8px!important;
-    margin:0!important;
-    padding-top:1px!important;
+  html[data-display-version="v2"] .v2-mobile-nav{
+    position:fixed;
+    z-index:800;
+    left:14px;
+    right:14px;
+    bottom:max(12px,env(safe-area-inset-bottom));
+    height:72px;
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    padding:7px;
+    border-radius:25px;
+    border:1px solid rgba(118,91,210,.13);
+    background:rgba(255,255,255,.92);
+    backdrop-filter:blur(22px) saturate(1.2);
+    box-shadow:0 16px 42px rgba(43,35,90,.18);
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .mobile-card-map-actions .mobile-map-btn{
-    width:38px!important;
-    height:38px!important;
-    min-width:38px!important;
-    min-height:38px!important;
-    padding:0!important;
-    display:grid!important;
-    place-items:center!important;
-    border-radius:50%!important;
-    border:1px solid color-mix(in srgb,var(--line) 88%,transparent)!important;
-    background:color-mix(in srgb,var(--panel-solid) 91%,var(--purple) 5%)!important;
-    box-shadow:0 5px 14px rgba(34,30,80,.08)!important;
-    text-decoration:none!important;
-    overflow:hidden!important;
-    line-height:1!important;
+  html[data-display-version="v2"] .v2-mobile-nav button{
+    min-width:0;
+    padding:5px 2px;
+    border:0;
+    border-radius:18px;
+    background:transparent;
+    box-shadow:none;
+    color:#56617f;
+    display:grid;
+    grid-template-rows:24px 18px;
+    align-content:center;
+    justify-items:center;
+    gap:2px;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .mobile-card-map-actions .mobile-map-btn.apple{
-    color:var(--ink)!important;
-    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif!important;
-    font-size:1.1rem!important;
-    font-weight:700!important;
+  html[data-display-version="v2"] .v2-mobile-nav button span{
+    font-size:1.25rem;
+    line-height:1;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .mobile-card-map-actions .mobile-map-btn.google{
-    color:#4285f4!important;
+  html[data-display-version="v2"] .v2-mobile-nav button strong{
+    font-size:.70rem;
+    line-height:1;
+    font-weight:800;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .google-map-mark{
-    display:grid!important;
-    place-items:center!important;
-    width:23px!important;
-    height:23px!important;
-    border-radius:7px 7px 7px 2px!important;
-    transform:rotate(-45deg)!important;
-    background:linear-gradient(135deg,#4285f4 0 38%,#34a853 38% 57%,#fbbc05 57% 75%,#ea4335 75%)!important;
-    color:#fff!important;
-    font-family:Arial,sans-serif!important;
-    font-size:.72rem!important;
-    font-weight:800!important;
-    box-shadow:0 1px 4px rgba(0,0,0,.10)!important;
+  html[data-display-version="v2"] .v2-mobile-nav button.active{
+    color:#f454a0;
+    background:linear-gradient(145deg,rgba(246,88,166,.10),rgba(130,83,247,.07));
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .google-map-mark::first-letter{
-    transform:rotate(45deg);
-  }
-
-  /* Notes stay compact but readable; tapping the card still expands full details. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-notes{
-    display:-webkit-box!important;
-    -webkit-line-clamp:2!important;
-    -webkit-box-orient:vertical!important;
-    overflow:hidden!important;
-    margin:7px 0 0!important;
-    font-size:.79rem!important;
-    line-height:1.28!important;
-  }
-
-  /*
-   * One consistent action row. Six 34px circles fit comfortably on modern
-   * iPhones and avoid the huge stacked button treatment from older CSS.
-   */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-actions{
-    grid-area:actions!important;
-    display:grid!important;
-    grid-template-columns:repeat(6,34px)!important;
-    grid-auto-rows:34px!important;
-    justify-content:end!important;
-    align-items:center!important;
-    gap:7px!important;
-    width:100%!important;
-    min-width:0!important;
-    max-width:none!important;
-    margin:0!important;
-    padding:0!important;
-    overflow:visible!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-actions button,
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item.compact-time-card .item-actions button{
-    display:grid!important;
-    width:34px!important;
-    min-width:34px!important;
-    max-width:34px!important;
-    height:34px!important;
-    min-height:34px!important;
-    max-height:34px!important;
-    padding:0!important;
-    place-items:center!important;
-    border-radius:50%!important;
-    font-size:.72rem!important;
-    line-height:1!important;
-  }
-
-  /* Undo the old rule that hid rain/edit/delete on mobile. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-actions button:nth-child(n+4){
-    display:grid!important;
-  }
-
-  /* Drag grip stays discoverable but no longer floats in the content column. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .card-drag-handle{
-    left:-12px!important;
-    top:50%!important;
-    transform:translateY(-50%)!important;
-  }
-
-  /* Compact 30-minute cards retain the same structure and button geometry. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item.compact-time-card > .card-front{
-    grid-template-columns:76px minmax(0,1fr)!important;
-    grid-template-areas:
-      "time main"
-      "actions actions"!important;
-    min-height:104px!important;
-    padding:11px 12px!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item.compact-time-card .time-chip{
-    width:76px!important;
-    min-width:76px!important;
-    max-width:76px!important;
-    min-height:50px!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item.compact-time-card .item-meta{
-    max-height:none!important;
-    flex-wrap:wrap!important;
-  }
-
-  /* Expanded cards can show everything naturally. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.expanded > .card-front{
-    height:auto!important;
-  }
-}
-
-/* Extra-small iPhones: reduce action size slightly rather than squeezing content. */
-@media (max-width:390px){
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item{
-    left:38px!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item > .card-front{
-    grid-template-columns:72px minmax(0,1fr)!important;
-    padding:11px!important;
-    gap:9px!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .time-chip{
-    width:72px!important;
-    min-width:72px!important;
-    max-width:72px!important;
-    font-size:.72rem!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-actions{
-    grid-template-columns:repeat(6,31px)!important;
-    gap:5px!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-actions button{
-    width:31px!important;
-    min-width:31px!important;
-    max-width:31px!important;
-    height:31px!important;
-    min-height:31px!important;
-    max-height:31px!important;
-  }
-}
-
-
-/* ============================================================
-   WeTrack V3.1.2 — V2 Card Restructure + Overflow Audit
-   ============================================================ */
-
-/* One settings control replaces the six-button action strip in V2. */
-html[data-display-version="v2"] .item-card .item-actions{
-  display:none!important;
-}
-html[data-display-version="v2"] .card-front{
-  position:relative!important;
-}
-html[data-display-version="v2"] .card-settings-btn{
-  position:absolute!important;
-  top:12px!important;
-  right:12px!important;
-  z-index:18!important;
-  width:38px!important;
-  height:38px!important;
-  min-width:38px!important;
-  min-height:38px!important;
-  padding:0!important;
-  display:grid!important;
-  place-items:center!important;
-  border-radius:13px!important;
-  border:1px solid color-mix(in srgb,var(--line) 85%,transparent)!important;
-  background:color-mix(in srgb,var(--panel-solid) 94%,var(--purple) 4%)!important;
-  color:var(--ink)!important;
-  box-shadow:0 7px 18px rgba(36,31,82,.08)!important;
-  font-size:1rem!important;
-  line-height:1!important;
-}
-html[data-display-version="v2"] .card-settings-btn:hover{
-  transform:translateY(-1px)!important;
-  border-color:color-mix(in srgb,var(--purple) 30%,var(--line))!important;
-}
-html[data-display-version="v2"] .card-settings-menu{
-  position:absolute!important;
-  top:56px!important;
-  right:12px!important;
-  z-index:250!important;
-  width:min(238px,calc(100% - 24px))!important;
-  padding:8px!important;
-  display:none!important;
-  grid-template-columns:1fr!important;
-  gap:4px!important;
-  border:1px solid color-mix(in srgb,var(--line) 88%,transparent)!important;
-  border-radius:18px!important;
-  background:color-mix(in srgb,var(--panel-solid) 98%,white 2%)!important;
-  box-shadow:0 18px 45px rgba(37,31,84,.18)!important;
-  backdrop-filter:blur(18px)!important;
-}
-html[data-display-version="v2"] .card-settings-menu.open{
-  display:grid!important;
-}
-html[data-display-version="v2"] .card-settings-menu button{
-  width:100%!important;
-  min-width:0!important;
-  min-height:40px!important;
-  padding:9px 11px!important;
-  display:grid!important;
-  grid-template-columns:30px minmax(0,1fr)!important;
-  gap:8px!important;
-  align-items:center!important;
-  text-align:left!important;
-  border-radius:12px!important;
-  border:0!important;
-  background:transparent!important;
-  color:var(--ink)!important;
-  box-shadow:none!important;
-  font-size:.84rem!important;
-  font-weight:700!important;
-}
-html[data-display-version="v2"] .card-settings-menu button:hover{
-  background:color-mix(in srgb,var(--purple) 8%,transparent)!important;
-}
-html[data-display-version="v2"] .card-settings-menu button:disabled{
-  opacity:.38!important;
-  cursor:not-allowed!important;
-}
-html[data-display-version="v2"] .card-settings-menu .danger-option{
-  color:#d44d68!important;
-}
-
-/* Address and map actions become one logical row. */
-html[data-display-version="v2"] .location-row{
-  flex:1 0 100%!important;
-  width:100%!important;
-  min-width:0!important;
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr) auto!important;
-  gap:8px!important;
-  align-items:center!important;
-  margin-top:2px!important;
-}
-html[data-display-version="v2"] .location-row .location-link.full-row{
-  width:100%!important;
-  min-width:0!important;
-  max-width:none!important;
-  margin:0!important;
-  overflow-wrap:anywhere!important;
-  word-break:normal!important;
-}
-html[data-display-version="v2"] .location-row .mobile-card-map-actions{
-  margin:0!important;
-  padding:0!important;
-  flex:0 0 auto!important;
-  width:auto!important;
-}
-
-/* V2 desktop cards get a little breathing room for the cog. */
-@media (min-width:761px){
-  html[data-display-version="v2"] .item-card.timeline-item > .card-front{
-    padding-right:62px!important;
-  }
-}
-
-/* ----------------------------------------------------------------
-   V2 mobile agenda cards: completely simplify the content hierarchy.
-   ---------------------------------------------------------------- */
-@media (max-width:760px){
-  html,
-  body{
-    max-width:100%!important;
+  html[data-display-version="v2"] body{
+    padding-bottom:104px!important;
     overflow-x:hidden!important;
   }
-
-  html[data-display-version="v2"] .v2-workspace-view,
-  html[data-display-version="v2"] .glass,
-  html[data-display-version="v2"] .planner-panel,
-  html[data-display-version="v2"] .details-panel,
-  html[data-display-version="v2"] .metric,
-  html[data-display-version="v2"] .summary-grid{
-    min-width:0!important;
-    max-width:100%!important;
-    box-sizing:border-box!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] body.agenda-view .timeline-board,
-  body.agenda-view html[data-display-version="v2"][data-v2-workspace="plan"] .timeline-board{
-    padding:8px 2px 18px 32px!important;
-    gap:12px!important;
-    overflow:visible!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] body.agenda-view .timeline-board:before,
-  body.agenda-view html[data-display-version="v2"][data-v2-workspace="plan"] .timeline-board:before{
-    left:14px!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] body.agenda-view .timeline-item,
-  body.agenda-view html[data-display-version="v2"][data-v2-workspace="plan"] .timeline-item{
-    position:relative!important;
-    left:auto!important;
-    right:auto!important;
-    top:auto!important;
+  html[data-display-version="v2"] #appArea{
+    display:block!important;
     width:100%!important;
     max-width:100%!important;
-    min-width:0!important;
-    height:auto!important;
-    min-height:0!important;
+  }
+  html[data-display-version="v2"] #appArea > .content-column,
+  html[data-display-version="v2"] #appArea > .right-column{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .right-column{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+  }
+
+  /* Make Explore feel like its own view without touching map internals. */
+  html[data-display-version="v2"][data-v2-workspace="explore"] .daily-map-panel{
     margin:0!important;
-    transform:none!important;
-    overflow:visible!important;
+    border-radius:24px!important;
+  }
+  html[data-display-version="v2"][data-v2-workspace="explore"] #dailyRouteMap{
+    min-height:58vh!important;
   }
 
-  html[data-display-version="v2"][data-v2-workspace="plan"] body.agenda-view .timeline-item:before,
-  body.agenda-view html[data-display-version="v2"][data-v2-workspace="plan"] .timeline-item:before{
-    left:-24px!important;
+  /* More bottom sheet */
+  html[data-display-version="v2"] .v2-more-sheet{
+    position:fixed;
+    z-index:900;
+    left:14px;
+    right:14px;
+    bottom:96px;
+    display:grid;
+    gap:7px;
+    padding:16px;
+    border:1px solid rgba(118,91,210,.14);
+    border-radius:24px;
+    background:rgba(255,255,255,.96);
+    backdrop-filter:blur(22px);
+    box-shadow:0 22px 55px rgba(43,35,90,.22);
+    transform:translateY(18px);
+    opacity:0;
+    pointer-events:none;
+    transition:.18s ease;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item > .card-front{
-    width:100%!important;
-    min-width:0!important;
-    height:auto!important;
-    min-height:108px!important;
-    padding:14px!important;
-    padding-right:54px!important;
-    display:grid!important;
-    grid-template-columns:70px minmax(0,1fr)!important;
-    grid-template-areas:"time main"!important;
-    gap:12px!important;
-    align-items:start!important;
-    overflow:visible!important;
-    border-radius:22px!important;
-    box-sizing:border-box!important;
+  html[data-display-version="v2"] .v2-more-sheet.open{
+    transform:none;
+    opacity:1;
+    pointer-events:auto;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .time-chip{
-    grid-area:time!important;
-    width:70px!important;
-    min-width:70px!important;
-    max-width:70px!important;
-    min-height:54px!important;
-    height:auto!important;
-    padding:8px 5px!important;
-    align-self:start!important;
-    border-radius:16px!important;
-    font-size:.74rem!important;
-    line-height:1.08!important;
+  html[data-display-version="v2"] .v2-more-sheet .v2-more-head{
+    display:grid;
+    gap:2px;
+    margin-bottom:4px;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main{
-    grid-area:main!important;
-    width:100%!important;
-    min-width:0!important;
-    display:grid!important;
-    grid-template-columns:42px minmax(0,1fr)!important;
-    gap:9px!important;
-    align-items:start!important;
-    padding:0!important;
-    overflow:visible!important;
+  html[data-display-version="v2"] .v2-more-sheet .v2-more-head span{
+    color:var(--muted);
+    font-size:.72rem;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    font-weight:800;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main > .item-type{
-    width:42px!important;
-    height:42px!important;
-    min-width:42px!important;
-    border-radius:14px!important;
-    align-self:start!important;
+  html[data-display-version="v2"] .v2-more-sheet button:not(.v2-more-close),
+  html[data-display-version="v2"] .v2-more-sheet a{
+    min-height:48px;
+    padding:11px 13px;
+    border:1px solid var(--line);
+    border-radius:15px;
+    background:#fff;
+    color:var(--ink);
+    text-decoration:none;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    box-shadow:none;
+    font:700 .9rem/1.2 inherit;
   }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main > div:last-child{
-    min-width:0!important;
-    width:100%!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main h3{
-    margin:1px 38px 7px 0!important;
-    padding:0!important;
-    width:auto!important;
-    max-width:100%!important;
-    white-space:normal!important;
-    overflow:visible!important;
-    text-overflow:clip!important;
-    overflow-wrap:anywhere!important;
-    font-size:1rem!important;
-    line-height:1.16!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-meta{
-    width:100%!important;
-    min-width:0!important;
-    max-width:100%!important;
-    display:flex!important;
-    flex-wrap:wrap!important;
-    align-items:center!important;
-    gap:6px!important;
-    overflow:visible!important;
-  }
-
-  /* Keep the mobile card focused: who created it remains in expanded details. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .created-pill{
-    display:none!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .location-row{
-    grid-template-columns:minmax(0,1fr) 76px!important;
-    gap:7px!important;
-    align-items:center!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .location-row .location-link.full-row{
-    min-height:38px!important;
-    padding:8px 9px!important;
-    border-radius:13px!important;
-    white-space:normal!important;
-    overflow:visible!important;
-    overflow-wrap:anywhere!important;
-    line-height:1.2!important;
-    font-size:.76rem!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .mobile-card-map-actions{
-    display:grid!important;
-    grid-template-columns:34px 34px!important;
-    gap:6px!important;
-    justify-content:end!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .mobile-card-map-actions .mobile-map-btn{
-    width:34px!important;
-    height:34px!important;
-    min-width:34px!important;
-    min-height:34px!important;
-    padding:0!important;
-    border-radius:11px!important;
-    box-shadow:none!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .google-map-mark{
-    width:20px!important;
-    height:20px!important;
-    font-size:.64rem!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-notes{
-    display:-webkit-box!important;
-    -webkit-line-clamp:2!important;
-    -webkit-box-orient:vertical!important;
-    overflow:hidden!important;
-    margin:7px 0 0!important;
-    font-size:.79rem!important;
-    line-height:1.3!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .card-settings-btn{
-    top:12px!important;
-    right:12px!important;
-    width:36px!important;
-    height:36px!important;
-    min-width:36px!important;
-    min-height:36px!important;
-    border-radius:12px!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .card-settings-menu{
-    position:absolute!important;
-    top:54px!important;
-    right:10px!important;
-    width:min(245px,calc(100% - 20px))!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="plan"] .card-drag-handle{
-    left:-10px!important;
-    top:50%!important;
-    transform:translateY(-50%)!important;
-  }
-
-  /* Short events keep identical geometry instead of collapsing differently. */
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item.compact-time-card > .card-front{
-    grid-template-columns:70px minmax(0,1fr)!important;
-    grid-template-areas:"time main"!important;
-    min-height:100px!important;
-    height:auto!important;
-  }
-
-  /* ------------------------------------------------------------
-     Dashboard metric overflow audit.
-     The value gets the entire card width instead of sharing it
-     horizontally with the icon.
-     ------------------------------------------------------------ */
-  html[data-display-version="v2"][data-v2-workspace="home"] .summary-grid{
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
-    gap:12px!important;
-    width:100%!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="home"] .metric{
-    position:relative!important;
-    min-width:0!important;
-    width:100%!important;
-    min-height:154px!important;
-    padding:15px!important;
-    overflow:hidden!important;
-    display:block!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="home"] .metric:before{
-    left:14px!important;
-    top:14px!important;
-    width:42px!important;
-    height:42px!important;
-    border-radius:14px!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="home"] .metric > span{
-    min-height:42px!important;
-    padding-left:52px!important;
-    display:flex!important;
-    align-items:center!important;
-    min-width:0!important;
-    color:var(--ink)!important;
-    font-size:.83rem!important;
-    line-height:1.12!important;
-    overflow-wrap:anywhere!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="home"] .metric > strong{
-    display:block!important;
-    width:100%!important;
-    min-width:0!important;
-    max-width:100%!important;
-    margin:13px 0 6px!important;
-    font-size:clamp(1.35rem,5.9vw,1.8rem)!important;
-    line-height:1!important;
-    letter-spacing:-.045em!important;
-    white-space:nowrap!important;
-    overflow:visible!important;
-    text-overflow:clip!important;
-  }
-
-  html[data-display-version="v2"][data-v2-workspace="home"] .metric > em{
-    display:block!important;
-    width:100%!important;
-    min-width:0!important;
-    font-size:.82rem!important;
-    line-height:1.28!important;
-    overflow-wrap:anywhere!important;
-  }
-
-  /* General mobile overflow guard for V2 content surfaces. */
-  html[data-display-version="v2"] .details-panel dl,
-  html[data-display-version="v2"] .details-panel dt,
-  html[data-display-version="v2"] .details-panel dd,
-  html[data-display-version="v2"] .toolbar,
-  html[data-display-version="v2"] .panel-head,
-  html[data-display-version="v2"] .home-planning-card,
-  html[data-display-version="v2"] .trip-copy{
-    min-width:0!important;
-    max-width:100%!important;
-    box-sizing:border-box!important;
-  }
-
-  html[data-display-version="v2"] .details-panel dd,
-  html[data-display-version="v2"] .details-panel textarea,
-  html[data-display-version="v2"] .trip-copy input,
-  html[data-display-version="v2"] .trip-copy textarea{
-    overflow-wrap:anywhere!important;
-    word-break:normal!important;
+  html[data-display-version="v2"] .v2-more-close{
+    position:absolute;
+    right:12px;
+    top:10px;
+    width:34px;
+    height:34px;
+    padding:0;
+    border-radius:50%;
   }
 }
 
-@media (max-width:390px){
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item > .card-front{
-    grid-template-columns:64px minmax(0,1fr)!important;
-    gap:9px!important;
-    padding:12px!important;
-    padding-right:50px!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .time-chip{
-    width:64px!important;
-    min-width:64px!important;
-    max-width:64px!important;
-    font-size:.69rem!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main{
-    grid-template-columns:38px minmax(0,1fr)!important;
-    gap:8px!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="plan"] .item-card.timeline-item .item-main > .item-type{
-    width:38px!important;
-    height:38px!important;
-    min-width:38px!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="home"] .metric > strong{
-    font-size:clamp(1.22rem,5.6vw,1.55rem)!important;
-  }
+/* Dark theme navigation surfaces only. */
+html[data-display-version="v2"][data-theme="dark"] .v2-mobile-nav,
+html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet{
+  background:rgba(14,21,32,.94);
+  border-color:rgba(160,181,216,.13);
+}
+html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet button:not(.v2-more-close),
+html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet a,
+html[data-theme="dark"] .mobile-map-shortcut{
+  background:#151f2e;
+  color:#edf3ff;
+  border-color:rgba(160,181,216,.14);
 }

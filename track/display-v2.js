@@ -1,225 +1,151 @@
 
-/* ============================================================
-   WeTrack V3.1 — V2 Workspace Presentation Layer
-   This file intentionally does not own Supabase/data logic.
-   It only changes navigation/presentation and calls existing controls.
-   ============================================================ */
 (() => {
   const PREF_KEY = 'itineraryTrackerV2.settings';
-  const SPACES = {
-    home: {
-      kicker: 'Trip command center',
-      title: 'Home',
-      subtitle: 'The next thing that matters, your readiness, travelers, and trip snapshot.'
-    },
-    plan: {
-      kicker: 'Itinerary',
-      title: 'Plan',
-      subtitle: 'Build the day, move events, adjust timing, and keep the schedule readable.'
-    },
-    explore: {
-      kicker: 'Route & places',
-      title: 'Explore',
-      subtitle: 'See the selected day on a full-width map without planner clutter.'
-    },
-    memories: {
-      kicker: 'Trip journal',
-      title: 'Memories',
-      subtitle: 'Capture photos and moments now, then turn the trip into a recap later.'
-    },
-    tools: {
-      kicker: 'Travel toolkit',
-      title: 'Tools',
-      subtitle: 'Packing, shared Must Dos, fuel estimates, and nearby activity ideas.'
-    },
-    people: {
-      kicker: 'Travel together',
-      title: 'People',
-      subtitle: 'Invite travelers, manage collaboration, and open traveler profiles.'
-    }
-  };
+  const LAYOUT_KEY = 'wetrack.displayVersion.v2';
+  const WORKSPACE_KEY = 'wetrack.v2.workspace';
 
-  const $$ = (q, root=document) => Array.from(root.querySelectorAll(q));
-  const $ = id => document.getElementById(id);
+  const WORKSPACES = ['home','plan','explore','memories','tools','people'];
 
-  function prefs(){
-    try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch (_) { return {}; }
+  function readPrefs(){
+    try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); }
+    catch { return {}; }
   }
-  function displayVersion(){ return prefs().displayVersion === 'v1' ? 'v1' : 'v2'; }
 
-  const assignments = [
-    ['homeDashboard','home'],
-    [null,'home','.toolbar'],
-    [null,'home','.trip-hero'],
-    [null,'home','.summary-grid'],
-    [null,'plan','.planner-panel'],
-    [null,'plan','.timeline-controls'],
-    ['dailyMapPanel','explore'],
-    ['memoryPanel','memories'],
-    [null,'memories','.progress-panel'],
-    ['packingPanel','tools'],
-    ['mustDoPanel','tools'],
-    ['gasPanel','tools'],
-    ['activityGeneratorPanel','tools'],
-    [null,'people','.share-panel'],
-    [null,'home people','.details-panel']
-  ];
+  function readDisplayVersion(){
+    const prefs = readPrefs();
+    const stored = localStorage.getItem(LAYOUT_KEY);
+    const value = stored || prefs.displayVersion || 'v1';
+    return value === 'v2' ? 'v2' : 'v1';
+  }
 
-  function markSpaces(){
-    assignments.forEach(([id, space, selector]) => {
-      const el = id ? $(id) : document.querySelector(selector);
-      if (el) el.dataset.v2Space = space;
-    });
+  function saveDisplayVersion(value){
+    const version = value === 'v2' ? 'v2' : 'v1';
+    localStorage.setItem(LAYOUT_KEY, version);
+    try {
+      const prefs = readPrefs();
+      prefs.displayVersion = version;
+      localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+    } catch {}
+    applyDisplayVersion(version);
   }
 
   function currentWorkspace(){
-    const saved = sessionStorage.getItem('wetrack.v2.workspace');
-    return SPACES[saved] ? saved : 'home';
+    const value = sessionStorage.getItem(WORKSPACE_KEY) || 'home';
+    return WORKSPACES.includes(value) ? value : 'home';
   }
 
-  function updateTripLabel(){
-    const select = $('tripSelect');
-    const label = $('v2CurrentTripLabel');
-    if (!label || !select) return;
-    const text = select.options?.[select.selectedIndex]?.textContent?.trim() || 'Your trip';
-    label.textContent = text;
-  }
+  function setWorkspace(name, options={}){
+    if (!WORKSPACES.includes(name)) name='home';
+    sessionStorage.setItem(WORKSPACE_KEY, name);
+    document.documentElement.dataset.v2Workspace = name;
 
-  const TOOL_SECTIONS = {
-    packing: 'packingPanel',
-    mustdo: 'mustDoPanel',
-    gas: 'gasPanel',
-    activities: 'activityGeneratorPanel'
-  };
-  function currentTool(){
-    const value=sessionStorage.getItem('wetrack.v2.tool');
-    return TOOL_SECTIONS[value] ? value : 'packing';
-  }
-  function setTool(tool){
-    if (!TOOL_SECTIONS[tool]) tool='packing';
-    sessionStorage.setItem('wetrack.v2.tool',tool);
-    Object.entries(TOOL_SECTIONS).forEach(([key,id]) => {
-      const el=$(id);
-      if (el) el.classList.toggle('v2-tool-active',key===tool);
+    document.querySelectorAll('[data-v2-target]').forEach(btn => {
+      const active = btn.dataset.v2Target === name;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-current', active ? 'page' : 'false');
     });
-    $$('[data-v2-tool]').forEach(btn => btn.classList.toggle('active',btn.dataset.v2Tool===tool));
-    const target=$(TOOL_SECTIONS[tool]);
-    requestAnimationFrame(()=>target?.scrollIntoView({behavior:'smooth',block:'start'}));
-  }
 
-  function workspaceActions(space){
-    const box = $('v2WorkspaceActions');
-    if (!box) return;
-    box.innerHTML = '';
-    const addButton = (label, action, cls='') => {
-      const b = document.createElement('button');
-      b.type='button'; b.className=cls; b.textContent=label; b.addEventListener('click',action); box.appendChild(b);
-    };
-    if (space === 'plan') {
-      addButton('+ Add event', () => $('addAnyItemBtn')?.click(), 'v2-primary-action');
-    } else if (space === 'explore') {
-      const a = $('dailyDirectionsLink');
-      if (a && !a.classList.contains('hidden') && a.href) {
-        const link = document.createElement('a');
-        link.className='v2-primary-action'; link.textContent='Open directions ↗'; link.href=a.href; link.rel='noopener';
-        box.appendChild(link);
-      }
-    } else if (space === 'memories') {
-      addButton('📷 Add Memory', () => $('memoryPhotoBtn')?.click(), 'v2-primary-action');
-    } else if (space === 'tools') {
-      addButton('+ Packing item', () => { $('packingInput')?.focus(); }, 'v2-secondary-action');
-      addButton('+ Must Do', () => { $('mustDoInput')?.focus(); }, 'v2-secondary-action');
-    } else if (space === 'people') {
-      addButton('Invite people', () => $('createInviteBtn')?.focus(), 'v2-primary-action');
+    if (!options.noScroll) {
+      requestAnimationFrame(() => window.scrollTo({top:0, behavior: options.instant ? 'auto' : 'smooth'}));
     }
-  }
 
-  function setWorkspace(space, opts={scroll:true}){
-    if (!SPACES[space]) space='home';
-    sessionStorage.setItem('wetrack.v2.workspace', space);
-    document.documentElement.dataset.v2Workspace = space;
-    document.body.dataset.v2Workspace = space;
-
-    const meta=SPACES[space];
-    if ($('v2WorkspaceKicker')) $('v2WorkspaceKicker').textContent=meta.kicker;
-    if ($('v2WorkspaceTitle')) $('v2WorkspaceTitle').textContent=meta.title;
-    if ($('v2WorkspaceSubtitle')) $('v2WorkspaceSubtitle').textContent=meta.subtitle;
-
-    $$('[data-v2-go]').forEach(el => {
-      const active = el.dataset.v2Go === space;
-      el.classList.toggle('active',active);
-      if (active) el.setAttribute('aria-current','page'); else el.removeAttribute('aria-current');
-    });
-    $('v2MoreMenu')?.classList.add('hidden');
-    workspaceActions(space);
-    updateTripLabel();
-    if (space === 'tools') setTool(currentTool());
-
-    // Leaflet needs a resize after becoming visible.
-    if (space === 'explore') {
-      requestAnimationFrame(() => {
+    // Leaflet needs a size refresh when a previously-hidden map becomes visible.
+    if (name === 'explore') {
+      setTimeout(() => {
+        try { window.renderDayMap?.(); } catch {}
         window.dispatchEvent(new Event('resize'));
-        try { window.renderDayMap?.(); } catch (_) {}
+      }, 80);
+    }
+  }
+
+  function createV2Navigation(){
+    if (document.getElementById('v2SideNav')) return;
+
+    const sidebar = document.querySelector('.sidebar');
+    const classicNav = sidebar?.querySelector('.side-nav');
+    if (sidebar && classicNav) {
+      const nav = document.createElement('nav');
+      nav.id = 'v2SideNav';
+      nav.className = 'v2-side-nav';
+      nav.setAttribute('aria-label','Workspace navigation');
+      nav.innerHTML = `
+        <button type="button" data-v2-target="home"><span>⌂</span><strong>Home</strong></button>
+        <button type="button" data-v2-target="plan"><span>▣</span><strong>Plan</strong></button>
+        <button type="button" data-v2-target="explore"><span>⌖</span><strong>Explore</strong></button>
+        <button type="button" data-v2-target="memories"><span>♡</span><strong>Memories</strong></button>
+        <button type="button" data-v2-target="tools"><span>✦</span><strong>Tools</strong></button>
+        <button type="button" data-v2-target="people"><span>♟</span><strong>People</strong></button>
+        <a href="./settings.html"><span>⚙</span><strong>Settings</strong></a>
+      `;
+      classicNav.after(nav);
+    }
+
+    const mobile = document.createElement('nav');
+    mobile.id = 'v2MobileNav';
+    mobile.className = 'v2-mobile-nav';
+    mobile.setAttribute('aria-label','Workspace navigation');
+    mobile.innerHTML = `
+      <button type="button" data-v2-target="home"><span>⌂</span><strong>Home</strong></button>
+      <button type="button" data-v2-target="plan"><span>▣</span><strong>Plan</strong></button>
+      <button type="button" data-v2-target="explore"><span>⌖</span><strong>Explore</strong></button>
+      <button type="button" data-v2-target="memories"><span>♡</span><strong>Memories</strong></button>
+      <button id="v2MoreBtn" type="button"><span>•••</span><strong>More</strong></button>
+    `;
+    document.body.append(mobile);
+
+    const more = document.createElement('div');
+    more.id = 'v2MoreSheet';
+    more.className = 'v2-more-sheet';
+    more.innerHTML = `
+      <button type="button" class="v2-more-close" aria-label="Close">×</button>
+      <div class="v2-more-head"><span>WeTrack</span><strong>More</strong></div>
+      <button type="button" data-v2-target="tools"><span>✦</span>Travel Tools</button>
+      <button type="button" data-v2-target="people"><span>♟</span>People & Sharing</button>
+      <a href="./settings.html"><span>⚙</span>Settings</a>
+    `;
+    document.body.append(more);
+
+    document.querySelectorAll('[data-v2-target]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setWorkspace(btn.dataset.v2Target);
+        more.classList.remove('open');
       });
-    }
-    if (opts.scroll) {
-      requestAnimationFrame(() => $('v2WorkspaceHeading')?.scrollIntoView({behavior:'smooth',block:'start'}));
-    }
+    });
+    document.getElementById('v2MoreBtn')?.addEventListener('click', () => more.classList.toggle('open'));
+    more.querySelector('.v2-more-close')?.addEventListener('click', () => more.classList.remove('open'));
   }
 
-  function applyDisplay(){
-    const version=displayVersion();
-    document.documentElement.dataset.displayVersion=version;
-    document.body.dataset.displayVersion=version;
-    if (version==='v2') setWorkspace(currentWorkspace(),{scroll:false});
+  function applyDisplayVersion(version=readDisplayVersion()){
+    const v = version === 'v2' ? 'v2' : 'v1';
+    document.documentElement.dataset.displayVersion = v;
+    document.body.classList.toggle('display-v2', v === 'v2');
+    document.body.classList.toggle('display-v1', v !== 'v2');
+    createV2Navigation();
+    if (v === 'v2') setWorkspace(currentWorkspace(), {noScroll:true});
+    else delete document.documentElement.dataset.v2Workspace;
   }
 
-  function bind(){
-    markSpaces();
-    $$('[data-v2-go]').forEach(el => el.addEventListener('click', e => {
-      if (el.tagName === 'A') return;
-      e.preventDefault();
-      setWorkspace(el.dataset.v2Go);
-    }));
-    $$('[data-v2-tool]').forEach(btn => btn.addEventListener('click', e => {
-      e.preventDefault();
-      setTool(btn.dataset.v2Tool);
-    }));
-    $('homeContinueBtn')?.addEventListener('click', () => {
-      if (displayVersion()==='v2') setWorkspace('plan');
+  // Existing quick actions can take V2 users into the appropriate workspace.
+  function wireExistingActions(){
+    document.getElementById('homeContinueBtn')?.addEventListener('click', () => {
+      if (readDisplayVersion()==='v2') setWorkspace('plan');
     });
-    $('viewItineraryBtn')?.addEventListener('click', () => {
-      if (displayVersion()==='v2') setWorkspace('plan');
+    document.getElementById('viewItineraryBtn')?.addEventListener('click', () => {
+      if (readDisplayVersion()==='v2') setWorkspace('plan');
     });
-    $('v2MoreBtn')?.addEventListener('click', e => {
-      e.stopPropagation();
-      $('v2MoreMenu')?.classList.toggle('hidden');
-    });
-    document.addEventListener('click', e => {
-      const menu=$('v2MoreMenu');
-      if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !e.target.closest('#v2MoreBtn')) menu.classList.add('hidden');
-    });
-
-    $('tripSelect')?.addEventListener('change', () => {
-      updateTripLabel();
-      if (document.documentElement.dataset.displayVersion==='v2') setTimeout(()=>setWorkspace(currentWorkspace(),{scroll:false}),50);
-    });
-
-    // V2 sidebar "People" and top-level workspace links remain stable after dynamic rerenders.
-    window.addEventListener('storage', e => {
-      if (e.key===PREF_KEY) applyDisplay();
-    });
-
-    applyDisplay();
-    updateTripLabel();
-
-    // Keep label synchronized with dynamically loaded trips.
-    const select=$('tripSelect');
-    if (select) new MutationObserver(updateTripLabel).observe(select,{childList:true,subtree:true,attributes:true});
   }
 
-  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind);
-  else bind();
+  window.WeTrackDisplay = {
+    getVersion: readDisplayVersion,
+    setVersion: saveDisplayVersion,
+    setWorkspace,
+    getWorkspace: currentWorkspace
+  };
 
-  window.WeTrackDisplayV2={setWorkspace,applyDisplay};
+  applyDisplayVersion();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireExistingActions, {once:true});
+  } else {
+    wireExistingActions();
+  }
 })();

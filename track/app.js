@@ -1408,7 +1408,7 @@ function renderItem(item, isTimed = false) {
   const budget = Number(item.budget || 0);
   const travelCost = itemTravelExpense(item);
   const assignee = memberAvatarHtml(item.assigned_to || '');
-  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${travelCost ? `<span class="travel-cost-pill">✈️ Travel ${money(travelCost)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<span class="location-row"><a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a><span class="mobile-card-map-actions" aria-label="Open this location in maps"><a class="mobile-map-btn apple" rel="noopener" href="${mapsUrl(mapQuery, 'apple')}" title="Open in Apple Maps" aria-label="Open in Apple Maps"><span aria-hidden="true"></span></a><a class="mobile-map-btn google" rel="noopener" href="${mapsUrl(mapQuery, 'google')}" title="Open in Google Maps" aria-label="Open in Google Maps"><span class="google-map-mark" aria-hidden="true">G</span></a></span></span>` : ''}`;
+  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${travelCost ? `<span class="travel-cost-pill">✈️ Travel ${money(travelCost)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a><span class="mobile-map-shortcuts" aria-label="Open location in maps"><a class="mobile-map-shortcut apple" href="${mapsUrl(mapQuery, 'apple')}" rel="noopener" aria-label="Open in Apple Maps" title="Apple Maps"></a><a class="mobile-map-shortcut google" href="${mapsUrl(mapQuery, 'google')}" rel="noopener" aria-label="Open in Google Maps" title="Google Maps"><span aria-hidden="true">G</span></a></span>` : ''}`;
   tpl.querySelector('.item-notes').textContent = item.notes || '';
   const overlap = findOverlap(item);
   const softOverlap = !overlap ? findSoftOverlap(item) : null;
@@ -1434,62 +1434,6 @@ function renderItem(item, isTimed = false) {
   delBtn.textContent = '×'; delBtn.title = 'Delete event'; delBtn.setAttribute('aria-label', 'Delete event');
   if (rainBtn) { rainBtn.textContent = item.rain_plan ? '☔' : '☔+'; rainBtn.title = item.rain_plan ? 'View rain plan' : 'Add rain plan'; rainBtn.setAttribute('aria-label', rainBtn.title); }
   if (lockBtn) { lockBtn.disabled = !canEdit(); lockBtn.textContent = locked ? '🔒' : '🔓'; lockBtn.title = locked ? 'Unlock this card' : 'Lock this card'; lockBtn.setAttribute('aria-label', lockBtn.title); }
-
-  // V3.1.2: one settings cog replaces the crowded action strip in V2.
-  const cardFront = tpl.querySelector('.card-front');
-  const settingsBtn = document.createElement('button');
-  settingsBtn.type = 'button';
-  settingsBtn.className = 'card-settings-btn';
-  settingsBtn.innerHTML = '<span aria-hidden="true">⚙</span>';
-  settingsBtn.title = 'Event options';
-  settingsBtn.setAttribute('aria-label', 'Event options');
-
-  const settingsMenu = document.createElement('div');
-  settingsMenu.className = 'card-settings-menu';
-  settingsMenu.setAttribute('role', 'menu');
-  settingsMenu.innerHTML = `
-    <button type="button" data-card-action="edit">✎ <span>Edit details</span></button>
-    <button type="button" data-card-action="earlier">−30 <span>Move earlier</span></button>
-    <button type="button" data-card-action="later">+30 <span>Move later</span></button>
-    <button type="button" data-card-action="rain">☔ <span>${item.rain_plan ? 'View rain plan' : 'Add rain plan'}</span></button>
-    <button type="button" data-card-action="lock">${locked ? '🔓' : '🔒'} <span>${locked ? 'Unlock event' : 'Lock event'}</span></button>
-    <button type="button" data-card-action="delete" class="danger-option">× <span>Delete event</span></button>
-  `;
-
-  const menuActionMap = {
-    edit: editBtn,
-    earlier: earlierBtn,
-    later: laterBtn,
-    rain: rainBtn,
-    lock: lockBtn,
-    delete: delBtn
-  };
-  for (const menuButton of settingsMenu.querySelectorAll('[data-card-action]')) {
-    const source = menuActionMap[menuButton.dataset.cardAction];
-    if (!source || source.disabled) menuButton.disabled = true;
-    menuButton.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      settingsMenu.classList.remove('open');
-      settingsBtn.setAttribute('aria-expanded', 'false');
-      if (source && !source.disabled) source.click();
-    });
-  }
-
-  settingsBtn.setAttribute('aria-expanded', 'false');
-  settingsBtn.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    document.querySelectorAll('.card-settings-menu.open').forEach(menu => {
-      if (menu !== settingsMenu) menu.classList.remove('open');
-    });
-    const open = !settingsMenu.classList.contains('open');
-    settingsMenu.classList.toggle('open', open);
-    settingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-  });
-  settingsMenu.addEventListener('click', event => event.stopPropagation());
-  cardFront?.append(settingsBtn, settingsMenu);
-
   if (dragHandle) {
     const mayMove = canEdit() && !locked && isTimed;
     dragHandle.disabled = !mayMove;
@@ -1531,15 +1475,8 @@ function renderItem(item, isTimed = false) {
 
 
 function shouldIgnoreCardExpandTarget(target) {
-  return !!target.closest('button, a, input, textarea, select, label, .resize-handle, .card-drag-handle, .item-actions, .shopping-list-pill, .map-links, .card-settings-btn, .card-settings-menu');
+  return !!target.closest('button, a, input, textarea, select, label, .resize-handle, .card-drag-handle, .item-actions, .shopping-list-pill, .map-links');
 }
-document.addEventListener('click', (event) => {
-  if (!event.target.closest('.card-settings-btn, .card-settings-menu')) {
-    document.querySelectorAll('.card-settings-menu.open').forEach(menu => menu.classList.remove('open'));
-    document.querySelectorAll('.card-settings-btn[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
-  }
-});
-
 function collapseExpandedCards(exceptCard) {
   document.querySelectorAll('.item-card.expanded').forEach(card => {
     if (card !== exceptCard) card.classList.remove('expanded');
@@ -6314,11 +6251,5 @@ window.WETRACK_RELEASE='2.9.9';
 /* WeTrack V3.0 licensing redemption stabilization */
 window.WETRACK_RELEASE='3.0.0';
 
-/* WeTrack V3.1 workspace presentation + mobile card maps */
-window.WETRACK_RELEASE='3.1.0';
-
-/* WeTrack V3.1.1 mobile timeline card polish */
-window.WETRACK_RELEASE='3.1.1';
-
-/* WeTrack V3.1.2 card restructure + overflow audit */
-window.WETRACK_RELEASE='3.1.2';
+/* WeTrack V3.2.0 clean V2 navigation layer */
+window.WETRACK_RELEASE='3.2.0';
