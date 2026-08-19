@@ -353,6 +353,18 @@ struct WeTrackWebView: UIViewRepresentable {
                 return
             }
 
+            // V3.2: map links should leave the embedded WebView and open the
+            // user's native/system maps destination.
+            let host = requestURL.host?.lowercased() ?? ""
+            let isAppleMaps = host.contains("maps.apple.com")
+            let isGoogleMaps = host.contains("google.com") && requestURL.path.lowercased().contains("maps")
+            let isExternalMapScheme = ["maps", "comgooglemaps"].contains(requestURL.scheme?.lowercased() ?? "")
+            if isAppleMaps || isGoogleMaps || isExternalMapScheme {
+                UIApplication.shared.open(requestURL, options: [:], completionHandler: nil)
+                decisionHandler(.cancel)
+                return
+            }
+
             decisionHandler(.allow)
         }
     }

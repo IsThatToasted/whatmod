@@ -1408,7 +1408,7 @@ function renderItem(item, isTimed = false) {
   const budget = Number(item.budget || 0);
   const travelCost = itemTravelExpense(item);
   const assignee = memberAvatarHtml(item.assigned_to || '');
-  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${travelCost ? `<span class="travel-cost-pill">✈️ Travel ${money(travelCost)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a><span class="mobile-map-shortcuts" aria-label="Open location in maps"><a class="mobile-map-shortcut apple" href="${mapsUrl(mapQuery, 'apple')}" rel="noopener" aria-label="Open in Apple Maps" title="Apple Maps"></a><a class="mobile-map-shortcut google" href="${mapsUrl(mapQuery, 'google')}" rel="noopener" aria-label="Open in Google Maps" title="Google Maps"><span aria-hidden="true">G</span></a></span>` : ''}`;
+  meta.innerHTML = `<span class="type-pill">${escapeHtml(item.item_type || 'event')}</span>${String(item.item_type || '').toLowerCase() === 'shopping' && window.isPremiumUser?.() ? `<button type="button" class="shopping-list-pill" title="Open shopping list">🧾 List</button>` : ''}${budget ? `<span class="cost-pill">${money(budget)}</span>` : ''}${travelCost ? `<span class="travel-cost-pill">✈️ Travel ${money(travelCost)}</span>` : ''}${item.rain_plan ? '<span class="rain-pill">☔ Rain ready</span>' : ''}${locked ? '<span class="locked-pill">🔒 Locked</span>' : ''}${assignee ? `<span class="assigned-pill">${assignee}</span>` : '<span class="assigned-pill everyone">👥 Everyone</span>'}<span class="created-pill">Added by ${escapeHtml(memberLabel(item.user_id))}</span>${mapQuery ? `<a class="location-link full-row" target="_blank" rel="noopener" title="${escapeHtml(mapQuery)}" href="${mapsUrl(mapQuery, 'google')}">📍 ${escapeHtml(displayLocation)}</a><span class="mobile-map-launchers" aria-label="Open location in maps"><a class="mobile-map-launch apple-map-launch" href="${mapsUrl(mapQuery, 'apple')}" target="_blank" rel="noopener" aria-label="Open in Apple Maps" title="Apple Maps"></a><a class="mobile-map-launch google-map-launch" href="${mapsUrl(mapQuery, 'google')}" target="_blank" rel="noopener" aria-label="Open in Google Maps" title="Google Maps"><span>G</span></a></span>` : ''}`;
   tpl.querySelector('.item-notes').textContent = item.notes || '';
   const overlap = findOverlap(item);
   const softOverlap = !overlap ? findSoftOverlap(item) : null;
@@ -1454,6 +1454,59 @@ function renderItem(item, isTimed = false) {
   delBtn.addEventListener('click', () => deleteItem(item.id));
   earlierBtn.addEventListener('click', () => shiftItemBy(item.id, -30));
   laterBtn.addEventListener('click', () => shiftItemBy(item.id, 30));
+
+  // V3.2 clean V2: reuse the stable action column, but expose one gear in V2.
+  // The original controls stay in the DOM and keep all existing handlers.
+  const actionsHost = tpl.querySelector('.item-actions');
+  const v2Gear = document.createElement('button');
+  v2Gear.type = 'button';
+  v2Gear.className = 'v2-card-gear';
+  v2Gear.textContent = '⚙';
+  v2Gear.title = 'Event options';
+  v2Gear.setAttribute('aria-label', 'Event options');
+  v2Gear.setAttribute('aria-expanded', 'false');
+
+  const v2Menu = document.createElement('div');
+  v2Menu.className = 'v2-card-menu';
+  const optionDefs = [
+    ['edit','✎','Edit details',editBtn],
+    ['earlier','−30','Move earlier',earlierBtn],
+    ['later','+30','Move later',laterBtn],
+    ['rain','☔',item.rain_plan ? 'View rain plan' : 'Add rain plan',rainBtn],
+    ['lock',locked ? '🔓' : '🔒',locked ? 'Unlock event' : 'Lock event',lockBtn],
+    ['delete','×','Delete event',delBtn],
+  ];
+  optionDefs.forEach(([key, icon, label, source]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.dataset.v2Action = key;
+    btn.className = key === 'delete' ? 'v2-menu-danger' : '';
+    btn.innerHTML = `<b>${icon}</b><span>${label}</span>`;
+    btn.disabled = !source || source.disabled;
+    btn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      v2Menu.classList.remove('open');
+      v2Gear.setAttribute('aria-expanded','false');
+      if (source && !source.disabled) source.click();
+    });
+    v2Menu.appendChild(btn);
+  });
+
+  v2Gear.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    document.querySelectorAll('.v2-card-menu.open').forEach(menu => {
+      if (menu !== v2Menu) menu.classList.remove('open');
+    });
+    const open = !v2Menu.classList.contains('open');
+    v2Menu.classList.toggle('open', open);
+    v2Gear.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  v2Menu.addEventListener('click', event => event.stopPropagation());
+  actionsHost?.appendChild(v2Gear);
+  card.querySelector('.card-front')?.appendChild(v2Menu);
+
   if (canEdit() && !locked) {
     dragHandle?.addEventListener('dragstart', (e) => {
       draggedId = item.id;
@@ -1475,8 +1528,15 @@ function renderItem(item, isTimed = false) {
 
 
 function shouldIgnoreCardExpandTarget(target) {
-  return !!target.closest('button, a, input, textarea, select, label, .resize-handle, .card-drag-handle, .item-actions, .shopping-list-pill, .map-links');
+  return !!target.closest('button, a, input, textarea, select, label, .resize-handle, .card-drag-handle, .item-actions, .shopping-list-pill, .map-links, .mobile-map-launchers, .v2-card-gear, .v2-card-menu');
 }
+document.addEventListener('click', (event) => {
+  if (!event.target.closest('.v2-card-gear,.v2-card-menu')) {
+    document.querySelectorAll('.v2-card-menu.open').forEach(menu => menu.classList.remove('open'));
+    document.querySelectorAll('.v2-card-gear[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded','false'));
+  }
+});
+
 function collapseExpandedCards(exceptCard) {
   document.querySelectorAll('.item-card.expanded').forEach(card => {
     if (card !== exceptCard) card.classList.remove('expanded');
@@ -6251,5 +6311,5 @@ window.WETRACK_RELEASE='2.9.9';
 /* WeTrack V3.0 licensing redemption stabilization */
 window.WETRACK_RELEASE='3.0.0';
 
-/* WeTrack V3.2.0 clean V2 navigation layer */
+/* WeTrack V3.2 clean V2 presentation layer */
 window.WETRACK_RELEASE='3.2.0';

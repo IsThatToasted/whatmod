@@ -37,15 +37,11 @@
       <article class="settings-card">
         <h2>Display</h2>
         <form id="displayForm" class="settings-form">
-          <label>App layout
-            <select id="displayVersion">
-              <option value="v1">V1 · Classic Dashboard</option>
-              <option value="v2">V2 · Workspace Navigation</option>
-            </select>
-            <small class="helper-text compact-help">V1 keeps the original continuous dashboard. V2 separates Home, Plan, Explore, Memories, Tools, and People.</small>
-          </label>
           <label>Theme
             <select id="appTheme"><option value="purple">Purple Glow</option><option value="light">Clean Light</option><option value="dark">Night Mode</option></select>
+          </label>
+          <label>App layout
+            <select id="appLayout"><option value="v2">V2 · Workspace Navigation</option><option value="v1">V1 · Classic Dashboard</option></select>
           </label>
           <label>Weather unit
             <select id="weatherUnit"><option value="F">Fahrenheit</option><option value="C">Celsius</option></select>
@@ -121,7 +117,7 @@ const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_Qm9pdRATY4QtAEpAJoBNtg_B0TfR1Uo
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 const PREF_KEY = 'itineraryTrackerV2.settings';
 const $ = id => document.getElementById(id);
-const fields = ['displayVersion','appTheme','weatherUnit','timelineDensity','reduceMotion','defaultDayStart','defaultDayEnd','defaultMpg','defaultGasPrice','showTravelDefault','showLiveToasts','mobileLongPress'];
+const fields = ['appTheme','appLayout','weatherUnit','timelineDensity','reduceMotion','defaultDayStart','defaultDayEnd','defaultMpg','defaultGasPrice','showTravelDefault','showLiveToasts','mobileLongPress'];
 const NOTIF_PREF_KEY='wetrack.notificationPrefs.v1';
 function firstName(meta = {}, fallback = 'Traveler') { return String(meta.full_name || meta.name || meta.display_name || fallback || 'Traveler').trim().split(/\s+/)[0] || 'Traveler'; }
 function readPrefs(){ try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); } catch { return {}; } }
@@ -135,12 +131,11 @@ function writePrefs(){
   const data = {};
   fields.forEach(id => { const el = $(id); if (!el) return; data[id] = el.type === 'checkbox' ? el.checked : el.value; });
   localStorage.setItem(PREF_KEY, JSON.stringify(data));
-  localStorage.setItem('wetrack.displayVersion.v2', data.displayVersion === 'v2' ? 'v2' : 'v1');
   localStorage.setItem(NOTIF_PREF_KEY, JSON.stringify({enabled:$('notificationsEnabled')?.checked!==false,firstReminder:Number($('firstReminder')?.value||120),secondReminder:Number($('secondReminder')?.value||30),includeShared:$('includeSharedNotifications')?.checked!==false}));
   applyThemeSetting(data.appTheme || 'purple');
   $('settingsStatus').textContent = 'Settings saved on this device.';
 }
-function loadPrefs(){ const p = readPrefs(); if (!p.displayVersion) p.displayVersion = localStorage.getItem('wetrack.displayVersion.v2') || 'v1'; if (!p.appTheme) p.appTheme = localStorage.getItem('itineraryTrackerV2.theme') || 'purple'; fields.forEach(id => { const el = $(id); if (!el || p[id] === undefined) return; if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id]; }); applyThemeSetting(p.appTheme || 'purple'); try { const n={enabled:true,firstReminder:120,secondReminder:30,includeShared:true,...JSON.parse(localStorage.getItem(NOTIF_PREF_KEY)||'{}')}; if($('notificationsEnabled')) $('notificationsEnabled').checked=n.enabled!==false; if($('firstReminder')) $('firstReminder').value=String(n.firstReminder); if($('secondReminder')) $('secondReminder').value=String(n.secondReminder); if($('includeSharedNotifications')) $('includeSharedNotifications').checked=n.includeShared!==false; } catch {} }
+function loadPrefs(){ const p = readPrefs(); if (!p.appLayout) p.appLayout='v2'; if (!p.appTheme) p.appTheme = localStorage.getItem('itineraryTrackerV2.theme') || 'purple'; fields.forEach(id => { const el = $(id); if (!el || p[id] === undefined) return; if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id]; }); applyThemeSetting(p.appTheme || 'purple'); try { const n={enabled:true,firstReminder:120,secondReminder:30,includeShared:true,...JSON.parse(localStorage.getItem(NOTIF_PREF_KEY)||'{}')}; if($('notificationsEnabled')) $('notificationsEnabled').checked=n.enabled!==false; if($('firstReminder')) $('firstReminder').value=String(n.firstReminder); if($('secondReminder')) $('secondReminder').value=String(n.secondReminder); if($('includeSharedNotifications')) $('includeSharedNotifications').checked=n.includeShared!==false; } catch {} }
 async function loadProfile(){
   const { data } = await client.auth.getSession();
   const user = data?.session?.user;

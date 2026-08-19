@@ -1,151 +1,224 @@
 
 (() => {
+  'use strict';
+
   const PREF_KEY = 'itineraryTrackerV2.settings';
-  const LAYOUT_KEY = 'wetrack.displayVersion.v2';
-  const WORKSPACE_KEY = 'wetrack.v2.workspace';
+  const workspaceOrder = ['home','plan','explore','memories','tools','people'];
+  let workspace = 'home';
 
-  const WORKSPACES = ['home','plan','explore','memories','tools','people'];
-
-  function readPrefs(){
+  const readPrefs = () => {
     try { return JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); }
     catch { return {}; }
+  };
+
+  const layoutMode = () => readPrefs().appLayout || 'v2';
+
+  function visible(el, yes) {
+    if (!el) return;
+    el.classList.toggle('v2-workspace-hidden', !yes);
   }
 
-  function readDisplayVersion(){
-    const prefs = readPrefs();
-    const stored = localStorage.getItem(LAYOUT_KEY);
-    const value = stored || prefs.displayVersion || 'v1';
-    return value === 'v2' ? 'v2' : 'v1';
+  function allWorkspaceSections() {
+    return [
+      document.getElementById('homeDashboard'),
+      document.querySelector('.toolbar.glass'),
+      document.querySelector('.trip-hero'),
+      document.querySelector('.summary-grid'),
+      document.querySelector('.planner-panel'),
+      document.getElementById('dailyMapPanel'),
+      document.querySelector('.timeline-controls'),
+      document.querySelector('.share-panel'),
+      document.querySelector('.details-panel'),
+      document.getElementById('packingPanel'),
+      document.getElementById('mustDoPanel'),
+      document.getElementById('gasPanel'),
+      document.getElementById('activityGeneratorPanel'),
+      document.getElementById('memoryPanel'),
+      document.querySelector('.progress-panel')
+    ].filter(Boolean);
   }
 
-  function saveDisplayVersion(value){
-    const version = value === 'v2' ? 'v2' : 'v1';
-    localStorage.setItem(LAYOUT_KEY, version);
-    try {
-      const prefs = readPrefs();
-      prefs.displayVersion = version;
-      localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
-    } catch {}
-    applyDisplayVersion(version);
-  }
+  const groups = {
+    home: () => [
+      document.getElementById('homeDashboard'),
+      document.querySelector('.toolbar.glass'),
+      document.querySelector('.trip-hero'),
+      document.querySelector('.summary-grid'),
+      document.querySelector('.details-panel'),
+      document.querySelector('.progress-panel')
+    ],
+    plan: () => [
+      document.querySelector('.toolbar.glass'),
+      document.querySelector('.planner-panel'),
+      document.querySelector('.timeline-controls')
+    ],
+    explore: () => [
+      document.querySelector('.toolbar.glass'),
+      document.getElementById('dailyMapPanel')
+    ],
+    memories: () => [
+      document.querySelector('.toolbar.glass'),
+      document.getElementById('memoryPanel')
+    ],
+    tools: () => [
+      document.querySelector('.toolbar.glass'),
+      document.getElementById('packingPanel'),
+      document.getElementById('mustDoPanel'),
+      document.getElementById('gasPanel'),
+      document.getElementById('activityGeneratorPanel')
+    ],
+    people: () => [
+      document.querySelector('.toolbar.glass'),
+      document.querySelector('.share-panel')
+    ]
+  };
 
-  function currentWorkspace(){
-    const value = sessionStorage.getItem(WORKSPACE_KEY) || 'home';
-    return WORKSPACES.includes(value) ? value : 'home';
-  }
+  function setWorkspace(next, options={}) {
+    if (!workspaceOrder.includes(next)) next = 'home';
+    workspace = next;
+    document.documentElement.dataset.v2Workspace = next;
 
-  function setWorkspace(name, options={}){
-    if (!WORKSPACES.includes(name)) name='home';
-    sessionStorage.setItem(WORKSPACE_KEY, name);
-    document.documentElement.dataset.v2Workspace = name;
+    const allowed = new Set((groups[next]?.() || []).filter(Boolean));
+    allWorkspaceSections().forEach(el => visible(el, allowed.has(el)));
 
-    document.querySelectorAll('[data-v2-target]').forEach(btn => {
-      const active = btn.dataset.v2Target === name;
+    document.querySelectorAll('[data-v2-nav]').forEach(btn => {
+      const active = btn.dataset.v2Nav === next || (btn.dataset.v2Nav === 'more' && ['tools','people'].includes(next));
       btn.classList.toggle('active', active);
       btn.setAttribute('aria-current', active ? 'page' : 'false');
     });
 
-    if (!options.noScroll) {
-      requestAnimationFrame(() => window.scrollTo({top:0, behavior: options.instant ? 'auto' : 'smooth'}));
-    }
+    const title = document.getElementById('v2WorkspaceTitle');
+    if (title) title.textContent = ({
+      home:'Trip Home', plan:'Plan', explore:'Explore', memories:'Memories',
+      tools:'Travel Tools', people:'People'
+    })[next];
 
-    // Leaflet needs a size refresh when a previously-hidden map becomes visible.
-    if (name === 'explore') {
+    if (next === 'explore') {
       setTimeout(() => {
+        try { window.dailyRouteMap?.invalidateSize?.(); } catch {}
         try { window.renderDayMap?.(); } catch {}
-        window.dispatchEvent(new Event('resize'));
-      }, 80);
+      }, 120);
     }
+    if (next === 'plan') {
+      document.body.classList.add('agenda-view');
+      document.body.classList.remove('timeline-view');
+      try { window.renderTimeline?.(); } catch {}
+    }
+    if (!options.silent) window.scrollTo({top:0, behavior:'smooth'});
   }
 
-  function createV2Navigation(){
-    if (document.getElementById('v2SideNav')) return;
-
+  function buildDesktopNav() {
     const sidebar = document.querySelector('.sidebar');
-    const classicNav = sidebar?.querySelector('.side-nav');
-    if (sidebar && classicNav) {
-      const nav = document.createElement('nav');
-      nav.id = 'v2SideNav';
-      nav.className = 'v2-side-nav';
-      nav.setAttribute('aria-label','Workspace navigation');
-      nav.innerHTML = `
-        <button type="button" data-v2-target="home"><span>⌂</span><strong>Home</strong></button>
-        <button type="button" data-v2-target="plan"><span>▣</span><strong>Plan</strong></button>
-        <button type="button" data-v2-target="explore"><span>⌖</span><strong>Explore</strong></button>
-        <button type="button" data-v2-target="memories"><span>♡</span><strong>Memories</strong></button>
-        <button type="button" data-v2-target="tools"><span>✦</span><strong>Tools</strong></button>
-        <button type="button" data-v2-target="people"><span>♟</span><strong>People</strong></button>
-        <a href="./settings.html"><span>⚙</span><strong>Settings</strong></a>
-      `;
-      classicNav.after(nav);
-    }
+    const oldNav = sidebar?.querySelector('.side-nav');
+    if (!sidebar || !oldNav || document.getElementById('v2DesktopNav')) return;
 
-    const mobile = document.createElement('nav');
-    mobile.id = 'v2MobileNav';
-    mobile.className = 'v2-mobile-nav';
-    mobile.setAttribute('aria-label','Workspace navigation');
-    mobile.innerHTML = `
-      <button type="button" data-v2-target="home"><span>⌂</span><strong>Home</strong></button>
-      <button type="button" data-v2-target="plan"><span>▣</span><strong>Plan</strong></button>
-      <button type="button" data-v2-target="explore"><span>⌖</span><strong>Explore</strong></button>
-      <button type="button" data-v2-target="memories"><span>♡</span><strong>Memories</strong></button>
-      <button id="v2MoreBtn" type="button"><span>•••</span><strong>More</strong></button>
+    const nav = document.createElement('nav');
+    nav.id = 'v2DesktopNav';
+    nav.className = 'v2-desktop-nav';
+    nav.setAttribute('aria-label','Workspace navigation');
+    nav.innerHTML = `
+      <button data-v2-nav="home"><span>⌂</span><b>Home</b></button>
+      <button data-v2-nav="plan"><span>▣</span><b>Plan</b></button>
+      <button data-v2-nav="explore"><span>◎</span><b>Explore</b></button>
+      <button data-v2-nav="memories"><span>♡</span><b>Memories</b></button>
+      <p>TRIP</p>
+      <button data-v2-nav="tools"><span>◫</span><b>Tools</b></button>
+      <button data-v2-nav="people"><span>♟</span><b>People</b></button>
+      <a href="./settings.html"><span>⚙</span><b>Settings</b></a>
     `;
-    document.body.append(mobile);
+    oldNav.insertAdjacentElement('afterend', nav);
+  }
+
+  function buildWorkspaceHeader() {
+    const main = document.querySelector('#appArea');
+    if (!main || document.getElementById('v2WorkspaceHeader')) return;
+    const header = document.createElement('div');
+    header.id = 'v2WorkspaceHeader';
+    header.className = 'v2-workspace-header';
+    header.innerHTML = `
+      <div><small>WETRACK</small><h1 id="v2WorkspaceTitle">Trip Home</h1></div>
+      <div class="v2-trip-shortcut">
+        <button type="button" data-v2-nav="plan">Continue planning →</button>
+      </div>`;
+    main.prepend(header);
+  }
+
+  function buildMobileNav() {
+    if (document.getElementById('v2MobileNav')) return;
+    const nav = document.createElement('nav');
+    nav.id = 'v2MobileNav';
+    nav.className = 'v2-mobile-nav';
+    nav.setAttribute('aria-label','Workspace navigation');
+    nav.innerHTML = `
+      <button data-v2-nav="home"><span>⌂</span><b>Home</b></button>
+      <button data-v2-nav="plan"><span>▣</span><b>Plan</b></button>
+      <button data-v2-nav="explore"><span>◎</span><b>Explore</b></button>
+      <button data-v2-nav="memories"><span>♡</span><b>Memories</b></button>
+      <button data-v2-nav="more"><span>•••</span><b>More</b></button>`;
+    document.body.appendChild(nav);
 
     const more = document.createElement('div');
     more.id = 'v2MoreSheet';
     more.className = 'v2-more-sheet';
     more.innerHTML = `
-      <button type="button" class="v2-more-close" aria-label="Close">×</button>
-      <div class="v2-more-head"><span>WeTrack</span><strong>More</strong></div>
-      <button type="button" data-v2-target="tools"><span>✦</span>Travel Tools</button>
-      <button type="button" data-v2-target="people"><span>♟</span>People & Sharing</button>
-      <a href="./settings.html"><span>⚙</span>Settings</a>
-    `;
-    document.body.append(more);
+      <button type="button" class="v2-sheet-close" aria-label="Close">×</button>
+      <h2>More</h2>
+      <button data-v2-nav="tools"><span>◫</span><b>Travel Tools</b><small>Packing, Must Do, gas & activities</small></button>
+      <button data-v2-nav="people"><span>♟</span><b>People</b><small>Travelers & invitations</small></button>
+      <a href="./settings.html"><span>⚙</span><b>Settings</b><small>Theme, display & account</small></a>`;
+    document.body.appendChild(more);
 
-    document.querySelectorAll('[data-v2-target]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        setWorkspace(btn.dataset.v2Target);
-        more.classList.remove('open');
-      });
+    nav.querySelector('[data-v2-nav="more"]')?.addEventListener('click', e => {
+      e.preventDefault();
+      more.classList.add('open');
     });
-    document.getElementById('v2MoreBtn')?.addEventListener('click', () => more.classList.toggle('open'));
-    more.querySelector('.v2-more-close')?.addEventListener('click', () => more.classList.remove('open'));
+    more.querySelector('.v2-sheet-close')?.addEventListener('click', () => more.classList.remove('open'));
+    more.addEventListener('click', e => {
+      if (e.target === more) more.classList.remove('open');
+    });
   }
 
-  function applyDisplayVersion(version=readDisplayVersion()){
-    const v = version === 'v2' ? 'v2' : 'v1';
-    document.documentElement.dataset.displayVersion = v;
-    document.body.classList.toggle('display-v2', v === 'v2');
-    document.body.classList.toggle('display-v1', v !== 'v2');
-    createV2Navigation();
-    if (v === 'v2') setWorkspace(currentWorkspace(), {noScroll:true});
-    else delete document.documentElement.dataset.v2Workspace;
-  }
+  function bindNavigation() {
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('[data-v2-nav]');
+      if (!btn) return;
+      const target = btn.dataset.v2Nav;
+      if (!workspaceOrder.includes(target)) return;
+      e.preventDefault();
+      document.getElementById('v2MoreSheet')?.classList.remove('open');
+      setWorkspace(target);
+    });
 
-  // Existing quick actions can take V2 users into the appropriate workspace.
-  function wireExistingActions(){
     document.getElementById('homeContinueBtn')?.addEventListener('click', () => {
-      if (readDisplayVersion()==='v2') setWorkspace('plan');
+      if (layoutMode() === 'v2') setWorkspace('plan');
     });
     document.getElementById('viewItineraryBtn')?.addEventListener('click', () => {
-      if (readDisplayVersion()==='v2') setWorkspace('plan');
+      if (layoutMode() === 'v2') setWorkspace('plan');
     });
   }
 
-  window.WeTrackDisplay = {
-    getVersion: readDisplayVersion,
-    setVersion: saveDisplayVersion,
-    setWorkspace,
-    getWorkspace: currentWorkspace
-  };
+  function applyLayout() {
+    const mode = layoutMode();
+    document.documentElement.dataset.displayVersion = mode;
+    document.body.classList.toggle('display-v2', mode === 'v2');
+    document.body.classList.toggle('display-v1', mode !== 'v2');
 
-  applyDisplayVersion();
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', wireExistingActions, {once:true});
-  } else {
-    wireExistingActions();
+    if (mode === 'v2') {
+      setWorkspace(workspace, {silent:true});
+    } else {
+      allWorkspaceSections().forEach(el => visible(el, true));
+      delete document.documentElement.dataset.v2Workspace;
+    }
   }
+
+  buildDesktopNav();
+  buildWorkspaceHeader();
+  buildMobileNav();
+  bindNavigation();
+  applyLayout();
+
+  window.addEventListener('storage', e => {
+    if (e.key === PREF_KEY) applyLayout();
+  });
+  window.WeTrackDisplayV2 = { setWorkspace, applyLayout };
 })();

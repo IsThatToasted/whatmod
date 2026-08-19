@@ -5087,390 +5087,397 @@ html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover{background:#46536a}
 
 
 /* ============================================================
-   WeTrack V3.2.0 — Clean V2 Workspace Layer
-   IMPORTANT: intentionally does not redefine timeline/card geometry.
+   WeTrack V3.2 — Clean V2 Workspace Presentation
+   Built on the stable pre-V2 card/layout CSS.
+   Important: card grid geometry is intentionally NOT rewritten.
    ============================================================ */
 
-.v2-side-nav,
-.v2-mobile-nav,
-.v2-more-sheet{
-  display:none;
-}
+.v2-workspace-hidden{display:none!important}
+.v2-desktop-nav,.v2-workspace-header,.v2-mobile-nav,.v2-more-sheet{display:none}
+.v2-card-gear,.v2-card-menu,.mobile-map-launchers{display:none}
 
-/* V2 desktop navigation */
-html[data-display-version="v2"] .side-nav{
-  display:none!important;
-}
-html[data-display-version="v2"] .v2-side-nav{
+/* V2 desktop shell */
+html[data-display-version="v2"] .side-nav{display:none!important}
+html[data-display-version="v2"] .v2-desktop-nav{
   display:grid;
   gap:7px;
   margin-top:18px;
 }
-html[data-display-version="v2"] .v2-side-nav button,
-html[data-display-version="v2"] .v2-side-nav a{
-  appearance:none;
-  width:100%;
-  border:0;
-  box-shadow:none;
-  background:transparent;
-  color:var(--ink);
+html[data-display-version="v2"] .v2-desktop-nav p{
+  margin:18px 14px 5px;
+  color:#8b94b4;
+  font-size:.66rem;
+  font-weight:950;
+  letter-spacing:.13em;
+}
+html[data-display-version="v2"] .v2-desktop-nav button,
+html[data-display-version="v2"] .v2-desktop-nav a{
+  min-height:52px;
   display:grid;
-  grid-template-columns:34px minmax(0,1fr);
+  grid-template-columns:30px 1fr;
   align-items:center;
   gap:10px;
-  text-align:left;
-  padding:12px 13px;
-  border-radius:15px;
+  padding:0 15px;
+  border:0;
+  border-radius:16px;
+  background:transparent;
+  color:#28345d;
   text-decoration:none;
-  font:inherit;
-  cursor:pointer;
+  text-align:left;
+  box-shadow:none;
 }
-html[data-display-version="v2"] .v2-side-nav button span,
-html[data-display-version="v2"] .v2-side-nav a span{
-  width:32px;
-  height:32px;
-  display:grid;
-  place-items:center;
-  border-radius:11px;
-  color:var(--muted);
+html[data-display-version="v2"] .v2-desktop-nav button span,
+html[data-display-version="v2"] .v2-desktop-nav a span{
+  text-align:center;
+  font-size:1.15rem;
 }
-html[data-display-version="v2"] .v2-side-nav button strong,
-html[data-display-version="v2"] .v2-side-nav a strong{
-  font-size:.92rem;
-  font-weight:780;
-}
-html[data-display-version="v2"] .v2-side-nav button:hover,
-html[data-display-version="v2"] .v2-side-nav a:hover{
-  background:color-mix(in srgb,var(--purple) 6%,transparent);
-}
-html[data-display-version="v2"] .v2-side-nav button.active{
-  color:#7547f5;
-  background:linear-gradient(135deg,rgba(128,80,255,.11),rgba(245,98,178,.07));
-  border:1px solid rgba(126,83,246,.13);
-}
-html[data-display-version="v2"] .v2-side-nav button.active span{
-  color:#7547f5;
-  background:rgba(126,83,246,.09);
+html[data-display-version="v2"] .v2-desktop-nav button b,
+html[data-display-version="v2"] .v2-desktop-nav a b{font-size:.96rem}
+html[data-display-version="v2"] .v2-desktop-nav button:hover,
+html[data-display-version="v2"] .v2-desktop-nav a:hover,
+html[data-display-version="v2"] .v2-desktop-nav button.active{
+  background:linear-gradient(90deg,rgba(124,77,255,.12),rgba(255,255,255,.54));
+  color:#744dff;
 }
 
-/* V2 is a workspace, not a three-column mega page. */
-html[data-display-version="v2"] #appArea{
-  grid-template-columns:minmax(0,1fr)!important;
-  gap:20px!important;
-}
-html[data-display-version="v2"] #appArea > .content-column,
-html[data-display-version="v2"] #appArea > .right-column{
-  min-width:0;
-  width:100%;
-}
-html[data-display-version="v2"] #appArea > .right-column{
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  align-items:start;
-}
-
-/* Hide all major workspace modules, then reveal only the selected workspace.
-   No elements are moved or recreated. */
-html[data-display-version="v2"] #appArea .home-dashboard,
-html[data-display-version="v2"] #appArea .toolbar,
-html[data-display-version="v2"] #appArea .trip-hero,
-html[data-display-version="v2"] #appArea .summary-grid,
-html[data-display-version="v2"] #appArea .planner-panel,
-html[data-display-version="v2"] #appArea .daily-map-panel,
-html[data-display-version="v2"] #appArea .timeline-controls,
-html[data-display-version="v2"] #appArea .share-panel,
-html[data-display-version="v2"] #appArea .details-panel,
-html[data-display-version="v2"] #appArea .packing-panel,
-html[data-display-version="v2"] #appArea .mustdo-panel,
-html[data-display-version="v2"] #appArea .gas-panel,
-html[data-display-version="v2"] #appArea .activity-generator-panel,
-html[data-display-version="v2"] #appArea .memory-panel,
-html[data-display-version="v2"] #appArea .progress-panel{
-  display:none!important;
-}
-
-/* Home */
-html[data-display-version="v2"][data-v2-workspace="home"] #appArea .home-dashboard,
-html[data-display-version="v2"][data-v2-workspace="home"] #appArea .toolbar,
-html[data-display-version="v2"][data-v2-workspace="home"] #appArea .trip-hero,
-html[data-display-version="v2"][data-v2-workspace="home"] #appArea .summary-grid,
-html[data-display-version="v2"][data-v2-workspace="home"] #appArea .details-panel{
-  display:grid!important;
-}
-html[data-display-version="v2"][data-v2-workspace="home"] #appArea .toolbar{
-  display:flex!important;
-}
-html[data-display-version="v2"][data-v2-workspace="home"] #appArea .right-column{
-  display:grid!important;
+html[data-display-version="v2"] .dashboard-grid{
   grid-template-columns:minmax(0,1fr)!important;
 }
-
-/* Plan */
-html[data-display-version="v2"][data-v2-workspace="plan"] #appArea .planner-panel{
-  display:block!important;
+html[data-display-version="v2"] .content-column,
+html[data-display-version="v2"] .right-column{
+  display:contents!important;
 }
-html[data-display-version="v2"][data-v2-workspace="plan"] #appArea .timeline-controls{
-  display:flex!important;
+html[data-display-version="v2"] .v2-workspace-header{
+  grid-column:1/-1;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:5px 2px 2px;
 }
-html[data-display-version="v2"][data-v2-workspace="plan"] #appArea .right-column{
-  display:none!important;
+html[data-display-version="v2"] .v2-workspace-header small{
+  color:#8170e8;
+  font-size:.68rem;
+  font-weight:950;
+  letter-spacing:.14em;
 }
-
-/* Explore */
-html[data-display-version="v2"][data-v2-workspace="explore"] #appArea .daily-map-panel{
-  display:block!important;
-  min-height:calc(100vh - 150px);
+html[data-display-version="v2"] .v2-workspace-header h1{
+  margin:3px 0 0;
+  font-size:clamp(1.65rem,2.5vw,2.3rem);
+  letter-spacing:-.045em;
 }
-html[data-display-version="v2"][data-v2-workspace="explore"] #dailyRouteMap{
-  min-height:clamp(440px,68vh,780px);
+html[data-display-version="v2"] .v2-trip-shortcut button{
+  border-radius:16px;
+  padding:12px 17px;
 }
-html[data-display-version="v2"][data-v2-workspace="explore"] #appArea .right-column{
-  display:none!important;
+html[data-display-version="v2"] .daily-map-panel{
+  min-height:min(720px,72vh);
 }
-
-/* Memories */
-html[data-display-version="v2"][data-v2-workspace="memories"] #appArea > .content-column{
-  display:none!important;
+html[data-display-version="v2"] .daily-route-map{
+  min-height:clamp(420px,58vh,680px)!important;
 }
-html[data-display-version="v2"][data-v2-workspace="memories"] #appArea .right-column{
-  display:block!important;
-}
-html[data-display-version="v2"][data-v2-workspace="memories"] #appArea .memory-panel{
-  display:block!important;
+html[data-display-version="v2"] #memoryPanel,
+html[data-display-version="v2"] #packingPanel,
+html[data-display-version="v2"] #mustDoPanel,
+html[data-display-version="v2"] #gasPanel,
+html[data-display-version="v2"] #activityGeneratorPanel,
+html[data-display-version="v2"] .share-panel{
   width:100%!important;
   max-width:none!important;
 }
 
-/* Tools */
-html[data-display-version="v2"][data-v2-workspace="tools"] #appArea > .content-column{
+/* V2 event actions: preserve the stable action column width, show only cog. */
+html[data-display-version="v2"] .item-actions > button:not(.v2-card-gear){
   display:none!important;
 }
-html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .right-column{
+html[data-display-version="v2"] .item-actions .v2-card-gear{
   display:grid!important;
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  place-items:center!important;
+  width:38px!important;
+  min-width:38px!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding:0!important;
+  border-radius:50%!important;
+  background:rgba(255,255,255,.74)!important;
+  color:#58658d!important;
+  border:1px solid rgba(124,77,255,.13)!important;
+  box-shadow:none!important;
+  font-size:.92rem!important;
 }
-html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .packing-panel,
-html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .mustdo-panel,
-html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .gas-panel,
-html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .activity-generator-panel,
-html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .progress-panel{
-  display:block!important;
+html[data-display-version="v2"] .card-front{position:relative!important}
+html[data-display-version="v2"] .v2-card-menu{
+  position:absolute;
+  z-index:500;
+  top:54px;
+  right:12px;
+  width:min(230px,calc(100% - 24px));
+  padding:8px;
+  border:1px solid rgba(124,77,255,.15);
+  border-radius:18px;
+  background:rgba(255,255,255,.98);
+  box-shadow:0 22px 55px rgba(41,34,84,.20);
+  backdrop-filter:blur(18px);
 }
-
-/* People */
-html[data-display-version="v2"][data-v2-workspace="people"] #appArea > .content-column{
-  display:none!important;
-}
-html[data-display-version="v2"][data-v2-workspace="people"] #appArea .right-column{
-  display:block!important;
-}
-html[data-display-version="v2"][data-v2-workspace="people"] #appArea .share-panel{
-  display:block!important;
+html[data-display-version="v2"] .v2-card-menu.open{display:grid!important;gap:3px}
+html[data-display-version="v2"] .v2-card-menu button{
   width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:40px!important;
+  padding:8px 10px!important;
+  display:grid!important;
+  grid-template-columns:34px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:7px!important;
+  text-align:left!important;
+  border:0!important;
+  border-radius:12px!important;
+  background:transparent!important;
+  color:#1e294f!important;
+  box-shadow:none!important;
+}
+html[data-display-version="v2"] .v2-card-menu button:hover{background:#f5f1ff!important}
+html[data-display-version="v2"] .v2-card-menu button:disabled{opacity:.38}
+html[data-display-version="v2"] .v2-card-menu .v2-menu-danger{color:#d94b68!important}
+
+/* Tiny map launchers live in metadata; no width-changing wrapper. */
+html[data-display-version="v2"] .mobile-map-launchers{
+  flex:0 0 auto;
+  align-items:center;
+  gap:5px;
+}
+html[data-display-version="v2"] .mobile-map-launch{
+  width:30px;
+  height:30px;
+  min-width:30px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  text-decoration:none;
+  border:1px solid rgba(124,77,255,.13);
+  background:rgba(255,255,255,.70);
+  line-height:1;
+}
+html[data-display-version="v2"] .apple-map-launch{
+  color:#17203e;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;
+  font-weight:800;
+}
+html[data-display-version="v2"] .google-map-launch span{
+  width:19px;height:19px;border-radius:6px 6px 6px 2px;
+  display:grid;place-items:center;
+  color:#fff;font:800 .66rem/1 Arial,sans-serif;
+  background:linear-gradient(135deg,#4285f4 0 38%,#34a853 38% 57%,#fbbc05 57% 75%,#ea4335 75%);
 }
 
-/* Mobile map shortcuts: deliberately small and below the existing address.
-   This adds no card/grid sizing rules. */
-.mobile-map-shortcuts{
-  display:none;
+/* Metric overflow audit without changing the card concept. */
+html[data-display-version="v2"] .metric{min-width:0!important}
+html[data-display-version="v2"] .metric strong{
+  max-width:100%;
+  overflow-wrap:normal;
+  word-break:normal;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Dark theme support for new V2 chrome. */
+html[data-display-version="v2"][data-theme="dark"] .v2-desktop-nav button,
+html[data-display-version="v2"][data-theme="dark"] .v2-desktop-nav a{color:#bec9df}
+html[data-display-version="v2"][data-theme="dark"] .v2-desktop-nav button.active,
+html[data-display-version="v2"][data-theme="dark"] .v2-desktop-nav button:hover,
+html[data-display-version="v2"][data-theme="dark"] .v2-desktop-nav a:hover{
+  background:rgba(143,124,247,.12);color:#c8beff
+}
+html[data-display-version="v2"][data-theme="dark"] .item-actions .v2-card-gear,
+html[data-display-version="v2"][data-theme="dark"] .mobile-map-launch{
+  background:#172334!important;color:#d6deee!important;border-color:rgba(160,181,216,.12)!important
+}
+html[data-display-version="v2"][data-theme="dark"] .v2-card-menu{
+  background:#111a27;border-color:rgba(160,181,216,.13);box-shadow:0 22px 55px rgba(0,0,0,.36)
+}
+html[data-display-version="v2"][data-theme="dark"] .v2-card-menu button{color:#e8eef9!important}
+html[data-display-version="v2"][data-theme="dark"] .v2-card-menu button:hover{background:#192538!important}
+
+/* Mobile workspace navigation */
+@media(max-width:1180px){
+  html[data-display-version="v2"] .v2-desktop-nav{display:none!important}
 }
 @media(max-width:760px){
-  .item-meta .mobile-map-shortcuts{
-    flex-basis:100%;
-    width:100%;
-    display:flex;
-    justify-content:flex-start;
-    gap:7px;
-    margin-top:5px;
+  html[data-display-version="v2"] .mobile-quick-nav{display:none!important}
+  html[data-display-version="v2"] .mobile-settings-footer{display:none!important}
+  html[data-display-version="v2"] .v2-workspace-header{
+    padding:2px 3px 8px;
   }
-  .mobile-map-shortcut{
-    width:34px;
-    height:34px;
-    min-width:34px;
-    min-height:34px;
-    display:grid;
-    place-items:center;
-    padding:0!important;
-    border-radius:11px;
-    border:1px solid var(--line);
-    background:rgba(255,255,255,.76);
-    text-decoration:none;
-    box-shadow:0 4px 12px rgba(45,38,94,.07);
-    line-height:1;
-    box-sizing:border-box;
-  }
-  .mobile-map-shortcut.apple{
-    color:#171b2b;
-    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;
-    font-size:1rem;
-    font-weight:800;
-  }
-  .mobile-map-shortcut.google span{
-    width:21px;
-    height:21px;
-    display:grid;
-    place-items:center;
-    border-radius:7px 7px 7px 2px;
-    background:linear-gradient(135deg,#4285f4 0 38%,#34a853 38% 57%,#fbbc05 57% 75%,#ea4335 75%);
-    color:#fff;
-    font:800 .68rem/1 Arial,sans-serif;
-  }
-
-  /* Replace old quick bar only in V2. */
-  html[data-display-version="v2"] .mobile-quick-nav,
-  html[data-display-version="v2"] .mobile-settings-footer{
-    display:none!important;
-  }
-  html[data-display-version="v2"] .sidebar{
-    display:none!important;
-  }
-  html[data-display-version="v2"] .main-wrap{
-    width:100%!important;
-    max-width:100%!important;
-  }
+  html[data-display-version="v2"] .v2-workspace-header h1{font-size:1.55rem}
+  html[data-display-version="v2"] .v2-trip-shortcut{display:none}
   html[data-display-version="v2"] .v2-mobile-nav{
     position:fixed;
-    z-index:800;
-    left:14px;
-    right:14px;
-    bottom:max(12px,env(safe-area-inset-bottom));
-    height:72px;
+    z-index:99990;
+    left:12px;
+    right:12px;
+    bottom:calc(10px + env(safe-area-inset-bottom));
     display:grid;
     grid-template-columns:repeat(5,minmax(0,1fr));
-    padding:7px;
-    border-radius:25px;
-    border:1px solid rgba(118,91,210,.13);
-    background:rgba(255,255,255,.92);
-    backdrop-filter:blur(22px) saturate(1.2);
-    box-shadow:0 16px 42px rgba(43,35,90,.18);
+    gap:4px;
+    padding:9px;
+    border:1px solid rgba(129,105,220,.16);
+    border-radius:27px;
+    background:rgba(255,255,255,.94);
+    box-shadow:0 18px 55px rgba(52,43,100,.20);
+    backdrop-filter:blur(20px);
   }
   html[data-display-version="v2"] .v2-mobile-nav button{
     min-width:0;
+    height:58px;
     padding:5px 2px;
+    display:grid;
+    place-items:center;
+    gap:2px;
     border:0;
     border-radius:18px;
     background:transparent;
+    color:#566181;
     box-shadow:none;
-    color:#56617f;
-    display:grid;
-    grid-template-rows:24px 18px;
-    align-content:center;
-    justify-items:center;
-    gap:2px;
   }
   html[data-display-version="v2"] .v2-mobile-nav button span{
-    font-size:1.25rem;
-    line-height:1;
+    font-size:1.35rem;line-height:1
   }
-  html[data-display-version="v2"] .v2-mobile-nav button strong{
-    font-size:.70rem;
-    line-height:1;
-    font-weight:800;
+  html[data-display-version="v2"] .v2-mobile-nav button b{
+    max-width:100%;
+    font-size:.69rem;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
   html[data-display-version="v2"] .v2-mobile-nav button.active{
-    color:#f454a0;
-    background:linear-gradient(145deg,rgba(246,88,166,.10),rgba(130,83,247,.07));
-  }
-  html[data-display-version="v2"] body{
-    padding-bottom:104px!important;
-    overflow-x:hidden!important;
-  }
-  html[data-display-version="v2"] #appArea{
-    display:block!important;
-    width:100%!important;
-    max-width:100%!important;
-  }
-  html[data-display-version="v2"] #appArea > .content-column,
-  html[data-display-version="v2"] #appArea > .right-column{
-    width:100%!important;
-    max-width:100%!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="tools"] #appArea .right-column{
-    display:grid!important;
-    grid-template-columns:1fr!important;
+    background:linear-gradient(135deg,#fff1f7,#f2edff);
+    color:#e958a0;
   }
 
-  /* Make Explore feel like its own view without touching map internals. */
-  html[data-display-version="v2"][data-v2-workspace="explore"] .daily-map-panel{
-    margin:0!important;
-    border-radius:24px!important;
-  }
-  html[data-display-version="v2"][data-v2-workspace="explore"] #dailyRouteMap{
-    min-height:58vh!important;
-  }
-
-  /* More bottom sheet */
   html[data-display-version="v2"] .v2-more-sheet{
     position:fixed;
-    z-index:900;
-    left:14px;
-    right:14px;
-    bottom:96px;
-    display:grid;
-    gap:7px;
-    padding:16px;
-    border:1px solid rgba(118,91,210,.14);
-    border-radius:24px;
-    background:rgba(255,255,255,.96);
-    backdrop-filter:blur(22px);
-    box-shadow:0 22px 55px rgba(43,35,90,.22);
-    transform:translateY(18px);
-    opacity:0;
-    pointer-events:none;
-    transition:.18s ease;
+    inset:0;
+    z-index:100010;
+    padding:20px;
+    align-items:flex-end;
+    background:rgba(18,17,36,.32);
+    backdrop-filter:blur(6px);
   }
-  html[data-display-version="v2"] .v2-more-sheet.open{
-    transform:none;
-    opacity:1;
-    pointer-events:auto;
+  html[data-display-version="v2"] .v2-more-sheet.open{display:flex}
+  html[data-display-version="v2"] .v2-more-sheet > *{box-sizing:border-box}
+  html[data-display-version="v2"] .v2-more-sheet{
+    flex-direction:column;
+    justify-content:flex-end;
   }
-  html[data-display-version="v2"] .v2-more-sheet .v2-more-head{
-    display:grid;
-    gap:2px;
-    margin-bottom:4px;
+  html[data-display-version="v2"] .v2-more-sheet h2,
+  html[data-display-version="v2"] .v2-more-sheet > button,
+  html[data-display-version="v2"] .v2-more-sheet > a{
+    width:100%;
+    max-width:520px;
+    margin-left:auto;
+    margin-right:auto;
   }
-  html[data-display-version="v2"] .v2-more-sheet .v2-more-head span{
-    color:var(--muted);
-    font-size:.72rem;
-    text-transform:uppercase;
-    letter-spacing:.12em;
-    font-weight:800;
-  }
-  html[data-display-version="v2"] .v2-more-sheet button:not(.v2-more-close),
-  html[data-display-version="v2"] .v2-more-sheet a{
-    min-height:48px;
-    padding:11px 13px;
-    border:1px solid var(--line);
-    border-radius:15px;
+  html[data-display-version="v2"] .v2-more-sheet h2{
+    margin-top:0;
+    padding:18px 20px 2px;
     background:#fff;
-    color:var(--ink);
+  }
+  html[data-display-version="v2"] .v2-more-sheet > button:not(.v2-sheet-close),
+  html[data-display-version="v2"] .v2-more-sheet > a{
+    min-height:68px;
+    display:grid;
+    grid-template-columns:40px 1fr;
+    grid-template-rows:auto auto;
+    gap:1px 9px;
+    padding:13px 18px;
+    text-align:left;
     text-decoration:none;
-    display:flex;
-    align-items:center;
-    gap:11px;
+    border:0;
+    border-radius:0;
+    background:#fff;
+    color:#1e294f;
     box-shadow:none;
-    font:700 .9rem/1.2 inherit;
   }
-  html[data-display-version="v2"] .v2-more-close{
-    position:absolute;
-    right:12px;
-    top:10px;
-    width:34px;
-    height:34px;
-    padding:0;
-    border-radius:50%;
+  html[data-display-version="v2"] .v2-more-sheet > button:not(.v2-sheet-close) span,
+  html[data-display-version="v2"] .v2-more-sheet > a span{
+    grid-row:1/3;align-self:center;font-size:1.35rem
   }
-}
+  html[data-display-version="v2"] .v2-more-sheet small{color:#75809e}
+  html[data-display-version="v2"] .v2-sheet-close{
+    position:absolute!important;
+    right:26px!important;
+    bottom:246px!important;
+    width:38px!important;height:38px!important;min-width:38px!important;
+    padding:0!important;border-radius:50%!important;
+    z-index:2!important;
+  }
 
-/* Dark theme navigation surfaces only. */
-html[data-display-version="v2"][data-theme="dark"] .v2-mobile-nav,
-html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet{
-  background:rgba(14,21,32,.94);
-  border-color:rgba(160,181,216,.13);
-}
-html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet button:not(.v2-more-close),
-html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet a,
-html[data-theme="dark"] .mobile-map-shortcut{
-  background:#151f2e;
-  color:#edf3ff;
-  border-color:rgba(160,181,216,.14);
+  /* Only show map buttons on mobile. They join the existing flex metadata
+     instead of forcing a new card grid. */
+  html[data-display-version="v2"] .mobile-map-launchers{display:inline-flex!important}
+  html[data-display-version="v2"] .location-link.full-row{
+    flex-basis:calc(100% - 72px)!important;
+    width:auto!important;
+    max-width:calc(100% - 72px)!important;
+  }
+
+  /* V2 uses the stable pre-V2 card grid. We only swap old actions for one gear. */
+  html[data-display-version="v2"] .item-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    min-width:42px!important;
+    width:42px!important;
+    justify-items:center!important;
+  }
+  html[data-display-version="v2"] .item-actions .v2-card-gear{
+    width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important
+  }
+  html[data-display-version="v2"] .v2-card-menu{
+    position:absolute;
+    top:52px;
+    right:8px;
+    width:min(232px,calc(100% - 16px));
+  }
+
+  /* Currency/metric cards: protect large amounts without changing grid. */
+  html[data-display-version="v2"] .summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  html[data-display-version="v2"] .metric{
+    min-height:132px!important;
+    padding:16px 12px 14px 62px!important;
+    overflow:hidden!important;
+  }
+  html[data-display-version="v2"] .metric:before{
+    left:12px!important;top:16px!important;width:40px!important;height:40px!important
+  }
+  html[data-display-version="v2"] .metric span{
+    min-width:0;
+    font-size:.82rem!important;
+    line-height:1.12!important;
+  }
+  html[data-display-version="v2"] .metric strong{
+    font-size:clamp(1.3rem,6vw,1.75rem)!important;
+    letter-spacing:-.045em!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  html[data-display-version="v2"] .metric em{
+    font-size:.78rem!important;
+    line-height:1.25!important;
+  }
+
+  html[data-display-version="v2"][data-theme="dark"] .v2-mobile-nav{
+    background:rgba(12,19,30,.95);border-color:rgba(160,181,216,.12)
+  }
+  html[data-display-version="v2"][data-theme="dark"] .v2-mobile-nav button{color:#aab6cc}
+  html[data-display-version="v2"][data-theme="dark"] .v2-mobile-nav button.active{
+    background:rgba(143,124,247,.12);color:#c8beff
+  }
+  html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet h2,
+  html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet > button:not(.v2-sheet-close),
+  html[data-display-version="v2"][data-theme="dark"] .v2-more-sheet > a{
+    background:#111a27;color:#e8eef9
+  }
 }
