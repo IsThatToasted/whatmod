@@ -6628,6 +6628,7 @@ window.WETRACK_RELEASE='3.2.0';
       slideBtn.disabled = !editable && !photos.length;
       slideBtn.textContent = photos.length ? '▶ View slideshow' : '💜 Open Memories';
     }
+    try { queueCompletedMemorySync(); } catch(_) {}
   };
 
   // Existing load/render calls may have happened before this patch initialized.
@@ -6643,17 +6644,60 @@ window.WETRACK_RELEASE='3.2.0';
   }, true);
 
   // The completed trip story gets clearer copy/button labels.
+  // V3.3.1: this MUST NOT mutate the same subtree from an unrestricted
+  // MutationObserver callback. The V3.3 implementation did that and could
+  // create an infinite childList loop in Chrome/WKWebView.
   function syncCompletedMemoryButtons(){
-    const add = byId('completedAddMemoryBtn');
     const photos = photoMemories();
-    if (add) add.textContent = photos.length ? '＋ Add More' : '＋ Add Memories Now';
+    const add = byId('completedAddMemoryBtn');
+    const addText = photos.length ? '＋ Add More' : '＋ Add Memories Now';
+    if (add && add.textContent !== addText) add.textContent = addText;
+
     const view = byId('completedViewSlideshowBtn');
+    const viewText = photos.length ? '▶ Full Slideshow' : '💜 Open Memories';
     if (view) {
-      view.textContent = photos.length ? '▶ Full Slideshow' : '💜 Open Memories';
-      view.onclick = e => { e.preventDefault(); openMemorySlideshowV33(); };
+      if (view.textContent !== viewText) view.textContent = viewText;
+      if (view.dataset.v33SlideshowBound !== '1') {
+        view.dataset.v33SlideshowBound = '1';
+        // Capture phase lets the V3.3 flow win over the older completed-trip
+        // listener without repeatedly reassigning onclick.
+        view.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopImmediatePropagation?.();
+          openMemorySlideshowV33();
+        }, true);
+      }
     }
   }
-  const completedObserver = new MutationObserver(syncCompletedMemoryButtons);
+
+  let completedSyncQueued = false;
+  function queueCompletedMemorySync(){
+    if (completedSyncQueued) return;
+    completedSyncQueued = true;
+    requestAnimationFrame(() => {
+      completedSyncQueued = false;
+      syncCompletedMemoryButtons();
+    });
+  }
+
+  const completedObserver = new MutationObserver(mutations => {
+    // Only care when the completed-story controls themselves are introduced.
+    // Ignore unrelated planner/slideshow/list mutations.
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes || []) {
+        if (!(node instanceof Element)) continue;
+        if (
+          node.id === 'completedTripStory' ||
+          node.id === 'completedAddMemoryBtn' ||
+          node.id === 'completedViewSlideshowBtn' ||
+          node.querySelector?.('#completedAddMemoryBtn,#completedViewSlideshowBtn')
+        ) {
+          queueCompletedMemorySync();
+          return;
+        }
+      }
+    }
+  });
   completedObserver.observe(document.body,{childList:true,subtree:true});
   syncCompletedMemoryButtons();
 
@@ -6663,3 +6707,6 @@ window.WETRACK_RELEASE='3.2.0';
     byId('memoryEditingId').value = '';
   });
 })();
+
+/* WeTrack V3.3.1 memory observer performance fix */
+window.WETRACK_RELEASE='3.3.1';
