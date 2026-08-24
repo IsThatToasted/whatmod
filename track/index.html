@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=540" />
+  <link rel="stylesheet" href="./styles.css?v=550" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -280,11 +280,16 @@
               <p class="helper-text compact-help">Save trip moments as notes or photo memories. Photo memories become a soft slideshow after the trip.</p>
               <div id="memoryList" class="shared-list memory-list memory-gallery"></div>
               <form id="memoryForm" class="packing-form shared-form memory-form-upgraded">
-                <input id="memoryInput" type="text" placeholder="Caption or memory note..." maxlength="180" />
+                <input id="memoryInput" type="text" placeholder="Quick memory note..." maxlength="180" />
                 <input id="memoryPhotoInput" class="hidden" type="file" accept="image/*" capture="environment" />
-                <button id="memoryPhotoBtn" type="button" class="ghost-btn">📷 Add photo</button>
-                <button id="addMemoryBtn" type="submit">Save</button>
+                <input id="memoryDevicePhotoInput" class="hidden" type="file" accept="image/*" multiple />
+                <div class="memory-add-actions">
+                  <button id="memoryPhotoBtn" type="button" class="ghost-btn">📷 Take photo</button>
+                  <button id="memoryDevicePhotoBtn" type="button" class="ghost-btn">🖼 Choose photos</button>
+                </div>
+                <button id="addMemoryBtn" type="submit">Save note</button>
               </form>
+              <button id="memoryEmptyAddBtn" type="button" class="memory-empty-add hidden">＋ Add Memories Now</button>
               <button id="memorySlideshowBtn" type="button" class="ghost-btn memory-slideshow-btn">▶ View slideshow</button>
             </section>
 
@@ -485,7 +490,31 @@
     <form method="dialog" class="dialog-card slideshow-card">
       <div class="slideshow-head"><h2>💜 Trip Memories</h2><button value="cancel" class="ghost-btn">Close</button></div>
       <div id="memorySlideshowStage" class="memory-slideshow-stage"></div>
-      <div class="dialog-actions"><button id="memoryPrevBtn" type="button" class="ghost-btn">← Prev</button><button id="memoryNextBtn" type="button">Next →</button></div>
+      <div class="memory-slideshow-add-row">
+        <button id="memorySlideshowAddBtn" type="button" class="ghost-btn">＋ Add More</button>
+      </div>
+      <div class="dialog-actions memory-slide-nav"><button id="memoryPrevBtn" type="button" class="ghost-btn">← Prev</button><button id="memoryNextBtn" type="button">Next →</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="memoryDetailsDialog" class="memory-details-dialog">
+    <form method="dialog" class="dialog-card memory-details-card" id="memoryDetailsForm">
+      <div class="memory-details-head">
+        <div><p class="eyebrow">Trip memory</p><h2 id="memoryDetailsTitle">Add Memory</h2><p id="memoryDetailsSub" class="helper-text compact-help">Details are optional and can be changed later.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <div id="memorySelectionPreview" class="memory-selection-preview"></div>
+      <label>Estimated date <span class="optional-label">Optional</span>
+        <input id="memoryEstimatedDate" type="date" />
+      </label>
+      <label>Description <span class="optional-label">Optional</span>
+        <textarea id="memoryDescription" rows="4" maxlength="500" placeholder="What do you remember about this moment?"></textarea>
+      </label>
+      <input id="memoryEditingId" type="hidden" />
+      <div class="dialog-actions">
+        <button id="memoryDetailsCancelBtn" value="cancel" class="ghost-btn">Cancel</button>
+        <button id="memoryDetailsSaveBtn" type="button">Save Memory</button>
+      </div>
     </form>
   </dialog>
 
@@ -563,7 +592,7 @@
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./shop-config.js?v=520"></script>
-  <script src="./app.js?v=540"></script>
-  <script src="./display-v2.js?v=540"></script>
+  <script src="./app.js?v=550"></script>
+  <script src="./display-v2.js?v=550"></script>
 </body>
 </html>

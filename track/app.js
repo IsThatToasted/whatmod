@@ -6313,3 +6313,353 @@ window.WETRACK_RELEASE='3.0.0';
 
 /* WeTrack V3.2 clean V2 presentation layer */
 window.WETRACK_RELEASE='3.2.0';
+
+
+/* ============================================================
+   WeTrack V3.3 — Memories Everywhere
+   Camera + device library + post-trip additions + editable details
+   Uses existing itinerary_memories.note + memory_date columns.
+   ============================================================ */
+(function WeTrackMemoriesV33(){
+  let pendingMemoryFiles = [];
+  let memoryDetailsMode = 'add';
+
+  const byId = id => document.getElementById(id);
+  const photoMemories = () => (memoryItems || []).filter(m => m?.photo_url);
+  const currentTripForMemory = () => typeof currentTrip === 'function' ? currentTrip() : null;
+  const canManageMemory = mem => {
+    if (!session?.user?.id || !canEdit?.()) return false;
+    // Current RLS permits users to update their own memories.
+    return !mem || String(mem.user_id || '') === String(session.user.id);
+  };
+  const estimateDefaultDate = () => {
+    const trip = currentTripForMemory();
+    if (selectedDay) return selectedDay;
+    if (trip?.end_date && typeof tripEnded === 'function' && tripEnded(trip)) return trip.end_date;
+    return todayISO();
+  };
+
+  function selectedFilesPreview(files){
+    const el = byId('memorySelectionPreview');
+    if (!el) return;
+    if (!files?.length) { el.innerHTML=''; el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.innerHTML = `
+      <div class="memory-selection-icon">📸</div>
+      <div><strong>${files.length === 1 ? '1 photo selected' : `${files.length} photos selected`}</strong>
+      <span>${files.length > 1 ? 'The optional date and description will be applied to these photos.' : 'Add details now or leave them blank.'}</span></div>`;
+  }
+
+  function openMemoryDetailsForFiles(files){
+    if (!window.isPremiumUser?.()) return premiumMessage?.('Memories');
+    pendingMemoryFiles = Array.from(files || []).filter(f => f && String(f.type || '').startsWith('image/'));
+    if (!pendingMemoryFiles.length) return;
+    memoryDetailsMode = 'add';
+    byId('memoryEditingId').value = '';
+    byId('memoryDetailsTitle').textContent = pendingMemoryFiles.length > 1 ? 'Add Memories' : 'Add Memory';
+    byId('memoryDetailsSub').textContent = 'Estimated date and description are optional. You can edit them later.';
+    byId('memoryEstimatedDate').value = estimateDefaultDate();
+    byId('memoryDescription').value = '';
+    byId('memoryDetailsSaveBtn').textContent = pendingMemoryFiles.length > 1 ? `Save ${pendingMemoryFiles.length} Memories` : 'Save Memory';
+    selectedFilesPreview(pendingMemoryFiles);
+    byId('memoryDetailsDialog')?.showModal?.();
+  }
+
+  function openMemoryDetailsForEdit(id){
+    const mem = (memoryItems || []).find(m => String(m.id) === String(id));
+    if (!mem || !canManageMemory(mem)) return;
+    pendingMemoryFiles = [];
+    memoryDetailsMode = 'edit';
+    byId('memoryEditingId').value = mem.id;
+    byId('memoryDetailsTitle').textContent = 'Edit Memory';
+    byId('memoryDetailsSub').textContent = 'Update the estimated date or description. The photo stays unchanged.';
+    byId('memoryEstimatedDate').value = mem.memory_date || '';
+    byId('memoryDescription').value = mem.note === 'Photo memory' ? '' : (mem.note || '');
+    byId('memoryDetailsSaveBtn').textContent = 'Save Changes';
+    selectedFilesPreview([]);
+    byId('memoryDetailsDialog')?.showModal?.();
+  }
+
+  async function quotaSlotsAvailable(count){
+    if (!count) return false;
+    if (typeof window.weTrackMemoryQuotaAvailable !== 'function') return true;
+    // Existing quota helper checks one slot. For batches, additionally use the
+    // current entitlement limit when available.
+    const ent = window.getLicenseEntitlements?.() || {};
+    const limit = Number(ent.memory_limit_per_trip || 0);
+    if (window.isPremiumUser?.() && Number.isFinite(limit) && limit > 0) {
+      const remaining = Math.max(0, limit - (memoryItems || []).length);
+      if (count > remaining) {
+        window.showAppToast?.(`This trip has room for ${remaining} more ${remaining === 1 ? 'Memory' : 'Memories'}.`, 'info');
+        window.openWeTrackShop?.();
+        return false;
+      }
+    }
+    return await window.weTrackMemoryQuotaAvailable();
+  }
+
+  async function saveMemoryDetails(){
+    if (!activeTripId || !session?.user?.id || !canEdit?.()) return;
+    const btn = byId('memoryDetailsSaveBtn');
+    const description = (byId('memoryDescription')?.value || '').trim();
+    const memoryDate = byId('memoryEstimatedDate')?.value || estimateDefaultDate();
+
+    if (memoryDetailsMode === 'edit') {
+      const id = byId('memoryEditingId')?.value;
+      const mem = (memoryItems || []).find(m => String(m.id) === String(id));
+      if (!mem || !canManageMemory(mem)) return;
+      btn.disabled = true;
+      try {
+        const payload = { note: description || (mem.photo_url ? 'Photo memory' : ''), memory_date: memoryDate, updated_at: new Date().toISOString() };
+        const { data, error } = await client.from('itinerary_memories').update(payload).eq('id', id).select('*').single();
+        if (error) throw error;
+        const i = memoryItems.findIndex(m => String(m.id) === String(id));
+        if (i >= 0) memoryItems[i] = normalizeMemory(data);
+        renderMemoryList();
+        renderMemorySlideshowV33();
+        byId('memoryDetailsDialog')?.close?.();
+        window.showAppToast?.('Memory updated', 'success');
+      } catch(err) {
+        showDbError?.(err);
+      } finally { btn.disabled = false; }
+      return;
+    }
+
+    if (!pendingMemoryFiles.length) return;
+    if (!(await quotaSlotsAvailable(pendingMemoryFiles.length))) return;
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    let saved = 0;
+    try {
+      for (let i=0; i<pendingMemoryFiles.length; i++) {
+        btn.textContent = pendingMemoryFiles.length > 1 ? `Saving ${i+1}/${pendingMemoryFiles.length}…` : 'Saving…';
+        const file = pendingMemoryFiles[i];
+        const photo = await uploadMemoryPhoto(file);
+        const payload = {
+          trip_id: activeTripId,
+          user_id: session.user.id,
+          note: description || 'Photo memory',
+          memory_date: memoryDate,
+          ...photo
+        };
+        const { data, error } = await client.from('itinerary_memories').insert(payload).select('*').single();
+        if (error) throw error;
+        memoryItems.unshift(normalizeMemory(data));
+        saved++;
+      }
+      pendingMemoryFiles = [];
+      renderMemoryList();
+      renderMemorySlideshowV33();
+      byId('memoryDetailsDialog')?.close?.();
+      window.showAppToast?.(saved === 1 ? 'Memory added' : `${saved} Memories added`, 'success');
+      try { broadcastTripChange?.('Memories updated'); } catch(_){}
+    } catch(err) {
+      console.error(err);
+      window.showAppToast?.(saved ? `${saved} saved; one photo could not upload.` : (err.message || 'Could not save memory.'), 'error');
+      renderMemoryList();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
+  function renderMemorySlideshowV33(){
+    const stage = byId('memorySlideshowStage');
+    const photos = photoMemories();
+    const prev = byId('memoryPrevBtn');
+    const next = byId('memoryNextBtn');
+    const add = byId('memorySlideshowAddBtn');
+    if (!stage) return;
+
+    if (!photos.length) {
+      activeMemorySlide = 0;
+      stage.innerHTML = `
+        <div class="memory-slideshow-empty">
+          <span>💜</span>
+          <h3>Your trip story starts here</h3>
+          <p>Add photos from your device or take one now. You can keep adding memories even after the trip is over.</p>
+          <button type="button" id="memorySlideshowEmptyAddBtn">＋ Add Memories Now</button>
+        </div>`;
+      prev?.classList.add('hidden');
+      next?.classList.add('hidden');
+      if (add) { add.textContent='＋ Add Memories Now'; add.classList.add('memory-add-primary'); }
+      stage.querySelector('#memorySlideshowEmptyAddBtn')?.addEventListener('click', openMemorySourceChooser);
+      return;
+    }
+
+    prev?.classList.toggle('hidden', photos.length < 2);
+    next?.classList.toggle('hidden', photos.length < 2);
+    if (add) { add.textContent='＋ Add More'; add.classList.remove('memory-add-primary'); }
+
+    activeMemorySlide = ((activeMemorySlide % photos.length) + photos.length) % photos.length;
+    const mem = photos[activeMemorySlide];
+    stage.innerHTML = `
+      <figure class="memory-slide memory-slide-v33">
+        <img src="${escapeHtml(mem.photo_url)}" alt="Trip memory">
+        <figcaption>
+          <div><strong>${escapeHtml(mem.note === 'Photo memory' ? '' : (mem.note || ''))}</strong>
+          <span>${escapeHtml(fmtShortDate(mem.memory_date))} • ${activeMemorySlide + 1}/${photos.length}</span></div>
+          ${canManageMemory(mem) ? `<button type="button" class="memory-slide-edit" data-memory-edit="${escapeHtml(mem.id)}">✎ Edit</button>` : ''}
+        </figcaption>
+      </figure>`;
+  }
+
+  function openMemorySlideshowV33(startId=null){
+    if (!window.isPremiumUser?.()) return premiumMessage?.('Trip recap');
+    const photos = photoMemories();
+    if (startId && photos.length) {
+      const index = photos.findIndex(m => String(m.id) === String(startId));
+      activeMemorySlide = index >= 0 ? index : 0;
+    } else if (!photos.length) activeMemorySlide = 0;
+    renderMemorySlideshowV33();
+    byId('memorySlideshowDialog')?.showModal?.();
+  }
+
+  function sourceSheet(){
+    let sheet = byId('memorySourceSheet');
+    if (sheet) return sheet;
+    sheet = document.createElement('div');
+    sheet.id = 'memorySourceSheet';
+    sheet.className = 'memory-source-sheet';
+    sheet.innerHTML = `
+      <div class="memory-source-card">
+        <div class="memory-source-head"><div><p class="eyebrow">Add memories</p><h3>Choose a photo source</h3></div><button type="button" data-memory-source-close>×</button></div>
+        <button type="button" data-memory-source="camera"><span>📷</span><div><strong>Take Photo</strong><small>Open the camera and capture a memory now</small></div></button>
+        <button type="button" data-memory-source="device"><span>🖼</span><div><strong>Choose from Device</strong><small>Select one or multiple existing photos</small></div></button>
+      </div>`;
+    document.body.appendChild(sheet);
+    sheet.addEventListener('click', e => { if (e.target === sheet || e.target.closest('[data-memory-source-close]')) sheet.classList.remove('open'); });
+    sheet.querySelector('[data-memory-source="camera"]')?.addEventListener('click', () => {
+      sheet.classList.remove('open'); byId('memoryPhotoInput')?.click();
+    });
+    sheet.querySelector('[data-memory-source="device"]')?.addEventListener('click', () => {
+      sheet.classList.remove('open'); byId('memoryDevicePhotoInput')?.click();
+    });
+    return sheet;
+  }
+
+  function openMemorySourceChooser(){
+    if (!window.isPremiumUser?.()) return premiumMessage?.('Memories');
+    sourceSheet().classList.add('open');
+  }
+
+  // Remove old auto-save listeners from the camera controls by replacing them.
+  function replaceControl(id){
+    const old = byId(id);
+    if (!old) return null;
+    const fresh = old.cloneNode(true);
+    old.replaceWith(fresh);
+    if (els && Object.prototype.hasOwnProperty.call(els, id)) els[id] = fresh;
+    return fresh;
+  }
+  const cameraBtn = replaceControl('memoryPhotoBtn');
+  const cameraInput = replaceControl('memoryPhotoInput');
+  const deviceBtn = byId('memoryDevicePhotoBtn');
+  const deviceInput = byId('memoryDevicePhotoInput');
+
+  cameraBtn?.addEventListener('click', () => cameraInput?.click());
+  deviceBtn?.addEventListener('click', () => deviceInput?.click());
+
+  cameraInput?.addEventListener('change', () => {
+    const files = Array.from(cameraInput.files || []);
+    cameraInput.value = '';
+    if (files.length) openMemoryDetailsForFiles(files);
+  });
+  deviceInput?.addEventListener('change', () => {
+    const files = Array.from(deviceInput.files || []);
+    deviceInput.value = '';
+    if (files.length) openMemoryDetailsForFiles(files);
+  });
+
+  // Completed trip Add Memory and slideshow Add More use a source chooser.
+  document.addEventListener('click', e => {
+    const completedAdd = e.target.closest('#completedAddMemoryBtn');
+    if (completedAdd) {
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation?.();
+      openMemorySourceChooser();
+      return;
+    }
+    const emptyAdd = e.target.closest('#memoryEmptyAddBtn,#memorySlideshowAddBtn');
+    if (emptyAdd) { e.preventDefault(); openMemorySourceChooser(); return; }
+    const edit = e.target.closest('[data-memory-edit],.memory-edit-v33');
+    if (edit) {
+      e.preventDefault(); e.stopPropagation();
+      openMemoryDetailsForEdit(edit.dataset.memoryEdit || edit.closest('.memory-row')?.dataset.id);
+    }
+  }, true);
+
+  byId('memoryDetailsSaveBtn')?.addEventListener('click', saveMemoryDetails);
+
+  // Slideshow navigation is replaced with the new renderer.
+  const prevBtn = replaceControl('memoryPrevBtn');
+  const nextBtn = replaceControl('memoryNextBtn');
+  const slideshowBtn = replaceControl('memorySlideshowBtn');
+  prevBtn?.addEventListener('click', () => { const p=photoMemories(); if(p.length){activeMemorySlide=(activeMemorySlide-1+p.length)%p.length;renderMemorySlideshowV33();} });
+  nextBtn?.addEventListener('click', () => { const p=photoMemories(); if(p.length){activeMemorySlide=(activeMemorySlide+1)%p.length;renderMemorySlideshowV33();} });
+  slideshowBtn?.addEventListener('click', () => openMemorySlideshowV33());
+
+  // Expose for photo thumbnails and completed-trip UI.
+  window.openMemorySlideshow = openMemorySlideshowV33;
+  try { openMemorySlideshow = openMemorySlideshowV33; } catch(_){}
+
+  // Decorate memory list after every render with edit buttons and state CTAs.
+  const originalRenderMemoryListV33 = renderMemoryList;
+  renderMemoryList = function(){
+    originalRenderMemoryListV33.apply(this, arguments);
+    const editable = canEdit?.();
+    document.querySelectorAll('#memoryList .memory-row').forEach(row => {
+      const mem = (memoryItems || []).find(m => String(m.id) === String(row.dataset.id));
+      if (!mem || !canManageMemory(mem) || row.querySelector('.memory-edit-v33')) return;
+      const edit = document.createElement('button');
+      edit.type='button';
+      edit.className='memory-edit-v33 ghost-btn';
+      edit.dataset.memoryEdit=mem.id;
+      edit.title='Edit memory details';
+      edit.textContent='✎';
+      row.insertBefore(edit, row.querySelector('.memory-delete'));
+    });
+    const photos = photoMemories();
+    const emptyBtn = byId('memoryEmptyAddBtn');
+    if (emptyBtn) emptyBtn.classList.toggle('hidden', photos.length > 0 || !editable);
+    const slideBtn = byId('memorySlideshowBtn');
+    if (slideBtn) {
+      slideBtn.classList.remove('hidden');
+      slideBtn.disabled = !editable && !photos.length;
+      slideBtn.textContent = photos.length ? '▶ View slideshow' : '💜 Open Memories';
+    }
+  };
+
+  // Existing load/render calls may have happened before this patch initialized.
+  try { renderMemoryList(); } catch(_){}
+
+  // Whenever a thumbnail opens, use the V3.3 slideshow.
+  byId('memoryList')?.addEventListener('click', e => {
+    const photo = e.target.closest('.memory-photo-btn');
+    if (photo) {
+      e.preventDefault(); e.stopImmediatePropagation?.();
+      openMemorySlideshowV33(photo.dataset.id);
+    }
+  }, true);
+
+  // The completed trip story gets clearer copy/button labels.
+  function syncCompletedMemoryButtons(){
+    const add = byId('completedAddMemoryBtn');
+    const photos = photoMemories();
+    if (add) add.textContent = photos.length ? '＋ Add More' : '＋ Add Memories Now';
+    const view = byId('completedViewSlideshowBtn');
+    if (view) {
+      view.textContent = photos.length ? '▶ Full Slideshow' : '💜 Open Memories';
+      view.onclick = e => { e.preventDefault(); openMemorySlideshowV33(); };
+    }
+  }
+  const completedObserver = new MutationObserver(syncCompletedMemoryButtons);
+  completedObserver.observe(document.body,{childList:true,subtree:true});
+  syncCompletedMemoryButtons();
+
+  // Clean up pending files on cancel/close.
+  byId('memoryDetailsDialog')?.addEventListener('close', () => {
+    pendingMemoryFiles = [];
+    byId('memoryEditingId').value = '';
+  });
+})();

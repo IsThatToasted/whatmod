@@ -5481,3 +5481,127 @@ html[data-display-version="v2"][data-theme="dark"] .v2-card-menu button:hover{ba
     background:#111a27;color:#e8eef9
   }
 }
+
+
+/* ============================================================
+   WeTrack V3.3 — Memories Everywhere
+   ============================================================ */
+.memory-add-actions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  width:100%;
+}
+.memory-add-actions button{min-width:0}
+.memory-empty-add{
+  width:100%;
+  min-height:72px;
+  margin-top:12px;
+  border:1px dashed rgba(124,77,255,.28);
+  border-radius:20px;
+  background:linear-gradient(135deg,rgba(124,77,255,.10),rgba(255,86,161,.08));
+  color:#7048ec;
+  font-size:1.02rem;
+  font-weight:900;
+}
+.memory-details-card{width:min(540px,calc(100vw - 28px));}
+.memory-details-head{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:15px;
+}
+.memory-details-head h2{margin:2px 0 4px}
+.optional-label{
+  float:right;color:#9aa3bc;font-size:.72rem;font-weight:700;
+}
+.memory-details-card textarea{resize:vertical;min-height:110px}
+.memory-selection-preview{
+  display:grid;grid-template-columns:48px minmax(0,1fr);gap:11px;align-items:center;
+  padding:12px 14px;border:1px solid rgba(124,77,255,.13);border-radius:16px;
+  background:rgba(124,77,255,.055);
+}
+.memory-selection-icon{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:14px;
+  background:#fff;font-size:1.25rem;
+}
+.memory-selection-preview strong,.memory-selection-preview span{display:block}
+.memory-selection-preview span{margin-top:2px;color:#7c86a3;font-size:.8rem;line-height:1.3}
+.memory-slideshow-add-row{
+  display:flex;justify-content:center;padding-top:10px;
+}
+.memory-slideshow-add-row button{min-width:150px}
+.memory-slideshow-add-row .memory-add-primary{
+  width:100%;min-height:58px;font-size:1rem;
+  background:linear-gradient(135deg,#7447ff,#ac56ef);color:#fff;
+}
+.memory-slideshow-empty{
+  min-height:420px;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;
+  padding:36px 24px;
+}
+.memory-slideshow-empty>span{font-size:3rem}
+.memory-slideshow-empty h3{font-size:1.45rem;margin:14px 0 7px}
+.memory-slideshow-empty p{max-width:430px;margin:0 0 22px;color:#75809d;line-height:1.5}
+.memory-slideshow-empty button{
+  min-height:56px;padding:0 24px;border-radius:18px;
+  background:linear-gradient(135deg,#7447ff,#ac56ef);color:#fff;font-weight:900;
+}
+.memory-slide-v33 figcaption{
+  display:flex!important;align-items:center;justify-content:space-between;gap:12px;
+}
+.memory-slide-v33 figcaption>div{min-width:0}
+.memory-slide-v33 figcaption strong:empty{display:none}
+.memory-slide-edit{
+  flex:0 0 auto;border-radius:13px!important;padding:8px 12px!important;
+  background:rgba(255,255,255,.13)!important;color:#fff!important;
+}
+.memory-row .memory-edit-v33{
+  width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;
+  border-radius:50%!important;display:grid!important;place-items:center!important;
+}
+.memory-source-sheet{
+  position:fixed;inset:0;z-index:120000;display:none;align-items:flex-end;
+  padding:18px;background:rgba(20,18,40,.34);backdrop-filter:blur(7px);
+}
+.memory-source-sheet.open{display:flex}
+.memory-source-card{
+  width:min(520px,100%);margin:0 auto;padding:14px;border-radius:25px;
+  background:rgba(255,255,255,.98);box-shadow:0 22px 70px rgba(35,28,78,.24);
+}
+.memory-source-head{
+  display:flex;justify-content:space-between;align-items:flex-start;padding:6px 5px 10px;
+}
+.memory-source-head h3{margin:2px 0 0}
+.memory-source-head>button{
+  width:36px;height:36px;min-width:36px;padding:0;border-radius:50%;
+  background:#f4f1fb;color:#5c6685;
+}
+.memory-source-card>[data-memory-source]{
+  width:100%;display:grid;grid-template-columns:48px minmax(0,1fr);gap:11px;
+  align-items:center;text-align:left;padding:13px 14px;margin-top:7px;
+  border-radius:17px;background:#f8f7fc;color:#17203e;
+  border:1px solid rgba(124,77,255,.09);box-shadow:none;
+}
+.memory-source-card>[data-memory-source]>span{
+  width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:#fff;font-size:1.3rem;
+}
+.memory-source-card>[data-memory-source] strong,
+.memory-source-card>[data-memory-source] small{display:block}
+.memory-source-card>[data-memory-source] small{margin-top:2px;color:#7a84a0;font-weight:600;line-height:1.25}
+
+html[data-theme="dark"] .memory-source-card,
+html[data-theme="dark"] .memory-selection-icon{background:#111a27}
+html[data-theme="dark"] .memory-source-card>[data-memory-source]{
+  background:#172334;color:#e8eef9;border-color:rgba(160,181,216,.12)
+}
+html[data-theme="dark"] .memory-source-card>[data-memory-source]>span{background:#0d1521}
+html[data-theme="dark"] .memory-selection-preview{
+  background:rgba(143,124,247,.08);border-color:rgba(143,124,247,.15)
+}
+
+@media(max-width:760px){
+  .memory-add-actions{grid-template-columns:1fr 1fr}
+  .memory-add-actions button{font-size:.82rem;padding-left:7px;padding-right:7px}
+  .memory-details-card{width:calc(100vw - 20px);max-height:88vh;overflow:auto}
+  .memory-slideshow-empty{min-height:55vh;padding:28px 18px}
+  .memory-slide-v33 figcaption{align-items:flex-start}
+  .memory-source-sheet{padding:10px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+}
