@@ -1,7 +1,7 @@
 // Aurelium contact settings.
 // Replace these two values with your real contact information.
-const AURELIUM_EMAIL = "hello@yourdomain.com";
-const AURELIUM_PHONE_DISPLAY = "(000) 000-0000";
+const AURELIUM_EMAIL = "toasted3@icloud.com";
+const AURELIUM_PHONE_DISPLAY = "(717) 515-6488";
 const AURELIUM_PHONE_TEL = "+10000000000";
 
 document.getElementById("year").textContent = new Date().getFullYear();
