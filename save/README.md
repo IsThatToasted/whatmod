@@ -155,3 +155,70 @@ For a future debit-card funding rail, "refund to original payment method" should
 - PAN/CVV are never persisted in Save tables.
 - Financial writes are server-side and idempotency-aware.
 - RLS remains enabled and is part of the authorization boundary.
+
+---
+
+## Personal Mode: PayPal funding + source refunds
+
+Save now includes an additive Personal Mode that keeps the existing Supabase, GitHub Pages and Lithic sandbox-card architecture intact while moving **contributions and returns** to a provider-hosted PayPal checkout flow.
+
+### Why this mode exists
+
+- One PayPal account is the payment-provider account for Save.
+- You link/confirm the settlement bank **inside PayPal**; Save does not collect or store routing/account numbers.
+- Members contribute through PayPal-hosted checkout using supported payment sources.
+- Save stores only provider order/capture IDs and safe payment-source metadata when PayPal supplies it.
+- Unused contributions can be returned with a PayPal refund against the original capture. Save can split one requested return across several original captures automatically.
+- Lithic sandbox cards remain available for testing, but they are not represented as live cards funded by the PayPal balance.
+
+### Database migration
+
+If `002_financial_hardening.sql` has already been run, apply only:
+
+```text
+save/supabase/migrations/003_personal_paypal.sql
+```
+
+Do not wipe or recreate the database.
+
+### Required Supabase secrets
+
+```bash
+supabase secrets set PAYPAL_ENV="sandbox"
+supabase secrets set PAYPAL_CLIENT_ID="YOUR_PAYPAL_SANDBOX_CLIENT_ID"
+supabase secrets set PAYPAL_CLIENT_SECRET="YOUR_PAYPAL_SANDBOX_CLIENT_SECRET"
+supabase secrets set PAYPAL_WEBHOOK_ID="YOUR_PAYPAL_SANDBOX_WEBHOOK_ID"
+supabase secrets set SAVE_APP_URL="https://whatmod.com/save/"
+```
+
+Never put `PAYPAL_CLIENT_SECRET` or `PAYPAL_WEBHOOK_ID` in `config.js`, GitHub Pages files, or browser JavaScript.
+
+### Deploy the new functions
+
+```bash
+supabase link --project-ref hqkiexffibcrpjkiavqg
+supabase functions deploy paypal-payments
+supabase functions deploy paypal-webhook --no-verify-jwt
+```
+
+### PayPal webhook
+
+Create a webhook for:
+
+```text
+https://hqkiexffibcrpjkiavqg.supabase.co/functions/v1/paypal-webhook
+```
+
+At minimum subscribe to the payment-capture events used by the application, including capture completion, denial/reversal, and refund completion. Put the webhook's PayPal webhook ID in `PAYPAL_WEBHOOK_ID`.
+
+### Settlement bank
+
+The real bank link is managed by PayPal. In Save, open **Save Account** and enter a human-readable label plus optional last four digits after the bank is linked and confirmed in PayPal. This is intentionally metadata only.
+
+### Auto-save
+
+Unattended recurring card charges are disabled in this Personal Mode build. The prior recurring-plan schema is preserved. Do not automatically reuse a one-time PayPal checkout credential. A future provider-approved vault/subscription integration can re-enable this without changing existing fund/ledger data.
+
+### Live-use note
+
+Provider availability and permitted use depend on account approval and the actual use case. Confirm the shared-expense/savings model with the payment provider before switching `PAYPAL_ENV` to `live`; do not mischaracterize personal transfers as sales.

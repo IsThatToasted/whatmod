@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.lithic-authorization]
 verify_jwt = false
+
+[functions.paypal-payments]
+verify_jwt = true
+
+[functions.paypal-webhook]
+verify_jwt = false
