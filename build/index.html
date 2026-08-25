@@ -251,8 +251,16 @@
           <label>Tell us a little about the project
             <textarea id="projectDetails" name="projectDetails" rows="5" placeholder="What does your business do? What would you like the website to accomplish?" required></textarea>
           </label>
-          <button class="button button-primary button-full" type="submit">Send project inquiry <span>↗</span></button>
-          <p class="form-note">Submitting opens your email app with the project details filled in. No information is stored on this site.</p>
+          <div class="honeypot" aria-hidden="true">
+            <label>Leave this field empty<input type="text" id="websiteField" name="_honey" tabindex="-1" autocomplete="off"></label>
+          </div>
+          <button class="button button-primary button-full submit-button" type="submit">
+            <span class="submit-label">Send project inquiry</span>
+            <span class="submit-arrow">↗</span>
+            <span class="submit-spinner" aria-hidden="true"></span>
+          </button>
+          <div class="form-status" id="formStatus" role="status" aria-live="polite"></div>
+          <p class="form-note">Your inquiry is sent securely in the background. You stay right here on the site.</p>
         </form>
       </div>
     </section>

@@ -12,7 +12,12 @@ const AURELIUM_PHONE_DISPLAY = "(000) 000-0000";
 const AURELIUM_PHONE_TEL = "+10000000000";
 ```
 
-The contact form is GitHub Pages compatible and does not require a server. When submitted, it opens the visitor's default email client with the inquiry already filled in.
+The contact form now submits in the background using FormSubmit's AJAX endpoint, so visitors stay on the Aurelium page and receive an inline success/error message.
+
+### One-time activation
+After replacing the placeholder email with your real receiving email, submit the form once on the live site. FormSubmit will send an activation email to that address. Click the activation link once; after that, customer inquiries will be delivered normally.
+
+The form also includes a honeypot spam field and visible error handling.
 
 ## Deploy to GitHub Pages
 
