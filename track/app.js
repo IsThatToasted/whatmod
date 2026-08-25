@@ -3219,7 +3219,7 @@ async function deletePackingItem(id) {
     const mem = photos[storyIndex];
     const next = photos[(storyIndex + 1) % photos.length];
     stage.innerHTML = `
-      <figure class="completed-slide-card" key="${escapeHtml(mem.id)}">
+      <figure class="completed-slide-card" key="${escapeHtml(mem.id)}" data-memory-id="${escapeHtml(mem.id)}" role="button" tabindex="0" title="Open full slideshow from this photo">
         <img src="${escapeHtml(mem.photo_url)}" alt="Trip memory" loading="eager" />
         <figcaption><strong>${escapeHtml(mem.note || localDateTimeTitle())}</strong><span>${escapeHtml(fmtShortDate?.(mem.memory_date) || mem.memory_date || '')} • ${storyIndex + 1}/${photos.length}</span></figcaption>
       </figure>
@@ -6710,3 +6710,384 @@ window.WETRACK_RELEASE='3.2.0';
 
 /* WeTrack V3.3.1 memory observer performance fix */
 window.WETRACK_RELEASE='3.3.1';
+
+
+/* ============================================================
+   WeTrack V3.4 — Automatic Full Slideshow + Trip Soundtracks
+   ============================================================ */
+(function WeTrackSlideshowV34(){
+  const SLIDE_MS = 8000;
+  let fullSlideTimer = null;
+  let fullSlideProgressTimer = null;
+  let fullSlideStartedAt = 0;
+  let fullSlideRemaining = SLIDE_MS;
+  let fullSlidePaused = false;
+  let youtubeFrame = null;
+  let v34AmbientCtx = null;
+  let v34AmbientNodes = [];
+
+  const $v34 = id => document.getElementById(id);
+  const v34Photos = () => (memoryItems || []).filter(m => m?.photo_url);
+
+  function youtubeIdFromUrl(url){
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+    try {
+      const u = new URL(raw);
+      if (u.hostname.includes('youtu.be')) return (u.pathname.split('/')[1] || '').split('?')[0];
+      if (u.hostname.includes('youtube.com')) {
+        if (u.pathname.startsWith('/shorts/')) return u.pathname.split('/')[2] || '';
+        if (u.pathname.startsWith('/embed/')) return u.pathname.split('/')[2] || '';
+        return u.searchParams.get('v') || '';
+      }
+    } catch(_) {}
+    return '';
+  }
+
+  function currentSoundtrackSettings(){
+    const trip = currentTrip?.() || {};
+    return {
+      type: String(trip.slideshow_audio_type || 'ambience'),
+      audio_url: String(trip.slideshow_audio_url || ''),
+      audio_path: String(trip.slideshow_audio_path || ''),
+      youtube_url: String(trip.slideshow_youtube_url || '')
+    };
+  }
+
+  function updateCurrentTripSoundtrack(patch){
+    const i = trips.findIndex(t => t.id === activeTripId);
+    if (i >= 0) trips[i] = { ...trips[i], ...patch };
+  }
+
+  async function saveSoundtrackPatch(patch){
+    if (!activeTripId || !canEdit?.()) return false;
+    const full = { ...patch, updated_at:new Date().toISOString() };
+    const { data, error } = await client.from('itinerary_trips').update(full).eq('id',activeTripId).select('*').single();
+    if (error) { showDbError?.(error); return false; }
+    updateCurrentTripSoundtrack(data || full);
+    updateSoundtrackStatus();
+    try { broadcastTripChange?.('Slideshow soundtrack updated'); } catch(_){}
+    return true;
+  }
+
+  function updateSoundtrackStatus(){
+    const s = currentSoundtrackSettings();
+    const el = $v34('memorySoundtrackStatus');
+    const btn = $v34('memorySoundtrackBtn');
+    let label = 'WeTrack Ambience';
+    if (s.type === 'mp3') label = s.audio_url ? 'Custom MP3' : 'MP3 not set';
+    if (s.type === 'youtube') label = youtubeIdFromUrl(s.youtube_url) ? 'YouTube soundtrack' : 'YouTube link not set';
+    if (s.type === 'none') label = 'No soundtrack';
+    if (el) el.innerHTML = `<span>Current</span><strong>${escapeHtml(label)}</strong>`;
+    if (btn) btn.textContent = s.type === 'none' ? '🔇 Soundtrack off' : `♪ ${label}`;
+  }
+
+  function stopV34Ambient(){
+    try { v34AmbientNodes.forEach(n => { if (typeof n.stop === 'function') n.stop(); }); } catch(_){}
+    try { v34AmbientCtx?.close?.(); } catch(_){}
+    v34AmbientNodes=[]; v34AmbientCtx=null;
+  }
+
+  function startV34Ambient(){
+    stopV34Ambient();
+    try {
+      v34AmbientCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const master = v34AmbientCtx.createGain();
+      master.gain.value=.025;
+      master.connect(v34AmbientCtx.destination);
+      [196,246.94,329.63].forEach((freq,idx)=>{
+        const osc=v34AmbientCtx.createOscillator();
+        const gain=v34AmbientCtx.createGain();
+        osc.type=idx===0?'sine':'triangle';
+        osc.frequency.value=freq;
+        gain.gain.value=.12/(idx+1);
+        osc.connect(gain); gain.connect(master); osc.start();
+        v34AmbientNodes.push(osc,gain);
+      });
+    } catch(_){}
+  }
+
+  function stopSlideshowSoundtrack(){
+    stopV34Ambient();
+    const audio=$v34('memorySlideshowAudio');
+    if(audio){ try{audio.pause();}catch(_){} audio.removeAttribute('src'); audio.load?.(); }
+    const wrap=$v34('memoryYoutubePlayerWrap');
+    if(wrap){ wrap.innerHTML=''; wrap.classList.add('hidden'); }
+    youtubeFrame=null;
+  }
+
+  async function startSlideshowSoundtrack(){
+    stopSlideshowSoundtrack();
+    const s=currentSoundtrackSettings();
+    if(s.type==='none') return;
+    if(s.type==='ambience'){ startV34Ambient(); return; }
+
+    if(s.type==='mp3' && s.audio_url){
+      const audio=$v34('memorySlideshowAudio');
+      if(!audio) return;
+      audio.src=s.audio_url;
+      audio.loop=true;
+      try { await audio.play(); }
+      catch(_) { window.showAppToast?.('Tap Soundtrack to start audio if your browser blocked autoplay.','info'); }
+      return;
+    }
+
+    if(s.type==='youtube'){
+      const id=youtubeIdFromUrl(s.youtube_url);
+      const wrap=$v34('memoryYoutubePlayerWrap');
+      if(!id || !wrap) return;
+      wrap.classList.remove('hidden');
+      wrap.innerHTML=`<div class="memory-youtube-now"><span>▶ YouTube soundtrack</span><small>Playing with YouTube</small></div><iframe title="YouTube slideshow soundtrack" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&loop=1&playlist=${encodeURIComponent(id)}&controls=1&playsinline=1"></iframe>`;
+      youtubeFrame=wrap.querySelector('iframe');
+    }
+  }
+
+  function updateSlideProgress(){
+    const bar=$v34('memorySlideProgressBar');
+    if(!bar) return;
+    if(fullSlidePaused){ return; }
+    const elapsed=Math.max(0,Date.now()-fullSlideStartedAt);
+    const fraction=Math.min(1,elapsed/Math.max(1,fullSlideRemaining));
+    bar.style.transform=`scaleX(${fraction})`;
+  }
+
+  function clearSlideTimers(){
+    if(fullSlideTimer) clearTimeout(fullSlideTimer);
+    if(fullSlideProgressTimer) clearInterval(fullSlideProgressTimer);
+    fullSlideTimer=null; fullSlideProgressTimer=null;
+  }
+
+  function armSlideTimer(duration=SLIDE_MS){
+    clearSlideTimers();
+    const photos=v34Photos();
+    if(fullSlidePaused || photos.length<2 || !$v34('memorySlideshowDialog')?.open) return;
+    fullSlideRemaining=Math.max(250,duration);
+    fullSlideStartedAt=Date.now();
+    const bar=$v34('memorySlideProgressBar');
+    if(bar){bar.style.transition='none';bar.style.transform='scaleX(0)';}
+    fullSlideProgressTimer=setInterval(updateSlideProgress,100);
+    fullSlideTimer=setTimeout(()=>{
+      fullSlideRemaining=SLIDE_MS;
+      activeMemorySlide=(activeMemorySlide+1)%photos.length;
+      renderMemorySlideshowV34();
+      armSlideTimer(SLIDE_MS);
+    },fullSlideRemaining);
+  }
+
+  function pauseFullSlideshow(){
+    if(fullSlidePaused) return;
+    const elapsed=Date.now()-fullSlideStartedAt;
+    fullSlideRemaining=Math.max(250,fullSlideRemaining-elapsed);
+    fullSlidePaused=true;
+    clearSlideTimers();
+    const btn=$v34('memoryPauseBtn'); if(btn) btn.textContent='▶ Resume';
+  }
+
+  function resumeFullSlideshow(){
+    if(!fullSlidePaused) return;
+    fullSlidePaused=false;
+    const btn=$v34('memoryPauseBtn'); if(btn) btn.textContent='Ⅱ Pause';
+    armSlideTimer(fullSlideRemaining || SLIDE_MS);
+  }
+
+  function toggleFullSlideshowPause(){
+    fullSlidePaused ? resumeFullSlideshow() : pauseFullSlideshow();
+  }
+
+  function stepFullSlideshow(dir){
+    const photos=v34Photos();
+    if(!photos.length) return;
+    activeMemorySlide=(activeMemorySlide+dir+photos.length)%photos.length;
+    fullSlideRemaining=SLIDE_MS;
+    renderMemorySlideshowV34();
+    if(!fullSlidePaused) armSlideTimer(SLIDE_MS);
+  }
+
+  function renderMemorySlideshowV34(){
+    const stage=$v34('memorySlideshowStage');
+    const photos=v34Photos();
+    if(!stage) return;
+
+    if(!photos.length){
+      stage.innerHTML=`<div class="memory-slideshow-empty"><span>💜</span><h3>Your trip story starts here</h3><p>Add photos from your device or take one now. You can keep adding memories even after the trip is over.</p><button type="button" id="memorySlideshowEmptyAddBtn">＋ Add Memories Now</button></div>`;
+      $v34('memoryPrevBtn')?.classList.add('hidden');
+      $v34('memoryPauseBtn')?.classList.add('hidden');
+      $v34('memoryNextBtn')?.classList.add('hidden');
+      $v34('memorySlideshowEmptyAddBtn')?.addEventListener('click',()=>document.getElementById('memorySlideshowAddBtn')?.click());
+      return;
+    }
+
+    $v34('memoryPrevBtn')?.classList.remove('hidden');
+    $v34('memoryPauseBtn')?.classList.toggle('hidden',photos.length<2);
+    $v34('memoryNextBtn')?.classList.remove('hidden');
+    activeMemorySlide=((activeMemorySlide%photos.length)+photos.length)%photos.length;
+    const mem=photos[activeMemorySlide];
+    const cleanNote=mem.note==='Photo memory'?'':(mem.note||'');
+    stage.innerHTML=`
+      <figure class="memory-slide memory-slide-v34" data-memory-id="${escapeHtml(mem.id)}">
+        <div class="memory-slide-photo-shell">
+          <img src="${escapeHtml(mem.photo_url)}" alt="Trip memory">
+        </div>
+        <figcaption>
+          <div><strong>${escapeHtml(cleanNote)}</strong><span>${escapeHtml(fmtShortDate(mem.memory_date))} • ${activeMemorySlide+1}/${photos.length}</span></div>
+          ${String(mem.user_id||'')===String(session?.user?.id||'')?`<button type="button" class="memory-slide-edit" data-memory-edit="${escapeHtml(mem.id)}">✎ Edit</button>`:''}
+        </figcaption>
+      </figure>`;
+  }
+
+  async function openFullSlideshowV34(startId=null){
+    if(!window.isPremiumUser?.()) return premiumMessage?.('Trip recap');
+    const photos=v34Photos();
+    if(startId && photos.length){
+      const i=photos.findIndex(m=>String(m.id)===String(startId));
+      activeMemorySlide=i>=0?i:0;
+    } else if(!photos.length) activeMemorySlide=0;
+
+    fullSlidePaused=false;
+    fullSlideRemaining=SLIDE_MS;
+    const pause=$v34('memoryPauseBtn'); if(pause) pause.textContent='Ⅱ Pause';
+    renderMemorySlideshowV34();
+    const dialog=$v34('memorySlideshowDialog');
+    if(!dialog?.open) dialog?.showModal?.();
+    updateSoundtrackStatus();
+
+    // Starting from a user click gives browsers the best chance of allowing audio.
+    await startSlideshowSoundtrack();
+    if(photos.length>1) armSlideTimer(SLIDE_MS);
+  }
+
+  // Replace V3.3 slideshow entry points/listeners with V3.4 behavior.
+  window.openMemorySlideshow=openFullSlideshowV34;
+  try { openMemorySlideshow=openFullSlideshowV34; } catch(_){}
+
+  const replaceControlV34=id=>{
+    const old=$v34(id); if(!old) return null;
+    const fresh=old.cloneNode(true); old.replaceWith(fresh); return fresh;
+  };
+  const prev=replaceControlV34('memoryPrevBtn');
+  const next=replaceControlV34('memoryNextBtn');
+  const pause=replaceControlV34('memoryPauseBtn');
+  const fullBtn=replaceControlV34('memorySlideshowBtn');
+
+  prev?.addEventListener('click',()=>stepFullSlideshow(-1));
+  next?.addEventListener('click',()=>stepFullSlideshow(1));
+  pause?.addEventListener('click',toggleFullSlideshowPause);
+  fullBtn?.addEventListener('click',()=>openFullSlideshowV34());
+
+  // Preview thumbnails in the Memories workspace open directly to that image,
+  // then continue automatically after 8 seconds.
+  $v34('memoryList')?.addEventListener('click',e=>{
+    const photo=e.target.closest('.memory-photo-btn');
+    if(!photo) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation?.();
+    openFullSlideshowV34(photo.dataset.id);
+  },true);
+
+  // The rotating completed-trip preview itself is now clickable.
+  document.addEventListener('click',e=>{
+    const preview=e.target.closest('#completedStoryStage .completed-slide-card');
+    if(!preview) return;
+    e.preventDefault(); e.stopPropagation();
+    const id=preview.dataset.memoryId || preview.getAttribute('data-memory-id');
+    openFullSlideshowV34(id || null);
+  },true);
+
+  // Ensure the preview renderer exposes the current memory id.
+  const completedStageObserver=new MutationObserver(()=>{
+    const card=document.querySelector('#completedStoryStage .completed-slide-card');
+    if(!card || card.dataset.v34Ready==='1') return;
+    card.dataset.v34Ready='1';
+    const img=card.querySelector('img');
+    if(!img) return;
+    const mem=v34Photos().find(m=>m.photo_url===img.src || img.src.endsWith(m.photo_url));
+    if(mem) card.dataset.memoryId=mem.id;
+    card.setAttribute('role','button');
+    card.setAttribute('tabindex','0');
+    card.title='Open full slideshow from this photo';
+  });
+  const completedStage=$v34('completedStoryStage');
+  if(completedStage) completedStageObserver.observe(completedStage,{childList:true});
+
+  // Soundtrack editor.
+  $v34('memorySoundtrackBtn')?.addEventListener('click',()=>{
+    updateSoundtrackStatus();
+    const s=currentSoundtrackSettings();
+    const yt=$v34('memoryYoutubeUrl'); if(yt) yt.value=s.youtube_url||'';
+    $v34('memoryYoutubeEditor')?.classList.toggle('hidden',s.type!=='youtube');
+    $v34('memorySoundtrackDialog')?.showModal?.();
+  });
+
+  document.querySelectorAll('[data-soundtrack-type]').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const type=btn.dataset.soundtrackType;
+      if(type==='mp3'){ $v34('memorySoundtrackFile')?.click(); return; }
+      if(type==='youtube'){
+        $v34('memoryYoutubeEditor')?.classList.remove('hidden');
+        $v34('memoryYoutubeUrl')?.focus();
+        return;
+      }
+      if(await saveSoundtrackPatch({
+        slideshow_audio_type:type,
+        slideshow_audio_url:type==='ambience'?'':currentSoundtrackSettings().audio_url,
+        slideshow_youtube_url:type==='ambience'||type==='none'?'':currentSoundtrackSettings().youtube_url
+      })){
+        if($v34('memorySlideshowDialog')?.open) startSlideshowSoundtrack();
+      }
+    });
+  });
+
+  $v34('memorySoundtrackFile')?.addEventListener('change',async()=>{
+    const input=$v34('memorySoundtrackFile');
+    const file=input?.files?.[0]; if(input) input.value='';
+    if(!file) return;
+    if(!/audio\/mpeg/i.test(file.type||'') && !/\.mp3$/i.test(file.name||'')){
+      window.showAppToast?.('Please choose an MP3 file.','error'); return;
+    }
+    if(file.size>25*1024*1024){
+      window.showAppToast?.('Please keep slideshow MP3 files under 25 MB.','error'); return;
+    }
+    const status=$v34('memorySoundtrackStatus');
+    if(status) status.innerHTML='<span>Uploading</span><strong>Please wait…</strong>';
+    try{
+      const safe=(file.name||'soundtrack.mp3').replace(/[^a-zA-Z0-9._-]/g,'_');
+      const path=`${activeTripId}/${session.user.id}/audio/${Date.now()}-${safe}`;
+      const {error}=await client.storage.from('trip-memories').upload(path,file,{cacheControl:'3600',upsert:false,contentType:'audio/mpeg'});
+      if(error) throw error;
+      const {data}=client.storage.from('trip-memories').getPublicUrl(path);
+      const url=data?.publicUrl||'';
+      if(!url) throw new Error('Could not create soundtrack URL.');
+      if(await saveSoundtrackPatch({
+        slideshow_audio_type:'mp3',
+        slideshow_audio_url:url,
+        slideshow_audio_path:path,
+        slideshow_youtube_url:''
+      })){
+        window.showAppToast?.('MP3 soundtrack saved','success');
+        if($v34('memorySlideshowDialog')?.open) startSlideshowSoundtrack();
+      }
+    }catch(err){ showDbError?.(err); updateSoundtrackStatus(); }
+  });
+
+  $v34('memoryYoutubeSaveBtn')?.addEventListener('click',async()=>{
+    const url=($v34('memoryYoutubeUrl')?.value||'').trim();
+    if(!youtubeIdFromUrl(url)){ window.showAppToast?.('Enter a valid YouTube video link.','error'); return; }
+    if(await saveSoundtrackPatch({
+      slideshow_audio_type:'youtube',
+      slideshow_youtube_url:url,
+      slideshow_audio_url:''
+    })){
+      window.showAppToast?.('YouTube soundtrack saved','success');
+      if($v34('memorySlideshowDialog')?.open) startSlideshowSoundtrack();
+    }
+  });
+
+  $v34('memorySlideshowDialog')?.addEventListener('close',()=>{
+    clearSlideTimers();
+    stopSlideshowSoundtrack();
+    fullSlidePaused=false;
+    fullSlideRemaining=SLIDE_MS;
+    const bar=$v34('memorySlideProgressBar'); if(bar) bar.style.transform='scaleX(0)';
+  });
+
+  updateSoundtrackStatus();
+})();

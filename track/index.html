@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=551" />
+  <link rel="stylesheet" href="./styles.css?v=560" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -492,8 +492,40 @@
       <div id="memorySlideshowStage" class="memory-slideshow-stage"></div>
       <div class="memory-slideshow-add-row">
         <button id="memorySlideshowAddBtn" type="button" class="ghost-btn">＋ Add More</button>
+        <button id="memorySoundtrackBtn" type="button" class="ghost-btn">♪ Soundtrack</button>
       </div>
-      <div class="dialog-actions memory-slide-nav"><button id="memoryPrevBtn" type="button" class="ghost-btn">← Prev</button><button id="memoryNextBtn" type="button">Next →</button></div>
+      <div id="memoryYoutubePlayerWrap" class="memory-youtube-player-wrap hidden"></div>
+      <audio id="memorySlideshowAudio" class="hidden" preload="metadata" loop></audio>
+      <div class="memory-slide-progress"><span id="memorySlideProgressBar"></span></div>
+      <div class="dialog-actions memory-slide-nav">
+        <button id="memoryPrevBtn" type="button" class="ghost-btn">← Back</button>
+        <button id="memoryPauseBtn" type="button" class="ghost-btn">Ⅱ Pause</button>
+        <button id="memoryNextBtn" type="button">Next →</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="memorySoundtrackDialog" class="memory-details-dialog">
+    <form method="dialog" class="dialog-card memory-soundtrack-card">
+      <div class="memory-details-head">
+        <div><p class="eyebrow">Trip slideshow</p><h2>♪ Soundtrack</h2><p class="helper-text compact-help">Choose what plays during the full slideshow.</p></div>
+        <button value="cancel" class="ghost-btn" type="submit">Close</button>
+      </div>
+      <div class="memory-soundtrack-options">
+        <button type="button" data-soundtrack-type="ambience"><span>✨</span><div><strong>WeTrack Ambience</strong><small>Use the built-in soft ambient soundtrack.</small></div></button>
+        <button type="button" data-soundtrack-type="mp3"><span>🎵</span><div><strong>Upload MP3</strong><small>Choose an MP3 file from this device.</small></div></button>
+        <button type="button" data-soundtrack-type="youtube"><span>▶</span><div><strong>YouTube soundtrack</strong><small>Play a YouTube video through the embedded player.</small></div></button>
+        <button type="button" data-soundtrack-type="none"><span>🔇</span><div><strong>No soundtrack</strong><small>Run the slideshow silently.</small></div></button>
+      </div>
+      <input id="memorySoundtrackFile" class="hidden" type="file" accept="audio/mpeg,.mp3" />
+      <div id="memoryYoutubeEditor" class="memory-youtube-editor hidden">
+        <label>YouTube link
+          <input id="memoryYoutubeUrl" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=..." />
+        </label>
+        <p class="helper-text compact-help">The video is played with YouTube's embedded player; WeTrack does not download or convert the video.</p>
+        <button id="memoryYoutubeSaveBtn" type="button">Use YouTube soundtrack</button>
+      </div>
+      <div id="memorySoundtrackStatus" class="memory-soundtrack-status"></div>
     </form>
   </dialog>
 
@@ -592,7 +624,7 @@
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./shop-config.js?v=520"></script>
-  <script src="./app.js?v=551"></script>
-  <script src="./display-v2.js?v=551"></script>
+  <script src="./app.js?v=560"></script>
+  <script src="./display-v2.js?v=560"></script>
 </body>
 </html>

@@ -5605,3 +5605,125 @@ html[data-theme="dark"] .memory-selection-preview{
   .memory-slide-v33 figcaption{align-items:flex-start}
   .memory-source-sheet{padding:10px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
 }
+
+
+/* ============================================================
+   WeTrack V3.4 — Full Slideshow + Soundtracks
+   ============================================================ */
+.memory-slide-progress{
+  height:4px;
+  width:100%;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(124,77,255,.10);
+  margin:10px 0 0;
+}
+.memory-slide-progress span{
+  display:block;
+  width:100%;
+  height:100%;
+  transform:scaleX(0);
+  transform-origin:left center;
+  background:linear-gradient(90deg,#7548ff,#ec63ad);
+}
+.memory-slide-nav{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:9px!important;
+}
+.memory-slide-nav button{min-width:0!important}
+.memory-slideshow-add-row{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+}
+.memory-slide-photo-shell{
+  width:100%;
+  display:grid;
+  place-items:center;
+  min-height:min(64vh,620px);
+  background:#0b0b12;
+  border-radius:18px;
+  overflow:hidden;
+}
+.memory-slide-photo-shell img{
+  width:100%;
+  max-height:min(72vh,720px);
+  object-fit:contain;
+  display:block;
+}
+.memory-slide-v34{margin:0}
+.memory-slide-v34 figcaption{padding-top:10px}
+.memory-youtube-player-wrap{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 180px;
+  gap:10px;
+  align-items:center;
+  padding:8px 10px;
+  border:1px solid rgba(124,77,255,.12);
+  border-radius:15px;
+  background:rgba(124,77,255,.05);
+}
+.memory-youtube-player-wrap iframe{
+  width:180px;height:101px;border:0;border-radius:10px;
+}
+.memory-youtube-now span,.memory-youtube-now small{display:block}
+.memory-youtube-now span{font-weight:850}
+.memory-youtube-now small{margin-top:3px;color:#7c86a3}
+.memory-soundtrack-card{width:min(560px,calc(100vw - 28px))}
+.memory-soundtrack-options{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+.memory-soundtrack-options>button{
+  min-width:0;
+  display:grid!important;
+  grid-template-columns:42px minmax(0,1fr)!important;
+  gap:9px!important;
+  align-items:center!important;
+  padding:12px!important;
+  text-align:left!important;
+  border-radius:16px!important;
+  background:rgba(124,77,255,.055)!important;
+  color:var(--ink)!important;
+  box-shadow:none!important;
+}
+.memory-soundtrack-options>button>span{
+  width:40px;height:40px;display:grid;place-items:center;
+  border-radius:13px;background:rgba(255,255,255,.8);font-size:1.1rem;
+}
+.memory-soundtrack-options strong,.memory-soundtrack-options small{display:block}
+.memory-soundtrack-options small{margin-top:2px;color:#7b85a1;font-weight:600;line-height:1.25}
+.memory-youtube-editor{
+  margin-top:12px;padding:13px;border-radius:16px;
+  background:rgba(124,77,255,.05);border:1px solid rgba(124,77,255,.10);
+}
+.memory-youtube-editor button{width:100%;margin-top:8px}
+.memory-soundtrack-status{
+  margin-top:12px;padding:10px 12px;border-radius:14px;
+  background:#f7f5fd;display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.memory-soundtrack-status span{color:#858fa9;font-size:.78rem;font-weight:750}
+.memory-soundtrack-status strong{font-size:.84rem}
+.completed-slide-card{cursor:pointer}
+.completed-slide-card:hover{transform:translateY(-1px)}
+
+html[data-theme="dark"] .memory-soundtrack-options>button,
+html[data-theme="dark"] .memory-youtube-editor,
+html[data-theme="dark"] .memory-youtube-player-wrap{
+  background:#131d2b!important;border-color:rgba(160,181,216,.12)!important;
+}
+html[data-theme="dark"] .memory-soundtrack-options>button>span{background:#0d1521}
+html[data-theme="dark"] .memory-soundtrack-status{background:#131d2b}
+
+@media(max-width:760px){
+  .slideshow-card{width:calc(100vw - 18px)!important;max-height:92vh!important}
+  .memory-slide-photo-shell{min-height:52vh}
+  .memory-slide-nav{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .memory-slide-nav button{padding-left:7px!important;padding-right:7px!important;font-size:.82rem!important}
+  .memory-youtube-player-wrap{grid-template-columns:1fr}
+  .memory-youtube-player-wrap iframe{width:100%;height:auto;aspect-ratio:16/9}
+  .memory-soundtrack-options{grid-template-columns:1fr}
+}
