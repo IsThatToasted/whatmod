@@ -1,0 +1,4 @@
+project_id = "hqkiexffibcrpjkiavqg"
+
+[functions.lithic-card]
+verify_jwt = true

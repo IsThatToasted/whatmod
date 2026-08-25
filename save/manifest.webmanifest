@@ -1,0 +1,10 @@
+{
+  "name": "Save — Shared Goals",
+  "short_name": "Save",
+  "start_url": "/save/",
+  "scope": "/save/",
+  "display": "standalone",
+  "background_color": "#101217",
+  "theme_color": "#101217",
+  "icons": []
+}
