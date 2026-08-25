@@ -29,7 +29,18 @@ In Supabase > Authentication > URL Configuration:
 - Site URL: `https://whatmod.com/save/`
 - Redirect URL: `https://whatmod.com/save/`
 
-Email/password and magic-link login are supported by the frontend.
+Google OAuth is the primary sign-in flow. Email/password and magic-link login remain available as fallbacks.
+
+### Google provider setup
+
+In Supabase > Authentication > Providers > Google, enable Google and enter your Google OAuth **Web application** Client ID and Client Secret.
+
+In Google Cloud / Google Auth Platform, configure:
+
+- Authorized JavaScript origin: `https://whatmod.com`
+- Authorized redirect URI: `https://hqkiexffibcrpjkiavqg.supabase.co/auth/v1/callback`
+
+Important: Google's redirect URI points to the **Supabase Auth callback**, not directly to `/save/`. Supabase then redirects the user back to `https://whatmod.com/save/`, which must remain in the Supabase redirect allow list.
 
 ## 4. Store the Lithic key server-side
 
@@ -58,7 +69,8 @@ The function validates the signed-in Supabase user, verifies fund membership, ca
 
 Working app flows:
 
-- Sign up / sign in / magic link
+- Google OAuth sign-in
+- Email sign up / sign in / magic link
 - Create shared goal
 - Join by invite code
 - Fund goal/progress dashboard
