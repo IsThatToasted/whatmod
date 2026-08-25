@@ -1,0 +1,70 @@
+name: Save - Build & Verify
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'save/**'
+      - '.github/workflows/save-build.yml'
+  pull_request:
+    paths:
+      - 'save/**'
+      - '.github/workflows/save-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate required Save files
+        run: |
+          set -euo pipefail
+          test -f save/index.html
+          test -f save/app.js
+          test -f save/styles.css
+          test -f save/config.js
+          test -f save/manifest.webmanifest
+          test -f save/supabase/schema.sql
+          test -f save/supabase/migrations/002_financial_hardening.sql
+          test -f save/supabase/migrations/003_personal_paypal.sql
+          test -f save/supabase/functions/paypal-payments/index.ts
+          test -f save/supabase/functions/paypal-webhook/index.ts
+      - name: Syntax check application JavaScript
+        run: |
+          cp save/app.js /tmp/save-app.mjs
+          cp save/config.js /tmp/save-config.mjs
+          node --check /tmp/save-app.mjs
+          node --check /tmp/save-config.mjs
+      - name: Prevent private credentials in static frontend
+        run: |
+          python - <<'PYSCAN'
+          from pathlib import Path
+          import re
+          patterns=[re.compile(r'eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}'),re.compile(r'sk_live_',re.I),re.compile(r'whsec_[A-Za-z0-9+/=]{24,}',re.I)]
+          bad=[]
+          for name in ['index.html','app.js','config.js','styles.css','sw.js','manifest.webmanifest']:
+              p=Path('save')/name
+              if not p.is_file(): continue
+              try: text=p.read_text(errors='ignore')
+              except: continue
+              for pat in patterns:
+                  if pat.search(text): bad.append(str(p)); break
+          if bad:
+              raise SystemExit('Potential private credential found in: '+', '.join(sorted(set(bad))))
+          PYSCAN
+      - name: Build GitHub Pages artifact
+        run: |
+          mkdir -p dist/save
+          cp -R save/index.html save/app.js save/config.js save/styles.css save/sw.js save/manifest.webmanifest save/.nojekyll save/icons dist/save/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: save-pages-build
+          path: dist
+          if-no-files-found: error

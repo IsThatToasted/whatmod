@@ -1,0 +1,26 @@
+name: Save - AutoPay Runner
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-due-plans:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process due Save contribution plans
+        env:
+          SAVE_AUTOPAY_CRON_SECRET: ${{ secrets.SAVE_AUTOPAY_CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$SAVE_AUTOPAY_CRON_SECRET"
+          curl --fail-with-body --retry 2 --retry-all-errors \
+            -X POST \
+            -H "x-save-cron-secret: $SAVE_AUTOPAY_CRON_SECRET" \
+            -H 'content-type: application/json' \
+            https://hqkiexffibcrpjkiavqg.supabase.co/functions/v1/process-autopay \
+            -d '{}'
