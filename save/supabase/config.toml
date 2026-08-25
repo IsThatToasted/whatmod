@@ -2,3 +2,15 @@ project_id = "hqkiexffibcrpjkiavqg"
 
 [functions.lithic-card]
 verify_jwt = true
+
+[functions.money-movement]
+verify_jwt = true
+
+[functions.process-autopay]
+verify_jwt = false
+
+[functions.lithic-webhook]
+verify_jwt = false
+
+[functions.lithic-authorization]
+verify_jwt = false

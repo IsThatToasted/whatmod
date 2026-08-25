@@ -1,102 +1,157 @@
-# Save — shared savings sandbox
+# Save — production-hardening sandbox
 
-Target URL: `https://whatmod.com/save/`
+Target web URL: `https://whatmod.com/save/`
 
-This package is intentionally split into:
+This release **preserves the existing GitHub Pages + Supabase architecture**. The browser remains a static app under `/save/`; private Lithic operations remain in Supabase Edge Functions.
 
-- Static GitHub Pages frontend (`index.html`, `app.js`, `styles.css`)
-- Supabase Postgres + RLS (`supabase/schema.sql`)
-- Server-side Lithic sandbox adapter (`supabase/functions/lithic-card`)
+## What changed
 
-## 1. Put the folder in the repo
+- Google-only Supabase OAuth (email/password and magic-link UI removed)
+- Existing funds, invite codes, unlock voting and virtual-card creation preserved
+- Apple-quality responsive UI refresh with mobile safe areas and reduced-motion support
+- External bank account linking + Lithic micro-deposit verification
+- ACH contribution requests through a server-side Edge Function
+- Payout requests back to a verified linked bank account
+- Auto-save plans: weekly, biweekly, monthly; pause/resume/replace
+- Hourly GitHub Action runner for due auto-save plans
+- Immutable-style money movement lifecycle (`initiated → pending/processing → settled/failed/reversed/refunded`)
+- Provider/idempotency references and webhook event deduplication
+- Lithic webhook HMAC verification and settlement reconciliation
+- Balance cache recalculated only from ledger entries after settlement
+- Digital-wallet provisioning proxy for Lithic Apple Pay / Google Pay web push provisioning
+- PWA cache narrowed to same-origin `/save/` shell assets so financial/API responses are not cached
+- GitHub Action verifies the static app and packages a Pages artifact without taking over an existing repository Pages deployment
 
-Copy the contents of this `save/` directory to the root-level `save/` directory of `IsThatToasted/whatmod`.
+## 1. Existing Supabase schema
 
-The frontend is already configured with the supplied Supabase project URL and **publishable** key. A publishable key is expected to be browser-visible and must be protected by RLS.
-
-## 2. Create the database
-
-In the Supabase SQL Editor, run:
+If this is a fresh database, run:
 
 `save/supabase/schema.sql`
 
-This creates profiles, funds, memberships, contribution-plan metadata, ledger entries, unlock voting, card metadata, card transactions, helper RPCs, RLS policies, and realtime publication entries.
+For the existing Save database, **do not reset it**. Run only:
 
-## 3. Configure Auth URLs
+`save/supabase/migrations/002_financial_hardening.sql`
 
-In Supabase > Authentication > URL Configuration:
+The migration is additive/backward-safe and preserves current funds/cards/ledger records.
+
+## 2. Google OAuth
+
+Supabase Auth should remain configured as:
 
 - Site URL: `https://whatmod.com/save/`
-- Redirect URL: `https://whatmod.com/save/`
+- Allowed redirect URL: `https://whatmod.com/save/`
+- Google provider: enabled
 
-Google OAuth is the primary sign-in flow. Email/password and magic-link login remain available as fallbacks.
+Google OAuth web client:
 
-### Google provider setup
+- JavaScript origin: `https://whatmod.com`
+- Redirect URI: `https://hqkiexffibcrpjkiavqg.supabase.co/auth/v1/callback`
 
-In Supabase > Authentication > Providers > Google, enable Google and enter your Google OAuth **Web application** Client ID and Client Secret.
+## 3. Supabase Edge Function secrets
 
-In Google Cloud / Google Auth Platform, configure:
-
-- Authorized JavaScript origin: `https://whatmod.com`
-- Authorized redirect URI: `https://hqkiexffibcrpjkiavqg.supabase.co/auth/v1/callback`
-
-Important: Google's redirect URI points to the **Supabase Auth callback**, not directly to `/save/`. Supabase then redirects the user back to `https://whatmod.com/save/`, which must remain in the Supabase redirect allow list.
-
-## 4. Store the Lithic key server-side
-
-**Do not put the Lithic key in `config.js`, GitHub, browser JavaScript, or a GitHub Pages secret expecting the browser to hide it.**
-
-Set it as a Supabase Edge Function secret:
+Rotate the Lithic sandbox API key previously shared in chat before continued use, then set:
 
 ```bash
-supabase secrets set LITHIC_API_KEY="YOUR_ROTATED_LITHIC_SANDBOX_KEY"
+supabase secrets set LITHIC_API_KEY="YOUR_ROTATED_SANDBOX_KEY"
+supabase secrets set LITHIC_FINANCIAL_ACCOUNT_TOKEN="YOUR_LITHIC_FINANCIAL_ACCOUNT_TOKEN"
+supabase secrets set LITHIC_WEBHOOK_SECRET="YOUR_LITHIC_EVENT_WEBHOOK_SECRET"
+supabase secrets set LITHIC_ASA_WEBHOOK_SECRET="YOUR_LITHIC_ASA_SECRET"
+supabase secrets set SAVE_AUTOPAY_CRON_SECRET="A_LONG_RANDOM_VALUE"
 ```
 
-The key supplied in chat is intentionally not written anywhere in this package.
+Optional if your card program requires an account token on card issuance:
 
-Because the sandbox key was pasted into a conversation, rotating it in Lithic before continued development is recommended.
+```bash
+supabase secrets set LITHIC_CARD_ACCOUNT_TOKEN="YOUR_ACCOUNT_TOKEN"
+```
 
-## 5. Deploy the Edge Function
+`LITHIC_FINANCIAL_ACCOUNT_TOKEN` is required for real Lithic sandbox ACH collection/payment calls. It is intentionally not guessed or hard-coded.
+
+## 4. Deploy functions
 
 ```bash
 supabase link --project-ref hqkiexffibcrpjkiavqg
 supabase functions deploy lithic-card
+supabase functions deploy money-movement
+supabase functions deploy process-autopay --no-verify-jwt
+supabase functions deploy lithic-webhook --no-verify-jwt
+supabase functions deploy lithic-authorization --no-verify-jwt
 ```
 
-The function validates the signed-in Supabase user, verifies fund membership, calls Lithic sandbox, and persists only the Lithic card token plus safe display metadata. It does **not** persist PAN or CVV.
+`money-movement` and `lithic-card` require the signed-in user's Supabase JWT. `process-autopay` uses `SAVE_AUTOPAY_CRON_SECRET`. `lithic-webhook` and `lithic-authorization` authenticate Lithic using HMAC signatures.
 
-## Current sandbox behavior
+## 5. Lithic event webhook
 
-Working app flows:
+Create a Lithic Events API subscription pointing to:
 
-- Google OAuth sign-in
-- Email sign up / sign in / magic link
-- Create shared goal
-- Join by invite code
-- Fund goal/progress dashboard
-- Equal-share initialization
-- Personal spend-power display
-- Sandbox contribution ledger
-- Fund spending modes
-- Unlock-funds requests
-- Majority, unanimous, or organizer approval
-- Automatic increase to requester's spend limit when approved
-- Fund member list
-- Recent ledger activity
-- Lithic sandbox virtual-card creation through Edge Function
-- PWA shell / installable web app basics
+`https://hqkiexffibcrpjkiavqg.supabase.co/functions/v1/lithic-webhook`
 
-Intentionally not wired to real money yet:
+Subscribe at minimum to the applicable payment/financial-transaction update events and card-transaction update events for your program. Put the subscription signing secret in `LITHIC_WEBHOOK_SECRET`.
 
-- ACH or debit funding
-- recurring bank pulls
-- real card authorization webhooks
-- production account holders
-- Apple Pay / Google Pay provisioning
-- withdrawals / settlement to external accounts
+The webhook handler:
 
-Those require the approved Lithic/banking program structure and production tokenization/funding setup. The database contains `contribution_plans` so recurring saving can be attached without redesigning the core model.
+1. verifies `webhook-id`, `webhook-timestamp`, and `webhook-signature`
+2. rejects stale/replayed invalid requests
+3. stores the provider event ID once
+4. reconciles payment state
+5. writes a ledger entry only when a money movement reaches `settled`
+6. recalculates the cached fund balance
 
-## Important production rule
+## 5A. Real-time fair-share card authorization
 
-Never treat the `current_balance_cents` field as an authoritative bank balance in production. Once real funds are enabled, provider ledger/webhook events should be the source of truth, with idempotent reconciliation into `ledger_entries` and the cached balance.
+Enroll this responder as the Lithic **AUTH_STREAM_ACCESS** endpoint for the program:
+
+`https://hqkiexffibcrpjkiavqg.supabase.co/functions/v1/lithic-authorization`
+
+The responder uses an atomic Postgres reservation function before approving debit authorizations. It checks both the group balance and the member's current spending limit, so simultaneous card attempts cannot both spend the same available dollars. Credit authorizations are approved, and balance inquiries return the member's available amount.
+
+Configure Lithic's ASA HMAC secret as `LITHIC_ASA_WEBHOOK_SECRET`. If your program uses the same event secret for ASA and Events API, the function can fall back to `LITHIC_WEBHOOK_SECRET`.
+
+## 6. Auto-save GitHub secret
+
+In the `whatmod` repository, create the Actions secret:
+
+`SAVE_AUTOPAY_CRON_SECRET`
+
+Use the **same value** stored in Supabase. `.github/workflows/save-autopay.yml` checks due plans hourly. For a regulated production launch, moving this schedule to a dedicated backend/Supabase Cron is recommended, but the included workflow is functional for the current architecture and sandbox.
+
+## 7. GitHub Pages / builds
+
+The app remains a plain `/save` static site using only relative frontend paths, so your existing GitHub Pages deployment can continue unchanged.
+
+`.github/workflows/save-build.yml`:
+
+- syntax-checks the frontend
+- checks for likely private secrets in the static source
+- verifies required migrations/files
+- builds `dist/save`
+- uploads `save-pages-build` as a workflow artifact
+
+It **does not call `deploy-pages`**, specifically to avoid hijacking or breaking the existing `whatmod` Pages publishing strategy.
+
+## 8. Apple Pay and Google Pay
+
+The UI now calls the `lithic-card` Edge Function for Lithic's web push-provisioning endpoint:
+
+- Apple Pay → `APPLE_PAY`
+- Google Pay → `GOOGLE_PAY`
+
+The server-side integration is present, but the final wallet-provider handoff depends on your Lithic card program/BIN being enabled for Digital Wallet Provisioning and on the wallet-provider implementation/entitlements Lithic provides. The app will report the provider error instead of pretending the card was added.
+
+For a native iOS app, Apple's in-app push provisioning also requires the Apple provisioning entitlement and additional native PassKit work. The current GitHub Pages app uses Lithic's web provisioning path so web functionality remains intact.
+
+## 9. Payout meaning
+
+"Pay me back" is modeled as an ACH `PAYMENT` to a verified external bank account. The server checks the user's refundable amount before creating the movement. A payout remains pending until provider settlement.
+
+For a future debit-card funding rail, "refund to original payment method" should use that rail/provider's refund/reversal semantics rather than an ACH payout. Do not fake that behavior by inserting a negative ledger row client-side.
+
+## Security rules
+
+- Never put Lithic or Supabase service-role credentials in `config.js` or GitHub Pages.
+- `config.js` contains only the Supabase **publishable** key.
+- Browser values are never authoritative balances.
+- Raw routing/account numbers are not persisted in Save tables.
+- PAN/CVV are never persisted in Save tables.
+- Financial writes are server-side and idempotency-aware.
+- RLS remains enabled and is part of the authorization boundary.
