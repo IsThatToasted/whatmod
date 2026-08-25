@@ -1,3 +1,7 @@
+-- Save 005: Existing-database repair + goal deletion
+-- RUN THIS FILE on an existing Save database. Do NOT rerun schema.sql.
+-- Self-contained/idempotent upgrade for the commitment model.
+
 -- Save 004: Commitment model
 -- Additive migration. Does not remove prior payment/Lithic/PayPal tables so existing data remains intact.
 

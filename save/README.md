@@ -1,3 +1,16 @@
+
+## Existing Supabase database: important
+
+If Save is already installed, **do not run `supabase/schema.sql` again**. That file is the first-install bootstrap and may collide with RLS policies that already exist.
+
+For the commitment build, run only:
+
+```sql
+save/supabase/migrations/005_commitment_repair_and_goal_delete.sql
+```
+
+Migration 005 is intentionally safe for the existing project: it creates the commitment tables/RPCs if missing, refreshes only the commitment-era read policies, preserves existing fund/profile data, and adds owner-only goal deletion.
+
 # Save — Commitment Planner
 
 Save now uses a **promise-to-pay / commitment model**. It coordinates shared goals without holding, charging, refunding, or transmitting money.
