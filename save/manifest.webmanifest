@@ -1,15 +1,14 @@
 {
-  "name": "Save — Shared Goals",
+  "name": "Save — Commit Together",
   "short_name": "Save",
-  "description": "Shared savings, spending controls and group money for trips, tickets and events.",
-  "id": "/save/",
-  "start_url": "/save/",
-  "scope": "/save/",
+  "description": "Shared commitment planning for trips, tickets, events and group goals.",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f7fa",
-  "theme_color": "#f5f7fa",
+  "background_color": "#f5f7fb",
+  "theme_color": "#f5f7fb",
   "icons": [
-    {"src":"./icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"./icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {"src":"./icons/icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"./icons/icon-512.png","sizes":"512x512","type":"image/png"}
   ]
 }
