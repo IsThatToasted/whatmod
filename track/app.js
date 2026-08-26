@@ -6793,7 +6793,7 @@ window.WETRACK_RELEASE='3.3.1';
     try {
       v34AmbientCtx = new (window.AudioContext || window.webkitAudioContext)();
       const master = v34AmbientCtx.createGain();
-      master.gain.value=.025;
+      master.gain.value=.005;
       master.connect(v34AmbientCtx.destination);
       [196,246.94,329.63].forEach((freq,idx)=>{
         const osc=v34AmbientCtx.createOscillator();
@@ -6827,6 +6827,10 @@ window.WETRACK_RELEASE='3.3.1';
       if(!audio) return;
       audio.src=s.audio_url;
       audio.loop=true;
+      try {
+        const savedVol = localStorage.getItem('wetrack:slideshowVolume:v1');
+        audio.volume = Math.max(0, Math.min(1, (savedVol === null ? 20 : Number(savedVol)) / 100));
+      } catch(_) { audio.volume=.2; }
       try { await audio.play(); }
       catch(_) { window.showAppToast?.('Tap Soundtrack to start audio if your browser blocked autoplay.','info'); }
       return;
@@ -6837,7 +6841,7 @@ window.WETRACK_RELEASE='3.3.1';
       const wrap=$v34('memoryYoutubePlayerWrap');
       if(!id || !wrap) return;
       wrap.classList.remove('hidden');
-      wrap.innerHTML=`<div class="memory-youtube-now"><span>▶ YouTube soundtrack</span><small>Playing with YouTube</small></div><iframe title="YouTube slideshow soundtrack" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&loop=1&playlist=${encodeURIComponent(id)}&controls=1&playsinline=1"></iframe>`;
+      wrap.innerHTML=`<div class="memory-youtube-now"><span>▶ YouTube soundtrack</span><small>Playing with YouTube</small></div><iframe title="YouTube slideshow soundtrack" allow="autoplay; encrypted-media" referrerpolicy="strict-origin-when-cross-origin" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&loop=1&playlist=${encodeURIComponent(id)}&controls=1&playsinline=1&enablejsapi=1"></iframe>`;
       youtubeFrame=wrap.querySelector('iframe');
     }
   }
@@ -7091,3 +7095,179 @@ window.WETRACK_RELEASE='3.3.1';
 
   updateSoundtrackStatus();
 })();
+
+
+/* ============================================================
+   WeTrack V3.4.1 — Slideshow Volume + YouTube Autoplay
+   ============================================================ */
+(function WeTrackSlideshowVolumeV341(){
+  const VOL_KEY='wetrack:slideshowVolume:v1';
+  let ytCommandTimer=null;
+
+  const byId341=id=>document.getElementById(id);
+  const clamp341=v=>Math.max(0,Math.min(100,Number(v)||0));
+  const read341=()=>{
+    try {
+      const raw=localStorage.getItem(VOL_KEY);
+      return raw===null?20:clamp341(raw);
+    } catch(_) { return 20; }
+  };
+  const save341=v=>{ try { localStorage.setItem(VOL_KEY,String(clamp341(v))); } catch(_) {} };
+
+  function sendYT341(){
+    const frame=document.querySelector('#memoryYoutubePlayerWrap iframe');
+    if(!frame?.contentWindow) return;
+    const v=read341();
+    const command=(func,args=[])=>{
+      try {
+        frame.contentWindow.postMessage(JSON.stringify({event:'command',func,args}),'*');
+      } catch(_) {}
+    };
+    command('setVolume',[v]);
+    command(v===0?'mute':'unMute');
+    command('playVideo');
+  }
+
+  function apply341(value,persist=true){
+    const v=clamp341(value);
+    if(persist) save341(v);
+    const slider=byId341('memorySlideshowVolume');
+    const output=byId341('memorySlideshowVolumeValue');
+    if(slider && Number(slider.value)!==v) slider.value=String(v);
+    if(output) output.textContent=`${v}%`;
+
+    const audio=byId341('memorySlideshowAudio');
+    if(audio) audio.volume=v/100;
+
+    sendYT341();
+  }
+
+  function commandYTUntilReady(){
+    if(ytCommandTimer) clearInterval(ytCommandTimer);
+    let attempts=0;
+    ytCommandTimer=setInterval(()=>{
+      attempts++;
+      sendYT341();
+      if(attempts>=16) {
+        clearInterval(ytCommandTimer);
+        ytCommandTimer=null;
+      }
+    },250);
+  }
+
+  const slider=byId341('memorySlideshowVolume');
+  if(slider){
+    slider.value=String(read341());
+    slider.addEventListener('input',()=>apply341(slider.value,true));
+    apply341(read341(),false);
+  }
+
+  const audio=byId341('memorySlideshowAudio');
+  if(audio){
+    ['play','loadedmetadata'].forEach(evt=>{
+      audio.addEventListener(evt,()=>apply341(read341(),false));
+    });
+  }
+
+  const ytWrap=byId341('memoryYoutubePlayerWrap');
+  if(ytWrap){
+    new MutationObserver(()=>{
+      const frame=ytWrap.querySelector('iframe');
+      if(!frame) return;
+      frame.addEventListener('load',()=>{
+        apply341(read341(),false);
+        commandYTUntilReady();
+      },{once:true});
+    }).observe(ytWrap,{childList:true});
+  }
+
+  // Entering Full Slideshow is already a user gesture. If the current trip
+  // uses YouTube, repeatedly issue play/volume commands right after opening.
+  document.addEventListener('click',event=>{
+    const trigger=event.target.closest(
+      '#memorySlideshowBtn,#completedViewSlideshowBtn,.memory-photo-btn,#completedStoryStage .completed-slide-card'
+    );
+    if(!trigger) return;
+    setTimeout(()=>{
+      apply341(read341(),false);
+      const trip=(typeof currentTrip==='function' && currentTrip()) || {};
+      if(String(trip.slideshow_audio_type||'')==='youtube' && trip.slideshow_youtube_url){
+        commandYTUntilReady();
+      }
+    },100);
+  },true);
+
+  byId341('memorySlideshowDialog')?.addEventListener('close',()=>{
+    if(ytCommandTimer){ clearInterval(ytCommandTimer); ytCommandTimer=null; }
+  });
+})();
+
+window.WETRACK_RELEASE='3.4.1';
+
+/* WeTrack V3.4.2 — prepared YouTube soundtrack */
+(function(){
+  const ID='memoryPreparedYoutube';
+  let retry=null;
+
+  function trip(){ try{return currentTrip?.()||{}}catch(_){return{}} }
+  function vol(){
+    try{
+      const x=localStorage.getItem('wetrack:slideshowVolume:v1');
+      return Math.max(0,Math.min(100,x===null?20:Number(x)||0));
+    }catch(_){return 20}
+  }
+  function yid(raw){
+    try{
+      const u=new URL(String(raw||'').trim());
+      if(u.hostname.includes('youtu.be')) return (u.pathname.split('/')[1]||'').split('?')[0];
+      if(u.pathname.startsWith('/shorts/')) return u.pathname.split('/')[2]||'';
+      if(u.pathname.startsWith('/embed/')) return u.pathname.split('/')[2]||'';
+      return u.searchParams.get('v')||'';
+    }catch(_){return''}
+  }
+  function cmd(f,fn,args=[]){
+    try{f?.contentWindow?.postMessage(JSON.stringify({event:'command',func:fn,args}),'*')}catch(_){}
+  }
+  function ensure(){
+    const t=trip();
+    const id=String(t.slideshow_audio_type||'')==='youtube'?yid(t.slideshow_youtube_url):'';
+    let f=document.getElementById(ID);
+    if(!id){f?.remove();return null}
+    if(f?.dataset.videoId===id)return f;
+    f?.remove();
+    f=document.createElement('iframe');
+    f.id=ID; f.dataset.videoId=id; f.allow='autoplay; encrypted-media';
+    f.tabIndex=-1; f.setAttribute('aria-hidden','true');
+    f.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;border:0';
+    f.src=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?enablejsapi=1&playsinline=1&controls=0&loop=1&playlist=${encodeURIComponent(id)}&autoplay=0`;
+    document.body.appendChild(f);
+    return f;
+  }
+  function play(){
+    const f=ensure(); if(!f)return;
+    const v=vol();
+    const send=()=>{cmd(f,'setVolume',[v]);cmd(f,v===0?'mute':'unMute');cmd(f,'playVideo')};
+    send();
+    clearInterval(retry);
+    let n=0; retry=setInterval(()=>{send();if(++n>=10)clearInterval(retry)},180);
+  }
+  function stop(){const f=document.getElementById(ID);cmd(f,'pauseVideo');clearInterval(retry)}
+  function prep(){requestAnimationFrame(ensure)}
+  window.addEventListener('load',()=>setTimeout(prep,400));
+  document.addEventListener('change',e=>{if(e.target?.id==='tripSelect')setTimeout(prep,50)});
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#memorySlideshowBtn,#completedViewSlideshowBtn,.memory-photo-btn,#completedStoryStage .completed-slide-card')){
+      const t=trip();
+      if(String(t.slideshow_audio_type||'')==='youtube'&&t.slideshow_youtube_url) play();
+    }
+  },true);
+  document.getElementById('memorySlideshowVolume')?.addEventListener('input',()=>{
+    const f=document.getElementById(ID);cmd(f,'setVolume',[vol()]);cmd(f,vol()===0?'mute':'unMute')
+  });
+  document.getElementById('memorySlideshowDialog')?.addEventListener('close',stop);
+  window.WeTrackPreparedYouTube={prepare:prep,play,stop};
+})();
+window.WETRACK_RELEASE='3.4.2';
+
+/* WeTrack V3.5 production UI polish */
+window.WETRACK_RELEASE='3.5.0';

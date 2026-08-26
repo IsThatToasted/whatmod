@@ -7,7 +7,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WeTrack</title>
-  <link rel="stylesheet" href="./styles.css?v=560" />
+  <link rel="stylesheet" href="./styles.css?v=570" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -497,6 +497,11 @@
       <div id="memoryYoutubePlayerWrap" class="memory-youtube-player-wrap hidden"></div>
       <audio id="memorySlideshowAudio" class="hidden" preload="metadata" loop></audio>
       <div class="memory-slide-progress"><span id="memorySlideProgressBar"></span></div>
+      <div class="memory-slideshow-volume">
+        <span aria-hidden="true">🔈</span>
+        <input id="memorySlideshowVolume" type="range" min="0" max="100" step="1" value="20" aria-label="Slideshow volume" />
+        <output id="memorySlideshowVolumeValue">20%</output>
+      </div>
       <div class="dialog-actions memory-slide-nav">
         <button id="memoryPrevBtn" type="button" class="ghost-btn">← Back</button>
         <button id="memoryPauseBtn" type="button" class="ghost-btn">Ⅱ Pause</button>
@@ -624,7 +629,7 @@
   <div id="undoToast" class="undo-toast hidden"><span id="undoToastText">Updated</span><button id="undoBtn" type="button">Undo</button></div>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./shop-config.js?v=520"></script>
-  <script src="./app.js?v=560"></script>
-  <script src="./display-v2.js?v=560"></script>
+  <script src="./app.js?v=570"></script>
+  <script src="./display-v2.js?v=570"></script>
 </body>
 </html>

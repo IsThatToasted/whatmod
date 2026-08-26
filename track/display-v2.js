@@ -48,27 +48,22 @@
       document.querySelector('.progress-panel')
     ],
     plan: () => [
-      document.querySelector('.toolbar.glass'),
       document.querySelector('.planner-panel'),
       document.querySelector('.timeline-controls')
     ],
     explore: () => [
-      document.querySelector('.toolbar.glass'),
       document.getElementById('dailyMapPanel')
     ],
     memories: () => [
-      document.querySelector('.toolbar.glass'),
       document.getElementById('memoryPanel')
     ],
     tools: () => [
-      document.querySelector('.toolbar.glass'),
       document.getElementById('packingPanel'),
       document.getElementById('mustDoPanel'),
       document.getElementById('gasPanel'),
       document.getElementById('activityGeneratorPanel')
     ],
     people: () => [
-      document.querySelector('.toolbar.glass'),
       document.querySelector('.share-panel')
     ]
   };
@@ -92,6 +87,14 @@
       home:'Trip Home', plan:'Plan', explore:'Explore', memories:'Memories',
       tools:'Travel Tools', people:'People'
     })[next];
+
+    const tripLabel = document.getElementById('v2CurrentTripLabel');
+    if (tripLabel) {
+      const select = document.getElementById('tripSelect');
+      const label = select?.selectedOptions?.[0]?.textContent?.trim() || '';
+      tripLabel.textContent = label;
+      tripLabel.hidden = next === 'home' || !label;
+    }
 
     if (next === 'explore') {
       setTimeout(() => {
@@ -136,7 +139,7 @@
     header.id = 'v2WorkspaceHeader';
     header.className = 'v2-workspace-header';
     header.innerHTML = `
-      <div><small>WETRACK</small><h1 id="v2WorkspaceTitle">Trip Home</h1></div>
+      <div><small>WETRACK</small><h1 id="v2WorkspaceTitle">Trip Home</h1><span id="v2CurrentTripLabel" class="v2-current-trip-label" hidden></span></div>
       <div class="v2-trip-shortcut">
         <button type="button" data-v2-nav="plan">Continue planning →</button>
       </div>`;
@@ -160,21 +163,73 @@
     const more = document.createElement('div');
     more.id = 'v2MoreSheet';
     more.className = 'v2-more-sheet';
+    more.setAttribute('role','dialog');
+    more.setAttribute('aria-modal','true');
+    more.setAttribute('aria-labelledby','v2MoreTitle');
     more.innerHTML = `
-      <button type="button" class="v2-sheet-close" aria-label="Close">×</button>
-      <h2>More</h2>
-      <button data-v2-nav="tools"><span>◫</span><b>Travel Tools</b><small>Packing, Must Do, gas & activities</small></button>
-      <button data-v2-nav="people"><span>♟</span><b>People</b><small>Travelers & invitations</small></button>
-      <a href="./settings.html"><span>⚙</span><b>Settings</b><small>Theme, display & account</small></a>`;
+      <section class="v2-more-panel">
+        <div class="v2-sheet-grabber" aria-hidden="true"></div>
+        <header class="v2-more-header">
+          <div>
+            <span class="v2-more-eyebrow">WETRACK</span>
+            <h2 id="v2MoreTitle">More</h2>
+            <p>Trip tools, travelers and app settings.</p>
+          </div>
+          <button type="button" class="v2-sheet-close" aria-label="Close More menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>
+          </button>
+        </header>
+        <div class="v2-more-group">
+          <span class="v2-more-group-label">TRIP</span>
+          <button data-v2-nav="tools" class="v2-more-row">
+            <span class="v2-more-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6V4.8A1.8 1.8 0 0 1 9.8 3h4.4A1.8 1.8 0 0 1 16 4.8V6M5 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Zm3 0v13m8-13v13"/></svg>
+            </span>
+            <span class="v2-more-copy"><b>Travel Tools</b><small>Packing, Must Do, gas & activity ideas</small></span>
+            <span class="v2-more-chevron" aria-hidden="true">›</span>
+          </button>
+          <button data-v2-nav="people" class="v2-more-row">
+            <span class="v2-more-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7-1a3 3 0 1 0 0-6m-7 9c-3.6 0-6.5 2.1-6.5 4.8V20h13v-2.2C15 15.1 12.1 13 8.5 13Zm7.3-.1c3 .3 5.2 2.2 5.2 4.5V20h-4"/></svg>
+            </span>
+            <span class="v2-more-copy"><b>People</b><small>Travelers, collaboration and invitations</small></span>
+            <span class="v2-more-chevron" aria-hidden="true">›</span>
+          </button>
+        </div>
+        <div class="v2-more-group">
+          <span class="v2-more-group-label">APP</span>
+          <a href="./settings.html" class="v2-more-row">
+            <span class="v2-more-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2A3.2 3.2 0 1 0 12 8.8a3.2 3.2 0 0 0 0 6.4Zm7.2-3.2c0-.5 0-1-.1-1.4l2-1.5-2-3.4-2.4 1a8 8 0 0 0-2.4-1.4L14 2.7h-4l-.4 2.6a8 8 0 0 0-2.4 1.4l-2.4-1-2 3.4 2 1.5a8.8 8.8 0 0 0 0 2.8l-2 1.5 2 3.4 2.4-1a8 8 0 0 0 2.4 1.4l.4 2.6h4l.4-2.6a8 8 0 0 0 2.4-1.4l2.4 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.4Z"/></svg>
+            </span>
+            <span class="v2-more-copy"><b>Settings</b><small>Display, notifications, account and preferences</small></span>
+            <span class="v2-more-chevron" aria-hidden="true">›</span>
+          </a>
+        </div>
+        <div class="v2-more-footer"><span>WeTrack</span><small>Plan together. Remember everything.</small></div>
+      </section>`;
     document.body.appendChild(more);
+
+    const openMore = () => {
+      more.classList.add('open');
+      document.body.classList.add('v2-sheet-open');
+      setTimeout(() => more.querySelector('.v2-sheet-close')?.focus(), 60);
+    };
+    const closeMore = () => {
+      more.classList.remove('open');
+      document.body.classList.remove('v2-sheet-open');
+    };
 
     nav.querySelector('[data-v2-nav="more"]')?.addEventListener('click', e => {
       e.preventDefault();
-      more.classList.add('open');
+      openMore();
     });
-    more.querySelector('.v2-sheet-close')?.addEventListener('click', () => more.classList.remove('open'));
+    more.querySelector('.v2-sheet-close')?.addEventListener('click', closeMore);
     more.addEventListener('click', e => {
-      if (e.target === more) more.classList.remove('open');
+      if (e.target === more) closeMore();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && more.classList.contains('open')) closeMore();
     });
   }
 
@@ -185,7 +240,7 @@
       const target = btn.dataset.v2Nav;
       if (!workspaceOrder.includes(target)) return;
       e.preventDefault();
-      document.getElementById('v2MoreSheet')?.classList.remove('open');
+      document.getElementById('v2MoreSheet')?.classList.remove('open'); document.body.classList.remove('v2-sheet-open');
       setWorkspace(target);
     });
 
