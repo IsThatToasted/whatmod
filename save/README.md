@@ -78,3 +78,8 @@ Save does not represent commitments as deposits or verified funds. It never asks
 ## Legacy financial integrations
 
 The prior Lithic and PayPal Edge Functions/migrations remain in the repository only so an existing deployment is not destructively altered. The old AutoPay GitHub workflow has been removed. The commitment UI does not invoke those integrations.
+
+## Upgrade: editable goals + simpler expenses
+For an existing Save database, run **only** `supabase/migrations/006_goal_edit_and_expense_ownership.sql` after migration 005. Do not rerun `schema.sql`.
+
+This release adds editable goal details and three expense coverage modes: unassigned/needed, claimed by the current member, or split equally across active members. Claiming an expense reserves it against that member's commitment and raises their commitment automatically when necessary.
