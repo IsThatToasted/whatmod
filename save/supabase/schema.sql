@@ -210,32 +210,47 @@ alter table public.cards enable row level security;
 alter table public.card_transactions enable row level security;
 
 -- Profiles
+drop policy if exists "profiles readable by authenticated" on public.profiles;
 create policy "profiles readable by authenticated" on public.profiles for select to authenticated using (true);
+drop policy if exists "profile insert self" on public.profiles;
 create policy "profile insert self" on public.profiles for insert to authenticated with check (id=auth.uid());
+drop policy if exists "profile update self" on public.profiles;
 create policy "profile update self" on public.profiles for update to authenticated using (id=auth.uid()) with check (id=auth.uid());
 
 -- Funds
+drop policy if exists "members read funds" on public.funds;
 create policy "members read funds" on public.funds for select to authenticated using (public.is_fund_member(id));
+drop policy if exists "owners update funds" on public.funds;
 create policy "owners update funds" on public.funds for update to authenticated using (public.is_fund_owner(id)) with check (public.is_fund_owner(id));
 
 -- Memberships
+drop policy if exists "members read memberships" on public.fund_members;
 create policy "members read memberships" on public.fund_members for select to authenticated using (public.is_fund_member(fund_id));
+drop policy if exists "owners manage memberships" on public.fund_members;
 create policy "owners manage memberships" on public.fund_members for update to authenticated using (public.is_fund_owner(fund_id)) with check (public.is_fund_owner(fund_id));
 
 -- Contribution plans
+drop policy if exists "members read contribution plans" on public.contribution_plans;
 create policy "members read contribution plans" on public.contribution_plans for select to authenticated using (public.is_fund_member(fund_id));
+drop policy if exists "users manage own contribution plans" on public.contribution_plans;
 create policy "users manage own contribution plans" on public.contribution_plans for all to authenticated using (user_id=auth.uid() and public.is_fund_member(fund_id)) with check (user_id=auth.uid() and public.is_fund_member(fund_id));
 
 -- Ledger (writes go through trusted RPC/Edge Functions)
+drop policy if exists "members read ledger" on public.ledger_entries;
 create policy "members read ledger" on public.ledger_entries for select to authenticated using (public.is_fund_member(fund_id));
 
 -- Unlocks
+drop policy if exists "members read unlock requests" on public.unlock_requests;
 create policy "members read unlock requests" on public.unlock_requests for select to authenticated using (public.is_fund_member(fund_id));
+drop policy if exists "members create unlock requests" on public.unlock_requests;
 create policy "members create unlock requests" on public.unlock_requests for insert to authenticated with check (requester_id=auth.uid() and public.is_fund_member(fund_id));
+drop policy if exists "members read votes" on public.unlock_votes;
 create policy "members read votes" on public.unlock_votes for select to authenticated using (exists(select 1 from public.unlock_requests r where r.id=request_id and public.is_fund_member(r.fund_id)));
 
 -- Cards/transactions: metadata only, never PAN/CVV
+drop policy if exists "users read own cards" on public.cards;
 create policy "users read own cards" on public.cards for select to authenticated using (user_id=auth.uid() and public.is_fund_member(fund_id));
+drop policy if exists "members read card transactions" on public.card_transactions;
 create policy "members read card transactions" on public.card_transactions for select to authenticated using (public.is_fund_member(fund_id));
 
 -- Realtime publications. Ignore duplicate-object errors if already added.

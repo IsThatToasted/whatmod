@@ -1,85 +1,96 @@
-
-## Existing Supabase database: important
-
-If Save is already installed, **do not run `supabase/schema.sql` again**. That file is the first-install bootstrap and may collide with RLS policies that already exist.
-
-For the commitment build, run only:
-
-```sql
-save/supabase/migrations/005_commitment_repair_and_goal_delete.sql
-```
-
-Migration 005 is intentionally safe for the existing project: it creates the commitment tables/RPCs if missing, refreshes only the commitment-era read policies, preserves existing fund/profile data, and adds owner-only goal deletion.
-
 # Save — Commitment Planner
 
-Save now uses a **promise-to-pay / commitment model**. It coordinates shared goals without holding, charging, refunding, or transmitting money.
+Save coordinates shared goals using **commitments, planned expenses, reimbursements, and settlement tracking**. It does not hold, charge, refund, or transmit money.
 
-## Deployment preserved
+## Deployment
 
-- Static frontend remains in `/save` for `https://whatmod.com/save/`.
+- Frontend stays in `/save` for `https://whatmod.com/save/`.
 - Google OAuth continues through the existing Supabase project.
-- Supabase remains the database/auth/realtime backend.
+- Supabase provides database/auth/realtime.
 - GitHub Actions verifies and packages the static Pages artifact.
-- Relative asset paths and the PWA service worker remain compatible with GitHub Pages subfolder hosting.
+- All frontend asset paths remain relative for subfolder hosting.
+- The PWA service worker uses network-first shell caching and never caches Supabase/financial API responses.
 
-## Core model
+## Core product model
 
-1. **Goals** — expected total and date.
-2. **Commitments** — each member's promised amount: firm, flexible, or tentative.
-3. **Plans** — expected expenses reserve portions of commitments.
-4. **Funding Calls** — once a member actually fronts an expense, Save calculates what each member is responsible for.
-5. **Settlements** — members pay outside Save (Venmo, Zelle, PayPal, Apple Cash, cash, bank transfer, etc.) and record/confirm fulfillment.
-6. **Auto Commit** — optionally grows a promise on a weekly, biweekly, or monthly schedule. It never charges a payment method.
+1. **Goals** — name, target amount, date, description.
+2. **Commitments** — each member's promise: firm, flexible, or tentative.
+3. **Expenses** — expected costs can be unassigned, claimed by one member, or split across the group.
+4. **Reimbursements** — when someone fronts a real expense, Save calculates each member's share.
+5. **Settlements** — members pay outside Save and record the transfer; the recipient confirms receipt.
+6. **Auto Commit** — optionally grows a commitment weekly, biweekly, or monthly. It never charges a payment method.
 
-## Upgrade an existing Save database
+## Existing database upgrade — current release
 
-Do **not** reset the existing Supabase database.
-
-Run the additive migration in the Supabase SQL editor:
+If you already have the previous **goal + expense UX v3** installed, run **only**:
 
 ```text
-save/supabase/migrations/004_commitment_model.sql
+save/supabase/migrations/007_production_integrity.sql
 ```
 
-Existing financial/Lithic/PayPal tables are intentionally left intact for data safety and historical compatibility, but the new frontend does not depend on them.
+Migration 007:
 
-## Deploy Auto Commit
+- repairs commitments that were incorrectly hidden when Auto Commit was disabled;
+- permanently separates commitment visibility from Auto Commit scheduling;
+- hardens scheduled Auto Commit processing;
+- prevents unassigned paid expenses from creating empty reimbursements;
+- keeps claimed-expense commitments large enough after an expense is edited upward;
+- distinguishes reimbursement `sent` from recipient-confirmed `covered`;
+- adds safe soft-removal for planned expenses.
 
-Create a long random secret and set it in Supabase:
+Do **not** rerun `schema.sql` on an existing database.
+
+### If you are upgrading from an older commitment build
+
+Run missing migrations in order:
+
+```text
+005_commitment_repair_and_goal_delete.sql
+006_goal_edit_and_expense_ownership.sql
+007_production_integrity.sql
+```
+
+Migration 005 is self-contained for the commitment model, so you do not need to run 004 separately when using 005.
+
+### Fresh Supabase project
+
+For a brand-new empty project:
+
+1. Run `supabase/schema.sql` once.
+2. Run migrations `005`, `006`, and `007` in order.
+3. Do not rerun `schema.sql` after the project is initialized.
+
+## Auto Commit
+
+Set a long random secret in Supabase:
 
 ```bash
 supabase secrets set SAVE_AUTOCOMMIT_CRON_SECRET="YOUR_LONG_RANDOM_VALUE"
 supabase functions deploy process-auto-commit --no-verify-jwt
 ```
 
-Add a GitHub Actions repository secret with the **same value**:
+Add the same value as a GitHub Actions repository secret:
 
 ```text
 SAVE_AUTOCOMMIT_CRON_SECRET
 ```
 
-`.github/workflows/save-auto-commit.yml` checks hourly for due commitment-growth schedules. The server-side RPC updates the commitment and audit event atomically. No payment provider is called.
+`.github/workflows/save-auto-commit.yml` invokes the server-side Auto Commit worker hourly. Only commitments with an explicit amount, cadence, and due `next_build_on` are changed.
 
 ## Google OAuth
 
-Keep your existing Google/Supabase setup:
+Keep:
 
 - Supabase Site URL: `https://whatmod.com/save/`
 - Supabase allowed redirect: `https://whatmod.com/save/`
 - Google OAuth callback: `https://hqkiexffibcrpjkiavqg.supabase.co/auth/v1/callback`
 
-The UI intentionally supports Google sign-in only.
+The frontend intentionally supports Google sign-in only.
 
-## Important product boundary
+## Product boundary
 
-Save does not represent commitments as deposits or verified funds. It never asks users to enter bank/card credentials and does not claim money is reserved at a financial institution. A commitment is a social/planning promise; fulfillment happens outside Save.
+Save never represents commitments as deposits or verified balances. Members keep their money wherever they already keep it and settle through any external method they agree on. Save stores only planning/accountability records.
 
-## Legacy financial integrations
+## Legacy provider code
 
-The prior Lithic and PayPal Edge Functions/migrations remain in the repository only so an existing deployment is not destructively altered. The old AutoPay GitHub workflow has been removed. The commitment UI does not invoke those integrations.
-
-## Upgrade: editable goals + simpler expenses
-For an existing Save database, run **only** `supabase/migrations/006_goal_edit_and_expense_ownership.sql` after migration 005. Do not rerun `schema.sql`.
-
-This release adds editable goal details and three expense coverage modes: unassigned/needed, claimed by the current member, or split equally across active members. Claiming an expense reserves it against that member's commitment and raises their commitment automatically when necessary.
+Older Lithic/PayPal migrations and Edge Function source remain for historical compatibility with prior development builds, but the current frontend does not invoke them and the GitHub build fails if those provider endpoints are reintroduced into `app.js`.
