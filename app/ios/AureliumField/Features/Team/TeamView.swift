@@ -1,0 +1,2 @@
+import SwiftUI
+struct TeamView: View { var body: some View { List { Section("Today") { Label("23 working", systemImage:"person.3.fill");Label("2 missing timecards", systemImage:"clock.badge.exclamationmark");Label("6 active jobsites",systemImage:"mappin.and.ellipse") };Section("Scheduling"){Text("Crew assignments are designed around skills, project phases, cost codes, and labor budgets.").foregroundStyle(.secondary)}}.navigationTitle("Team") } }

@@ -1,0 +1,10 @@
+{
+  "name":"Aurelium Field",
+  "short_name":"Field",
+  "start_url":"/app/#/",
+  "scope":"/app/",
+  "display":"standalone",
+  "background_color":"#0d0f12",
+  "theme_color":"#0d0f12",
+  "description":"Construction operations and AI-assisted painting estimates."
+}
