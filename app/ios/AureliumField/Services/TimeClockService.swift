@@ -81,7 +81,7 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
             entries = rows
             activeEntry = rows.first(where: { $0.clockOut == nil })
             if activeEntry != nil { requestLocation() }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .clockLoad); errorMessage = AFPublicError.text(.clockLoad, "We couldn't load your timecards.") }
     }
 
     func clockIn(projectID: UUID, costCode: String?, notes: String?) async {
@@ -99,7 +99,7 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
             let row: TimeEntryRecord = try await client.from("time_entries").insert(payload)
                 .select("id,organization_id,project_id,user_id,clock_in,clock_out,cost_code,notes,status,submitted_at,approved_at").single().execute().value
             activeEntry = row; await refresh()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .clockIn); errorMessage = AFPublicError.text(.clockIn, "We couldn't clock you in.") }
     }
 
     func clockOut() async {
@@ -111,7 +111,7 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
             let patch = Patch(clock_out: .now, clock_out_latitude: loc?.coordinate.latitude, clock_out_longitude: loc?.coordinate.longitude, clock_out_accuracy_m: loc?.horizontalAccuracy)
             try await client.from("time_entries").update(patch).eq("id", value: entry.id.uuidString).execute()
             activeEntry = nil; manager.stopUpdatingLocation(); await refresh()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .clockOut); errorMessage = AFPublicError.text(.clockOut, "We couldn't clock you out.") }
     }
 
     func updateDraft(_ entry: TimeEntryRecord) async {
@@ -120,13 +120,13 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
         do {
             try await client.from("time_entries").update(Patch(project_id: entry.projectID, clock_in: entry.clockIn, clock_out: entry.clockOut, cost_code: entry.costCode, notes: entry.notes)).eq("id", value: entry.id.uuidString).execute()
             await refresh()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .timeEdit); errorMessage = AFPublicError.text(.timeEdit, "We couldn't save that draft timecard.") }
     }
 
     func submit(_ entry: TimeEntryRecord) async {
         guard let client = cloud.client else { return }
         do { try await client.rpc("submit_time_entry", params: ["entry_id": entry.id.uuidString]).execute(); await refresh() }
-        catch { errorMessage = error.localizedDescription }
+        catch { AFPublicError.capture(error, code: .timeSubmit); errorMessage = AFPublicError.text(.timeSubmit, "We couldn't submit that timecard.") }
     }
 
     func requestEdit(_ entry: TimeEntryRecord, reason: String) async -> Bool {
@@ -136,7 +136,7 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
             let params = Params(entry_id: entry.id, new_clock_in: entry.clockIn, new_clock_out: out, new_project_id: entry.projectID, new_cost_code: entry.costCode, new_notes: entry.notes, edit_reason: reason)
             try await client.rpc("request_time_entry_edit", params: params).execute()
             return true
-        } catch { errorMessage = error.localizedDescription; return false }
+        } catch { AFPublicError.capture(error, code: .timeEdit); errorMessage = AFPublicError.text(.timeEdit, "We couldn't request that correction."); return false }
     }
 
     private func saveLocationSample(_ location: CLLocation, entry: TimeEntryRecord) async {

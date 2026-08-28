@@ -59,7 +59,7 @@ private final class AdminWorkspaceStore {
 
     func load() async {
         guard cloud.isAdmin, let client = cloud.client, let organizationID = cloud.organizationID else {
-            errorMessage = "Admin access is required."
+            errorMessage = AFPublicError.text(.adminAccess, "Admin access is required.")
             return
         }
         isLoading = true
@@ -79,7 +79,7 @@ private final class AdminWorkspaceStore {
                 .order("created_at", ascending: true)
                 .execute().value
             invites = try await cloud.fetchOrganizationInvites()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .adminLoad); errorMessage = AFPublicError.text(.adminLoad, "We couldn't load the admin workspace.") }
     }
 
     func approve(_ entry: TimeEntryRecord) async { await decide(entry, approve: true, note: nil) }
@@ -91,13 +91,13 @@ private final class AdminWorkspaceStore {
         do {
             try await client.rpc("admin_decide_time_entry", params: Params(entry_id: entry.id, approve: approve, decision_note: note)).execute()
             await load()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .adminTimeUpdate); errorMessage = AFPublicError.text(.adminTimeUpdate, "We couldn't review that timecard.") }
     }
 
     func deleteTimecard(_ entry:TimeEntryRecord) async {
         guard let client=cloud.client else{return}
         struct Params:Encodable{let entry_id:UUID}
-        do{try await client.rpc("admin_delete_time_entry",params:Params(entry_id:entry.id)).execute();await load()}catch{errorMessage=error.localizedDescription}
+        do { try await client.rpc("admin_delete_time_entry", params: Params(entry_id: entry.id)).execute(); await load() } catch { AFPublicError.capture(error, code: .adminTimeDelete); errorMessage = AFPublicError.text(.adminTimeDelete, "We couldn't delete that timecard.") }
     }
 
     func decideEditRequest(_ request: AdminTimeEditRequest, approve: Bool) async {
@@ -106,7 +106,7 @@ private final class AdminWorkspaceStore {
         do {
             try await client.rpc("decide_time_entry_edit", params: Params(request_id: request.id, approve: approve, admin_note: nil)).execute()
             await load()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .adminTimeUpdate); errorMessage = AFPublicError.text(.adminTimeUpdate, "We couldn't review that correction request.") }
     }
 }
 
@@ -328,7 +328,7 @@ private struct AdminTimeEntryEditor: View {
             try await client.rpc("admin_update_time_entry", params: params).execute()
             await onSaved()
             dismiss()
-        } catch { store.errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .adminTimeUpdate); store.errorMessage = AFPublicError.text(.adminTimeUpdate, "We couldn't save that timecard adjustment.") }
     }
 }
 
@@ -374,7 +374,7 @@ private struct AdminEmployeesView: View {
     private func initial(_ member: AdminOrganizationMember) -> String { String((member.displayName ?? member.email ?? "?").prefix(1)).uppercased() }
     private func remove(_ member: AdminOrganizationMember) async {
         do { try await cloud.removeAdminMember(userID: member.userID); await store.load() }
-        catch { store.errorMessage = error.localizedDescription }
+        catch { AFPublicError.capture(error, code: .adminMemberUpdate); store.errorMessage = AFPublicError.text(.adminMemberUpdate, "We couldn't remove that employee.") }
     }
 }
 
@@ -405,7 +405,7 @@ private struct AdminEmployeeEditor: View {
 
     private func save() async {
         do { try await cloud.updateAdminMember(member); await onSaved(); dismiss() }
-        catch { store.errorMessage = error.localizedDescription }
+        catch { AFPublicError.capture(error, code: .adminMemberUpdate); store.errorMessage = AFPublicError.text(.adminMemberUpdate, "We couldn't save that employee.") }
     }
 }
 
@@ -451,12 +451,12 @@ private struct AdminInvitesView: View {
             let token = try await cloud.createOrganizationInvite(email: email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : email.trimmingCharacters(in: .whitespacesAndNewlines), role: role)
             generatedURL = URL(string: "https://whatmod.com/app/#/join?invite=\(token.uuidString)")
             await store.load()
-        } catch { store.errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .adminInvite); store.errorMessage = AFPublicError.text(.adminInvite, "We couldn't create that invitation.") }
     }
 
     private func revoke(_ invite: OrganizationInviteRecord) async {
         do { try await cloud.revokeOrganizationInvite(id: invite.id); await store.load() }
-        catch { store.errorMessage = error.localizedDescription }
+        catch { AFPublicError.capture(error, code: .adminInvite); store.errorMessage = AFPublicError.text(.adminInvite, "We couldn't revoke that invitation.") }
     }
 
     private func inviteStatus(_ invite: OrganizationInviteRecord) -> String {

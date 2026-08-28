@@ -40,14 +40,14 @@ final class ScanRecordingService {
                         self.statusText = "Video recording"
                         missedFrames = 0
                     } catch {
-                        self.errorMessage = "Video capture paused: \(error.localizedDescription)"
+                        AFPublicError.capture(error, code: .videoCapture); self.errorMessage = AFPublicError.text(.videoCapture, "The optional review video paused, but your walkthrough can continue.")
                         self.isRecording = false
                         break
                     }
                 } else {
                     missedFrames += 1
                     if missedFrames > 30 {
-                        self.errorMessage = "The scan is continuing, but no camera frames were available for the review video."
+                        self.errorMessage = AFPublicError.text(.videoCapture, "The optional review video is unavailable, but your walkthrough can continue.")
                         self.isRecording = false
                         break
                     }
@@ -82,8 +82,8 @@ final class ScanRecordingService {
             }
         }
 
-        let message = writer.error?.localizedDescription ?? "The review video could not be finalized."
-        errorMessage = "The RoomPlan scan was saved, but its optional review video was not: \(message)"
+        if let writerError = writer.error { AFPublicError.capture(writerError, code: .videoCapture) }
+        errorMessage = AFPublicError.text(.videoCapture, "The walkthrough was saved, but its optional review video is unavailable.")
         try? FileManager.default.removeItem(at: output)
         resetWriterState()
         return (nil, duration)

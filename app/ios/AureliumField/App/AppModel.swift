@@ -49,7 +49,7 @@ final class AppModel {
         do {
             let cloud = try await SupabaseService.shared.fetchProjects()
             if !cloud.isEmpty { projects = cloud; if let first = projects.first { selectProject(first) }; persist() }
-        } catch { SupabaseService.shared.errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .projectLoad); SupabaseService.shared.errorMessage = AFPublicError.text(.projectLoad, "We couldn't refresh projects.") }
     }
 
     func deleteProject(_ project: ProjectSummary) {

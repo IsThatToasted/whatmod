@@ -17,7 +17,7 @@ final class SpeechCaptureService {
         let speech = await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
         }
-        guard speech == .authorized else { errorMessage = "Speech recognition permission is required for narrated walkthroughs."; return false }
+        guard speech == .authorized else { errorMessage = AFPublicError.text(.speechPermission, "Narration permission is required for walkthrough notes."); return false }
         return await withCheckedContinuation { continuation in
             AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
         }

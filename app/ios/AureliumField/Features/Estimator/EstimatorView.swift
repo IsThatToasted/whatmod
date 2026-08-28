@@ -24,7 +24,7 @@ struct EstimatorView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("AI-ASSISTED").font(.caption2.bold()).tracking(1.4).foregroundStyle(.secondary)
                     Text("Scan, narrate, tag, review.").font(.largeTitle.bold())
-                    Text("RoomPlan measurements and your field evidence stay attached to the job from walkthrough through proposal.").foregroundStyle(.secondary)
+                    Text("Spatial measurements and your field evidence stay attached to the job from walkthrough through proposal.").foregroundStyle(.secondary)
                 }
 
                 if let project = model.selectedProject {
@@ -164,7 +164,7 @@ private struct SmartScanExperience: View {
             RoomPlanCaptureView(controller: controller) { room in
                 completedRoom = room
                 Task { await finalize(room: room) }
-            } onError: { errorMessage = $0 }
+            } onError: { _ in errorMessage = AFPublicError.text(.walkthroughCapture, "We couldn't continue the spatial scan.") }
             .ignoresSafeArea()
 
             LinearGradient(colors: [.black.opacity(0.72), .clear, .black.opacity(0.78)], startPoint: .top, endPoint: .bottom).ignoresSafeArea().allowsHitTesting(false)
@@ -200,7 +200,7 @@ private struct SmartScanExperience: View {
         }
         .alert("Walkthrough issue", isPresented: Binding(get: { errorMessage != nil || speech.errorMessage != nil }, set: { if !$0 { errorMessage = nil; speech.errorMessage = nil } })) {
             Button("OK", role: .cancel) { errorMessage = nil; speech.errorMessage = nil }
-        } message: { Text(errorMessage ?? speech.errorMessage ?? "Unknown error") }
+        } message: { Text(errorMessage ?? speech.errorMessage ?? AFPublicError.text(.unknown)) }
     }
 
     private var topBar: some View {
@@ -255,7 +255,7 @@ private struct SmartScanExperience: View {
 
     private func capture(_ tag: EvidenceTag) {
         guard let image = controller.snapshot(), let data = image.jpegData(compressionQuality: 0.82) else {
-            errorMessage = "The camera frame was not ready. Keep scanning and try the tag again."
+            errorMessage = AFPublicError.text(.evidenceCapture, "The camera frame was not ready. Keep scanning and try the tag again.")
             return
         }
         let fileName = "capture-\(UUID().uuidString).jpg"
@@ -264,7 +264,7 @@ private struct SmartScanExperience: View {
             captures.append(.init(id: UUID(), tag: tag, capturedAt: .now, imageFileName: fileName, note: nil))
             withAnimation { captureConfirmation = tag }
             Task { try? await Task.sleep(for: .seconds(1.1)); await MainActor.run { withAnimation { captureConfirmation = nil } } }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .evidenceCapture); errorMessage = AFPublicError.text(.evidenceCapture, "We couldn't save that tagged photo.") }
     }
 
     private func finalize(room: CapturedRoom) async {
@@ -319,7 +319,7 @@ private struct SmartScanExperience: View {
             try encoded.write(to: AppMediaStore.url(for: capturedJSON), options: .atomic)
             jsonName = capturedJSON
         } catch {
-            errorMessage = "The walkthrough was measured, but its 3D model could not be saved: \(error.localizedDescription)"
+            AFPublicError.capture(error, code: .modelExport); errorMessage = AFPublicError.text(.modelExport, "Measurements were saved, but the 3D room model could not be stored.")
         }
 
         pendingWalkthrough = WalkthroughScan(id: scanID, projectID: project.id, createdAt: .now, room: summary, transcript: speech.transcript, captures: captures, videoFileName: recording.fileName, durationSeconds: recording.duration, usdzFileName: usdzName, roomPlanJSONFileName: jsonName, measurements: measurements, autoEstimate: nil, measuredWalls: measuredWalls)
@@ -501,7 +501,7 @@ private struct PostScanEstimateView: View {
                 }
 
                 scopeSection(title: "Paint Ceiling", isOn: $paintCeiling, icon: "rectangle.topthird.inset.filled") {
-                    Text("Ceiling area starts from RoomPlan's detected floor footprint for the room. Adjust if the ceiling is vaulted, tray-shaped, or otherwise non-planar.")
+                    Text("Ceiling area starts from the spatial scan's detected floor footprint for the room. Adjust if the ceiling is vaulted, tray-shaped, or otherwise non-planar.")
                         .font(.caption).foregroundStyle(.secondary)
                     quantityRateFields(quantity: $ceilingQuantity, quantitySuffix: "sq ft", rate: $ceilingRate, rateSuffix: "sq ft/hr", labor: ceilingHours)
                 }

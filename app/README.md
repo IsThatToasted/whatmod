@@ -67,7 +67,7 @@ The review screen can reopen the saved USDZ room model through Quick Look.
 
 ## iOS build
 
-The root workflow builds a physical-device `iphoneos` target and packages `AureliumField.ipa`. It injects the two repository variables above as iOS build settings. The IPA remains unsigned until Apple signing credentials are configured.
+The root workflow builds a physical-device `iphoneos` target and packages `AureliumField.ipa`. It validates the two repository variables, injects them into the iOS runtime Info.plist before compilation, then verifies the built `.app` contains valid non-placeholder values before packaging the IPA. A missing/invalid configuration fails the workflow with `AF-CFG-001` instead of shipping a disconnected app. The IPA remains unsigned until Apple signing credentials are configured.
 
 
 ## v0.3.1 walkthrough update
@@ -79,3 +79,7 @@ Apply `supabase/migrations/004_admin_workspace.sql` after migrations 001–003. 
 
 ## v0.5.0 database update
 Run `supabase/migrations/005_project_walkthrough_completion.sql` after the safe 004 migration. It is idempotent.
+
+
+## v0.5.1 configuration + public error codes
+The iOS workflow now hard-validates packaged runtime configuration before IPA creation. User-facing production errors are sanitized into stable `AF-*` reference codes; see `ERROR_CODES.md`. Raw provider/database/storage errors are not rendered to end users.

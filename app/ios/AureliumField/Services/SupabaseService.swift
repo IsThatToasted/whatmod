@@ -56,7 +56,7 @@ final class SupabaseService {
 
     func bootstrap() async {
         defer { isLoading = false }
-        guard let client else { errorMessage = "Supabase is not configured in the iOS build."; return }
+        guard let client else { errorMessage = AFPublicError.text(.configuration, "Aurelium Field could not connect to your workspace."); return }
         do {
             let session = try await client.auth.session
             userID = session.user.id
@@ -69,14 +69,14 @@ final class SupabaseService {
     }
 
     func signInWithGoogle() async {
-        guard let client else { errorMessage = "Supabase is not configured."; return }
+        guard let client else { errorMessage = AFPublicError.text(.configuration, "Aurelium Field could not connect to your workspace."); return }
         do {
             try await client.auth.signInWithOAuth(provider: .google, redirectTo: URL(string: "aureliumfield://auth-callback")!)
             let session = try await client.auth.session
             userID = session.user.id
             email = session.user.email
             await loadMembership()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .authentication); errorMessage = AFPublicError.text(.authentication, "We couldn't complete sign in.") }
     }
 
     func handle(_ url: URL) async {
@@ -87,13 +87,13 @@ final class SupabaseService {
             userID = session.user.id
             email = session.user.email
             await loadMembership()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { AFPublicError.capture(error, code: .authCallback); errorMessage = AFPublicError.text(.authCallback, "We couldn't finish sign in.") }
     }
 
     func signOut() async {
         guard let client else { return }
         do { try await client.auth.signOut(); userID = nil; email = nil; membership = nil }
-        catch { errorMessage = error.localizedDescription }
+        catch { AFPublicError.capture(error, code: .signOut); errorMessage = AFPublicError.text(.signOut, "We couldn't sign out cleanly.") }
     }
 
     func loadMembership() async {
@@ -107,7 +107,7 @@ final class SupabaseService {
                 .limit(1)
                 .execute().value
             membership = rows.first
-        } catch { membership = nil }
+        } catch { AFPublicError.capture(error, code: .authentication); membership = nil; errorMessage = AFPublicError.text(.authentication, "We couldn't load your organization access.") }
     }
 
 
@@ -152,23 +152,23 @@ final class SupabaseService {
                               status: project.status.lowercased(), primary_trade: project.trade.lowercased(),
                               description: project.notes.isEmpty ? nil : project.notes, created_by: userID)
         do { try await client.from("projects").upsert(payload).execute() }
-        catch { errorMessage = error.localizedDescription }
+        catch { AFPublicError.capture(error, code: .projectSave); errorMessage = AFPublicError.text(.projectSave, "We couldn't save that project.") }
     }
 
     func deleteProject(id: UUID) async {
         guard let client else { return }
         do { try await client.from("projects").delete().eq("id", value: id.uuidString).execute() }
-        catch { errorMessage = error.localizedDescription }
+        catch { AFPublicError.capture(error, code: .projectDelete); errorMessage = AFPublicError.text(.projectDelete, "We couldn't delete that project.") }
     }
 
     func createOrganization(name: String) async throws {
-        guard let client else { throw NSError(domain: "Aurelium", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase is not configured."]) }
+        guard let client else { throw AFPublicError.error(.configuration, "Aurelium Field could not connect to your workspace.") }
         let _: UUID = try await client.rpc("create_organization", params: ["org_name": name]).execute().value
         await loadMembership()
     }
 
     func acceptInvite(token: UUID) async throws {
-        guard let client else { throw NSError(domain: "Aurelium", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase is not configured."]) }
+        guard let client else { throw AFPublicError.error(.configuration, "Aurelium Field could not connect to your workspace.") }
         let _: UUID = try await client.rpc("accept_organization_invite", params: ["invite_token": token.uuidString]).execute().value
         await loadMembership()
     }
@@ -213,12 +213,12 @@ struct OrganizationInviteRecord: Codable, Identifiable, Hashable {
 
 extension SupabaseService {
     func fetchAdminMembers() async throws -> [AdminOrganizationMember] {
-        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        guard isAdmin, let client else { throw AFPublicError.error(.adminAccess, "Admin access is required.") }
         return try await client.rpc("admin_list_members").execute().value
     }
 
     func updateAdminMember(_ member: AdminOrganizationMember) async throws {
-        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        guard isAdmin, let client else { throw AFPublicError.error(.adminAccess, "Admin access is required.") }
         struct Params: Encodable {
             let member_user_id: UUID
             let new_display_name: String
@@ -232,7 +232,7 @@ extension SupabaseService {
     }
 
     func removeAdminMember(userID: UUID) async throws {
-        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        guard isAdmin, let client else { throw AFPublicError.error(.adminAccess, "Admin access is required.") }
         try await client.rpc("admin_remove_member", params: ["member_user_id": userID.uuidString]).execute()
     }
 
@@ -247,16 +247,16 @@ extension SupabaseService {
     }
 
     func createOrganizationInvite(email: String?, role: String) async throws -> UUID {
-        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        guard isAdmin, let client else { throw AFPublicError.error(.adminAccess, "Admin access is required.") }
         struct Params: Encodable { let invite_email: String?; let invite_role: String }
         struct Result: Decodable { let token: UUID; let expires_at: Date }
         let rows: [Result] = try await client.rpc("create_organization_invite", params: Params(invite_email: email, invite_role: role)).execute().value
-        guard let token = rows.first?.token else { throw NSError(domain: "Aurelium", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invite could not be created."]) }
+        guard let token = rows.first?.token else { throw AFPublicError.error(.adminInvite, "We couldn't create that invitation.") }
         return token
     }
 
     func revokeOrganizationInvite(id: UUID) async throws {
-        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        guard isAdmin, let client else { throw AFPublicError.error(.adminAccess, "Admin access is required.") }
         try await client.rpc("revoke_organization_invite", params: ["invite_id": id.uuidString]).execute()
     }
 }

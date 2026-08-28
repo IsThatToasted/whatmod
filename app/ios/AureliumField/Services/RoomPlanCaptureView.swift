@@ -60,13 +60,13 @@ struct RoomPlanCaptureView: UIViewRepresentable {
         func captureSession(_ session: RoomCaptureSession, didEndWith data: CapturedRoomData, error: Error?) {
             guard !didComplete else { return }
             didComplete = true
-            if let error { Task { @MainActor in onError(error.localizedDescription) }; return }
+            if let error { AFPublicError.capture(error, code: .walkthroughCapture); Task { @MainActor in onError(AFPublicError.text(.walkthroughCapture, "We couldn't finish the spatial scan.")) }; return }
             Task {
                 do {
                     let room = try await RoomBuilder(options: [.beautifyObjects]).capturedRoom(from: data)
                     await MainActor.run { self.onComplete(room) }
                 } catch {
-                    await MainActor.run { self.onError(error.localizedDescription) }
+                    AFPublicError.capture(error, code: .walkthroughCapture); await MainActor.run { self.onError(AFPublicError.text(.walkthroughCapture, "We couldn't process the spatial scan.")) }
                 }
             }
         }
