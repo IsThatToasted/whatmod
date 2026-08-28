@@ -12,42 +12,71 @@ permissions:
   contents: read
 
 jobs:
-  simulator-build:
+  device-ipa:
+    name: Build iPhone IPA
     runs-on: macos-15
     defaults:
       run:
         working-directory: app/ios
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
       - name: Install XcodeGen
         run: brew install xcodegen
+
       - name: Generate Xcode project
         run: xcodegen generate
-      - name: Build for iOS Simulator
+
+      - name: Build unsigned iPhone app
         run: |
           set -o pipefail
           xcodebuild \
             -project AureliumField.xcodeproj \
             -scheme AureliumField \
             -configuration Release \
-            -sdk iphonesimulator \
-            -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
             -derivedDataPath DerivedData \
-            build | tee xcodebuild.log
-      - name: Package simulator app
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            clean build | tee xcodebuild-device.log
+
+      - name: Package IPA
         run: |
-          ditto -c -k --sequesterRsrc --keepParent \
-            DerivedData/Build/Products/Release-iphonesimulator/AureliumField.app \
-            AureliumField-Simulator.zip
-      - uses: actions/upload-artifact@v4
+          set -euo pipefail
+
+          APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
+          test -d "$APP_PATH"
+
+          rm -rf Payload AureliumField.ipa
+          mkdir -p Payload
+          ditto "$APP_PATH" "Payload/AureliumField.app"
+          /usr/bin/zip -qry AureliumField.ipa Payload
+
+          echo "Created $(pwd)/AureliumField.ipa"
+          ls -lh AureliumField.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iOS-Simulator
-          path: app/ios/AureliumField-Simulator.zip
-          retention-days: 14
-      - uses: actions/upload-artifact@v4
+          name: AureliumField-iPhone-IPA
+          path: app/ios/AureliumField.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Xcode build log
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: AureliumField-xcodebuild-log
-          path: app/ios/xcodebuild.log
+          path: app/ios/xcodebuild-device.log
+          if-no-files-found: ignore
           retention-days: 7
