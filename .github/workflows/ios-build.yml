@@ -35,70 +35,48 @@ jobs:
             exit 1
           fi
           if [[ "$APP_CLOUD_URL" != https://* ]]; then
-            echo "::error title=AF-CFG-001::The configured service URL is invalid."
+            echo "::error title=AF-CFG-001::The configured service endpoint is invalid."
             exit 1
           fi
-          echo "iOS configuration present (values intentionally hidden)."
+          echo "iOS runtime configuration inputs are present."
 
-      - name: Generate compiled runtime configuration
+      - name: Generate bundled runtime configuration
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import base64
+          import json
           import os
           from pathlib import Path
 
-          url = os.environ["APP_CLOUD_URL"].strip()
-          key = os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
-          url64 = base64.b64encode(url.encode("utf-8")).decode("ascii")
-          key64 = base64.b64encode(key.encode("utf-8")).decode("ascii")
-
-          output = Path("AureliumField/Services/RuntimeConfig.swift")
-          output.write_text(f'''import Foundation
-
-          enum AFRuntimeConfig {{
-              private static let encodedCloudURL = "{url64}"
-              private static let encodedPublicKey = "{key64}"
-
-              static var cloudURLString: String {{ decode(encodedCloudURL) }}
-              static var publicKey: String {{ decode(encodedPublicKey) }}
-              static var isConfigured: Bool {{ cloudURLString.hasPrefix("https://") && !publicKey.isEmpty }}
-
-              private static func decode(_ value: String) -> String {{
-                  guard !value.isEmpty,
-                        let data = Data(base64Encoded: value),
-                        let decoded = String(data: data, encoding: .utf8) else {{ return "" }}
-                  return decoded
-              }}
-          }}
-          ''')
+          payload = {
+              "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
+              "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
+          }
+          output = Path("AureliumField/Resources/RuntimeConfig.json")
+          output.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
           PY
-          echo "Compiled runtime configuration generated (values intentionally hidden)."
+          echo "Runtime configuration resource generated (values hidden)."
 
-      - name: Verify generated configuration source
+      - name: Verify generated runtime configuration
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import base64
+          import json
           import os
-          import re
           from pathlib import Path
 
-          text = Path("AureliumField/Services/RuntimeConfig.swift").read_text()
-          url_match = re.search(r'encodedCloudURL = "([A-Za-z0-9+/=]+)"', text)
-          key_match = re.search(r'encodedPublicKey = "([A-Za-z0-9+/=]+)"', text)
-          if not url_match or not key_match:
-              raise SystemExit("AF-CFG-001: generated configuration source is invalid")
-          url = base64.b64decode(url_match.group(1)).decode("utf-8")
-          key = base64.b64decode(key_match.group(1)).decode("utf-8")
-          if url != os.environ["APP_CLOUD_URL"].strip() or key != os.environ["APP_CLOUD_PUBLIC_KEY"].strip():
-              raise SystemExit("AF-CFG-001: generated configuration did not match build inputs")
-          if not url.startswith("https://") or not key:
-              raise SystemExit("AF-CFG-001: generated configuration is incomplete")
+          path = Path("AureliumField/Resources/RuntimeConfig.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          if payload.get("cloudURL") != os.environ["APP_CLOUD_URL"].strip():
+              raise SystemExit("AF-CFG-001: generated service endpoint did not match build input")
+          if payload.get("publicKey") != os.environ["APP_CLOUD_PUBLIC_KEY"].strip():
+              raise SystemExit("AF-CFG-001: generated public client key did not match build input")
+          if not payload["cloudURL"].startswith("https://") or not payload["publicKey"]:
+              raise SystemExit("AF-CFG-001: generated runtime configuration is incomplete")
           PY
-          echo "Generated runtime configuration verified."
+          echo "Generated runtime resource verified."
 
       - name: Select Xcode
         run: |
@@ -126,7 +104,7 @@ jobs:
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
-      - name: Verify configuration was compiled into app target
+      - name: Verify runtime configuration inside built app
         shell: bash
         run: |
           set -euo pipefail
@@ -134,25 +112,27 @@ jobs:
           test -d "$APP_PATH"
           test -x "$APP_PATH/AureliumField"
 
-          SWIFT_LIST=$(find DerivedData/Build/Intermediates.noindex -path '*AureliumField.build*' -name 'AureliumField.SwiftFileList' | head -n 1)
-          if [[ -z "$SWIFT_LIST" ]] || ! grep -Fq 'RuntimeConfig.swift' "$SWIFT_LIST"; then
-            echo "::error title=AF-CFG-001::Runtime configuration was not part of the compiled iOS target."
+          CONFIG_PATH="$(find "$APP_PATH" -type f -name 'RuntimeConfig.json' -print -quit)"
+          if [[ -z "$CONFIG_PATH" || ! -f "$CONFIG_PATH" ]]; then
+            echo "::error title=AF-CFG-001::The built iOS app is missing its runtime configuration resource."
             exit 1
           fi
 
+          export BUILT_RUNTIME_CONFIG="$CONFIG_PATH"
           python3 - <<'PY'
-          import base64
+          import json
           import os
-          import re
           from pathlib import Path
-          text = Path("AureliumField/Services/RuntimeConfig.swift").read_text()
-          u = re.search(r'encodedCloudURL = "([A-Za-z0-9+/=]+)"', text)
-          k = re.search(r'encodedPublicKey = "([A-Za-z0-9+/=]+)"', text)
-          assert u and k, "generated configuration missing"
-          assert base64.b64decode(u.group(1)).decode() == os.environ["APP_CLOUD_URL"].strip()
-          assert base64.b64decode(k.group(1)).decode() == os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
+
+          payload = json.loads(Path(os.environ["BUILT_RUNTIME_CONFIG"]).read_text(encoding="utf-8"))
+          expected_url = os.environ["APP_CLOUD_URL"].strip()
+          expected_key = os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
+          if payload.get("cloudURL") != expected_url or payload.get("publicKey") != expected_key:
+              raise SystemExit("AF-CFG-001: built application runtime configuration did not match build inputs")
+          if not payload.get("cloudURL", "").startswith("https://") or not payload.get("publicKey"):
+              raise SystemExit("AF-CFG-001: built application runtime configuration is incomplete")
           PY
-          echo "Compiled iOS configuration verified (values intentionally hidden)."
+          echo "Built iOS runtime configuration verified (values hidden)."
 
       - name: Package IPA
         run: |
