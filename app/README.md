@@ -1,122 +1,74 @@
-# Aurelium Field
+# Aurelium Field v0.3.1
 
-Aurelium Field is a mobile-first construction operations platform with painting-specific estimating and production at its core. The repository is designed to live at `whatmod/app/` and deploy the web product to `https://whatmod.com/app/` while the native SwiftUI app lives under `app/ios/`.
+Unified construction operations platform with painting-first Smart Estimate workflows.
 
-## Architecture
+## Repository layout
 
-- **Web:** React 19 + TypeScript + Vite, static production output, hash routing for GitHub Pages.
-- **PWA:** installable shell with network-first cache behavior and versioned cache cleanup.
-- **Cloud:** Supabase Postgres/Auth/Storage/Realtime only for shared business data; schema begins in `supabase/migrations/001_initial.sql`.
-- **iOS:** SwiftUI + RoomPlan + Speech. XcodeGen keeps the Xcode project reproducible from source.
-- **AI:** server-only provider boundary in `supabase/functions/estimate-summary`. No provider secret is shipped to browsers or iOS.
+Place the `app` folder at `whatmod/app`. GitHub Actions must remain at the repository root under `.github/workflows/` (the release ZIP includes them there too).
 
-## Repository placement
+## Required GitHub repository variables
 
-Copy this entire folder to:
+Under **Settings → Secrets and variables → Actions → Variables**:
 
-```text
-whatmod/
-└── app/
-    ├── src/
-    ├── public/
-    ├── supabase/
-    ├── ios/
-    └── ...
-```
+- `VITE_SUPABASE_URL` — your Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` — your Supabase publishable/anon key
 
-GitHub has one unavoidable exception: Actions only execute from the repository root `.github/workflows/` directory. Copy these two files from `app/.github/workflows/` to:
+The web Vite build and iOS Xcode build both use these same public client values. Never use the service-role key here.
 
-```text
-whatmod/.github/workflows/web-pages.yml
-whatmod/.github/workflows/ios-build.yml
-```
+## Supabase migrations
 
-The workflows still build only `app/` and `app/ios/`.
+Apply in order in the SQL editor:
 
-## Local web build
+1. `supabase/migrations/001_initial.sql`
+2. `supabase/migrations/002_walkthrough_scans.sql`
+3. `supabase/migrations/003_auth_org_time_estimator.sql`
 
-```bash
-cd app
-cp .env.example .env.local
-npm install
-npm run dev
-```
+Migration 003 adds secure organization bootstrap/invites, GPS timecards, submission/edit approvals, private walkthrough storage, RoomPlan USDZ paths, and estimator measurement fields.
 
-Production check:
+## Google authentication
 
-```bash
-npm run build
-```
+Google must be enabled in Supabase Auth.
 
-## Supabase setup
+Add these Supabase Auth redirect URLs:
 
-This product genuinely requires shared data, accounts, permissions, media storage and collaboration. Create a Supabase project, run `supabase/migrations/001_initial.sql`, then configure repository **Variables** (these are public browser configuration, not secrets):
+- `https://whatmod.com/app/`
+- `aureliumfield://auth-callback`
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
+Web authentication uses Supabase Google OAuth. Native iOS uses the same Supabase Auth project and the custom callback scheme above.
 
-Never place a service-role key in the web or iOS app.
+## Organization onboarding
 
-Recommended Auth providers: Apple and Google. Storage buckets should be private and served through signed URLs or authenticated fetches.
+After first Google login, a user must **Create** or **Join** an organization. `create_organization()` transactionally creates the organization and makes the creator `owner`. Owners/admins can generate expiring join links with a specific employee role.
 
-## Native iOS build
+## Time clock
 
-Locally:
+- Clock-in requires a project and requests GPS location.
+- iOS continues sampling location while the active shift is running in-app.
+- Web captures accurate clock-in and clock-out GPS positions when browser permission is available.
+- Timecards remain `draft` after clock-out and can be edited freely.
+- **Confirm & Submit** moves a timecard to `submitted`.
+- Corrections after submission use `time_entry_edit_requests` and require an owner/admin decision.
 
-```bash
-cd app/ios
-brew install xcodegen
-xcodegen generate
-open AureliumField.xcodeproj
-```
+## Smart Walkthrough / estimate
 
-The included GitHub workflow creates a **simulator build artifact without signing secrets**. For TestFlight/App Store distribution, add a separate signing/release job using App Store Connect credentials/certificates rather than embedding signing material in the repository.
+The native iOS Smart Walkthrough now:
 
-## Smart Estimate design contract
+1. Runs RoomPlan + live speech narration + tagged evidence captures.
+2. Records a visual walkthrough review.
+3. Exports the completed RoomPlan result as USDZ and serializes its RoomPlan JSON.
+4. Calculates every detected wall's length, height, and gross area.
+5. Calculates total wall linear feet, average wall height, gross wall area, detected door/window area, and net paintable wall area.
+6. Requires the estimator to confirm the scan is reasonably accurate.
+7. Requests a painting production rate in square feet per labor hour.
+8. Generates estimated labor hours for the room.
+9. Saves locally immediately, then syncs the walkthrough model/video/JSON/evidence to private Supabase Storage and creates estimate/room/surface/line-item records.
 
-The estimator treats captured measurements as evidence, not AI prose. Native iOS RoomPlan capture provides spatial geometry on supported devices. Narration is transcribed into timestamped notes. Generated scopes/line items are suggestions and must remain editable. Every derived quantity should retain:
+The review screen can reopen the saved USDZ room model through Quick Look.
 
-- capture source (`roomplan`, `manual`, `derived`, `ai`)
-- confidence when available
-- verification status
-- user who verified a measurement
-- timestamp
+## iOS build
 
-This prevents an AI summary from silently changing field measurements.
+The root workflow builds a physical-device `iphoneos` target and packages `AureliumField.ipa`. It injects the two repository variables above as iOS build settings. The IPA remains unsigned until Apple signing credentials are configured.
 
-## Current production foundation
 
-Implemented in this first build:
-
-- responsive navigation and design system
-- operations dashboard
-- project list/search surface
-- Smart Estimate workspace on web
-- field-tool launch surface
-- team/scheduling foundation
-- PWA manifest/service worker
-- normalized Supabase schema with RLS
-- estimate rooms, surfaces, line items, production rates and walkthrough notes
-- project media, tasks, time entries, daily logs and messaging data models
-- native SwiftUI shell
-- native RoomPlan scanning flow
-- native speech-to-text walkthrough notes
-- reproducible iOS CI build
-- GitHub Pages build/deploy workflow for `/app/`
-
-## Next build slices
-
-The architecture is intentionally ready for the next production modules without a rewrite: authentication/onboarding, organization provisioning, real CRUD, offline sync queue, photo timeline, painting production-rate engine, proposal/e-signature flow, CRM pipeline, crew scheduling/timecards, daily logs, RFIs/submittals/drawings, change orders, customer portal, push notifications, and AI provider integration.
-
-## v0.2.0 Smart Walkthrough + Project CRUD
-
-- Combined RoomPlan scanning and live speech transcription into one native walkthrough.
-- Added high-contrast in-scan evidence capture: DAMAGE, REMOVE, DO NOT DISTURB, COVER, PAINT.
-- Added local scan-video recording and a native video/evidence/transcript review screen.
-- Added project search/selection at the top of Smart Estimate.
-- Added native project create/edit/delete and walkthrough delete with media cleanup.
-- Added web project create/edit/delete/search with durable local browser persistence.
-- Added `002_walkthrough_scans.sql` for the cloud walkthrough/evidence model when account sync is wired.
-
-### Current persistence boundary
-The v0.2.0 UI is deliberately usable before authentication is finished: web project records persist in localStorage and native project/walkthrough metadata persists on-device, with scan media stored in the app Documents directory. The Supabase schema is ready for cross-device synchronization, but cloud sync should be enabled together with authenticated organization membership rather than bypassing RLS.
+## v0.3.1 walkthrough update
+Smart Walkthrough now records AR camera frames directly instead of using ReplayKit, and the post-scan estimate supports optional doors, windows, trim, and ceiling production scopes.

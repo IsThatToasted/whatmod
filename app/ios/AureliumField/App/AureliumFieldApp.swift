@@ -6,7 +6,7 @@ struct AureliumFieldApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            AuthGateView()
                 .environment(model)
         }
     }

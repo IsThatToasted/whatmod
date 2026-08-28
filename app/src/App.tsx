@@ -1,3 +1,4 @@
+import { AuthGate } from './auth/AuthGate';
 import { createHashRouter, RouterProvider } from 'react-router-dom';
 import { Shell } from './components/Shell';
 import { Home } from './pages/Home';
@@ -16,4 +17,4 @@ const router = createHashRouter([{ path:'/', element:<Shell/>, children:[
   {path:'inbox', element:<Placeholder title="Inbox" copy="Project conversations, mentions, approvals, and client communication in one focused queue."/>},
   {path:'settings', element:<Placeholder title="Settings" copy="Company defaults, production rates, roles, integrations, branding, and security."/>}
 ]}]);
-export default function App(){ return <RouterProvider router={router}/>; }
+export default function App(){ return <AuthGate><RouterProvider router={router}/></AuthGate>; }

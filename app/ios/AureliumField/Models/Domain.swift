@@ -73,6 +73,53 @@ struct TaggedCapture: Identifiable, Codable, Hashable {
     var note: String?
 }
 
+struct MeasuredWall: Identifiable, Codable, Hashable {
+    var id: UUID
+    var lengthFeet: Double
+    var heightFeet: Double
+    var grossSquareFeet: Double
+}
+
+struct RoomMeasurementSummary: Codable, Hashable {
+    var wallLinearFeet: Double
+    var averageWallHeightFeet: Double
+    var grossWallSquareFeet: Double
+    var openingsSquareFeet: Double
+    var paintableWallSquareFeet: Double
+    // Added in v0.3.1. Optional so walkthroughs saved by older builds still decode.
+    var ceilingSquareFeet: Double?
+    var detectedDoorCount: Int?
+    var detectedWindowCount: Int?
+    var estimatedTrimLinearFeet: Double?
+}
+
+enum EstimateScopeKind: String, Codable, Hashable, CaseIterable {
+    case walls = "Paint Walls"
+    case doors = "Paint Doors"
+    case windows = "Paint Windows"
+    case trim = "Paint Trim"
+    case ceiling = "Paint Ceiling"
+}
+
+struct ScopeEstimateLine: Codable, Hashable, Identifiable {
+    var kind: EstimateScopeKind
+    var enabled: Bool
+    var quantity: Double
+    var unit: String
+    var productionRate: Double
+    var laborHours: Double
+    var id: String { kind.rawValue }
+}
+
+struct AutoEstimateResult: Codable, Hashable {
+    var productionSquareFeetPerHour: Double
+    var laborHours: Double
+    var measurementsConfirmed: Bool
+    // v0.3.1 multi-scope estimate detail. Optional for backwards-compatible decoding.
+    var scopeLines: [ScopeEstimateLine]?
+    var totalLaborHours: Double?
+}
+
 struct WalkthroughScan: Identifiable, Codable, Hashable {
     let id: UUID
     var projectID: UUID
@@ -82,6 +129,11 @@ struct WalkthroughScan: Identifiable, Codable, Hashable {
     var captures: [TaggedCapture]
     var videoFileName: String?
     var durationSeconds: Double?
+    var usdzFileName: String?
+    var roomPlanJSONFileName: String?
+    var measurements: RoomMeasurementSummary?
+    var autoEstimate: AutoEstimateResult?
+    var measuredWalls: [MeasuredWall]?
 }
 
 enum AppMediaStore {
