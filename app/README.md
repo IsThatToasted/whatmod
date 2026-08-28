@@ -107,3 +107,16 @@ Implemented in this first build:
 ## Next build slices
 
 The architecture is intentionally ready for the next production modules without a rewrite: authentication/onboarding, organization provisioning, real CRUD, offline sync queue, photo timeline, painting production-rate engine, proposal/e-signature flow, CRM pipeline, crew scheduling/timecards, daily logs, RFIs/submittals/drawings, change orders, customer portal, push notifications, and AI provider integration.
+
+## v0.2.0 Smart Walkthrough + Project CRUD
+
+- Combined RoomPlan scanning and live speech transcription into one native walkthrough.
+- Added high-contrast in-scan evidence capture: DAMAGE, REMOVE, DO NOT DISTURB, COVER, PAINT.
+- Added local scan-video recording and a native video/evidence/transcript review screen.
+- Added project search/selection at the top of Smart Estimate.
+- Added native project create/edit/delete and walkthrough delete with media cleanup.
+- Added web project create/edit/delete/search with durable local browser persistence.
+- Added `002_walkthrough_scans.sql` for the cloud walkthrough/evidence model when account sync is wired.
+
+### Current persistence boundary
+The v0.2.0 UI is deliberately usable before authentication is finished: web project records persist in localStorage and native project/walkthrough metadata persists on-device, with scan media stored in the app Documents directory. The Supabase schema is ready for cross-device synchronization, but cloud sync should be enabled together with authenticated organization membership rather than bypassing RLS.
