@@ -1,0 +1,53 @@
+name: Build Aurelium Field iOS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/ios/**'
+      - '.github/workflows/ios-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator-build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: app/ios
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project AureliumField.xcodeproj \
+            -scheme AureliumField \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath DerivedData \
+            build | tee xcodebuild.log
+      - name: Package simulator app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            DerivedData/Build/Products/Release-iphonesimulator/AureliumField.app \
+            AureliumField-Simulator.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AureliumField-iOS-Simulator
+          path: app/ios/AureliumField-Simulator.zip
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AureliumField-xcodebuild-log
+          path: app/ios/xcodebuild.log
+          retention-days: 7
