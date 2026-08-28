@@ -173,3 +173,90 @@ final class SupabaseService {
         await loadMembership()
     }
 }
+
+struct AdminOrganizationMember: Codable, Identifiable, Hashable {
+    var userID: UUID
+    var displayName: String?
+    var email: String?
+    var phone: String?
+    var role: String
+    var active: Bool
+    var joinedAt: Date
+    var id: UUID { userID }
+
+    enum CodingKeys: String, CodingKey {
+        case userID = "user_id"
+        case displayName = "display_name"
+        case email, phone, role, active
+        case joinedAt = "joined_at"
+    }
+}
+
+struct OrganizationInviteRecord: Codable, Identifiable, Hashable {
+    var id: UUID
+    var email: String?
+    var role: String
+    var token: UUID
+    var expiresAt: Date
+    var acceptedAt: Date?
+    var revokedAt: Date?
+    var createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, email, role, token
+        case expiresAt = "expires_at"
+        case acceptedAt = "accepted_at"
+        case revokedAt = "revoked_at"
+        case createdAt = "created_at"
+    }
+}
+
+extension SupabaseService {
+    func fetchAdminMembers() async throws -> [AdminOrganizationMember] {
+        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        return try await client.rpc("admin_list_members").execute().value
+    }
+
+    func updateAdminMember(_ member: AdminOrganizationMember) async throws {
+        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        struct Params: Encodable {
+            let member_user_id: UUID
+            let new_display_name: String
+            let new_phone: String
+            let new_role: String
+            let new_active: Bool
+        }
+        let params = Params(member_user_id: member.userID, new_display_name: member.displayName ?? "", new_phone: member.phone ?? "", new_role: member.role, new_active: member.active)
+        try await client.rpc("admin_update_member", params: params).execute()
+        if member.userID == userID { await loadMembership() }
+    }
+
+    func removeAdminMember(userID: UUID) async throws {
+        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        try await client.rpc("admin_remove_member", params: ["member_user_id": userID.uuidString]).execute()
+    }
+
+    func fetchOrganizationInvites() async throws -> [OrganizationInviteRecord] {
+        guard isAdmin, let client, let organizationID else { return [] }
+        return try await client.from("organization_invites")
+            .select("id,email,role,token,expires_at,accepted_at,revoked_at,created_at")
+            .eq("organization_id", value: organizationID.uuidString)
+            .order("created_at", ascending: false)
+            .limit(50)
+            .execute().value
+    }
+
+    func createOrganizationInvite(email: String?, role: String) async throws -> UUID {
+        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        struct Params: Encodable { let invite_email: String?; let invite_role: String }
+        struct Result: Decodable { let token: UUID; let expires_at: Date }
+        let rows: [Result] = try await client.rpc("create_organization_invite", params: Params(invite_email: email, invite_role: role)).execute().value
+        guard let token = rows.first?.token else { throw NSError(domain: "Aurelium", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invite could not be created."]) }
+        return token
+    }
+
+    func revokeOrganizationInvite(id: UUID) async throws {
+        guard isAdmin, let client else { throw NSError(domain: "Aurelium", code: 403, userInfo: [NSLocalizedDescriptionKey: "Admin access required."]) }
+        try await client.rpc("revoke_organization_invite", params: ["invite_id": id.uuidString]).execute()
+    }
+}

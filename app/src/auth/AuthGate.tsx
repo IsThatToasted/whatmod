@@ -3,14 +3,16 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase, cloudConfigured } from '../lib/supabase';
 import { hydrateProjectsFromCloud } from '../lib/projectStore';
 
-type Membership={organization_id:string;role:string;display_name:string|null;organization?:{id:string;name:string;slug:string}|null};
+type OrganizationSummary={id:string;name:string;slug:string};
+type Membership={organization_id:string;role:string;display_name:string|null;organization?:OrganizationSummary|null};
+type RawMembership={organization_id:string;role:string;display_name:string|null;organizations?:OrganizationSummary|null};
 type AuthValue={user:User|null;membership:Membership|null;isAdmin:boolean;refreshMembership:()=>Promise<void>};
 const AuthContext=createContext<AuthValue|null>(null);
 export const useAuth=()=>{const v=useContext(AuthContext);if(!v)throw new Error('Auth unavailable');return v};
 
 export function AuthGate({children}:{children:ReactNode}){
  const [session,setSession]=useState<Session|null>(null); const [loading,setLoading]=useState(true); const [membership,setMembership]=useState<Membership|null>(null);
- const refreshMembership=async()=>{if(!supabase||!session?.user){setMembership(null);return} const {data,error}=await supabase.from('organization_members').select('organization_id,role,display_name,organizations(id,name,slug)').eq('user_id',session.user.id).eq('active',true).limit(1).maybeSingle(); if(error) console.error(error); const next=(data as Membership|null)??null; setMembership(next); if(next?.organization_id) await hydrateProjectsFromCloud(next.organization_id)};
+ const refreshMembership=async()=>{if(!supabase||!session?.user){setMembership(null);return} const {data,error}=await supabase.from('organization_members').select('organization_id,role,display_name,organizations(id,name,slug)').eq('user_id',session.user.id).eq('active',true).limit(1).maybeSingle(); if(error) console.error(error); const raw=(data as RawMembership|null)??null; const next:Membership|null=raw?{organization_id:raw.organization_id,role:raw.role,display_name:raw.display_name,organization:raw.organizations??null}:null; setMembership(next); if(next?.organization_id) await hydrateProjectsFromCloud(next.organization_id)};
  useEffect(()=>{if(!supabase){setLoading(false);return} supabase.auth.getSession().then(({data})=>{setSession(data.session);setLoading(false)}); const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>{setSession(s)}); return()=>subscription.unsubscribe()},[]);
  useEffect(()=>{void refreshMembership()},[session?.user?.id]);
  const value=useMemo(()=>({user:session?.user??null,membership,isAdmin:['owner','admin'].includes(membership?.role??''),refreshMembership}),[session,membership]);

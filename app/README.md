@@ -72,3 +72,6 @@ The root workflow builds a physical-device `iphoneos` target and packages `Aurel
 
 ## v0.3.1 walkthrough update
 Smart Walkthrough now records AR camera frames directly instead of using ReplayKit, and the post-scan estimate supports optional doors, windows, trim, and ceiling production scopes.
+
+## v0.4.0 Admin Workspace
+Apply `supabase/migrations/004_admin_workspace.sql` after migrations 001–003. The migration is required for Admin View employee management, audited timecard adjustments, invite revocation, and the tighter employee timecard/membership RLS rules.

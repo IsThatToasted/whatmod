@@ -4,6 +4,7 @@ import Observation
 @MainActor @Observable
 final class AppModel {
     var selectedTab: AppTab = .home
+    var workspaceMode: WorkspaceMode = .employee
     var projects: [ProjectSummary] = []
     var walkthroughs: [WalkthroughScan] = []
     var selectedProjectID: UUID?
@@ -110,6 +111,8 @@ final class AppModel {
         if let data = try? encoder.encode(walkthroughs) { UserDefaults.standard.set(data, forKey: walkthroughsKey) }
     }
 }
+
+enum WorkspaceMode: Hashable { case employee, admin }
 
 enum AppTab: Hashable {
     case home, projects, estimate, field, team
