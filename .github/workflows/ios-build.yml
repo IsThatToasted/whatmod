@@ -40,6 +40,66 @@ jobs:
           fi
           echo "iOS configuration present (values intentionally hidden)."
 
+      - name: Generate compiled runtime configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+
+          url = os.environ["APP_CLOUD_URL"].strip()
+          key = os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
+          url64 = base64.b64encode(url.encode("utf-8")).decode("ascii")
+          key64 = base64.b64encode(key.encode("utf-8")).decode("ascii")
+
+          output = Path("AureliumField/Services/RuntimeConfig.swift")
+          output.write_text(f'''import Foundation
+
+          enum AFRuntimeConfig {{
+              private static let encodedCloudURL = "{url64}"
+              private static let encodedPublicKey = "{key64}"
+
+              static var cloudURLString: String {{ decode(encodedCloudURL) }}
+              static var publicKey: String {{ decode(encodedPublicKey) }}
+              static var isConfigured: Bool {{ cloudURLString.hasPrefix("https://") && !publicKey.isEmpty }}
+
+              private static func decode(_ value: String) -> String {{
+                  guard !value.isEmpty,
+                        let data = Data(base64Encoded: value),
+                        let decoded = String(data: data, encoding: .utf8) else {{ return "" }}
+                  return decoded
+              }}
+          }}
+          ''')
+          PY
+          echo "Compiled runtime configuration generated (values intentionally hidden)."
+
+      - name: Verify generated configuration source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import os
+          import re
+          from pathlib import Path
+
+          text = Path("AureliumField/Services/RuntimeConfig.swift").read_text()
+          url_match = re.search(r'encodedCloudURL = "([A-Za-z0-9+/=]+)"', text)
+          key_match = re.search(r'encodedPublicKey = "([A-Za-z0-9+/=]+)"', text)
+          if not url_match or not key_match:
+              raise SystemExit("AF-CFG-001: generated configuration source is invalid")
+          url = base64.b64decode(url_match.group(1)).decode("utf-8")
+          key = base64.b64decode(key_match.group(1)).decode("utf-8")
+          if url != os.environ["APP_CLOUD_URL"].strip() or key != os.environ["APP_CLOUD_PUBLIC_KEY"].strip():
+              raise SystemExit("AF-CFG-001: generated configuration did not match build inputs")
+          if not url.startswith("https://") or not key:
+              raise SystemExit("AF-CFG-001: generated configuration is incomplete")
+          PY
+          echo "Generated runtime configuration verified."
+
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -47,15 +107,6 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
-
-      - name: Inject runtime configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          PLIST="AureliumField/Resources/Info.plist"
-          /usr/libexec/PlistBuddy -c "Set :SUPABASE_URL $APP_CLOUD_URL" "$PLIST"
-          /usr/libexec/PlistBuddy -c "Set :SUPABASE_ANON_KEY $APP_CLOUD_PUBLIC_KEY" "$PLIST"
-          echo "Runtime configuration injected (values intentionally hidden)."
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -75,21 +126,33 @@ jobs:
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
-      - name: Verify packaged configuration
+      - name: Verify configuration was compiled into app target
         shell: bash
         run: |
           set -euo pipefail
           APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
-          INFO="$APP_PATH/Info.plist"
           test -d "$APP_PATH"
-          test -f "$INFO"
-          BUILT_URL=$(/usr/libexec/PlistBuddy -c "Print :SUPABASE_URL" "$INFO" 2>/dev/null || true)
-          BUILT_KEY=$(/usr/libexec/PlistBuddy -c "Print :SUPABASE_ANON_KEY" "$INFO" 2>/dev/null || true)
-          if [[ -z "$BUILT_URL" || "$BUILT_URL" != https://* || -z "$BUILT_KEY" || "$BUILT_URL" == *'$('* || "$BUILT_KEY" == *'$('* ]]; then
-            echo "::error title=AF-CFG-001::The built iOS app did not contain valid runtime configuration."
+          test -x "$APP_PATH/AureliumField"
+
+          SWIFT_LIST=$(find DerivedData/Build/Intermediates.noindex -path '*AureliumField.build*' -name 'AureliumField.SwiftFileList' | head -n 1)
+          if [[ -z "$SWIFT_LIST" ]] || ! grep -Fq 'RuntimeConfig.swift' "$SWIFT_LIST"; then
+            echo "::error title=AF-CFG-001::Runtime configuration was not part of the compiled iOS target."
             exit 1
           fi
-          echo "Packaged iOS configuration verified (values intentionally hidden)."
+
+          python3 - <<'PY'
+          import base64
+          import os
+          import re
+          from pathlib import Path
+          text = Path("AureliumField/Services/RuntimeConfig.swift").read_text()
+          u = re.search(r'encodedCloudURL = "([A-Za-z0-9+/=]+)"', text)
+          k = re.search(r'encodedPublicKey = "([A-Za-z0-9+/=]+)"', text)
+          assert u and k, "generated configuration missing"
+          assert base64.b64decode(u.group(1)).decode() == os.environ["APP_CLOUD_URL"].strip()
+          assert base64.b64decode(k.group(1)).decode() == os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
+          PY
+          echo "Compiled iOS configuration verified (values intentionally hidden)."
 
       - name: Package IPA
         run: |
