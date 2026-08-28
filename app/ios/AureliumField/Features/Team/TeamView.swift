@@ -85,8 +85,14 @@ private struct TimeEntryEditor: View {
             Form {
                 DatePicker("Clock in", selection: $entry.clockIn)
                 DatePicker("Clock out", selection: Binding(get: { entry.clockOut ?? entry.clockIn }, set: { entry.clockOut = $0 }))
-                TextField("Cost code", text: Binding($entry.costCode, replacingNilWith: ""))
-                TextField("Notes", text: Binding($entry.notes, replacingNilWith: ""), axis: .vertical)
+                TextField("Cost code", text: Binding<String>(
+                    get: { entry.costCode ?? "" },
+                    set: { entry.costCode = $0.isEmpty ? nil : $0 }
+                ))
+                TextField("Notes", text: Binding<String>(
+                    get: { entry.notes ?? "" },
+                    set: { entry.notes = $0.isEmpty ? nil : $0 }
+                ), axis: .vertical)
                 if entry.status != "draft" {
                     Section("Request correction") {
                         Text("This timecard has been submitted. Edit the fields above, explain the correction, then request admin approval.").font(.caption).foregroundStyle(.secondary)
@@ -178,11 +184,3 @@ private struct TimeApprovalView: View {
     }
 }
 
-private extension Optional where Wrapped == String {
-    init(_ value: String) { self = value }
-}
-private extension Binding where Value == String? {
-    init(_ base: Binding<String?>, replacingNilWith fallback: String) {
-        self.init(get: { base.wrappedValue ?? fallback }, set: { base.wrappedValue = $0 })
-    }
-}
