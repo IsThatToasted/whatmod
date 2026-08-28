@@ -15,6 +15,9 @@ jobs:
   device-ipa:
     name: Build iPhone IPA
     runs-on: macos-15
+    env:
+      APP_CLOUD_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+      APP_CLOUD_PUBLIC_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
     defaults:
       run:
         working-directory: app/ios
@@ -23,6 +26,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate app configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${APP_CLOUD_URL:-}" || -z "${APP_CLOUD_PUBLIC_KEY:-}" ]]; then
+            echo "::error title=AF-CFG-001::Required iOS build configuration is missing."
+            exit 1
+          fi
+          if [[ "$APP_CLOUD_URL" != https://* ]]; then
+            echo "::error title=AF-CFG-001::The configured service URL is invalid."
+            exit 1
+          fi
+          echo "iOS configuration present (values intentionally hidden)."
+
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -30,6 +47,15 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Inject runtime configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLIST="AureliumField/Resources/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :SUPABASE_URL $APP_CLOUD_URL" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :SUPABASE_ANON_KEY $APP_CLOUD_PUBLIC_KEY" "$PLIST"
+          echo "Runtime configuration injected (values intentionally hidden)."
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -44,26 +70,37 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath DerivedData \
-            SUPABASE_URL='${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}' \
-            SUPABASE_ANON_KEY='${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
+      - name: Verify packaged configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
+          INFO="$APP_PATH/Info.plist"
+          test -d "$APP_PATH"
+          test -f "$INFO"
+          BUILT_URL=$(/usr/libexec/PlistBuddy -c "Print :SUPABASE_URL" "$INFO" 2>/dev/null || true)
+          BUILT_KEY=$(/usr/libexec/PlistBuddy -c "Print :SUPABASE_ANON_KEY" "$INFO" 2>/dev/null || true)
+          if [[ -z "$BUILT_URL" || "$BUILT_URL" != https://* || -z "$BUILT_KEY" || "$BUILT_URL" == *'$('* || "$BUILT_KEY" == *'$('* ]]; then
+            echo "::error title=AF-CFG-001::The built iOS app did not contain valid runtime configuration."
+            exit 1
+          fi
+          echo "Packaged iOS configuration verified (values intentionally hidden)."
+
       - name: Package IPA
         run: |
           set -euo pipefail
-
           APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
           test -d "$APP_PATH"
-
           rm -rf Payload AureliumField.ipa
           mkdir -p Payload
           ditto "$APP_PATH" "Payload/AureliumField.app"
           /usr/bin/zip -qry AureliumField.ipa Payload
-
-          echo "Created $(pwd)/AureliumField.ipa"
+          echo "Created AureliumField.ipa"
           ls -lh AureliumField.ipa
 
       - name: Upload IPA
