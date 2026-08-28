@@ -43,9 +43,10 @@ final class WalkthroughCloudSync {
                 let id:UUID;let organization_id:UUID;let project_id:UUID;let estimate_id:UUID;let room_id:UUID;let captured_by:UUID;let transcript:String
                 let video_storage_path:String?;let usdz_storage_path:String?;let roomplan_storage_path:String?;let wall_count:Int;let door_count:Int;let window_count:Int;let duration_seconds:Double?
                 let wall_gross_sqft:Double?;let openings_sqft:Double?;let paintable_wall_sqft:Double?;let average_wall_height_ft:Double?;let wall_linear_ft:Double?;let measurements_confirmed:Bool;let production_units_per_hour:Double?
+                let room_name:String?;let archived_at:Date?
             }
             let m = scan.measurements
-            try await client.from("walkthrough_scans").insert(ScanInsert(id: scan.id, organization_id: org, project_id: project.id, estimate_id: estimateID, room_id: roomID, captured_by: user, transcript: scan.transcript, video_storage_path: videoPath, usdz_storage_path: usdzPath, roomplan_storage_path: roomJSONPath, wall_count: scan.room.wallCount, door_count: scan.room.doorCount, window_count: scan.room.windowCount, duration_seconds: scan.durationSeconds, wall_gross_sqft: m?.grossWallSquareFeet, openings_sqft: m?.openingsSquareFeet, paintable_wall_sqft: m?.paintableWallSquareFeet, average_wall_height_ft: m?.averageWallHeightFeet, wall_linear_ft: m?.wallLinearFeet, measurements_confirmed: scan.autoEstimate?.measurementsConfirmed ?? false, production_units_per_hour: scan.autoEstimate?.productionSquareFeetPerHour)).execute()
+            try await client.from("walkthrough_scans").insert(ScanInsert(id: scan.id, organization_id: org, project_id: project.id, estimate_id: estimateID, room_id: roomID, captured_by: user, transcript: scan.transcript, video_storage_path: videoPath, usdz_storage_path: usdzPath, roomplan_storage_path: roomJSONPath, wall_count: scan.room.wallCount, door_count: scan.room.doorCount, window_count: scan.room.windowCount, duration_seconds: scan.durationSeconds, wall_gross_sqft: m?.grossWallSquareFeet, openings_sqft: m?.openingsSquareFeet, paintable_wall_sqft: m?.paintableWallSquareFeet, average_wall_height_ft: m?.averageWallHeightFeet, wall_linear_ft: m?.wallLinearFeet, measurements_confirmed: scan.autoEstimate?.measurementsConfirmed ?? false, production_units_per_hour: scan.autoEstimate?.productionSquareFeetPerHour, room_name: scan.room.name, archived_at: scan.archivedAt)).execute()
 
             for capture in scan.captures {
                 let path = try await upload(client: client, localName: capture.imageFileName, path: "\(root)/\(capture.id.uuidString).jpg", contentType: "image/jpeg")
@@ -54,6 +55,17 @@ final class WalkthroughCloudSync {
             }
         } catch {
             SupabaseService.shared.errorMessage = "Walkthrough saved on device, but cloud sync failed: \(error.localizedDescription)"
+        }
+    }
+
+    func completeProjectWalkthrough(projectID: UUID) async {
+        let cloud = SupabaseService.shared
+        guard let client = cloud.client else { return }
+        do {
+            struct Params: Encodable { let target_project_id: UUID }
+            let _: Date = try await client.rpc("complete_project_walkthrough", params: Params(target_project_id: projectID)).execute().value
+        } catch {
+            cloud.errorMessage = "Walkthroughs were completed on this device, but cloud archive failed: \(error.localizedDescription)"
         }
     }
 

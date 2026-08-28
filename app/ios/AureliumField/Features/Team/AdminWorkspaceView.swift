@@ -47,6 +47,7 @@ private final class AdminWorkspaceStore {
 
     var submittedTimecards: [TimeEntryRecord] { timecards.filter { $0.status == "submitted" } }
     var reviewedTimecards: [TimeEntryRecord] { timecards.filter { ["approved", "rejected"].contains($0.status) } }
+    var otherTimecards: [TimeEntryRecord] { timecards.filter { !["submitted", "approved", "rejected"].contains($0.status) } }
     var pendingReviewCount: Int { submittedTimecards.count + editRequests.count }
     var activeMemberCount: Int { members.filter(\.active).count }
     var openInviteCount: Int { invites.filter { $0.acceptedAt == nil && $0.revokedAt == nil && $0.expiresAt > .now }.count }
@@ -91,6 +92,12 @@ private final class AdminWorkspaceStore {
             try await client.rpc("admin_decide_time_entry", params: Params(entry_id: entry.id, approve: approve, decision_note: note)).execute()
             await load()
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    func deleteTimecard(_ entry:TimeEntryRecord) async {
+        guard let client=cloud.client else{return}
+        struct Params:Encodable{let entry_id:UUID}
+        do{try await client.rpc("admin_delete_time_entry",params:Params(entry_id:entry.id)).execute();await load()}catch{errorMessage=error.localizedDescription}
     }
 
     func decideEditRequest(_ request: AdminTimeEditRequest, approve: Bool) async {
@@ -182,6 +189,7 @@ private struct AdminTimecardsView: View {
     @State private var editing: TimeEntryRecord?
     @State private var rejectTarget: TimeEntryRecord?
     @State private var rejectionReason = ""
+    @State private var deleteTarget: TimeEntryRecord?
 
     var body: some View {
         List {
@@ -213,13 +221,20 @@ private struct AdminTimecardsView: View {
                     } reject: {
                         rejectionReason = ""
                         rejectTarget = entry
-                    }
+                    } delete: { deleteTarget = entry }
                 }
             }
             if !store.reviewedTimecards.isEmpty {
                 Section("Reviewed history") {
                     ForEach(store.reviewedTimecards.prefix(30)) { entry in
-                        AdminTimecardRow(entry: entry, employee: store.name(for: entry.userID), project: projectName(entry.projectID)) { editing = entry }
+                        AdminTimecardRow(entry: entry, employee: store.name(for: entry.userID), project: projectName(entry.projectID)) { editing = entry } delete: { deleteTarget = entry }
+                    }
+                }
+            }
+            if !store.otherTimecards.isEmpty {
+                Section("Draft / open timecards") {
+                    ForEach(store.otherTimecards.prefix(30)) { entry in
+                        AdminTimecardRow(entry:entry,employee:store.name(for:entry.userID),project:projectName(entry.projectID)){editing=entry} delete:{deleteTarget=entry}
                     }
                 }
             }
@@ -236,6 +251,10 @@ private struct AdminTimecardsView: View {
                 rejectTarget = nil
             }
         } message: { Text("The employee will see this timecard as rejected and may correct and resubmit it.") }
+        .confirmationDialog("Delete timecard?", isPresented:Binding(get:{deleteTarget != nil},set:{if !$0{deleteTarget=nil}}),titleVisibility:.visible){
+            Button("DELETE",role:.destructive){if let entry=deleteTarget{Task{await store.deleteTimecard(entry)}};deleteTarget=nil}
+            Button("Cancel",role:.cancel){deleteTarget=nil}
+        } message:{Text("This permanently deletes the timecard and its GPS/edit-request history. This cannot be undone.")}
     }
 
     private func projectName(_ id: UUID) -> String { model.projects.first(where: { $0.id == id })?.name ?? "Project" }
@@ -248,6 +267,7 @@ private struct AdminTimecardRow: View {
     let edit: () -> Void
     var approve: (() -> Void)? = nil
     var reject: (() -> Void)? = nil
+    var delete: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -256,6 +276,7 @@ private struct AdminTimecardRow: View {
             Text(formatRange(entry.clockIn, entry.clockOut)).font(.caption).foregroundStyle(.secondary)
             HStack {
                 Button("Edit", action: edit).buttonStyle(.bordered)
+                if let delete { Button(role:.destructive,action:delete){Label("Delete",systemImage:"trash")} }
                 Spacer()
                 if let reject { Button("Reject", role: .destructive, action: reject) }
                 if let approve { Button("Approve", action: approve).buttonStyle(.borderedProminent).tint(.primary) }

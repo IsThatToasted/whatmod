@@ -75,3 +75,7 @@ Smart Walkthrough now records AR camera frames directly instead of using ReplayK
 
 ## v0.4.0 Admin Workspace
 Apply `supabase/migrations/004_admin_workspace.sql` after migrations 001–003. The migration is required for Admin View employee management, audited timecard adjustments, invite revocation, and the tighter employee timecard/membership RLS rules.
+
+
+## v0.5.0 database update
+Run `supabase/migrations/005_project_walkthrough_completion.sql` after the safe 004 migration. It is idempotent.

@@ -109,8 +109,10 @@ end;
 $$;
 grant execute on function public.accept_organization_invite(uuid) to authenticated;
 
+drop policy if exists org_invites_admin_select on public.organization_invites;
 create policy org_invites_admin_select on public.organization_invites for select
   using(public.is_org_admin(organization_id));
+drop policy if exists org_invites_admin_update on public.organization_invites;
 create policy org_invites_admin_update on public.organization_invites for update
   using(public.is_org_admin(organization_id));
 
@@ -141,8 +143,10 @@ create table if not exists public.time_location_samples (
 );
 create index if not exists time_location_samples_entry_idx on public.time_location_samples(time_entry_id,captured_at);
 alter table public.time_location_samples enable row level security;
+drop policy if exists time_location_self_insert on public.time_location_samples;
 create policy time_location_self_insert on public.time_location_samples for insert
   with check(user_id=auth.uid() and public.is_org_member(organization_id));
+drop policy if exists time_location_member_select on public.time_location_samples;
 create policy time_location_member_select on public.time_location_samples for select
   using(user_id=auth.uid() or public.is_org_admin(organization_id));
 
@@ -165,10 +169,13 @@ create table if not exists public.time_entry_edit_requests (
   check(proposed_clock_out is null or proposed_clock_out >= proposed_clock_in)
 );
 alter table public.time_entry_edit_requests enable row level security;
+drop policy if exists time_edit_self_select on public.time_entry_edit_requests;
 create policy time_edit_self_select on public.time_entry_edit_requests for select
   using(requested_by=auth.uid() or public.is_org_admin(organization_id));
+drop policy if exists time_edit_self_insert on public.time_entry_edit_requests;
 create policy time_edit_self_insert on public.time_entry_edit_requests for insert
   with check(requested_by=auth.uid() and public.is_org_member(organization_id));
+drop policy if exists time_edit_admin_update on public.time_entry_edit_requests;
 create policy time_edit_admin_update on public.time_entry_edit_requests for update
   using(public.is_org_admin(organization_id));
 
@@ -250,10 +257,13 @@ values('walkthrough-media','walkthrough-media',false,104857600,array['video/mp4'
 on conflict(id) do nothing;
 
 -- Object paths are: <organization_id>/<project_id>/<user_id>/<filename>
+drop policy if exists walkthrough_storage_member_select on storage.objects;
 create policy walkthrough_storage_member_select on storage.objects for select to authenticated
 using(bucket_id='walkthrough-media' and public.is_org_member((storage.foldername(name))[1]::uuid));
+drop policy if exists walkthrough_storage_member_insert on storage.objects;
 create policy walkthrough_storage_member_insert on storage.objects for insert to authenticated
 with check(bucket_id='walkthrough-media' and public.is_org_member((storage.foldername(name))[1]::uuid));
+drop policy if exists walkthrough_storage_owner_delete on storage.objects;
 create policy walkthrough_storage_owner_delete on storage.objects for delete to authenticated
 using(bucket_id='walkthrough-media' and public.is_org_member((storage.foldername(name))[1]::uuid));
 

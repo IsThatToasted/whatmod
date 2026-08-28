@@ -83,6 +83,26 @@ final class AppModel {
         persist()
     }
 
+    func completeWalkthroughSet(for projectID: UUID) {
+        let completedAt = Date()
+        for index in walkthroughs.indices where walkthroughs[index].projectID == projectID {
+            if walkthroughs[index].archivedAt == nil { walkthroughs[index].archivedAt = completedAt }
+        }
+        let projectWalkthroughs = walkthroughs(for: projectID)
+        activeEstimate.projectID = projectID
+        if let project = projects.first(where: { $0.id == projectID }) {
+            activeEstimate.title = "\(project.name) Proposal"
+            activeEstimate.customer = project.client
+        }
+        activeEstimate.rooms = projectWalkthroughs.map(\.room)
+        activeEstimate.notes = projectWalkthroughs.compactMap { scan in
+            let text = scan.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? nil : WalkthroughNote(id: UUID(), timestamp: scan.createdAt, transcript: "\(scan.room.name): \(text)")
+        }
+        persist()
+        Task { await WalkthroughCloudSync.shared.completeProjectWalkthrough(projectID: projectID) }
+    }
+
     private func deleteWalkthroughMedia(_ walkthrough: WalkthroughScan) {
         if let video = walkthrough.videoFileName { try? FileManager.default.removeItem(at: AppMediaStore.url(for: video)) }
         walkthrough.captures.forEach { try? FileManager.default.removeItem(at: AppMediaStore.url(for: $0.imageFileName)) }

@@ -134,6 +134,7 @@ struct WalkthroughScan: Identifiable, Codable, Hashable {
     var measurements: RoomMeasurementSummary?
     var autoEstimate: AutoEstimateResult?
     var measuredWalls: [MeasuredWall]?
+    var archivedAt: Date? = nil
 }
 
 enum AppMediaStore {

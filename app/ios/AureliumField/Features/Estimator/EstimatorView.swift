@@ -7,6 +7,8 @@ struct EstimatorView: View {
     @Environment(AppModel.self) private var model
     @State private var projectSearch = ""
     @State private var showingScan = false
+    @State private var showingCompleteConfirmation = false
+    @State private var showingProposal = false
 
     private var matchingProjects: [ProjectSummary] {
         let q = projectSearch.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -41,6 +43,7 @@ struct EstimatorView: View {
                     .accessibilityHint("Starts a walkthrough for \(project.name)")
 
                     walkthroughSection(project)
+                    if !model.walkthroughs(for: project.id).isEmpty { walkthroughCompletionCard(project) }
                 } else {
                     ContentUnavailableView("Choose a project", systemImage: "briefcase", description: Text("Search for an existing job above or create one from Projects."))
                 }
@@ -51,12 +54,19 @@ struct EstimatorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showingScan) {
             if let project = model.selectedProject {
-                SmartScanExperience(project: project) { result in
+                SmartScanExperience(project: project, suggestedRoomName: "Room \(model.walkthroughs(for: project.id).count + 1)") { result in
                     model.addWalkthrough(result)
                     showingScan = false
                 } onCancel: { showingScan = false }
             }
         }
+        .confirmationDialog("Walkthrough Complete?", isPresented: $showingCompleteConfirmation, titleVisibility: .visible) {
+            Button("Walkthrough Complete") { if let project=model.selectedProject { model.completeWalkthroughSet(for:project.id); showingProposal=true } }
+            Button("Cancel", role:.cancel) {}
+        } message: {
+            if let project=model.selectedProject { Text("This archives all \(model.walkthroughs(for:project.id).count) room walkthroughs for \(project.name) and opens the combined estimate/proposal draft.") }
+        }
+        .sheet(isPresented:$showingProposal) { if let project=model.selectedProject { ProposalDraftView(project:project) } }
     }
 
     private var projectPicker: some View {
@@ -121,10 +131,20 @@ struct EstimatorView: View {
             }
         }
     }
+
+    private func walkthroughCompletionCard(_ project:ProjectSummary) -> some View {
+        let scans=model.walkthroughs(for:project.id); let archived=scans.filter{$0.archivedAt != nil}.count
+        return VStack(alignment:.leading,spacing:12){
+            HStack{VStack(alignment:.leading,spacing:3){Text("READY TO WRAP UP?").font(.caption2.bold()).tracking(1.1).foregroundStyle(.secondary);Text("Complete the project walkthrough").font(.headline)};Spacer();Text("\(archived)/\(scans.count) archived").font(.caption).foregroundStyle(.secondary)}
+            Text("Use this after every room you need has been scanned and reviewed. Aurelium will archive the walkthrough set and assemble the room estimates into a proposal draft.").font(.subheadline).foregroundStyle(.secondary)
+            Button{showingCompleteConfirmation=true}label:{Label("Walkthrough Complete",systemImage:"checkmark.seal.fill").font(.headline).frame(maxWidth:.infinity)}.buttonStyle(.borderedProminent).controlSize(.large).tint(.primary)
+        }.padding(16).background(.thinMaterial,in:RoundedRectangle(cornerRadius:18))
+    }
 }
 
 private struct SmartScanExperience: View {
     let project: ProjectSummary
+    let suggestedRoomName: String
     let onComplete: (WalkthroughScan) -> Void
     let onCancel: () -> Void
 
@@ -250,7 +270,7 @@ private struct SmartScanExperience: View {
     private func finalize(room: CapturedRoom) async {
         let recording = await recorder.stop()
         let scanID = UUID()
-        let summary = CapturedRoomSummary(id: UUID(), name: "Scan \(Date().formatted(date: .omitted, time: .shortened))", wallCount: room.walls.count, doorCount: room.doors.count, windowCount: room.windows.count, source: .roomPlan, verificationRequired: true)
+        let summary = CapturedRoomSummary(id: UUID(), name: suggestedRoomName, wallCount: room.walls.count, doorCount: room.doors.count, windowCount: room.windows.count, source: .roomPlan, verificationRequired: true)
 
         let feetPerMeter = 3.280839895
         let sqftPerSquareMeter = 10.763910417
@@ -408,6 +428,7 @@ private struct PostScanEstimateView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var confirmed = false
+    @State private var roomName: String
     @State private var wallRate = "150"
     @State private var paintDoors = false
     @State private var paintWindows = false
@@ -427,6 +448,7 @@ private struct PostScanEstimateView: View {
         self.onSave = onSave
         self.onDiscard = onDiscard
         let m = walkthrough.measurements
+        _roomName = State(initialValue: walkthrough.room.name)
         _doorQuantity = State(initialValue: String(m?.detectedDoorCount ?? walkthrough.room.doorCount))
         _windowQuantity = State(initialValue: String(m?.detectedWindowCount ?? walkthrough.room.windowCount))
         _trimQuantity = State(initialValue: String(format: "%.1f", m?.estimatedTrimLinearFeet ?? m?.wallLinearFeet ?? 0))
@@ -439,6 +461,11 @@ private struct PostScanEstimateView: View {
                 Section {
                     Text("Room scan complete").font(.title2.bold())
                     Text("Confirm the detected measurements, then choose exactly what is being painted. Checked scopes expand so their quantity and production rate can be corrected before the estimate is created.").foregroundStyle(.secondary)
+                }
+
+                Section("Room name") {
+                    TextField("e.g. Living Room, Bedroom 2, Main Hall", text:$roomName).textInputAutocapitalization(.words)
+                    Text("This name follows the scan, 3D model, tagged evidence, estimate lines, and proposal so the next person knows exactly which room they are reviewing.").font(.caption).foregroundStyle(.secondary)
                 }
 
                 if let m = walkthrough.measurements {
@@ -493,7 +520,7 @@ private struct PostScanEstimateView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Discard", role: .destructive) { dismiss(); onDiscard() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create Estimate") { createEstimate() }
-                        .disabled(!confirmed || !ratesAreValid)
+                        .disabled(!confirmed || !ratesAreValid || roomName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
                 }
             }
         }.interactiveDismissDisabled()
@@ -560,6 +587,7 @@ private struct PostScanEstimateView: View {
         add(.ceiling, enabled: paintCeiling, quantity: ceilingQuantity, unit: "sqft", rate: ceilingRate, labor: ceilingHours)
 
         var updated = walkthrough
+        updated.room.name = roomName.trimmingCharacters(in:.whitespacesAndNewlines)
         updated.room.verificationRequired = !confirmed
         updated.autoEstimate = AutoEstimateResult(
             productionSquareFeetPerHour: wallRateValue,
@@ -570,6 +598,25 @@ private struct PostScanEstimateView: View {
         )
         dismiss(); onSave(updated)
     }
+}
+
+private struct ProposalDraftView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let project:ProjectSummary
+    private var scans:[WalkthroughScan]{model.walkthroughs(for:project.id)}
+    private var totalLabor:Double{scans.compactMap{$0.autoEstimate?.totalLaborHours ?? $0.autoEstimate?.laborHours}.reduce(0,+)}
+    private var evidenceCount:Int{scans.reduce(0){$0+$1.captures.count}}
+    private var scopeTotals:[(EstimateScopeKind,Double,String,Double)]{var totals:[EstimateScopeKind:(Double,String,Double)]=[:];for scan in scans{for line in scan.autoEstimate?.scopeLines?.filter(\.enabled) ?? []{let c=totals[line.kind] ?? (0,line.unit,0);totals[line.kind]=(c.0+line.quantity,line.unit,c.2+line.laborHours)}};return EstimateScopeKind.allCases.compactMap{kind in guard let v=totals[kind] else{return nil};return(kind,v.0,v.1,v.2)}}
+    var body:some View{NavigationStack{List{
+        Section{VStack(alignment:.leading,spacing:7){Text("WALKTHROUGH COMPLETE").font(.caption2.bold()).tracking(1.2).foregroundStyle(.secondary);Text("\(project.name) Proposal Draft").font(.title2.bold());Text("All captured rooms are archived and the measured painting scope is assembled below. Pricing, materials, coats, prep, overhead and profit can be layered onto this production draft next.").foregroundStyle(.secondary)}.padding(.vertical,6)}
+        Section("Project summary"){LabeledContent("Client",value:project.client.isEmpty ? "Not assigned":project.client);LabeledContent("Location",value:project.location.isEmpty ? "Not assigned":project.location);LabeledContent("Rooms",value:"\(scans.count)");LabeledContent("Tagged evidence",value:"\(evidenceCount)");LabeledContent("Production labor",value:String(format:"%.1f hr",totalLabor)).font(.headline)}
+        if !scopeTotals.isEmpty{Section("Combined measured scope"){ForEach(scopeTotals,id:\.0){kind,quantity,unit,labor in VStack(alignment:.leading,spacing:4){HStack{Text(kind.rawValue).font(.headline);Spacer();Text(String(format:"%.1f hr",labor)).foregroundStyle(.secondary)};Text("\(formatQuantity(quantity)) \(unit)").font(.caption).foregroundStyle(.secondary)}.padding(.vertical,4)}}}
+        Section("Rooms"){ForEach(scans){scan in VStack(alignment:.leading,spacing:6){HStack{Text(scan.room.name).font(.headline);Spacer();Label("Archived",systemImage:"archivebox.fill").font(.caption2.bold()).foregroundStyle(.secondary)};if let m=scan.measurements{Text(String(format:"%.0f sq ft paintable walls · %.1f ft avg height",m.paintableWallSquareFeet,m.averageWallHeightFeet)).font(.caption).foregroundStyle(.secondary)};if let auto=scan.autoEstimate{Text(String(format:"%.1f labor hours",auto.totalLaborHours ?? auto.laborHours)).font(.caption).foregroundStyle(.secondary)}else{Text("Measurements captured · estimate confirmation pending").font(.caption).foregroundStyle(.orange)}}.padding(.vertical,5)}}
+        if scans.contains(where:{!$0.transcript.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty}){Section("Walkthrough notes"){ForEach(scans.filter{!$0.transcript.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty}){scan in VStack(alignment:.leading,spacing:4){Text(scan.room.name).font(.headline);Text(scan.transcript).font(.subheadline).foregroundStyle(.secondary)}.padding(.vertical,4)}}}
+        Section{Label("Production draft saved",systemImage:"checkmark.seal.fill").foregroundStyle(.green);Text("The walkthrough archive is complete. This proposal remains a draft until pricing and final scope are reviewed.").font(.caption).foregroundStyle(.secondary)}
+    }.navigationTitle("Estimate / Proposal").navigationBarTitleDisplayMode(.inline).toolbar{ToolbarItem(placement:.confirmationAction){Button("Done"){dismiss()}}}}}
+    private func formatQuantity(_ value:Double)->String{value.rounded()==value ? String(Int(value)):String(format:"%.1f",value)}
 }
 
 private struct RoomModelPreview: UIViewControllerRepresentable {
