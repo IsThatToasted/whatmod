@@ -44,6 +44,8 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath DerivedData \
+            SUPABASE_URL='${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}' \
+            SUPABASE_ANON_KEY='${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY='' \
