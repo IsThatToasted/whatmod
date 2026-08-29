@@ -1,0 +1,5 @@
+build/
+DerivedData/
+ScooterCast.xcodeproj/
+*.xcworkspace/
+.DS_Store

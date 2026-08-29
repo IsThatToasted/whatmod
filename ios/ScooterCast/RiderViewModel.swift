@@ -98,11 +98,12 @@ final class RiderViewModel: ObservableObject {
         eventTask = nil
 
         recordingStatus = "Finalizing…"
-        try? await api.stopRecording(current.id)
 
+        // Participant Egress finalizes automatically after the rider leaves.
         await stream.stop()
         location.stop()
         UIApplication.shared.isIdleTimerDisabled = false
+        try? await api.stopRecording(current.id)
         try? await api.endRide(current.id)
 
         session = nil

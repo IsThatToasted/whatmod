@@ -71,13 +71,15 @@ final class LiveStreamManager: ObservableObject {
                     .first
             }
 
+            // Microphone is optional and must never abort video startup.
             if microphoneEnabled {
-                _ = try await room.localParticipant.setMicrophone(
-                    enabled: true,
-                    captureOptions: nil,
-                    publishOptions: nil
-                )
-                isMicrophoneMuted = false
+                do {
+                    _ = try await room.localParticipant.setMicrophone(enabled: true, captureOptions: nil, publishOptions: nil)
+                    isMicrophoneMuted = false
+                } catch {
+                    isMicrophoneMuted = true
+                    errorMessage = "Video is live. Microphone could not start: \(error.localizedDescription)"
+                }
             } else {
                 isMicrophoneMuted = true
             }
