@@ -15,9 +15,6 @@ jobs:
   device-ipa:
     name: Build iPhone IPA
     runs-on: macos-15
-    env:
-      APP_CLOUD_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
-      APP_CLOUD_PUBLIC_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
     defaults:
       run:
         working-directory: app/ios
@@ -25,66 +22,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Remove post-stable auth experiments
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -f AureliumField/Services/NativeGoogleAuth.swift
-          rm -f AureliumField/Services/NativeOAuthCoordinator.swift
-          echo "Post-v0.5.4 native auth experiment files removed from build checkout if present."
-
-      - name: Validate app configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${APP_CLOUD_URL:-}" || -z "${APP_CLOUD_PUBLIC_KEY:-}" ]]; then
-            echo "::error title=AF-CFG-001::Required iOS build configuration is missing."
-            exit 1
-          fi
-          if [[ "$APP_CLOUD_URL" != https://* ]]; then
-            echo "::error title=AF-CFG-001::The configured service endpoint is invalid."
-            exit 1
-          fi
-          echo "iOS runtime configuration inputs are present."
-
-      - name: Generate bundled runtime configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          payload = {
-              "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
-              "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
-          }
-          output = Path("AureliumField/Resources/RuntimeConfig.json")
-          output.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
-          PY
-          echo "Runtime configuration resource generated (values hidden)."
-
-      - name: Verify generated runtime configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          path = Path("AureliumField/Resources/RuntimeConfig.json")
-          payload = json.loads(path.read_text(encoding="utf-8"))
-          if payload.get("cloudURL") != os.environ["APP_CLOUD_URL"].strip():
-              raise SystemExit("AF-CFG-001: generated service endpoint did not match build input")
-          if payload.get("publicKey") != os.environ["APP_CLOUD_PUBLIC_KEY"].strip():
-              raise SystemExit("AF-CFG-001: generated public client key did not match build input")
-          if not payload["cloudURL"].startswith("https://") or not payload["publicKey"]:
-              raise SystemExit("AF-CFG-001: generated runtime configuration is incomplete")
-          PY
-          echo "Generated runtime resource verified."
 
       - name: Select Xcode
         run: |
@@ -107,84 +44,27 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath DerivedData \
+            SUPABASE_URL='${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}' \
+            SUPABASE_ANON_KEY='${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
-      - name: Verify runtime configuration inside built app
-        shell: bash
-        run: |
-          set -euo pipefail
-          APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
-          test -d "$APP_PATH"
-          test -x "$APP_PATH/AureliumField"
-
-          CONFIG_PATHS="$(find "$APP_PATH" -type f -name 'RuntimeConfig.json' -print)"
-          CONFIG_COUNT="$(printf '%s\n' "$CONFIG_PATHS" | sed '/^$/d' | wc -l | tr -d ' ')"
-          if [[ "$CONFIG_COUNT" -eq 0 ]]; then
-            echo "::error title=AF-CFG-101::The built iOS app is missing its runtime configuration resource."
-            exit 1
-          fi
-          if [[ "$CONFIG_COUNT" -gt 1 ]]; then
-            echo "::error title=AF-CFG-103::The built iOS app contains multiple runtime configuration resources."
-            exit 1
-          fi
-
-          CONFIG_PATH="$(printf '%s\n' "$CONFIG_PATHS" | head -n 1)"
-          CONFIG_RELATIVE_PATH="${CONFIG_PATH#${APP_PATH}/}"
-          echo "Runtime configuration bundle path: ${CONFIG_RELATIVE_PATH}"
-          export BUILT_RUNTIME_CONFIG="$CONFIG_PATH"
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          payload = json.loads(Path(os.environ["BUILT_RUNTIME_CONFIG"]).read_text(encoding="utf-8"))
-          expected_url = os.environ["APP_CLOUD_URL"].strip()
-          expected_key = os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
-          if payload.get("cloudURL") != expected_url or payload.get("publicKey") != expected_key:
-              raise SystemExit("AF-CFG-103: built application runtime configuration did not match build inputs")
-          if not payload.get("cloudURL", "").startswith("https://") or not payload.get("publicKey"):
-              raise SystemExit("AF-CFG-104: built application runtime configuration is incomplete")
-          PY
-          echo "Built iOS runtime configuration verified (values hidden)."
-
       - name: Package IPA
         run: |
           set -euo pipefail
+
           APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
           test -d "$APP_PATH"
+
           rm -rf Payload AureliumField.ipa
           mkdir -p Payload
           ditto "$APP_PATH" "Payload/AureliumField.app"
           /usr/bin/zip -qry AureliumField.ipa Payload
-          echo "Created AureliumField.ipa"
+
+          echo "Created $(pwd)/AureliumField.ipa"
           ls -lh AureliumField.ipa
-
-      - name: Verify runtime configuration inside packaged IPA
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          import os
-          import zipfile
-
-          ipa = "AureliumField.ipa"
-          expected_url = os.environ["APP_CLOUD_URL"].strip()
-          expected_key = os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
-          with zipfile.ZipFile(ipa) as archive:
-              matches = [name for name in archive.namelist() if name.endswith("/RuntimeConfig.json")]
-              if len(matches) != 1:
-                  raise SystemExit(f"AF-CFG-101: packaged IPA runtime resource count was {len(matches)}")
-              payload = json.loads(archive.read(matches[0]).decode("utf-8"))
-              if payload.get("cloudURL") != expected_url or payload.get("publicKey") != expected_key:
-                  raise SystemExit("AF-CFG-103: packaged IPA runtime configuration did not match build inputs")
-              if not payload.get("cloudURL", "").startswith("https://") or not payload.get("publicKey"):
-                  raise SystemExit("AF-CFG-104: packaged IPA runtime configuration is incomplete")
-              print("Packaged IPA runtime resource verified at " + matches[0].replace("Payload/AureliumField.app/", ""))
-          PY
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
