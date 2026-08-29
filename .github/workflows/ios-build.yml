@@ -74,11 +74,61 @@ jobs:
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
+      - name: Smoke test app launch in iPhone Simulator
+        run: |
+          set -euo pipefail
+
+          SIM_UDID="$(python3 - <<'PY'
+          import json, subprocess
+          data=json.loads(subprocess.check_output(['xcrun','simctl','list','devices','available','-j']))
+          for runtime, devices in data.get('devices', {}).items():
+              if 'iOS' not in runtime:
+                  continue
+              for device in devices:
+                  if device.get('isAvailable') and device.get('name','').startswith('iPhone'):
+                      print(device['udid'])
+                      raise SystemExit
+          raise SystemExit('No available iPhone Simulator found')
+          PY
+          )"
+
+          xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
+          xcrun simctl bootstatus "$SIM_UDID" -b
+
+          set -o pipefail
+          xcodebuild \
+            -project AureliumField.xcodeproj \
+            -scheme AureliumField \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "id=$SIM_UDID" \
+            -derivedDataPath DerivedDataSimulator \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean build | tee xcodebuild-simulator.log
+
+          SIM_APP="DerivedDataSimulator/Build/Products/Debug-iphonesimulator/AureliumField.app"
+          test -d "$SIM_APP"
+          xcrun simctl install "$SIM_UDID" "$SIM_APP"
+          xcrun simctl launch "$SIM_UDID" com.aurelium.field
+          sleep 5
+
+          if ! xcrun simctl terminate "$SIM_UDID" com.aurelium.field; then
+            echo "::error title=AF-IOS-001::Aurelium Field exited during startup in the iPhone Simulator."
+            xcrun simctl spawn "$SIM_UDID" log show --last 2m --style compact --predicate 'process == "AureliumField"' || true
+            exit 1
+          fi
+
+          echo "Aurelium Field survived the iOS launch smoke test."
+
       - name: Verify built application
         run: |
           set -euo pipefail
           APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
           test -d "$APP_PATH"
+          test -x "$APP_PATH/AureliumField"
+          echo "Device binary dependencies:"
+          otool -L "$APP_PATH/AureliumField"
           python3 - <<'PY'
           import json, os, pathlib, plistlib, sys
           app=pathlib.Path('DerivedData/Build/Products/Release-iphoneos/AureliumField.app')
@@ -110,7 +160,7 @@ jobs:
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA-v0.7.0-rebuilt
+          name: AureliumField-iPhone-IPA-v0.7.1-launch-safe
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -119,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log-v0.7.0-rebuilt
+          name: AureliumField-xcodebuild-log-v0.7.1-launch-safe
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7
