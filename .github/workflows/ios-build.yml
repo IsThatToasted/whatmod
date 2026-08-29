@@ -170,6 +170,48 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Verify Xcode plist ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+
+          plist_path = Path("AureliumField/Resources/Info.plist")
+          with plist_path.open("rb") as handle:
+              plist = plistlib.load(handle)
+          schemes = [s for entry in plist.get("CFBundleURLTypes", []) for s in entry.get("CFBundleURLSchemes", [])]
+          if "aureliumfield" not in schemes:
+              raise SystemExit("AF-AUTH-107: XcodeGen modified the source Info.plist and removed the handoff scheme")
+          print("Source Info.plist survived XcodeGen with Aurelium handoff scheme intact.")
+          PY
+
+          xcodebuild \
+            -project AureliumField.xcodeproj \
+            -scheme AureliumField \
+            -configuration Release \
+            -sdk iphoneos \
+            -showBuildSettings > xcode-build-settings.txt
+
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("xcode-build-settings.txt").read_text(encoding="utf-8", errors="replace")
+          settings = {}
+          for line in text.splitlines():
+              if " = " in line:
+                  key, value = line.strip().split(" = ", 1)
+                  settings[key] = value
+
+          plist_file = settings.get("INFOPLIST_FILE", "")
+          generated = settings.get("GENERATE_INFOPLIST_FILE", "")
+          if plist_file != "AureliumField/Resources/Info.plist":
+              raise SystemExit(f"AF-AUTH-107: unexpected INFOPLIST_FILE build setting: {plist_file!r}")
+          if generated.upper() not in {"NO", "NO "}:
+              raise SystemExit(f"AF-AUTH-107: Xcode is still generating Info.plist: {generated!r}")
+          print("Xcode is using the checked-in Info.plist directly.")
+          PY
+
       - name: Build unsigned iPhone app
         run: |
           set -o pipefail
