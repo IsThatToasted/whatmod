@@ -4,7 +4,12 @@ Production UI must never render raw backend/provider errors, provider names, SQL
 
 | Code | Area | Meaning / engineering lookup |
 | --- | --- | --- |
-| AF-CFG-001 | Configuration | Required app cloud configuration was not injected into the build. |
+| AF-CFG-001 | Configuration | General runtime configuration failure/fallback. |
+| AF-CFG-101 | Configuration | iOS runtime configuration resource could not be located in the application bundle. |
+| AF-CFG-102 | Configuration | iOS runtime configuration resource exists but could not be read. |
+| AF-CFG-103 | Configuration | iOS runtime configuration resource is malformed or duplicated. |
+| AF-CFG-104 | Configuration | Runtime workspace endpoint is missing or invalid. |
+| AF-CFG-105 | Configuration | Runtime public client credential is missing. |
 | AF-AUTH-001 | Authentication | Sign-in/session operation failed. |
 | AF-AUTH-002 | Authentication | OAuth/deep-link callback could not establish a session. |
 | AF-AUTH-003 | Authentication | Sign-out failed. |

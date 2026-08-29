@@ -15,7 +15,11 @@ targets:
     type: application
     platform: iOS
     sources:
-      - AureliumField
+      - path: AureliumField
+        excludes:
+          - Resources/RuntimeConfig.json
+      - path: AureliumField/Resources/RuntimeConfig.json
+        buildPhase: resources
     dependencies:
       - package: Supabase
         product: Supabase

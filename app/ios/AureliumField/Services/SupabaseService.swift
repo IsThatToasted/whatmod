@@ -44,11 +44,8 @@ final class SupabaseService {
     var isAdmin: Bool { ["owner", "admin"].contains(membership?.role ?? "") }
 
     private init() {
-        let info = Bundle.main.infoDictionary ?? [:]
-        let urlString = (info["SUPABASE_URL"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let key = (info["SUPABASE_ANON_KEY"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if let url = URL(string: urlString), urlString.hasPrefix("https://"), !key.isEmpty {
-            client = SupabaseClient(supabaseURL: url, supabaseKey: key)
+        if let url = AFRuntimeConfig.cloudURL, AFRuntimeConfig.isConfigured {
+            client = SupabaseClient(supabaseURL: url, supabaseKey: AFRuntimeConfig.publicKey)
         } else {
             client = nil
         }
@@ -56,7 +53,7 @@ final class SupabaseService {
 
     func bootstrap() async {
         defer { isLoading = false }
-        guard let client else { errorMessage = AFPublicError.text(.configuration, "Aurelium Field could not connect to your workspace."); return }
+        guard let client else { errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace."); return }
         do {
             let session = try await client.auth.session
             userID = session.user.id
@@ -69,7 +66,7 @@ final class SupabaseService {
     }
 
     func signInWithGoogle() async {
-        guard let client else { errorMessage = AFPublicError.text(.configuration, "Aurelium Field could not connect to your workspace."); return }
+        guard let client else { errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace."); return }
         do {
             try await client.auth.signInWithOAuth(provider: .google, redirectTo: URL(string: "aureliumfield://auth-callback")!)
             let session = try await client.auth.session
@@ -162,13 +159,13 @@ final class SupabaseService {
     }
 
     func createOrganization(name: String) async throws {
-        guard let client else { throw AFPublicError.error(.configuration, "Aurelium Field could not connect to your workspace.") }
+        guard let client else { throw AFPublicError.error(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace.") }
         let _: UUID = try await client.rpc("create_organization", params: ["org_name": name]).execute().value
         await loadMembership()
     }
 
     func acceptInvite(token: UUID) async throws {
-        guard let client else { throw AFPublicError.error(.configuration, "Aurelium Field could not connect to your workspace.") }
+        guard let client else { throw AFPublicError.error(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace.") }
         let _: UUID = try await client.rpc("accept_organization_invite", params: ["invite_token": token.uuidString]).execute().value
         await loadMembership()
     }

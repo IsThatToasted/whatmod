@@ -2,6 +2,11 @@ import Foundation
 
 enum AFErrorCode: String, Sendable {
     case configuration = "AF-CFG-001"
+    case configurationResourceMissing = "AF-CFG-101"
+    case configurationResourceUnreadable = "AF-CFG-102"
+    case configurationResourceMalformed = "AF-CFG-103"
+    case configurationEndpointInvalid = "AF-CFG-104"
+    case configurationPublicKeyMissing = "AF-CFG-105"
     case authentication = "AF-AUTH-001"
     case authCallback = "AF-AUTH-002"
     case signOut = "AF-AUTH-003"
