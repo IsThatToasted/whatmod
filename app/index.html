@@ -7,6 +7,23 @@
     <meta name="description" content="Aurelium Field — construction operations, estimating, field documentation and painting production in one workspace." />
     <link rel="manifest" href="/app/manifest.webmanifest" />
     <title>Aurelium Field</title>
+    <script>
+      (() => {
+        const hasCookie = document.cookie.split(';').some(v => v.trim() === 'af_native_auth=1');
+        let hasSessionFlag = false;
+        try { hasSessionFlag = sessionStorage.getItem('af_native_auth') === '1'; } catch {}
+        const query = new URLSearchParams(location.search);
+        const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+        const hasAuthResult = query.has('code') || query.has('error') || query.has('error_description') || hash.has('access_token') || hash.has('error') || hash.has('error_description');
+        if ((hasCookie || hasSessionFlag) && hasAuthResult) {
+          try { sessionStorage.removeItem('af_native_auth'); } catch {}
+          document.cookie = 'af_native_auth=; Path=/app/; Max-Age=0; SameSite=Lax; Secure';
+          document.documentElement.style.visibility = 'hidden';
+          const callback = `aureliumfield://auth-callback${location.search || ''}${location.hash || ''}`;
+          location.replace(callback);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

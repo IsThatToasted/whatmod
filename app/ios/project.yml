@@ -7,9 +7,6 @@ packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift.git
     from: 2.0.0
-  GoogleSignIn:
-    url: https://github.com/google/GoogleSignIn-iOS.git
-    from: 9.2.0
 settings:
   base:
     SWIFT_VERSION: '5.10'
@@ -26,8 +23,6 @@ targets:
     dependencies:
       - package: Supabase
         product: Supabase
-      - package: GoogleSignIn
-        product: GoogleSignIn
     info:
       path: AureliumField/Resources/Info.plist
     settings:

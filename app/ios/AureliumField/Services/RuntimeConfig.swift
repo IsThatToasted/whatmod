@@ -4,12 +4,10 @@ enum AFRuntimeConfig {
     private struct Payload: Decodable {
         let cloudURL: String
         let publicKey: String
-        let googleIOSClientID: String?
-        let googleWebClientID: String?
     }
 
     private enum Resolution {
-        case configured(url: URL, key: String, googleIOSClientID: String?, googleWebClientID: String?)
+        case configured(url: URL, key: String)
         case missingResource
         case unreadableResource
         case malformedResource
@@ -26,20 +24,12 @@ enum AFRuntimeConfig {
 
         let rawURL = payload.cloudURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = payload.publicKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let googleIOS = payload.googleIOSClientID?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let googleWeb = payload.googleWebClientID?.trimmingCharacters(in: .whitespacesAndNewlines)
-
         guard !key.isEmpty else { return .missingPublicKey }
         guard let url = URL(string: rawURL), url.scheme?.lowercased() == "https", let host = url.host, !host.isEmpty else {
             return .invalidEndpoint
         }
 
-        return .configured(
-            url: url,
-            key: key,
-            googleIOSClientID: (googleIOS?.isEmpty == false ? googleIOS : nil),
-            googleWebClientID: (googleWeb?.isEmpty == false ? googleWeb : nil)
-        )
+        return .configured(url: url, key: key)
     }
 
     private static func locateResource() -> URL? {
@@ -66,28 +56,15 @@ enum AFRuntimeConfig {
     }
 
     static var cloudURL: URL? {
-        guard case let .configured(url, _, _, _) = resolution else { return nil }
+        guard case let .configured(url, _) = resolution else { return nil }
         return url
     }
 
     static var publicKey: String {
-        guard case let .configured(_, key, _, _) = resolution else { return "" }
+        guard case let .configured(_, key) = resolution else { return "" }
         return key
     }
 
-    static var googleIOSClientID: String? {
-        guard case let .configured(_, _, clientID, _) = resolution else { return nil }
-        return clientID
-    }
-
-    static var googleWebClientID: String? {
-        guard case let .configured(_, _, _, clientID) = resolution else { return nil }
-        return clientID
-    }
-
-    static var isGoogleSignInConfigured: Bool {
-        googleIOSClientID != nil && googleWebClientID != nil
-    }
 
     static var isConfigured: Bool {
         if case .configured = resolution { return true }

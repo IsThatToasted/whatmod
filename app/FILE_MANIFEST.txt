@@ -30,7 +30,6 @@ ios/AureliumField/Features/Team/TeamView.swift
 ios/AureliumField/Models/Domain.swift
 ios/AureliumField/Resources/Info.plist
 ios/AureliumField/Resources/RuntimeConfig.json
-ios/AureliumField/Services/NativeGoogleAuth.swift
 ios/AureliumField/Services/RoomPlanCaptureView.swift
 ios/AureliumField/Services/RuntimeConfig.swift
 ios/AureliumField/Services/ScanRecordingService.swift
@@ -73,3 +72,5 @@ tsconfig.app.json
 tsconfig.json
 tsconfig.node.json
 vite.config.ts
+ios/AureliumField/Services/NativeOAuthCoordinator.swift
+public/native-auth-start.html

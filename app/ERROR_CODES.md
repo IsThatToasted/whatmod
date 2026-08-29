@@ -11,12 +11,11 @@ User-facing errors intentionally avoid backend/provider implementation details.
 - `AF-CFG-105` — public workspace credential missing
 
 ## Authentication
+- `AF-AUTH-106` — native hosted sign-in could not start
+- `AF-AUTH-107` — native sign-in did not return a valid handoff callback
+- `AF-AUTH-108` — returned authentication result could not become an Aurelium session
 - `AF-AUTH-001` — authenticated organization/session data could not be loaded
 - `AF-AUTH-003` — sign-out failed
-- `AF-AUTH-109` — native Google client configuration missing/invalid
-- `AF-AUTH-110` — native Google sign-in UI could not complete
-- `AF-AUTH-111` — Google sign-in completed without usable tokens
-- `AF-AUTH-112` — Google tokens could not be exchanged for an Aurelium session
 
 ## Organization
 - `AF-ORG-001` — organization creation failed

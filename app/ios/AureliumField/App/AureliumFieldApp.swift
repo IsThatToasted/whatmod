@@ -9,7 +9,7 @@ struct AureliumFieldApp: App {
             AuthGateView()
                 .environment(model)
                 .onOpenURL { url in
-                    _ = AFNativeGoogleAuth.handleOpenURL(url)
+                    Task { await SupabaseService.shared.handleAuthCallback(url) }
                 }
         }
     }

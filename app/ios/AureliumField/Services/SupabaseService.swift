@@ -80,20 +80,30 @@ final class SupabaseService {
         defer { isSigningIn = false }
 
         do {
-            let google = try await AFNativeGoogleAuth.signIn()
-            let session = try await client.auth.signInWithIdToken(
-                credentials: OpenIDConnectCredentials(
-                    provider: .google,
-                    idToken: google.idToken,
-                    accessToken: google.accessToken
-                )
-            )
+            let session = try await AFNativeOAuthCoordinator.shared.signIn(client: client)
             await applyAuthenticatedSession(session)
+        } catch is AFNativeOAuthCancellation {
+            // The person closed the sign-in sheet. No error is shown.
         } catch let publicError as AFPublicError {
             errorMessage = publicError.displayText
         } catch {
-            AFPublicError.capture(error, code: .nativeGoogleExchange)
-            errorMessage = AFPublicError.text(.nativeGoogleExchange, "We couldn't complete sign in.")
+            AFPublicError.capture(error, code: .nativeAuthExchange)
+            errorMessage = AFPublicError.text(.nativeAuthExchange, "We couldn't complete sign in.")
+        }
+    }
+
+    func handleAuthCallback(_ url: URL) async {
+        guard !isSigningIn else { return }
+        guard let client else { return }
+        do {
+            if let session = try await AFNativeOAuthCoordinator.shared.importExternalCallback(url, client: client) {
+                await applyAuthenticatedSession(session)
+            }
+        } catch let publicError as AFPublicError {
+            errorMessage = publicError.displayText
+        } catch {
+            AFPublicError.capture(error, code: .nativeAuthExchange)
+            errorMessage = AFPublicError.text(.nativeAuthExchange, "We couldn't complete sign in.")
         }
     }
 
@@ -107,7 +117,7 @@ final class SupabaseService {
         guard let client else { return }
         do {
             try await client.auth.signOut()
-            AFNativeGoogleAuth.signOut()
+            AFNativeOAuthCoordinator.shared.cancel()
             userID = nil
             email = nil
             membership = nil
