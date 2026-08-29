@@ -18,9 +18,9 @@ struct AuthGateView: View {
         }
         .task { if cloud.isLoading { await cloud.bootstrap() } }
         .onOpenURL { url in Task { await cloud.handle(url) } }
-        .alert("Aurelium Field", isPresented: Binding(get: { cloud.errorMessage != nil }, set: { if !$0 { cloud.errorMessage = nil } })) {
+        .alert("Cloud error", isPresented: Binding(get: { cloud.errorMessage != nil }, set: { if !$0 { cloud.errorMessage = nil } })) {
             Button("OK", role: .cancel) { cloud.errorMessage = nil }
-        } message: { Text(cloud.errorMessage ?? AFPublicError.text(.unknown)) }
+        } message: { Text(cloud.errorMessage ?? "Unknown error") }
     }
 }
 
@@ -38,7 +38,7 @@ private struct LoginView: View {
                 Label("Continue with Google", systemImage: "person.crop.circle.badge.checkmark")
                     .font(.headline).frame(maxWidth: .infinity).frame(height: 52)
             }.buttonStyle(.borderedProminent)
-            Text("Your company data is separated by organization and protected by organization-level access controls.").font(.caption).foregroundStyle(.secondary)
+            Text("Your company data is separated by organization and protected by Supabase Row Level Security.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(24)
     }
@@ -83,12 +83,12 @@ private struct OrganizationOnboardingView: View {
 
     private func create() {
         working = true; error = nil
-        Task { do { try await cloud.createOrganization(name: organizationName); working = false } catch { AFPublicError.capture(error, code: .organizationCreate); self.error = AFPublicError.text(.organizationCreate, "We couldn't create that organization."); working = false } }
+        Task { do { try await cloud.createOrganization(name: organizationName); working = false } catch { self.error = error.localizedDescription; working = false } }
     }
     private func join() {
         working = true; error = nil
         let raw = inviteToken.split(separator: "invite=").last.map(String.init) ?? inviteToken
-        guard let token = UUID(uuidString: raw.trimmingCharacters(in: .whitespacesAndNewlines)) else { error = AFPublicError.text(.organizationJoin, "That invite is not valid."); working = false; return }
-        Task { do { try await cloud.acceptInvite(token: token); working = false } catch { AFPublicError.capture(error, code: .organizationJoin); self.error = AFPublicError.text(.organizationJoin, "We couldn't join that organization."); working = false } }
+        guard let token = UUID(uuidString: raw.trimmingCharacters(in: .whitespacesAndNewlines)) else { error = "That invite token is not valid."; working = false; return }
+        Task { do { try await cloud.acceptInvite(token: token); working = false } catch { self.error = error.localizedDescription; working = false } }
     }
 }

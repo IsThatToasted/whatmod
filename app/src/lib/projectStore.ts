@@ -2,7 +2,6 @@ import { useSyncExternalStore } from 'react';
 import type { Project } from '../types/domain';
 import { sampleProjects } from './demo';
 import { supabase } from './supabase';
-import { AF_ERROR, debugError } from './publicErrors';
 
 const key = 'aurelium.projects.v3';
 const events = new EventTarget();
@@ -20,14 +19,14 @@ async function currentOrg(){
 export async function hydrateProjectsFromCloud(organizationID:string){
  if(!supabase)return;
  const {data,error}=await supabase.from('projects').select('id,name,address_line1,status,primary_trade,description,updated_at').eq('organization_id',organizationID).order('updated_at',{ascending:false});
- if(error){debugError(AF_ERROR.projectLoad,error);return}
+ if(error){console.error(error);return}
  if(data){commit(data.map(row=>({id:row.id,name:row.name,address:row.address_line1??'',clientName:'',status:row.status,trade:row.primary_trade,progress:0,crewCount:0,updatedAt:new Date(row.updated_at).toLocaleDateString()})) as Project[])}
 }
 export function upsertProject(project:Project){
  const i=cache.findIndex(p=>p.id===project.id); const next=[...cache]; if(i>=0) next[i]=project; else next.unshift(project); commit(next);
- void (async()=>{const org=await currentOrg();if(!org||!supabase)return;const {error}=await supabase.from('projects').upsert({id:project.id,organization_id:org.organizationID,name:project.name,address_line1:project.address||null,status:project.status,primary_trade:project.trade,description:null,created_by:org.userID});if(error)debugError(AF_ERROR.projectSave,error)})();
+ void (async()=>{const org=await currentOrg();if(!org||!supabase)return;const {error}=await supabase.from('projects').upsert({id:project.id,organization_id:org.organizationID,name:project.name,address_line1:project.address||null,status:project.status,primary_trade:project.trade,description:null,created_by:org.userID});if(error)console.error(error)})();
 }
 export function deleteProject(id:string){
  commit(cache.filter(p=>p.id!==id));
- void (async()=>{if(!supabase)return;const {error}=await supabase.from('projects').delete().eq('id',id);if(error)debugError(AF_ERROR.projectDelete,error)})();
+ void (async()=>{if(!supabase)return;const {error}=await supabase.from('projects').delete().eq('id',id);if(error)console.error(error)})();
 }

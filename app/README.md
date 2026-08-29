@@ -67,7 +67,7 @@ The review screen can reopen the saved USDZ room model through Quick Look.
 
 ## iOS build
 
-The root workflow builds a physical-device `iphoneos` target and packages `AureliumField.ipa`. It validates the two repository variables, generates the private build-time `RuntimeConfig.json` bundle resource, verifies that resource in the built `.app`, and re-verifies it inside the final IPA before publishing the artifact. The IPA remains unsigned until Apple signing credentials are configured.
+The root workflow builds a physical-device `iphoneos` target and packages `AureliumField.ipa`. It injects the two repository variables above as iOS build settings. The IPA remains unsigned until Apple signing credentials are configured.
 
 
 ## v0.3.1 walkthrough update
@@ -75,23 +75,3 @@ Smart Walkthrough now records AR camera frames directly instead of using ReplayK
 
 ## v0.4.0 Admin Workspace
 Apply `supabase/migrations/004_admin_workspace.sql` after migrations 001–003. The migration is required for Admin View employee management, audited timecard adjustments, invite revocation, and the tighter employee timecard/membership RLS rules.
-
-
-## v0.5.0 database update
-Run `supabase/migrations/005_project_walkthrough_completion.sql` after the safe 004 migration. It is idempotent.
-
-
-
-## v0.5.2 iOS compiled configuration
-
-The iOS GitHub workflow no longer depends on custom Info.plist build-setting expansion for runtime cloud configuration. It generates `AureliumField/Services/RuntimeConfig.swift` from the existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` repository Variable/Secret values before Xcode compiles the target, verifies those generated constants match the build inputs, and confirms the file is included in the Swift compile file list before packaging the IPA. Build/configuration failures use `AF-CFG-001`.
-
-## v0.5.1 configuration + public error codes
-The iOS workflow now hard-validates packaged runtime configuration before IPA creation. User-facing production errors are sanitized into stable `AF-*` reference codes; see `ERROR_CODES.md`. Raw provider/database/storage errors are not rendered to end users.
-
-### v0.5.3 iOS runtime configuration
-The iOS workflow generates `AureliumField/Resources/RuntimeConfig.json` from the same `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` repository Actions Variables/Secrets used by the web build. The workflow verifies the copy inside the final `.app` before creating the IPA. The checked-in JSON is intentionally blank and is not suitable for a production manual build until populated by CI.
-
-## v0.5.4 iOS runtime configuration
-
-The native runtime configuration loader no longer assumes `RuntimeConfig.json` is flattened into the iOS bundle root. It resolves the resource from known bundle locations and includes a bounded recursive fallback, matching the resource location verified by CI. The root iOS workflow also re-verifies the resource inside the final IPA. Configuration faults use `AF-CFG-101` through `AF-CFG-105` for precise support lookup without exposing infrastructure details to users.

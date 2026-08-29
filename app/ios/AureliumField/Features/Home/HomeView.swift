@@ -19,23 +19,11 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Projects").font(.title2.bold())
                     ForEach(model.projects.prefix(5)) { project in
-                        Button {
-                            model.selectProject(project)
-                            model.selectedTab = .projects
-                        } label: {
-                            VStack(alignment: .leading, spacing: 7) {
-                                HStack {
-                                    Text(project.name).font(.headline).foregroundStyle(.primary)
-                                    Spacer()
-                                    Text(project.status).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                                }
-                                Text(project.location).font(.caption).foregroundStyle(.secondary)
-                                ProgressView(value: project.progress)
-                            }.padding(.vertical, 7).contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Opens this project in Projects")
+                        VStack(alignment: .leading, spacing: 7) {
+                            HStack { Text(project.name).font(.headline); Spacer(); Text(project.status).font(.caption.weight(.semibold)).foregroundStyle(.secondary) }
+                            Text(project.location).font(.caption).foregroundStyle(.secondary)
+                            ProgressView(value: project.progress)
+                        }.padding(.vertical, 6)
                     }
                 }
             }.padding()
