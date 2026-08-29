@@ -16,5 +16,21 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src"]
+  "include": [
+    "src/vite-env.d.ts",
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/components/Shell.tsx",
+    "src/components/StatusPill.tsx",
+    "src/lib/demo.ts",
+    "src/lib/projectStore.ts",
+    "src/lib/supabase.ts",
+    "src/pages/Estimator.tsx",
+    "src/pages/Field.tsx",
+    "src/pages/Home.tsx",
+    "src/pages/Placeholder.tsx",
+    "src/pages/Projects.tsx",
+    "src/pages/Team.tsx",
+    "src/types/domain.ts"
+  ]
 }

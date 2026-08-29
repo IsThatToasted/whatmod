@@ -1,10 +1,11 @@
-const CACHE='aurelium-field-v1';
-const SHELL=['/app/','/app/index.html','/app/manifest.webmanifest'];
-self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',event=>{
-  if(event.request.method!=='GET') return;
-  event.respondWith(fetch(event.request).then(response=>{
-    const copy=response.clone(); caches.open(CACHE).then(c=>c.put(event.request,copy)); return response;
-  }).catch(()=>caches.match(event.request).then(r=>r||caches.match('/app/index.html'))));
+// Recovery worker: retire the original v0.2 offline cache instead of serving
+// potentially stale Vite HTML/chunks across deployments.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key.startsWith('aurelium-field')).map((key) => caches.delete(key)));
+    await self.clients.claim();
+    await self.registration.unregister();
+  })());
 });

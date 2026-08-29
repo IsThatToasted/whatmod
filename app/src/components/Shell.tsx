@@ -1,6 +1,5 @@
-import { NavLink, Outlet, Link } from 'react-router-dom';
-import { BriefcaseBusiness, ClipboardCheck, House, MessageSquare, Sparkles, UsersRound, Settings, Camera, ShieldCheck } from 'lucide-react';
-import { useAuth } from '../auth/AuthGate';
+import { NavLink, Outlet } from 'react-router-dom';
+import { BriefcaseBusiness, ClipboardCheck, House, MessageSquare, Sparkles, UsersRound, Settings, Camera } from 'lucide-react';
 
 const links = [
   ['/', 'Home', House],
@@ -13,16 +12,12 @@ const links = [
 ] as const;
 
 export function Shell() {
-  const {isAdmin,membership}=useAuth();
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand"><div className="brand-mark">A</div><div><strong>Aurelium</strong><span>Field</span></div></div>
         <nav>{links.map(([to, label, Icon]) => <NavLink key={to} to={to} end={to === '/'} className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}><Icon size={19}/><span>{label}</span></NavLink>)}</nav>
-        <div className="sidebar-footer employee-sidebar-footer">
-          {isAdmin&&<Link className="admin-switch" to="/admin"><ShieldCheck size={18}/><div><strong>Admin View</strong><span>Manage {membership?.organization?.name??'organization'}</span></div></Link>}
-          <div className="field-ready"><ClipboardCheck size={18}/><div><strong>Employee View</strong><span>Field-ready workspace</span></div></div>
-        </div>
+        <div className="sidebar-footer"><ClipboardCheck size={18}/><div><strong>Field-ready</strong><span>Offline drafts enabled</span></div></div>
       </aside>
       <main className="main"><Outlet /></main>
       <nav className="mobile-tabs">

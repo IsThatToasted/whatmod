@@ -7,9 +7,22 @@
     <meta name="description" content="Aurelium Field — construction operations, estimating, field documentation and painting production in one workspace." />
     <link rel="manifest" href="/app/manifest.webmanifest" />
     <title>Aurelium Field</title>
+    <style>
+      .boot-shell{min-height:100vh;display:grid;place-items:center;background:#0d0f12;color:#f3f4f5;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+      .boot-card{display:grid;justify-items:center;gap:8px;padding:28px;text-align:center}.boot-card strong{font-size:18px}.boot-card span{font-size:13px;color:#9da3aa}
+      .boot-mark{width:44px;height:44px;border-radius:14px;background:#f3f4f5;color:#0d0f12;display:grid;place-items:center;font-weight:800;margin-bottom:4px}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-shell" aria-live="polite">
+        <div class="boot-card">
+          <div class="boot-mark">A</div>
+          <strong>Aurelium Field</strong>
+          <span>Loading workspace…</span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

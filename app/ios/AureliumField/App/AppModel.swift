@@ -4,7 +4,6 @@ import Observation
 @MainActor @Observable
 final class AppModel {
     var selectedTab: AppTab = .home
-    var workspaceMode: WorkspaceMode = .employee
     var projects: [ProjectSummary] = []
     var walkthroughs: [WalkthroughScan] = []
     var selectedProjectID: UUID?
@@ -42,14 +41,6 @@ final class AppModel {
         }
         if selectedProjectID == nil { selectProject(project) }
         persist()
-        Task { await SupabaseService.shared.upsertProject(project) }
-    }
-
-    func refreshProjectsFromCloud() async {
-        do {
-            let cloud = try await SupabaseService.shared.fetchProjects()
-            if !cloud.isEmpty { projects = cloud; if let first = projects.first { selectProject(first) }; persist() }
-        } catch { SupabaseService.shared.errorMessage = error.localizedDescription }
     }
 
     func deleteProject(_ project: ProjectSummary) {
@@ -62,7 +53,6 @@ final class AppModel {
             if let first = projects.first { selectProject(first) }
         }
         persist()
-        Task { await SupabaseService.shared.deleteProject(id: project.id) }
     }
 
     func addWalkthrough(_ walkthrough: WalkthroughScan) {
@@ -72,9 +62,6 @@ final class AppModel {
             activeEstimate.notes.append(.init(id: UUID(), timestamp: walkthrough.createdAt, transcript: walkthrough.transcript))
         }
         persist()
-        if let project = projects.first(where: { $0.id == walkthrough.projectID }) {
-            Task { await WalkthroughCloudSync.shared.sync(walkthrough, project: project) }
-        }
     }
 
     func deleteWalkthrough(_ walkthrough: WalkthroughScan) {
@@ -86,8 +73,6 @@ final class AppModel {
     private func deleteWalkthroughMedia(_ walkthrough: WalkthroughScan) {
         if let video = walkthrough.videoFileName { try? FileManager.default.removeItem(at: AppMediaStore.url(for: video)) }
         walkthrough.captures.forEach { try? FileManager.default.removeItem(at: AppMediaStore.url(for: $0.imageFileName)) }
-        if let model = walkthrough.usdzFileName { try? FileManager.default.removeItem(at: AppMediaStore.url(for: model)) }
-        if let json = walkthrough.roomPlanJSONFileName { try? FileManager.default.removeItem(at: AppMediaStore.url(for: json)) }
     }
 
     private func load() {
@@ -111,8 +96,6 @@ final class AppModel {
         if let data = try? encoder.encode(walkthroughs) { UserDefaults.standard.set(data, forKey: walkthroughsKey) }
     }
 }
-
-enum WorkspaceMode: Hashable { case employee, admin }
 
 enum AppTab: Hashable {
     case home, projects, estimate, field, team
