@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'app/ios/**'
+      - 'app/public/native-auth-start.html'
+      - 'app/index.html'
       - '.github/workflows/ios-build.yml'
   workflow_dispatch:
 
@@ -18,8 +20,6 @@ jobs:
     env:
       APP_CLOUD_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
       APP_CLOUD_PUBLIC_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
-      GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID || secrets.GOOGLE_IOS_CLIENT_ID }}
-      GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID || secrets.GOOGLE_WEB_CLIENT_ID }}
     defaults:
       run:
         working-directory: app/ios
@@ -28,16 +28,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Assert clean native auth baseline
+      - name: Assert reconstructed auth baseline
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RniE 'ASWebAuthenticationSession|aureliumfield://auth-callback|signInWithOAuth\(|getOAuthSignInURL\(|WKWebView' AureliumField --include='*.swift'; then
-            echo "::error title=AF-AUTH-109::Legacy hosted OAuth code was found in the native target."
+          test -f AureliumField/Services/NativeOAuthCoordinator.swift
+          test -f ../public/native-auth-start.html
+          test -f ../index.html
+          test ! -f AureliumField/Services/NativeGoogleAuth.swift
+          if grep -RniE 'import GoogleSignIn|GIDSignIn|GOOGLE_IOS_CLIENT_ID|GOOGLE_WEB_CLIENT_ID|AF-AUTH-109|WKWebView' AureliumField project.yml; then
+            echo "::error title=AF-AUTH-106::A retired mobile authentication implementation is still present."
             exit 1
           fi
-          test -f AureliumField/Services/NativeGoogleAuth.swift
-          echo "Clean native authentication baseline confirmed."
+          grep -q 'ASWebAuthenticationSession' AureliumField/Services/NativeOAuthCoordinator.swift
+          grep -q 'getOAuthSignInURL' AureliumField/Services/NativeOAuthCoordinator.swift
+          grep -q 'native-auth-start.html' AureliumField/Services/NativeOAuthCoordinator.swift
+          grep -q 'https://whatmod.com/app/' AureliumField/Services/NativeOAuthCoordinator.swift
+          grep -q 'af_native_auth' ../public/native-auth-start.html
+          grep -q 'aureliumfield://auth-callback' ../index.html
+          echo "WeTrack-style native handoff baseline confirmed."
 
       - name: Validate build configuration
         shell: bash
@@ -51,15 +60,7 @@ jobs:
             echo "::error title=AF-CFG-104::The configured workspace endpoint is invalid."
             exit 1
           fi
-          if [[ -z "${GOOGLE_IOS_CLIENT_ID:-}" || -z "${GOOGLE_WEB_CLIENT_ID:-}" ]]; then
-            echo "::error title=AF-AUTH-109::Native Google sign-in client configuration is missing."
-            exit 1
-          fi
-          if [[ "$GOOGLE_IOS_CLIENT_ID" != *.apps.googleusercontent.com || "$GOOGLE_WEB_CLIENT_ID" != *.apps.googleusercontent.com ]]; then
-            echo "::error title=AF-AUTH-109::Native Google sign-in client configuration is invalid."
-            exit 1
-          fi
-          echo "iOS workspace and native sign-in inputs are present."
+          echo "iOS workspace inputs are present."
 
       - name: Generate native runtime configuration
         shell: bash
@@ -69,45 +70,30 @@ jobs:
           import json, os, plistlib
           from pathlib import Path
 
-          cloud_url = os.environ["APP_CLOUD_URL"].strip()
-          cloud_key = os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
-          ios_client = os.environ["GOOGLE_IOS_CLIENT_ID"].strip()
-          web_client = os.environ["GOOGLE_WEB_CLIENT_ID"].strip()
-
           payload = {
-              "cloudURL": cloud_url,
-              "publicKey": cloud_key,
-              "googleIOSClientID": ios_client,
-              "googleWebClientID": web_client,
+              "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
+              "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
           }
-          runtime = Path("AureliumField/Resources/RuntimeConfig.json")
-          runtime.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
-
-          suffix = ".apps.googleusercontent.com"
-          if not ios_client.endswith(suffix):
-              raise SystemExit("AF-AUTH-109: native client ID format is invalid")
-          reversed_client = "com.googleusercontent.apps." + ios_client[:-len(suffix)]
+          Path("AureliumField/Resources/RuntimeConfig.json").write_text(
+              json.dumps(payload, separators=(",", ":")), encoding="utf-8"
+          )
 
           plist_path = Path("AureliumField/Resources/Info.plist")
           with plist_path.open("rb") as handle:
               plist = plistlib.load(handle)
-
-          # Authentication reset: the native target gets exactly one auth URL scheme,
-          # Google's reversed iOS client ID. No Aurelium/Supabase OAuth callback remains.
           plist["CFBundleURLTypes"] = [{
               "CFBundleTypeRole": "Editor",
-              "CFBundleURLName": "google-sign-in",
-              "CFBundleURLSchemes": [reversed_client],
+              "CFBundleURLName": "com.aurelium.field.auth",
+              "CFBundleURLSchemes": ["aureliumfield"],
           }]
-          plist["GIDClientID"] = ios_client
-          plist["GIDServerClientID"] = web_client
-
+          plist.pop("GIDClientID", None)
+          plist.pop("GIDServerClientID", None)
           with plist_path.open("wb") as handle:
               plistlib.dump(plist, handle, sort_keys=False)
           PY
           echo "Native runtime configuration generated (values hidden)."
 
-      - name: Verify generated native configuration
+      - name: Verify generated authentication configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -115,29 +101,23 @@ jobs:
           import json, os, plistlib
           from pathlib import Path
 
-          payload = json.loads(Path("AureliumField/Resources/RuntimeConfig.json").read_text(encoding="utf-8"))
           expected = {
               "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
               "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
-              "googleIOSClientID": os.environ["GOOGLE_IOS_CLIENT_ID"].strip(),
-              "googleWebClientID": os.environ["GOOGLE_WEB_CLIENT_ID"].strip(),
           }
+          payload = json.loads(Path("AureliumField/Resources/RuntimeConfig.json").read_text(encoding="utf-8"))
           if payload != expected:
-              raise SystemExit("AF-CFG-103: generated native runtime configuration did not match build inputs")
+              raise SystemExit("AF-CFG-103: generated runtime configuration did not match build inputs")
 
           with Path("AureliumField/Resources/Info.plist").open("rb") as handle:
               plist = plistlib.load(handle)
-          schemes = [scheme for entry in plist.get("CFBundleURLTypes", []) for scheme in entry.get("CFBundleURLSchemes", [])]
-          suffix = ".apps.googleusercontent.com"
-          reversed_client = "com.googleusercontent.apps." + expected["googleIOSClientID"][:-len(suffix)]
-          if reversed_client not in schemes:
-              raise SystemExit("AF-AUTH-109: generated Info.plist is missing the native Google callback scheme")
-          if "aureliumfield" in schemes:
-              raise SystemExit("AF-AUTH-109: legacy hosted-OAuth callback scheme is still present")
-          if plist.get("GIDClientID") != expected["googleIOSClientID"] or plist.get("GIDServerClientID") != expected["googleWebClientID"]:
-              raise SystemExit("AF-AUTH-109: generated Info.plist client configuration did not match build inputs")
+          schemes = [s for entry in plist.get("CFBundleURLTypes", []) for s in entry.get("CFBundleURLSchemes", [])]
+          if schemes != ["aureliumfield"]:
+              raise SystemExit("AF-AUTH-107: generated Info.plist does not contain the single Aurelium handoff scheme")
+          if "GIDClientID" in plist or "GIDServerClientID" in plist:
+              raise SystemExit("AF-AUTH-106: retired native Google client configuration remains in Info.plist")
           PY
-          echo "Generated native sign-in configuration verified."
+          echo "Generated native handoff configuration verified."
 
       - name: Select Xcode
         run: |
@@ -165,7 +145,7 @@ jobs:
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
-      - name: Verify built application configuration
+      - name: Verify built application
         shell: bash
         run: |
           set -euo pipefail
@@ -179,37 +159,28 @@ jobs:
             echo "::error title=AF-CFG-103::Built app runtime resource count was ${CONFIG_COUNT}."
             exit 1
           fi
-          CONFIG_PATH="$(printf '%s\n' "$CONFIG_PATHS" | head -n 1)"
-          export BUILT_RUNTIME_CONFIG="$CONFIG_PATH"
+          export BUILT_RUNTIME_CONFIG="$(printf '%s\n' "$CONFIG_PATHS" | head -n 1)"
           export BUILT_APP_INFO_PLIST="$APP_PATH/Info.plist"
 
           python3 - <<'PY'
           import json, os, plistlib
           from pathlib import Path
-
           expected = {
               "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
               "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
-              "googleIOSClientID": os.environ["GOOGLE_IOS_CLIENT_ID"].strip(),
-              "googleWebClientID": os.environ["GOOGLE_WEB_CLIENT_ID"].strip(),
           }
           payload = json.loads(Path(os.environ["BUILT_RUNTIME_CONFIG"]).read_text(encoding="utf-8"))
           if payload != expected:
               raise SystemExit("AF-CFG-103: built app runtime configuration did not match build inputs")
-
           with Path(os.environ["BUILT_APP_INFO_PLIST"]).open("rb") as handle:
               plist = plistlib.load(handle)
-          schemes = [scheme for entry in plist.get("CFBundleURLTypes", []) for scheme in entry.get("CFBundleURLSchemes", [])]
-          suffix = ".apps.googleusercontent.com"
-          reversed_client = "com.googleusercontent.apps." + expected["googleIOSClientID"][:-len(suffix)]
-          if reversed_client not in schemes:
-              raise SystemExit("AF-AUTH-109: built app is missing the native Google callback scheme")
-          if "aureliumfield" in schemes:
-              raise SystemExit("AF-AUTH-109: built app still contains the legacy hosted-OAuth callback scheme")
-          if plist.get("GIDClientID") != expected["googleIOSClientID"] or plist.get("GIDServerClientID") != expected["googleWebClientID"]:
-              raise SystemExit("AF-AUTH-109: built app Google client configuration did not match build inputs")
+          schemes = [s for entry in plist.get("CFBundleURLTypes", []) for s in entry.get("CFBundleURLSchemes", [])]
+          if schemes != ["aureliumfield"]:
+              raise SystemExit("AF-AUTH-107: built app is missing the Aurelium handoff scheme")
+          if "GIDClientID" in plist or "GIDServerClientID" in plist:
+              raise SystemExit("AF-AUTH-106: retired Google SDK configuration survived into the built app")
           PY
-          echo "Built native app configuration verified (values hidden)."
+          echo "Built native app configuration verified."
 
       - name: Package IPA
         run: |
@@ -227,31 +198,21 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import json, os, plistlib, zipfile
-
           expected = {
               "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
               "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
-              "googleIOSClientID": os.environ["GOOGLE_IOS_CLIENT_ID"].strip(),
-              "googleWebClientID": os.environ["GOOGLE_WEB_CLIENT_ID"].strip(),
           }
           with zipfile.ZipFile("AureliumField.ipa") as archive:
               configs = [name for name in archive.namelist() if name.endswith("/RuntimeConfig.json")]
               if len(configs) != 1:
                   raise SystemExit(f"AF-CFG-103: packaged IPA runtime resource count was {len(configs)}")
-              payload = json.loads(archive.read(configs[0]).decode("utf-8"))
-              if payload != expected:
+              if json.loads(archive.read(configs[0]).decode("utf-8")) != expected:
                   raise SystemExit("AF-CFG-103: packaged IPA runtime configuration did not match build inputs")
-
-              plist_name = "Payload/AureliumField.app/Info.plist"
-              plist = plistlib.loads(archive.read(plist_name))
-              schemes = [scheme for entry in plist.get("CFBundleURLTypes", []) for scheme in entry.get("CFBundleURLSchemes", [])]
-              suffix = ".apps.googleusercontent.com"
-              reversed_client = "com.googleusercontent.apps." + expected["googleIOSClientID"][:-len(suffix)]
-              if reversed_client not in schemes:
-                  raise SystemExit("AF-AUTH-109: packaged IPA is missing the native Google callback scheme")
-              if "aureliumfield" in schemes:
-                  raise SystemExit("AF-AUTH-109: packaged IPA still contains the legacy hosted-OAuth callback scheme")
-          print("Packaged IPA native sign-in configuration verified.")
+              plist = plistlib.loads(archive.read("Payload/AureliumField.app/Info.plist"))
+              schemes = [s for entry in plist.get("CFBundleURLTypes", []) for s in entry.get("CFBundleURLSchemes", [])]
+              if schemes != ["aureliumfield"]:
+                  raise SystemExit("AF-AUTH-107: packaged IPA is missing the Aurelium handoff scheme")
+          print("Packaged IPA authentication handoff verified.")
           PY
 
       - name: Upload IPA
