@@ -33,11 +33,10 @@ Add these Auth redirect URLs in **Authentication → URL Configuration → Redir
 
 - `https://whatmod.com/app/**`
 - `aureliumfield://auth-callback`
-- `aureliumfield://**`
 
 Keep the production Site URL set to `https://whatmod.com/app/`. The wildcard native entry makes the custom iOS callback resilient to path/trailing-slash normalization.
 
-Web authentication uses Google OAuth through the shared Auth project. Native iOS uses an explicit `ASWebAuthenticationSession` that listens for the `aureliumfield` callback scheme, then imports the returned session and closes the system sign-in sheet automatically. The Google Cloud OAuth client's authorized redirect URI remains the hosted Auth callback endpoint; do not replace it with the custom iOS scheme.
+Web authentication uses Google OAuth through the shared Auth project. Native iOS follows the same OAuth lifecycle used by WeTrack: it generates the hosted OAuth URL without launching a browser automatically, opens that URL in `ASWebAuthenticationSession`, then imports the returned callback with the native auth client. The Google Cloud OAuth client's authorized redirect URI remains the hosted Auth callback endpoint; do not replace it with the custom iOS scheme.
 
 ## Organization onboarding
 
@@ -99,6 +98,6 @@ The iOS workflow generates `AureliumField/Resources/RuntimeConfig.json` from the
 
 The native runtime configuration loader no longer assumes `RuntimeConfig.json` is flattened into the iOS bundle root. It resolves the resource from known bundle locations and includes a bounded recursive fallback, matching the resource location verified by CI. The root iOS workflow also re-verifies the resource inside the final IPA. Configuration faults use `AF-CFG-101` through `AF-CFG-105` for precise support lookup without exposing infrastructure details to users.
 
-## v0.5.5 native OAuth callback
+## v0.5.7 native OAuth reconstruction
 
-The iOS Google sign-in flow now explicitly uses `ASWebAuthenticationSession` with callback scheme `aureliumfield`. The system sign-in sheet owns the OAuth flow and closes automatically when `aureliumfield://auth-callback` is returned. `.onOpenURL` remains as a cold-launch/deep-link fallback. Add `aureliumfield://**` to the Auth redirect allowlist in addition to the exact callback.
+The native Google sign-in flow mirrors the working WeTrack pattern. Aurelium generates the hosted OAuth URL, opens it in `ASWebAuthenticationSession`, receives `aureliumfield://auth-callback`, and converts that callback directly into the persisted native session. There is no web bridge page. The auth redirect allowlist only needs the exact native callback in addition to the normal web URL.

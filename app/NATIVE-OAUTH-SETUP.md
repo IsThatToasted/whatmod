@@ -1,43 +1,24 @@
-# Aurelium Field Native OAuth Setup
+# Aurelium Field Native OAuth Setup — v0.5.7
 
-## Auth dashboard
+This now mirrors the working WeTrack iOS flow.
 
-Open Authentication -> URL Configuration.
+## Auth redirect allowlist
 
-Set Site URL:
+Keep the normal web redirect for the web app and add only this exact native callback for iOS:
 
-- `https://whatmod.com/app/`
+`aureliumfield://auth-callback`
 
-Add Redirect URLs:
-
-- `https://whatmod.com/app/**`
-- `aureliumfield://auth-callback`
-- `aureliumfield://**`
-
-The native application requests `aureliumfield://auth-callback`. The wildcard entry is included to tolerate path/trailing-slash normalization.
+No `aureliumfield://**` wildcard and no special web bridge URL are used by the native flow.
 
 ## Google Cloud OAuth client
 
-Keep the Google OAuth client as a **Web application** OAuth client for the hosted auth flow.
+Keep the Google OAuth client configured with the hosted auth callback supplied by the Google provider configuration. Do not add `aureliumfield://...` to Google Cloud.
 
-The Google Authorized redirect URI should remain the callback URI shown on the Google provider page of the auth dashboard, normally:
+## Native lifecycle
 
-- `https://<project-ref>.supabase.co/auth/v1/callback`
-
-Do not replace the Google Authorized redirect URI with `aureliumfield://...`. Google returns to the hosted auth callback first; the auth service then redirects into Aurelium Field.
-
-## Expected iOS flow
-
-1. User taps Continue with Google.
-2. iOS opens an `ASWebAuthenticationSession`.
-3. User selects a Google account.
-4. Google returns to the hosted auth callback.
-5. Auth redirects to `aureliumfield://auth-callback`.
-6. `ASWebAuthenticationSession` captures that scheme and closes automatically.
-7. Aurelium Field imports the returned session and loads organization access.
-
-## Support codes
-
-- `AF-AUTH-101` — native system sign-in session failed to start or complete.
-- `AF-AUTH-102` — expected native callback/redirect was not returned correctly.
-- `AF-AUTH-002` — callback reached the app but could not be imported into a session.
+1. Aurelium asks the native auth client for the Google OAuth URL with `redirectTo: aureliumfield://auth-callback`.
+2. `ASWebAuthenticationSession` opens the returned hosted OAuth URL and listens for callback scheme `aureliumfield`.
+3. Google signs the user in and returns to the hosted auth callback.
+4. The hosted auth flow redirects once to `aureliumfield://auth-callback`.
+5. iOS closes the authentication sheet automatically and hands the callback to Aurelium.
+6. Aurelium calls `auth.session(from:)` and continues into organization/project loading.

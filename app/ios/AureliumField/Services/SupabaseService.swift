@@ -62,7 +62,6 @@ final class SupabaseService {
     var isAdmin: Bool { ["owner", "admin"].contains(membership?.role ?? "") }
 
     private static let oauthCallbackURL = URL(string: "aureliumfield://auth-callback")!
-    private static let nativeAuthBridgeURL = URL(string: "https://whatmod.com/app/?af_native_auth=1")!
     private let oauthPresentationContext = AFOAuthPresentationContextProvider()
     private var activeOAuthSession: ASWebAuthenticationSession?
 
@@ -95,88 +94,66 @@ final class SupabaseService {
         }
 
         do {
-            let callbackURL = try await openNativeAuthBridge()
-            let params = Self.callbackParameters(from: callbackURL)
+            // Match the proven WeTrack flow: generate the hosted OAuth URL without
+            // allowing the SDK to launch a browser, then let ASWebAuthenticationSession
+            // own the browser lifecycle and callback.
+            let oauthURL = try await client.auth.getOAuthSignInURL(
+                provider: .google,
+                redirectTo: Self.oauthCallbackURL
+            )
 
-            if let publicCode = params["error_code"] {
-                let mapped: AFErrorCode
-                switch publicCode {
-                case AFErrorCode.nativeAuthProvider.rawValue: mapped = .nativeAuthProvider
-                case AFErrorCode.nativeAuthSessionMissing.rawValue: mapped = .nativeAuthSessionMissing
-                default: mapped = .nativeAuthBridge
-                }
-                errorMessage = AFPublicError.text(mapped, "We couldn't complete sign in.")
-                return
-            }
+            let callbackURL = try await openOAuthSession(url: oauthURL)
+            let session = try await client.auth.session(from: callbackURL)
 
-            guard let accessToken = params["access_token"], !accessToken.isEmpty,
-                  let refreshToken = params["refresh_token"], !refreshToken.isEmpty else {
-                errorMessage = AFPublicError.text(.nativeAuthSessionMissing, "We couldn't complete sign in.")
-                return
-            }
-
-            let session = try await client.auth.setSession(accessToken: accessToken, refreshToken: refreshToken)
             userID = session.user.id
             email = session.user.email
             await loadMembership()
         } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+            // User cancellation is not an application error.
             return
         } catch {
-            AFPublicError.capture(error, code: .nativeAuthBridge)
-            errorMessage = AFPublicError.text(.nativeAuthBridge, "We couldn't complete sign in.")
+            AFPublicError.capture(error, code: .nativeAuthSession)
+            errorMessage = AFPublicError.text(.nativeAuthSession, "We couldn't complete sign in.")
         }
     }
 
-    private func openNativeAuthBridge() async throws -> URL {
+    private func openOAuthSession(url: URL) async throws -> URL {
         activeOAuthSession?.cancel()
         activeOAuthSession = nil
 
         return try await withCheckedThrowingContinuation { continuation in
             var didResume = false
             let session = ASWebAuthenticationSession(
-                url: Self.nativeAuthBridgeURL,
+                url: url,
                 callbackURLScheme: Self.oauthCallbackURL.scheme
             ) { [weak self] callbackURL, error in
                 Task { @MainActor in
                     self?.activeOAuthSession = nil
                     guard !didResume else { return }
                     didResume = true
+
                     if let callbackURL {
                         continuation.resume(returning: callbackURL)
                     } else if let error {
                         continuation.resume(throwing: error)
                     } else {
-                        continuation.resume(throwing: AFPublicError.error(.nativeAuthBridge, "We couldn't complete sign in."))
+                        continuation.resume(throwing: AFPublicError.error(.nativeAuthCallbackMissing, "We couldn't complete sign in."))
                     }
                 }
             }
+
             session.presentationContextProvider = oauthPresentationContext
             session.prefersEphemeralWebBrowserSession = false
             activeOAuthSession = session
+
             if !session.start() {
                 activeOAuthSession = nil
                 if !didResume {
                     didResume = true
-                    continuation.resume(throwing: AFPublicError.error(.nativeAuthBridge, "We couldn't open sign in."))
+                    continuation.resume(throwing: AFPublicError.error(.nativeAuthStart, "We couldn't open sign in."))
                 }
             }
         }
-    }
-
-    private static func callbackParameters(from url: URL) -> [String: String] {
-        var result: [String: String] = [:]
-        if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
-            for item in components.queryItems ?? [] where item.value != nil {
-                result[item.name] = item.value
-            }
-        }
-        if let fragment = url.fragment {
-            let synthetic = URLComponents(string: "https://callback.invalid/?\(fragment)")
-            for item in synthetic?.queryItems ?? [] where item.value != nil {
-                result[item.name] = item.value
-            }
-        }
-        return result
     }
 
     func handle(_ url: URL) async {
@@ -184,15 +161,8 @@ final class SupabaseService {
         guard url.scheme?.lowercased() == Self.oauthCallbackURL.scheme,
               url.host?.lowercased() == Self.oauthCallbackURL.host else { return }
 
-        let params = Self.callbackParameters(from: url)
-        guard let accessToken = params["access_token"],
-              let refreshToken = params["refresh_token"] else {
-            errorMessage = AFPublicError.text(.authCallback, "We couldn't finish sign in.")
-            return
-        }
-
         do {
-            let session = try await client.auth.setSession(accessToken: accessToken, refreshToken: refreshToken)
+            let session = try await client.auth.session(from: url)
             userID = session.user.id
             email = session.user.email
             await loadMembership()

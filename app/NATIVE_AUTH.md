@@ -1,16 +1,24 @@
-# Aurelium Field native authentication (v0.5.6)
+# Aurelium Field native authentication (v0.5.7)
 
-Aurelium Field now uses the same ownership model proven by WeTrack:
+Aurelium Field now follows the same OAuth ownership pattern used by the working WeTrack iOS project.
 
-1. iOS opens `https://whatmod.com/app/?af_native_auth=1` in `ASWebAuthenticationSession`.
-2. The Aurelium web client starts Google OAuth and uses the ordinary production web return URL: `https://whatmod.com/app/`.
-3. After the web client has a valid session, it hands the access + refresh token pair to iOS through `aureliumfield://auth-callback`.
-4. `ASWebAuthenticationSession` closes automatically because that private callback scheme belongs to the native session.
-5. Native Swift installs the session with `auth.setSession(...)` and continues organization onboarding.
+## Native flow
 
-The hosted auth service never receives `aureliumfield://...` as `redirectTo` in this flow. Existing web auth redirect configuration is reused.
+1. The native auth client generates the hosted Google OAuth URL with `getOAuthSignInURL` and `redirectTo: aureliumfield://auth-callback`.
+2. Aurelium Field opens that URL in `ASWebAuthenticationSession` with callback scheme `aureliumfield`.
+3. Google returns to the hosted auth callback.
+4. The hosted auth service redirects once to `aureliumfield://auth-callback`.
+5. `ASWebAuthenticationSession` closes automatically and returns that callback URL to Aurelium Field.
+6. The app passes the callback to `auth.session(from:)`, which installs/persists the authenticated session.
 
-Public error codes:
-- `AF-AUTH-103` native/web auth bridge could not start or finish.
-- `AF-AUTH-104` hosted sign-in returned an error.
-- `AF-AUTH-105` web sign-in completed without a transferable session.
+There is no web bridge page and no `?af_native_auth=1` flow.
+
+## Redirect configuration
+
+This mirrors WeTrack: the auth project's redirect allowlist needs the exact native callback:
+
+`aureliumfield://auth-callback`
+
+The Google Cloud OAuth redirect remains the hosted auth callback supplied by the Google provider setup. Do not add the custom iOS scheme to Google Cloud.
+
+The web application continues to use `https://whatmod.com/app/` for normal browser sign-in.

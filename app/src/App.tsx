@@ -1,5 +1,4 @@
 import { AuthGate, useAuth } from './auth/AuthGate';
-import { NativeAuthBridge } from './auth/NativeAuthBridge';
 import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { Shell } from './components/Shell';
@@ -28,4 +27,4 @@ const router = createHashRouter([
  ]},
  {path:'/admin', element:<AdminRoute><AdminWorkspace/></AdminRoute>}
 ]);
-export default function App(){ return <NativeAuthBridge><AuthGate><RouterProvider router={router}/></AuthGate></NativeAuthBridge>; }
+export default function App(){ return <AuthGate><RouterProvider router={router}/></AuthGate>; }

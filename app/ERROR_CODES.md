@@ -56,3 +56,8 @@ Raw technical errors may be emitted only in local DEBUG/development diagnostics.
 - `AF-AUTH-103` — Native/web sign-in bridge could not start or complete.
 - `AF-AUTH-104` — Hosted Google sign-in returned an error to the web bridge.
 - `AF-AUTH-105` — Hosted sign-in returned to the web app but no transferable authenticated session was available.
+
+## Native Google OAuth — v0.5.7
+- `AF-AUTH-106` — system authentication session could not be started
+- `AF-AUTH-107` — system authentication session returned without a callback URL
+- `AF-AUTH-108` — callback was received but could not be converted into an authenticated native session
