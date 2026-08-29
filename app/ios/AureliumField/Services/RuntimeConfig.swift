@@ -1,26 +1,34 @@
 import Foundation
 
-struct RuntimeConfig: Decodable {
+struct RuntimeConfig: Decodable, Sendable {
     let cloudURL: String
     let publicKey: String
 
+    /// Small, deterministic bundle lookup. Do not recursively enumerate the app
+    /// bundle during process launch; Xcode places resources either at the resource
+    /// root or in the preserved Resources directory depending on project generation.
     static func load() -> RuntimeConfig? {
-        let fm = FileManager.default
         var candidates: [URL] = []
-        if let direct = Bundle.main.url(forResource: "RuntimeConfig", withExtension: "json") { candidates.append(direct) }
-        if let resources = Bundle.main.resourceURL {
-            candidates.append(resources.appendingPathComponent("RuntimeConfig.json"))
-            candidates.append(resources.appendingPathComponent("Resources/RuntimeConfig.json"))
-            if let enumerator = fm.enumerator(at: resources, includingPropertiesForKeys: nil) {
-                for case let url as URL in enumerator where url.lastPathComponent == "RuntimeConfig.json" { candidates.append(url) }
-            }
+
+        if let direct = Bundle.main.url(forResource: "RuntimeConfig", withExtension: "json") {
+            candidates.append(direct)
         }
-        for url in candidates {
-            guard let data = try? Data(contentsOf: url), let config = try? JSONDecoder().decode(RuntimeConfig.self, from: data) else { continue }
-            let endpoint = config.cloudURL.trimmingCharacters(in: .whitespacesAndNewlines)
-            let key = config.publicKey.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard endpoint.hasPrefix("https://"), !key.isEmpty else { continue }
-            return .init(cloudURL: endpoint, publicKey: key)
+        if let resourceURL = Bundle.main.resourceURL {
+            candidates.append(resourceURL.appendingPathComponent("RuntimeConfig.json"))
+            candidates.append(resourceURL.appendingPathComponent("Resources/RuntimeConfig.json"))
+        }
+
+        var seen = Set<String>()
+        for url in candidates where seen.insert(url.path).inserted {
+            guard
+                let data = try? Data(contentsOf: url),
+                let decoded = try? JSONDecoder().decode(RuntimeConfig.self, from: data)
+            else { continue }
+
+            let endpoint = decoded.cloudURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            let key = decoded.publicKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard endpoint.hasPrefix("https://"), URL(string: endpoint) != nil, !key.isEmpty else { continue }
+            return RuntimeConfig(cloudURL: endpoint, publicKey: key)
         }
         return nil
     }

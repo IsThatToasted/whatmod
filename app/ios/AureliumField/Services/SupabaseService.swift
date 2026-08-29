@@ -32,7 +32,7 @@ struct OrganizationInfo: Codable, Hashable {
 final class SupabaseService {
     static let shared = SupabaseService()
 
-    let client: SupabaseClient?
+    var client: SupabaseClient?
     var userID: UUID?
     var email: String?
     var membership: OrganizationMembership?
@@ -44,16 +44,34 @@ final class SupabaseService {
     var isAdmin: Bool { ["owner", "admin"].contains(membership?.role ?? "") }
 
     private init() {
-        if let config = RuntimeConfig.load(), let url = URL(string: config.cloudURL) {
-            client = SupabaseClient(supabaseURL: url, supabaseKey: config.publicKey)
-        } else {
-            client = nil
+        // Keep process launch cloud-independent. The original Smart Walkthrough build
+        // rendered SwiftUI immediately; cloud configuration is now loaded only after
+        // the first view is alive so a malformed/missing bundle resource cannot take
+        // down the process during static/singleton initialization.
+        client = nil
+    }
+
+    private func configureClientIfNeeded() async -> SupabaseClient? {
+        if let client { return client }
+
+        // Bundle IO does not need to block the first SwiftUI frame. RuntimeConfig.load
+        // is intentionally tiny/direct and safe to run away from launch initialization.
+        let config = await Task.detached(priority: .userInitiated) { RuntimeConfig.load() }.value
+        guard let config, let url = URL(string: config.cloudURL) else {
+            return nil
         }
+
+        let newClient = SupabaseClient(supabaseURL: url, supabaseKey: config.publicKey)
+        client = newClient
+        return newClient
     }
 
     func bootstrap() async {
         defer { isLoading = false }
-        guard let client else { errorMessage = "Aurelium Field could not connect to your workspace. Reference: AF-CFG-101"; return }
+        guard let client = await configureClientIfNeeded() else {
+            errorMessage = "Aurelium Field could not connect to your workspace. Reference: AF-CFG-101"
+            return
+        }
         do {
             let session = try await client.auth.session
             userID = session.user.id
@@ -66,7 +84,10 @@ final class SupabaseService {
     }
 
     func signInWithGoogle() async {
-        guard let client else { errorMessage = "Aurelium Field could not connect to your workspace. Reference: AF-CFG-101"; return }
+        guard let client = await configureClientIfNeeded() else {
+            errorMessage = "Aurelium Field could not connect to your workspace. Reference: AF-CFG-101"
+            return
+        }
         do {
             try await client.auth.signInWithOAuth(provider: .google, redirectTo: URL(string: "aureliumfield://auth-callback")!)
             let session = try await client.auth.session
