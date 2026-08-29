@@ -303,21 +303,55 @@ function attachTrack(track) {
   }
 }
 
+
+async function requestBestVideoQuality(publication) {
+  if (!publication || publication.kind !== Track.Kind.Video) return;
+
+  try {
+    // This viewer is a full-size primary video player, not a thumbnail.
+    // Explicitly request the highest simulcast layer instead of allowing
+    // element-size adaptive streaming to select a soft 180p/360p layer.
+    if (typeof publication.setVideoQuality === "function") {
+      await publication.setVideoQuality(VideoQuality.HIGH);
+    }
+
+    if (typeof publication.setVideoDimensions === "function") {
+      await publication.setVideoDimensions({
+        width: 1920,
+        height: 1080
+      });
+    }
+  } catch (error) {
+    console.warn("Unable to force high video quality:", error);
+  }
+}
+
 function attachExistingRemoteTracks() {
   for (const participant of room.remoteParticipants.values()) {
     for (const publication of participant.trackPublications.values()) {
+      if (publication.kind === Track.Kind.Video) {
+        requestBestVideoQuality(publication);
+      }
       if (publication.track) attachTrack(publication.track);
     }
   }
 }
 
 async function connectLiveKit(info) {
-  room = new Room({ adaptiveStream: true, dynacast: true });
+  room = new Room({ adaptiveStream: false, dynacast: true });
 
-  room.on(RoomEvent.TrackSubscribed, track => attachTrack(track));
+  room.on(RoomEvent.TrackSubscribed, (track, publication) => {
+    if (track.kind === Track.Kind.Video) {
+      requestBestVideoQuality(publication);
+    }
+    attachTrack(track);
+  });
   room.on(RoomEvent.TrackUnsubscribed, track => track.detach());
   room.on(RoomEvent.TrackPublished, publication => {
     // Auto-subscribe is enabled by default; TrackSubscribed will attach it.
+    if (publication.kind === Track.Kind.Video) {
+      requestBestVideoQuality(publication);
+    }
     els.networkLabel.textContent = `Media published: ${publication.kind}`;
   });
   room.on(RoomEvent.TrackSubscriptionFailed, sid => {
