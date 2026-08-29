@@ -190,11 +190,21 @@ async function loadReplayAdmin() {
           ${ride.recording_error ? `<span class="recording-error">${escapeAdminHTML(ride.recording_error)}</span>` : ""}
         </div>
       </div>
-      <button class="delete-replay" data-id="${ride.id}" data-title="${escapeAdminHTML(ride.title || "Scooter Ride")}">Delete Replay</button>
+      <div class="replay-admin-actions"><button class="egress-details" data-id="${ride.id}">Egress Details</button><button class="delete-replay" data-id="${ride.id}" data-title="${escapeAdminHTML(ride.title || "Scooter Ride")}">Delete Replay</button></div>
     `;
 
     list.appendChild(row);
   }
+
+  list.querySelectorAll(".egress-details").forEach(button => {
+    button.addEventListener("click", async () => {
+      try {
+        const response = await fetch(`${cfg.rideApiUrl}?action=admin-egress-status&ride_id=${encodeURIComponent(button.dataset.id)}`, {cache:"no-store",headers:adminHeaders()});
+        const body = await response.json(); if (!response.ok) throw new Error(body.error || "Unable to inspect Egress");
+        const e = body.egress; alert(e ? `LiveKit Egress\n\nID: ${e.egress_id}\nStatus: ${e.status}\nError: ${e.error || "none"}\nDetails: ${e.details || "none"}` : `No Egress found.\n${body.ride?.recording_error || ""}`);
+      } catch (error) { alert(error.message || String(error)); }
+    });
+  });
 
   list.querySelectorAll(".delete-replay").forEach(button => {
     button.addEventListener("click", async () => {
