@@ -29,12 +29,15 @@ Migration 003 adds secure organization bootstrap/invites, GPS timecards, submiss
 
 Google must be enabled in Supabase Auth.
 
-Add these Supabase Auth redirect URLs:
+Add these Auth redirect URLs in **Authentication → URL Configuration → Redirect URLs**:
 
-- `https://whatmod.com/app/`
+- `https://whatmod.com/app/**`
 - `aureliumfield://auth-callback`
+- `aureliumfield://**`
 
-Web authentication uses Supabase Google OAuth. Native iOS uses the same Supabase Auth project and the custom callback scheme above.
+Keep the production Site URL set to `https://whatmod.com/app/`. The wildcard native entry makes the custom iOS callback resilient to path/trailing-slash normalization.
+
+Web authentication uses Google OAuth through the shared Auth project. Native iOS uses an explicit `ASWebAuthenticationSession` that listens for the `aureliumfield` callback scheme, then imports the returned session and closes the system sign-in sheet automatically. The Google Cloud OAuth client's authorized redirect URI remains the hosted Auth callback endpoint; do not replace it with the custom iOS scheme.
 
 ## Organization onboarding
 
@@ -95,3 +98,7 @@ The iOS workflow generates `AureliumField/Resources/RuntimeConfig.json` from the
 ## v0.5.4 iOS runtime configuration
 
 The native runtime configuration loader no longer assumes `RuntimeConfig.json` is flattened into the iOS bundle root. It resolves the resource from known bundle locations and includes a bounded recursive fallback, matching the resource location verified by CI. The root iOS workflow also re-verifies the resource inside the final IPA. Configuration faults use `AF-CFG-101` through `AF-CFG-105` for precise support lookup without exposing infrastructure details to users.
+
+## v0.5.5 native OAuth callback
+
+The iOS Google sign-in flow now explicitly uses `ASWebAuthenticationSession` with callback scheme `aureliumfield`. The system sign-in sheet owns the OAuth flow and closes automatically when `aureliumfield://auth-callback` is returned. `.onOpenURL` remains as a cold-launch/deep-link fallback. Add `aureliumfield://**` to the Auth redirect allowlist in addition to the exact callback.

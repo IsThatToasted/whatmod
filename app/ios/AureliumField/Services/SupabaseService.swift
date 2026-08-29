@@ -2,6 +2,24 @@ import Foundation
 import Observation
 import Supabase
 import AuthenticationServices
+import UIKit
+
+
+private final class AFOAuthPresentationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        let scenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }
+
+        if let keyWindow = scenes.flatMap(\.windows).first(where: \.isKeyWindow) {
+            return keyWindow
+        }
+        if let window = scenes.flatMap(\.windows).first {
+            return window
+        }
+        return ASPresentationAnchor()
+    }
+}
 
 struct OrganizationMembership: Codable, Identifiable, Hashable {
     var organizationID: UUID
@@ -43,6 +61,11 @@ final class SupabaseService {
     var organizationID: UUID? { membership?.organizationID }
     var isAdmin: Bool { ["owner", "admin"].contains(membership?.role ?? "") }
 
+    private static let oauthCallbackURL = URL(string: "aureliumfield://auth-callback")!
+    private static let nativeAuthBridgeURL = URL(string: "https://whatmod.com/app/?af_native_auth=1")!
+    private let oauthPresentationContext = AFOAuthPresentationContextProvider()
+    private var activeOAuthSession: ASWebAuthenticationSession?
+
     private init() {
         if let url = AFRuntimeConfig.cloudURL, AFRuntimeConfig.isConfigured {
             client = SupabaseClient(supabaseURL: url, supabaseKey: AFRuntimeConfig.publicKey)
@@ -66,25 +89,117 @@ final class SupabaseService {
     }
 
     func signInWithGoogle() async {
-        guard let client else { errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace."); return }
+        guard let client else {
+            errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace.")
+            return
+        }
+
         do {
-            try await client.auth.signInWithOAuth(provider: .google, redirectTo: URL(string: "aureliumfield://auth-callback")!)
-            let session = try await client.auth.session
+            let callbackURL = try await openNativeAuthBridge()
+            let params = Self.callbackParameters(from: callbackURL)
+
+            if let publicCode = params["error_code"] {
+                let mapped: AFErrorCode
+                switch publicCode {
+                case AFErrorCode.nativeAuthProvider.rawValue: mapped = .nativeAuthProvider
+                case AFErrorCode.nativeAuthSessionMissing.rawValue: mapped = .nativeAuthSessionMissing
+                default: mapped = .nativeAuthBridge
+                }
+                errorMessage = AFPublicError.text(mapped, "We couldn't complete sign in.")
+                return
+            }
+
+            guard let accessToken = params["access_token"], !accessToken.isEmpty,
+                  let refreshToken = params["refresh_token"], !refreshToken.isEmpty else {
+                errorMessage = AFPublicError.text(.nativeAuthSessionMissing, "We couldn't complete sign in.")
+                return
+            }
+
+            let session = try await client.auth.setSession(accessToken: accessToken, refreshToken: refreshToken)
             userID = session.user.id
             email = session.user.email
             await loadMembership()
-        } catch { AFPublicError.capture(error, code: .authentication); errorMessage = AFPublicError.text(.authentication, "We couldn't complete sign in.") }
+        } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+            return
+        } catch {
+            AFPublicError.capture(error, code: .nativeAuthBridge)
+            errorMessage = AFPublicError.text(.nativeAuthBridge, "We couldn't complete sign in.")
+        }
+    }
+
+    private func openNativeAuthBridge() async throws -> URL {
+        activeOAuthSession?.cancel()
+        activeOAuthSession = nil
+
+        return try await withCheckedThrowingContinuation { continuation in
+            var didResume = false
+            let session = ASWebAuthenticationSession(
+                url: Self.nativeAuthBridgeURL,
+                callbackURLScheme: Self.oauthCallbackURL.scheme
+            ) { [weak self] callbackURL, error in
+                Task { @MainActor in
+                    self?.activeOAuthSession = nil
+                    guard !didResume else { return }
+                    didResume = true
+                    if let callbackURL {
+                        continuation.resume(returning: callbackURL)
+                    } else if let error {
+                        continuation.resume(throwing: error)
+                    } else {
+                        continuation.resume(throwing: AFPublicError.error(.nativeAuthBridge, "We couldn't complete sign in."))
+                    }
+                }
+            }
+            session.presentationContextProvider = oauthPresentationContext
+            session.prefersEphemeralWebBrowserSession = false
+            activeOAuthSession = session
+            if !session.start() {
+                activeOAuthSession = nil
+                if !didResume {
+                    didResume = true
+                    continuation.resume(throwing: AFPublicError.error(.nativeAuthBridge, "We couldn't open sign in."))
+                }
+            }
+        }
+    }
+
+    private static func callbackParameters(from url: URL) -> [String: String] {
+        var result: [String: String] = [:]
+        if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            for item in components.queryItems ?? [] where item.value != nil {
+                result[item.name] = item.value
+            }
+        }
+        if let fragment = url.fragment {
+            let synthetic = URLComponents(string: "https://callback.invalid/?\(fragment)")
+            for item in synthetic?.queryItems ?? [] where item.value != nil {
+                result[item.name] = item.value
+            }
+        }
+        return result
     }
 
     func handle(_ url: URL) async {
         guard let client else { return }
+        guard url.scheme?.lowercased() == Self.oauthCallbackURL.scheme,
+              url.host?.lowercased() == Self.oauthCallbackURL.host else { return }
+
+        let params = Self.callbackParameters(from: url)
+        guard let accessToken = params["access_token"],
+              let refreshToken = params["refresh_token"] else {
+            errorMessage = AFPublicError.text(.authCallback, "We couldn't finish sign in.")
+            return
+        }
+
         do {
-            try await client.auth.session(from: url)
-            let session = try await client.auth.session
+            let session = try await client.auth.setSession(accessToken: accessToken, refreshToken: refreshToken)
             userID = session.user.id
             email = session.user.email
             await loadMembership()
-        } catch { AFPublicError.capture(error, code: .authCallback); errorMessage = AFPublicError.text(.authCallback, "We couldn't finish sign in.") }
+        } catch {
+            AFPublicError.capture(error, code: .authCallback)
+            errorMessage = AFPublicError.text(.authCallback, "We couldn't finish sign in.")
+        }
     }
 
     func signOut() async {

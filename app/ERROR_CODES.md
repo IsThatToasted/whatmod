@@ -44,3 +44,15 @@ Production UI must never render raw backend/provider errors, provider names, SQL
 Example: `We couldn't save that timecard. Reference: AF-TIME-004`
 
 Raw technical errors may be emitted only in local DEBUG/development diagnostics. Production user-facing views must use the public code system.
+
+### Native OAuth
+
+| Code | Internal meaning | User-facing area |
+|---|---|---|
+| `AF-AUTH-101` | Native system OAuth session failed to start or complete | Sign in |
+| `AF-AUTH-102` | Native OAuth redirect/callback destination was not returned as expected | Sign in |
+
+## Native auth bridge (v0.5.6)
+- `AF-AUTH-103` — Native/web sign-in bridge could not start or complete.
+- `AF-AUTH-104` — Hosted Google sign-in returned an error to the web bridge.
+- `AF-AUTH-105` — Hosted sign-in returned to the web app but no transferable authenticated session was available.
