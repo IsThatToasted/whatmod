@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 import CoreLocation
-import Supabase
 
 struct TimeEntryRecord: Codable, Identifiable, Hashable {
     var id: UUID
@@ -39,7 +38,7 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
     var isWorking = false
 
     private let manager = CLLocationManager()
-    private var cloud: SupabaseService { .shared }
+    private var cloud: WorkspaceService { .shared }
 
     override init() {
         super.init()
@@ -72,12 +71,15 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
     }
 
     func refresh() async {
-        guard let client = cloud.client, let org = cloud.organizationID, let user = cloud.userID else { return }
+        guard let org = cloud.organizationID, let user = cloud.userID else { return }
         do {
-            let rows: [TimeEntryRecord] = try await client.from("time_entries")
-                .select("id,organization_id,project_id,user_id,clock_in,clock_out,cost_code,notes,status,submitted_at,approved_at")
-                .eq("organization_id", value: org.uuidString).eq("user_id", value: user.uuidString)
-                .order("clock_in", ascending: false).limit(30).execute().value
+            let rows: [TimeEntryRecord] = try await cloud.selectRows(
+                table: "time_entries",
+                columns: "id,organization_id,project_id,user_id,clock_in,clock_out,cost_code,notes,status,submitted_at,approved_at",
+                filters: [CloudFilter("organization_id", org.uuidString), CloudFilter("user_id", user.uuidString)],
+                order: "clock_in.desc",
+                limit: 30
+            )
             entries = rows
             activeEntry = rows.first(where: { $0.clockOut == nil })
             if activeEntry != nil { requestLocation() }
@@ -85,7 +87,7 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
     }
 
     func clockIn(projectID: UUID, costCode: String?, notes: String?) async {
-        guard let client = cloud.client, let org = cloud.organizationID, let user = cloud.userID else { return }
+        guard let org = cloud.organizationID, let user = cloud.userID else { return }
         isWorking = true; defer { isWorking = false }
         requestLocation()
         let loc = lastLocation
@@ -96,53 +98,60 @@ final class TimeClockService: NSObject, CLLocationManagerDelegate {
         do {
             let payload = Insert(organization_id: org, project_id: projectID, user_id: user, clock_in: .now, cost_code: costCode, notes: notes,
                                  clock_in_latitude: loc?.coordinate.latitude, clock_in_longitude: loc?.coordinate.longitude, clock_in_accuracy_m: loc?.horizontalAccuracy)
-            let row: TimeEntryRecord = try await client.from("time_entries").insert(payload)
-                .select("id,organization_id,project_id,user_id,clock_in,clock_out,cost_code,notes,status,submitted_at,approved_at").single().execute().value
+            let row: TimeEntryRecord = try await cloud.insertReturning(
+                table: "time_entries",
+                payload: payload,
+                columns: "id,organization_id,project_id,user_id,clock_in,clock_out,cost_code,notes,status,submitted_at,approved_at",
+                as: TimeEntryRecord.self
+            )
             activeEntry = row; await refresh()
         } catch { errorMessage = error.localizedDescription }
     }
 
     func clockOut() async {
-        guard let client = cloud.client, let entry = activeEntry else { return }
+        guard let entry = activeEntry else { return }
         isWorking = true; defer { isWorking = false }
         let loc = lastLocation
         struct Patch: Encodable { let clock_out: Date; let clock_out_latitude: Double?; let clock_out_longitude: Double?; let clock_out_accuracy_m: Double? }
         do {
             let patch = Patch(clock_out: .now, clock_out_latitude: loc?.coordinate.latitude, clock_out_longitude: loc?.coordinate.longitude, clock_out_accuracy_m: loc?.horizontalAccuracy)
-            try await client.from("time_entries").update(patch).eq("id", value: entry.id.uuidString).execute()
+            try await cloud.updateRows(table: "time_entries", payload: patch, filters: [CloudFilter("id", entry.id.uuidString)])
             activeEntry = nil; manager.stopUpdatingLocation(); await refresh()
         } catch { errorMessage = error.localizedDescription }
     }
 
     func updateDraft(_ entry: TimeEntryRecord) async {
-        guard let client = cloud.client, entry.status == "draft" else { return }
+        guard entry.status == "draft" else { return }
         struct Patch: Encodable { let project_id: UUID; let clock_in: Date; let clock_out: Date?; let cost_code: String?; let notes: String? }
         do {
-            try await client.from("time_entries").update(Patch(project_id: entry.projectID, clock_in: entry.clockIn, clock_out: entry.clockOut, cost_code: entry.costCode, notes: entry.notes)).eq("id", value: entry.id.uuidString).execute()
+            try await cloud.updateRows(
+                table: "time_entries",
+                payload: Patch(project_id: entry.projectID, clock_in: entry.clockIn, clock_out: entry.clockOut, cost_code: entry.costCode, notes: entry.notes),
+                filters: [CloudFilter("id", entry.id.uuidString)]
+            )
             await refresh()
         } catch { errorMessage = error.localizedDescription }
     }
 
     func submit(_ entry: TimeEntryRecord) async {
-        guard let client = cloud.client else { return }
-        do { try await client.rpc("submit_time_entry", params: ["entry_id": entry.id.uuidString]).execute(); await refresh() }
+        struct Params: Encodable { let entry_id: UUID }
+        do { try await cloud.rpcVoid("submit_time_entry", params: Params(entry_id: entry.id)); await refresh() }
         catch { errorMessage = error.localizedDescription }
     }
 
     func requestEdit(_ entry: TimeEntryRecord, reason: String) async -> Bool {
-        guard let client = cloud.client, let out = entry.clockOut, !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        guard let out = entry.clockOut, !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         struct Params: Encodable { let entry_id:UUID; let new_clock_in:Date; let new_clock_out:Date; let new_project_id:UUID; let new_cost_code:String?; let new_notes:String?; let edit_reason:String }
         do {
             let params = Params(entry_id: entry.id, new_clock_in: entry.clockIn, new_clock_out: out, new_project_id: entry.projectID, new_cost_code: entry.costCode, new_notes: entry.notes, edit_reason: reason)
-            try await client.rpc("request_time_entry_edit", params: params).execute()
+            try await cloud.rpcVoid("request_time_entry_edit", params: params)
             return true
         } catch { errorMessage = error.localizedDescription; return false }
     }
 
     private func saveLocationSample(_ location: CLLocation, entry: TimeEntryRecord) async {
-        guard let client = cloud.client else { return }
         struct Sample: Encodable { let organization_id: UUID; let time_entry_id: UUID; let user_id: UUID; let latitude: Double; let longitude: Double; let accuracy_m: Double; let captured_at: Date }
         let sample = Sample(organization_id: entry.organizationID, time_entry_id: entry.id, user_id: entry.userID, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, accuracy_m: location.horizontalAccuracy, captured_at: location.timestamp)
-        try? await client.from("time_location_samples").insert(sample).execute()
+        try? await cloud.insertRecord(table: "time_location_samples", payload: sample)
     }
 }

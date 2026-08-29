@@ -1,6 +1,5 @@
 import SwiftUI
 import Observation
-import Supabase
 
 private enum AdminTab: Hashable { case overview, timecards, employees, invites }
 
@@ -43,7 +42,7 @@ private final class AdminWorkspaceStore {
     var isLoading = false
     var errorMessage: String?
 
-    private var cloud: SupabaseService { .shared }
+    private var cloud: WorkspaceService { .shared }
 
     var submittedTimecards: [TimeEntryRecord] { timecards.filter { $0.status == "submitted" } }
     var reviewedTimecards: [TimeEntryRecord] { timecards.filter { ["approved", "rejected"].contains($0.status) } }
@@ -58,7 +57,7 @@ private final class AdminWorkspaceStore {
     }
 
     func load() async {
-        guard cloud.isAdmin, let client = cloud.client, let organizationID = cloud.organizationID else {
+        guard cloud.isAdmin else {
             errorMessage = "Admin access is required."
             return
         }
@@ -66,18 +65,8 @@ private final class AdminWorkspaceStore {
         defer { isLoading = false }
         do {
             members = try await cloud.fetchAdminMembers()
-            timecards = try await client.from("time_entries")
-                .select("id,organization_id,project_id,user_id,clock_in,clock_out,cost_code,notes,status,submitted_at,approved_at")
-                .eq("organization_id", value: organizationID.uuidString)
-                .order("clock_in", ascending: false)
-                .limit(100)
-                .execute().value
-            editRequests = try await client.from("time_entry_edit_requests")
-                .select("id,time_entry_id,requested_by,proposed_clock_in,proposed_clock_out,proposed_project_id,proposed_cost_code,proposed_notes,reason,status,created_at")
-                .eq("organization_id", value: organizationID.uuidString)
-                .eq("status", value: "pending")
-                .order("created_at", ascending: true)
-                .execute().value
+            timecards = try await cloud.fetchAdminTimeEntries()
+            editRequests = try await cloud.fetchPendingTimeEditRequests()
             invites = try await cloud.fetchOrganizationInvites()
         } catch { errorMessage = error.localizedDescription }
     }
@@ -86,59 +75,29 @@ private final class AdminWorkspaceStore {
     func reject(_ entry: TimeEntryRecord, note: String?) async { await decide(entry, approve: false, note: note) }
 
     private func decide(_ entry: TimeEntryRecord, approve: Bool, note: String?) async {
-        guard let client = cloud.client else { return }
-        struct Params: Encodable { let entry_id: UUID; let approve: Bool; let decision_note: String? }
         do {
-            try await client.rpc("admin_decide_time_entry", params: Params(entry_id: entry.id, approve: approve, decision_note: note)).execute()
+            try await cloud.decideAdminTimeEntry(id: entry.id, approve: approve, note: note)
             await load()
         } catch { errorMessage = error.localizedDescription }
     }
 
     func deleteTimecard(_ entry:TimeEntryRecord) async {
-        guard let client=cloud.client else{return}
-        struct Params:Encodable{let entry_id:UUID}
-        do{try await client.rpc("admin_delete_time_entry",params:Params(entry_id:entry.id)).execute();await load()}catch{errorMessage=error.localizedDescription}
+        do { try await cloud.deleteAdminTimeEntry(id: entry.id); await load() }
+        catch { errorMessage = error.localizedDescription }
     }
 
     func decideEditRequest(_ request: AdminTimeEditRequest, approve: Bool) async {
-        guard let client = cloud.client else { return }
-        struct Params: Encodable { let request_id: UUID; let approve: Bool; let admin_note: String? }
         do {
-            try await client.rpc("decide_time_entry_edit", params: Params(request_id: request.id, approve: approve, admin_note: nil)).execute()
+            try await cloud.decideTimeEditRequest(id: request.id, approve: approve)
             await load()
         } catch { errorMessage = error.localizedDescription }
-    }
-}
-
-private struct AdminTimeEditRequest: Codable, Identifiable, Hashable {
-    var id: UUID
-    var timeEntryID: UUID
-    var requestedBy: UUID
-    var proposedClockIn: Date
-    var proposedClockOut: Date?
-    var proposedProjectID: UUID
-    var proposedCostCode: String?
-    var proposedNotes: String?
-    var reason: String
-    var status: String
-    var createdAt: Date
-    enum CodingKeys: String, CodingKey {
-        case id, reason, status
-        case timeEntryID = "time_entry_id"
-        case requestedBy = "requested_by"
-        case proposedClockIn = "proposed_clock_in"
-        case proposedClockOut = "proposed_clock_out"
-        case proposedProjectID = "proposed_project_id"
-        case proposedCostCode = "proposed_cost_code"
-        case proposedNotes = "proposed_notes"
-        case createdAt = "created_at"
     }
 }
 
 private struct AdminDashboardView: View {
     @Environment(AppModel.self) private var model
     @Environment(AdminWorkspaceStore.self) private var store
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
     @Binding var selectedTab: AdminTab
 
     var body: some View {
@@ -289,7 +248,7 @@ private struct AdminTimeEntryEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var model
     @Environment(AdminWorkspaceStore.self) private var store
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
     @State var entry: TimeEntryRecord
     @State private var adjustmentReason = ""
     let onSaved: () async -> Void
@@ -318,14 +277,8 @@ private struct AdminTimeEntryEditor: View {
     }
 
     private func save() async {
-        guard let client = cloud.client else { return }
-        struct Params: Encodable {
-            let entry_id: UUID; let new_clock_in: Date; let new_clock_out: Date?; let new_project_id: UUID
-            let new_cost_code: String?; let new_notes: String?; let adjustment_reason: String
-        }
         do {
-            let params = Params(entry_id: entry.id, new_clock_in: entry.clockIn, new_clock_out: entry.clockOut, new_project_id: entry.projectID, new_cost_code: entry.costCode, new_notes: entry.notes, adjustment_reason: adjustmentReason)
-            try await client.rpc("admin_update_time_entry", params: params).execute()
+            try await cloud.updateAdminTimeEntry(entry, reason: adjustmentReason)
             await onSaved()
             dismiss()
         } catch { store.errorMessage = error.localizedDescription }
@@ -335,7 +288,7 @@ private struct AdminTimeEntryEditor: View {
 private struct AdminEmployeesView: View {
     @Environment(AppModel.self) private var model
     @Environment(AdminWorkspaceStore.self) private var store
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
     @State private var editing: AdminOrganizationMember?
     @State private var removeTarget: AdminOrganizationMember?
 
@@ -381,7 +334,7 @@ private struct AdminEmployeesView: View {
 private struct AdminEmployeeEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AdminWorkspaceStore.self) private var store
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
     @State var member: AdminOrganizationMember
     let onSaved: () async -> Void
     private let roles = ["crew", "foreman", "estimator", "pm", "office", "admin", "owner"]
@@ -412,7 +365,7 @@ private struct AdminEmployeeEditor: View {
 private struct AdminInvitesView: View {
     @Environment(AppModel.self) private var model
     @Environment(AdminWorkspaceStore.self) private var store
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
     @State private var email = ""
     @State private var role = "crew"
     @State private var generatedURL: URL?

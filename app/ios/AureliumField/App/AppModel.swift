@@ -42,14 +42,14 @@ final class AppModel {
         }
         if selectedProjectID == nil { selectProject(project) }
         persist()
-        Task { await SupabaseService.shared.upsertProject(project) }
+        Task { await WorkspaceService.shared.upsertProject(project) }
     }
 
     func refreshProjectsFromCloud() async {
         do {
-            let cloud = try await SupabaseService.shared.fetchProjects()
+            let cloud = try await WorkspaceService.shared.fetchProjects()
             projects = cloud; if let first = projects.first { selectProject(first) } else { selectedProjectID = nil }; persist()
-        } catch { SupabaseService.shared.errorMessage = error.localizedDescription }
+        } catch { WorkspaceService.shared.errorMessage = error.localizedDescription }
     }
 
     func deleteProject(_ project: ProjectSummary) {
@@ -62,7 +62,7 @@ final class AppModel {
             if let first = projects.first { selectProject(first) }
         }
         persist()
-        Task { await SupabaseService.shared.deleteProject(id: project.id) }
+        Task { await WorkspaceService.shared.deleteProject(id: project.id) }
     }
 
     func addWalkthrough(_ walkthrough: WalkthroughScan) {

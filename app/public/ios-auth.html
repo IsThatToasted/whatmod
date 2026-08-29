@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0d0f12" />
+    <title>Aurelium Field Sign In</title>
+    <style>
+      html,body{height:100%;margin:0;background:#0d0f12;color:#f4f5f6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+      body{display:grid;place-items:center}.card{max-width:360px;padding:28px;text-align:center}.mark{width:52px;height:52px;border-radius:16px;background:#f4f5f6;color:#0d0f12;display:grid;place-items:center;margin:0 auto 18px;font-size:22px;font-weight:800}.sub{color:#9da3aa;line-height:1.5;font-size:14px}.error{color:#ffb4ab}
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="mark">A</div>
+      <h2>Opening secure sign in…</h2>
+      <p class="sub" id="status">Connecting Aurelium Field to your Google account.</p>
+    </main>
+    <script>
+      (async function () {
+        const status = document.getElementById('status');
+        const state = new URLSearchParams(location.search).get('state') || '';
+        if (!/^[a-zA-Z0-9-]{20,100}$/.test(state)) {
+          status.className = 'sub error';
+          status.textContent = 'Sign in could not start. Reference: AF-AUTH-201';
+          return;
+        }
+        try {
+          const response = await fetch('./mobile-auth-config.json', { cache: 'no-store' });
+          if (!response.ok) throw new Error('config');
+          const config = await response.json();
+          const endpoint = new URL(config.cloudURL);
+          if (endpoint.protocol !== 'https:') throw new Error('endpoint');
+
+          document.cookie = `af_ios_auth_state=${encodeURIComponent(state)}; Max-Age=600; Path=/app/; Secure; SameSite=Lax`;
+
+          const authorize = new URL('/auth/v1/authorize', endpoint.origin);
+          authorize.searchParams.set('provider', 'google');
+          // Reuse the same HTTPS redirect that already works for the web app.
+          // The app root performs a pre-React native handoff only when the short-lived state cookie exists.
+          authorize.searchParams.set('redirect_to', 'https://whatmod.com/app/');
+          location.replace(authorize.toString());
+        } catch (_) {
+          status.className = 'sub error';
+          status.textContent = 'Sign in could not start. Reference: AF-AUTH-201';
+        }
+      })();
+    </script>
+  </body>
+</html>

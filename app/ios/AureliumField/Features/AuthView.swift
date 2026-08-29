@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AuthGateView: View {
     @Environment(AppModel.self) private var model
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
 
     var body: some View {
         Group {
@@ -17,7 +17,6 @@ struct AuthGateView: View {
             }
         }
         .task { if cloud.isLoading { await cloud.bootstrap() } }
-        .onOpenURL { url in Task { await cloud.handle(url) } }
         .alert("Workspace error", isPresented: Binding(get: { cloud.errorMessage != nil }, set: { if !$0 { cloud.errorMessage = nil } })) {
             Button("OK", role: .cancel) { cloud.errorMessage = nil }
         } message: { Text(cloud.errorMessage ?? "Unknown error") }
@@ -25,7 +24,8 @@ struct AuthGateView: View {
 }
 
 private struct LoginView: View {
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
+    @State private var signingIn = false
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             Spacer()
@@ -34,10 +34,22 @@ private struct LoginView: View {
                 Text("Aurelium Field").font(.largeTitle.bold())
                 Text("Projects, estimating, field documentation, crews and time—one construction workspace.").foregroundStyle(.secondary)
             }
-            Button { Task { await cloud.signInWithGoogle() } } label: {
-                Label("Continue with Google", systemImage: "person.crop.circle.badge.checkmark")
-                    .font(.headline).frame(maxWidth: .infinity).frame(height: 52)
-            }.buttonStyle(.borderedProminent)
+            Button {
+                signingIn = true
+                Task {
+                    await cloud.signInWithGoogle()
+                    signingIn = false
+                }
+            } label: {
+                if signingIn {
+                    ProgressView().frame(maxWidth: .infinity).frame(height: 52)
+                } else {
+                    Label("Continue with Google", systemImage: "person.crop.circle.badge.checkmark")
+                        .font(.headline).frame(maxWidth: .infinity).frame(height: 52)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(signingIn)
             Text("Your company data is separated by organization and protected by organization-level access controls.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(24)
@@ -45,7 +57,7 @@ private struct LoginView: View {
 }
 
 private struct OrganizationOnboardingView: View {
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
     @State private var mode = 0
     @State private var organizationName = ""
     @State private var inviteToken = ""

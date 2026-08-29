@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    @State private var cloud = SupabaseService.shared
+    @State private var cloud = WorkspaceService.shared
 
     var body: some View {
         ScrollView {
