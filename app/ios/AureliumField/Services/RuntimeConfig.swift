@@ -1,43 +1,27 @@
 import Foundation
 
-enum AureliumRuntimeConfig {
-    private struct Payload: Decodable {
-        let cloudURL: String
-        let publicKey: String
-    }
+struct RuntimeConfig: Decodable {
+    let cloudURL: String
+    let publicKey: String
 
-    private static let payload: Payload? = {
-        let bundle = Bundle.main
+    static func load() -> RuntimeConfig? {
         let fm = FileManager.default
-        let candidates: [URL?] = [
-            bundle.url(forResource: "RuntimeConfig", withExtension: "json"),
-            bundle.url(forResource: "RuntimeConfig", withExtension: "json", subdirectory: "Resources"),
-            bundle.bundleURL.appendingPathComponent("RuntimeConfig.json"),
-            bundle.bundleURL.appendingPathComponent("Resources/RuntimeConfig.json"),
-            bundle.resourceURL?.appendingPathComponent("RuntimeConfig.json"),
-            bundle.resourceURL?.appendingPathComponent("Resources/RuntimeConfig.json")
-        ]
-
-        for candidate in candidates.compactMap({ $0 }) where fm.fileExists(atPath: candidate.path) {
-            if let data = try? Data(contentsOf: candidate),
-               let decoded = try? JSONDecoder().decode(Payload.self, from: data) {
-                return decoded
+        var candidates: [URL] = []
+        if let direct = Bundle.main.url(forResource: "RuntimeConfig", withExtension: "json") { candidates.append(direct) }
+        if let resources = Bundle.main.resourceURL {
+            candidates.append(resources.appendingPathComponent("RuntimeConfig.json"))
+            candidates.append(resources.appendingPathComponent("Resources/RuntimeConfig.json"))
+            if let enumerator = fm.enumerator(at: resources, includingPropertiesForKeys: nil) {
+                for case let url as URL in enumerator where url.lastPathComponent == "RuntimeConfig.json" { candidates.append(url) }
             }
         }
+        for url in candidates {
+            guard let data = try? Data(contentsOf: url), let config = try? JSONDecoder().decode(RuntimeConfig.self, from: data) else { continue }
+            let endpoint = config.cloudURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            let key = config.publicKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard endpoint.hasPrefix("https://"), !key.isEmpty else { continue }
+            return .init(cloudURL: endpoint, publicKey: key)
+        }
         return nil
-    }()
-
-    static var cloudURL: URL? {
-        guard let raw = payload?.cloudURL.trimmingCharacters(in: .whitespacesAndNewlines),
-              raw.hasPrefix("https://") else { return nil }
-        return URL(string: raw)
-    }
-
-    static var publicKey: String {
-        payload?.publicKey.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    }
-
-    static var isConfigured: Bool {
-        cloudURL != nil && !publicKey.isEmpty
     }
 }

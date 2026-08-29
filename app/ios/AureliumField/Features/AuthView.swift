@@ -18,7 +18,7 @@ struct AuthGateView: View {
         }
         .task { if cloud.isLoading { await cloud.bootstrap() } }
         .onOpenURL { url in Task { await cloud.handle(url) } }
-        .alert("Cloud error", isPresented: Binding(get: { cloud.errorMessage != nil }, set: { if !$0 { cloud.errorMessage = nil } })) {
+        .alert("Workspace error", isPresented: Binding(get: { cloud.errorMessage != nil }, set: { if !$0 { cloud.errorMessage = nil } })) {
             Button("OK", role: .cancel) { cloud.errorMessage = nil }
         } message: { Text(cloud.errorMessage ?? "Unknown error") }
     }
@@ -38,7 +38,7 @@ private struct LoginView: View {
                 Label("Continue with Google", systemImage: "person.crop.circle.badge.checkmark")
                     .font(.headline).frame(maxWidth: .infinity).frame(height: 52)
             }.buttonStyle(.borderedProminent)
-            Text("Your company data is separated by organization and protected by Supabase Row Level Security.").font(.caption).foregroundStyle(.secondary)
+            Text("Your company data is separated by organization and protected by organization-level access controls.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(24)
     }

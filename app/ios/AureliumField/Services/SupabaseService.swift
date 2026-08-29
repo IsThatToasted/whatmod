@@ -44,8 +44,8 @@ final class SupabaseService {
     var isAdmin: Bool { ["owner", "admin"].contains(membership?.role ?? "") }
 
     private init() {
-        if let url = AureliumRuntimeConfig.cloudURL, AureliumRuntimeConfig.isConfigured {
-            client = SupabaseClient(supabaseURL: url, supabaseKey: AureliumRuntimeConfig.publicKey)
+        if let config = RuntimeConfig.load(), let url = URL(string: config.cloudURL) {
+            client = SupabaseClient(supabaseURL: url, supabaseKey: config.publicKey)
         } else {
             client = nil
         }
@@ -53,7 +53,7 @@ final class SupabaseService {
 
     func bootstrap() async {
         defer { isLoading = false }
-        guard let client else { errorMessage = "Supabase is not configured in the iOS build."; return }
+        guard let client else { errorMessage = "Aurelium Field could not connect to your workspace. Reference: AF-CFG-101"; return }
         do {
             let session = try await client.auth.session
             userID = session.user.id
@@ -66,7 +66,7 @@ final class SupabaseService {
     }
 
     func signInWithGoogle() async {
-        guard let client else { errorMessage = "Supabase is not configured."; return }
+        guard let client else { errorMessage = "Aurelium Field could not connect to your workspace. Reference: AF-CFG-101"; return }
         do {
             try await client.auth.signInWithOAuth(provider: .google, redirectTo: URL(string: "aureliumfield://auth-callback")!)
             let session = try await client.auth.session
@@ -111,17 +111,21 @@ final class SupabaseService {
     struct CloudProjectRow: Codable {
         var id: UUID
         var name: String
+        var clientName: String?
         var addressLine1: String?
         var city: String?
         var region: String?
         var status: String
         var primaryTrade: String
         var description: String?
+        var progressPercent: Int
         var updatedAt: Date
         enum CodingKeys: String, CodingKey {
             case id, name, city, region, status, description
+            case clientName = "client_name"
             case addressLine1 = "address_line1"
             case primaryTrade = "primary_trade"
+            case progressPercent = "progress_percent"
             case updatedAt = "updated_at"
         }
     }
@@ -129,25 +133,27 @@ final class SupabaseService {
     func fetchProjects() async throws -> [ProjectSummary] {
         guard let client, let organizationID else { return [] }
         let rows: [CloudProjectRow] = try await client.from("projects")
-            .select("id,name,address_line1,city,region,status,primary_trade,description,updated_at")
+            .select("id,name,client_name,address_line1,city,region,status,primary_trade,description,progress_percent,updated_at")
             .eq("organization_id", value: organizationID.uuidString)
             .order("updated_at", ascending: false).execute().value
         return rows.map { row in
             let location = [row.addressLine1, row.city, row.region].compactMap{$0}.filter{!$0.isEmpty}.joined(separator: ", ")
-            return ProjectSummary(id: row.id, name: row.name, client: "", location: location, status: row.status.capitalized, progress: 0, trade: row.primaryTrade.capitalized, notes: row.description ?? "", updatedAt: row.updatedAt)
+            return ProjectSummary(id: row.id, name: row.name, client: row.clientName ?? "", location: location, status: row.status.capitalized, progress: Double(row.progressPercent) / 100.0, trade: row.primaryTrade.capitalized, notes: row.description ?? "", updatedAt: row.updatedAt)
         }
     }
 
     func upsertProject(_ project: ProjectSummary) async {
         guard let client, let organizationID, let userID else { return }
         struct Payload: Encodable {
-            let id: UUID; let organization_id: UUID; let name: String; let address_line1: String?
-            let status: String; let primary_trade: String; let description: String?; let created_by: UUID
+            let id: UUID; let organization_id: UUID; let name: String; let client_name: String?; let address_line1: String?
+            let status: String; let primary_trade: String; let description: String?; let progress_percent: Int; let created_by: UUID
         }
         let payload = Payload(id: project.id, organization_id: organizationID, name: project.name,
+                              client_name: project.client.isEmpty ? nil : project.client,
                               address_line1: project.location.isEmpty ? nil : project.location,
                               status: project.status.lowercased(), primary_trade: project.trade.lowercased(),
-                              description: project.notes.isEmpty ? nil : project.notes, created_by: userID)
+                              description: project.notes.isEmpty ? nil : project.notes,
+                              progress_percent: min(100, max(0, Int((project.progress * 100).rounded()))), created_by: userID)
         do { try await client.from("projects").upsert(payload).execute() }
         catch { errorMessage = error.localizedDescription }
     }
@@ -159,13 +165,13 @@ final class SupabaseService {
     }
 
     func createOrganization(name: String) async throws {
-        guard let client else { throw NSError(domain: "Aurelium", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase is not configured."]) }
+        guard let client else { throw NSError(domain: "Aurelium", code: 1, userInfo: [NSLocalizedDescriptionKey: "Workspace connection unavailable. Reference: AF-CFG-101"]) }
         let _: UUID = try await client.rpc("create_organization", params: ["org_name": name]).execute().value
         await loadMembership()
     }
 
     func acceptInvite(token: UUID) async throws {
-        guard let client else { throw NSError(domain: "Aurelium", code: 1, userInfo: [NSLocalizedDescriptionKey: "Supabase is not configured."]) }
+        guard let client else { throw NSError(domain: "Aurelium", code: 1, userInfo: [NSLocalizedDescriptionKey: "Workspace connection unavailable. Reference: AF-CFG-101"]) }
         let _: UUID = try await client.rpc("accept_organization_invite", params: ["invite_token": token.uuidString]).execute().value
         await loadMembership()
     }

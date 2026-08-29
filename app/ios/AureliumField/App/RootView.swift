@@ -2,6 +2,24 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @State private var cloud = SupabaseService.shared
+
+    var body: some View {
+        Group {
+            if model.workspaceMode == .admin && cloud.isAdmin {
+                AdminWorkspaceView()
+            } else {
+                EmployeeWorkspaceView()
+            }
+        }
+        .onChange(of: cloud.isAdmin) { _, isAdmin in
+            if !isAdmin { model.workspaceMode = .employee }
+        }
+    }
+}
+
+private struct EmployeeWorkspaceView: View {
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         @Bindable var model = model
@@ -19,7 +37,7 @@ struct RootView: View {
                 .tabItem { Label("Field", systemImage: "camera") }
                 .tag(AppTab.field)
             NavigationStack { TeamView() }
-                .tabItem { Label("Team", systemImage: "person.3") }
+                .tabItem { Label("My Time", systemImage: "clock.badge.checkmark") }
                 .tag(AppTab.team)
         }
         .tint(.primary)

@@ -11,6 +11,10 @@ final class RoomScanController {
 
     func finish() { captureView?.captureSession.stop() }
 
+    func currentPixelBuffer() -> CVPixelBuffer? {
+        captureView?.captureSession.arSession.currentFrame?.capturedImage
+    }
+
     func snapshot() -> UIImage? {
         guard let frame = captureView?.captureSession.arSession.currentFrame else { return nil }
         let image = CIImage(cvPixelBuffer: frame.capturedImage)

@@ -1,11 +1,14 @@
 import SwiftUI
 import RoomPlan
 import AVKit
+import QuickLook
 
 struct EstimatorView: View {
     @Environment(AppModel.self) private var model
     @State private var projectSearch = ""
     @State private var showingScan = false
+    @State private var showingCompleteConfirmation = false
+    @State private var showingProposal = false
 
     private var matchingProjects: [ProjectSummary] {
         let q = projectSearch.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -40,6 +43,7 @@ struct EstimatorView: View {
                     .accessibilityHint("Starts a walkthrough for \(project.name)")
 
                     walkthroughSection(project)
+                    if !model.walkthroughs(for: project.id).isEmpty { walkthroughCompletionCard(project) }
                 } else {
                     ContentUnavailableView("Choose a project", systemImage: "briefcase", description: Text("Search for an existing job above or create one from Projects."))
                 }
@@ -50,12 +54,19 @@ struct EstimatorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .fullScreenCover(isPresented: $showingScan) {
             if let project = model.selectedProject {
-                SmartScanExperience(project: project) { result in
+                SmartScanExperience(project: project, suggestedRoomName: "Room \(model.walkthroughs(for: project.id).count + 1)") { result in
                     model.addWalkthrough(result)
                     showingScan = false
                 } onCancel: { showingScan = false }
             }
         }
+        .confirmationDialog("Walkthrough Complete?", isPresented: $showingCompleteConfirmation, titleVisibility: .visible) {
+            Button("Walkthrough Complete") { if let project=model.selectedProject { model.completeWalkthroughSet(for:project.id); showingProposal=true } }
+            Button("Cancel", role:.cancel) {}
+        } message: {
+            if let project=model.selectedProject { Text("This archives all \(model.walkthroughs(for:project.id).count) room walkthroughs for \(project.name) and opens the combined estimate/proposal draft.") }
+        }
+        .sheet(isPresented:$showingProposal) { if let project=model.selectedProject { ProposalDraftView(project:project) } }
     }
 
     private var projectPicker: some View {
@@ -120,10 +131,20 @@ struct EstimatorView: View {
             }
         }
     }
+
+    private func walkthroughCompletionCard(_ project:ProjectSummary) -> some View {
+        let scans=model.walkthroughs(for:project.id); let archived=scans.filter{$0.archivedAt != nil}.count
+        return VStack(alignment:.leading,spacing:12){
+            HStack{VStack(alignment:.leading,spacing:3){Text("READY TO WRAP UP?").font(.caption2.bold()).tracking(1.1).foregroundStyle(.secondary);Text("Complete the project walkthrough").font(.headline)};Spacer();Text("\(archived)/\(scans.count) archived").font(.caption).foregroundStyle(.secondary)}
+            Text("Use this after every room you need has been scanned and reviewed. Aurelium will archive the walkthrough set and assemble the room estimates into a proposal draft.").font(.subheadline).foregroundStyle(.secondary)
+            Button{showingCompleteConfirmation=true}label:{Label("Walkthrough Complete",systemImage:"checkmark.seal.fill").font(.headline).frame(maxWidth:.infinity)}.buttonStyle(.borderedProminent).controlSize(.large).tint(.primary)
+        }.padding(16).background(.thinMaterial,in:RoundedRectangle(cornerRadius:18))
+    }
 }
 
 private struct SmartScanExperience: View {
     let project: ProjectSummary
+    let suggestedRoomName: String
     let onComplete: (WalkthroughScan) -> Void
     let onCancel: () -> Void
 
@@ -135,6 +156,8 @@ private struct SmartScanExperience: View {
     @State private var errorMessage: String?
     @State private var isFinishing = false
     @State private var captureConfirmation: EvidenceTag?
+    @State private var pendingWalkthrough: WalkthroughScan?
+    @State private var showingEstimateConfirm = false
 
     var body: some View {
         ZStack {
@@ -159,12 +182,25 @@ private struct SmartScanExperience: View {
             .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 10)
         }
         .task {
-            await recorder.start()
+            await recorder.start(controller: controller)
             if await speech.requestPermission() { try? speech.start() }
         }
-        .alert("Walkthrough issue", isPresented: Binding(get: { errorMessage != nil || recorder.errorMessage != nil || speech.errorMessage != nil }, set: { if !$0 { errorMessage = nil; recorder.errorMessage = nil; speech.errorMessage = nil } })) {
-            Button("OK", role: .cancel) { errorMessage = nil; recorder.errorMessage = nil; speech.errorMessage = nil }
-        } message: { Text(errorMessage ?? recorder.errorMessage ?? speech.errorMessage ?? "Unknown error") }
+        .sheet(isPresented: $showingEstimateConfirm) {
+            if let pendingWalkthrough {
+                PostScanEstimateView(walkthrough: pendingWalkthrough) { finished in
+                    onComplete(finished)
+                } onDiscard: {
+                    if let video = pendingWalkthrough.videoFileName { try? FileManager.default.removeItem(at: AppMediaStore.url(for: video)) }
+                    if let model = pendingWalkthrough.usdzFileName { try? FileManager.default.removeItem(at: AppMediaStore.url(for: model)) }
+                    if let json = pendingWalkthrough.roomPlanJSONFileName { try? FileManager.default.removeItem(at: AppMediaStore.url(for: json)) }
+                    captures.forEach { try? FileManager.default.removeItem(at: AppMediaStore.url(for: $0.imageFileName)) }
+                    onCancel()
+                }
+            }
+        }
+        .alert("Walkthrough issue", isPresented: Binding(get: { errorMessage != nil || speech.errorMessage != nil }, set: { if !$0 { errorMessage = nil; speech.errorMessage = nil } })) {
+            Button("OK", role: .cancel) { errorMessage = nil; speech.errorMessage = nil }
+        } message: { Text(errorMessage ?? speech.errorMessage ?? "Unknown error") }
     }
 
     private var topBar: some View {
@@ -173,6 +209,12 @@ private struct SmartScanExperience: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(project.name).font(.subheadline.bold()).lineLimit(1)
                 Text("SMART WALKTHROUGH · \(captures.count) TAGS").font(.caption2.bold()).opacity(0.76)
+                if let warning = recorder.errorMessage {
+                    Text("VIDEO OPTIONAL · UNAVAILABLE").font(.caption2.bold()).foregroundStyle(.yellow)
+                        .accessibilityLabel(warning)
+                } else {
+                    Text(recorder.statusText.uppercased()).font(.caption2.bold()).opacity(0.7)
+                }
             }.foregroundStyle(.white)
             Spacer()
             Button {
@@ -227,9 +269,61 @@ private struct SmartScanExperience: View {
 
     private func finalize(room: CapturedRoom) async {
         let recording = await recorder.stop()
-        let summary = CapturedRoomSummary(id: UUID(), name: "Scan \(Date().formatted(date: .omitted, time: .shortened))", wallCount: room.walls.count, doorCount: room.doors.count, windowCount: room.windows.count, source: .roomPlan, verificationRequired: true)
-        let result = WalkthroughScan(id: UUID(), projectID: project.id, createdAt: .now, room: summary, transcript: speech.transcript, captures: captures, videoFileName: recording.fileName, durationSeconds: recording.duration)
-        onComplete(result)
+        let scanID = UUID()
+        let summary = CapturedRoomSummary(id: UUID(), name: suggestedRoomName, wallCount: room.walls.count, doorCount: room.doors.count, windowCount: room.windows.count, source: .roomPlan, verificationRequired: true)
+
+        let feetPerMeter = 3.280839895
+        let sqftPerSquareMeter = 10.763910417
+        let measuredWalls = room.walls.map { wall in
+            MeasuredWall(id: wall.identifier, lengthFeet: Double(wall.dimensions.x) * feetPerMeter, heightFeet: Double(wall.dimensions.y) * feetPerMeter, grossSquareFeet: Double(wall.dimensions.x * wall.dimensions.y) * sqftPerSquareMeter)
+        }
+        let wallLinear = measuredWalls.reduce(0.0) { $0 + $1.lengthFeet }
+        let heights = measuredWalls.map { $0.heightFeet }
+        let averageHeight = heights.isEmpty ? 0 : heights.reduce(0,+) / Double(heights.count)
+        let grossWall = room.walls.reduce(0.0) { $0 + Double($1.dimensions.x * $1.dimensions.y) * sqftPerSquareMeter }
+        let openings = (room.windows + room.doors).reduce(0.0) { $0 + Double($1.dimensions.x * $1.dimensions.y) * sqftPerSquareMeter }
+        let ceilingArea = room.floors.reduce(0.0) { $0 + Double($1.dimensions.x * $1.dimensions.y) * sqftPerSquareMeter }
+        let doorCasing = room.doors.reduce(0.0) { total, door in
+            let width = Double(door.dimensions.x) * feetPerMeter
+            let height = Double(door.dimensions.y) * feetPerMeter
+            return total + width + (2 * height) // one face of casing: head + two legs
+        }
+        let windowCasing = room.windows.reduce(0.0) { total, window in
+            let width = Double(window.dimensions.x) * feetPerMeter
+            let height = Double(window.dimensions.y) * feetPerMeter
+            return total + (2 * width) + (2 * height)
+        }
+        let trimLength = wallLinear + doorCasing + windowCasing // base + detected opening casing starting point
+        let measurements = RoomMeasurementSummary(
+            wallLinearFeet: wallLinear,
+            averageWallHeightFeet: averageHeight,
+            grossWallSquareFeet: grossWall,
+            openingsSquareFeet: openings,
+            paintableWallSquareFeet: max(0, grossWall - openings),
+            ceilingSquareFeet: ceilingArea > 0 ? ceilingArea : nil,
+            detectedDoorCount: room.doors.count,
+            detectedWindowCount: room.windows.count,
+            estimatedTrimLinearFeet: trimLength
+        )
+
+        var usdzName: String?
+        var jsonName: String?
+        do {
+            let modelName = "room-\(scanID.uuidString).usdz"
+            let modelURL = AppMediaStore.url(for: modelName)
+            try room.export(to: modelURL, exportOptions: .mesh)
+            usdzName = modelName
+
+            let encoded = try JSONEncoder().encode(room)
+            let capturedJSON = "room-\(scanID.uuidString).json"
+            try encoded.write(to: AppMediaStore.url(for: capturedJSON), options: .atomic)
+            jsonName = capturedJSON
+        } catch {
+            errorMessage = "The walkthrough was measured, but its 3D model could not be saved: \(error.localizedDescription)"
+        }
+
+        pendingWalkthrough = WalkthroughScan(id: scanID, projectID: project.id, createdAt: .now, room: summary, transcript: speech.transcript, captures: captures, videoFileName: recording.fileName, durationSeconds: recording.duration, usdzFileName: usdzName, roomPlanJSONFileName: jsonName, measurements: measurements, autoEstimate: nil, measuredWalls: measuredWalls)
+        showingEstimateConfirm = true
     }
 }
 
@@ -250,10 +344,45 @@ private struct WalkthroughReviewView: View {
                         .frame(height: 220).background(.quaternary, in: RoundedRectangle(cornerRadius: 18))
                 }
 
+                if let modelFile = walkthrough.usdzFileName {
+                    NavigationLink { RoomModelPreview(url: AppMediaStore.url(for: modelFile)) } label: {
+                        Label("Open saved 3D room model", systemImage: "cube.transparent.fill")
+                            .font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    }.buttonStyle(.plain)
+                }
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text(walkthrough.room.name).font(.title2.bold())
                     Text(walkthrough.createdAt.formatted(date: .long, time: .shortened)).foregroundStyle(.secondary)
                     HStack { metric("Walls", walkthrough.room.wallCount); metric("Windows", walkthrough.room.windowCount); metric("Doors", walkthrough.room.doorCount); metric("Tags", walkthrough.captures.count) }
+                }
+
+                if let measurements = walkthrough.measurements {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Measured scope").font(.headline)
+                        LabeledContent("Wall length", value: String(format: "%.1f ft", measurements.wallLinearFeet))
+                        LabeledContent("Average height", value: String(format: "%.1f ft", measurements.averageWallHeightFeet))
+                        LabeledContent("Gross wall area", value: String(format: "%.0f sq ft", measurements.grossWallSquareFeet))
+                        LabeledContent("Doors + windows", value: String(format: "− %.0f sq ft", measurements.openingsSquareFeet))
+                        LabeledContent("Paintable walls", value: String(format: "%.0f sq ft", measurements.paintableWallSquareFeet))
+                        if let walls = walkthrough.measuredWalls {
+                            ForEach(Array(walls.enumerated()), id: \.element.id) { index, wall in
+                                LabeledContent("Wall \(index + 1)", value: String(format: "%.1f × %.1f ft", wall.lengthFeet, wall.heightFeet))
+                            }
+                        }
+                        if let estimate = walkthrough.autoEstimate {
+                            Divider()
+                            if let lines = estimate.scopeLines {
+                                ForEach(lines.filter(\.enabled)) { line in
+                                    LabeledContent(line.kind.rawValue, value: String(format: "%.1f hr", line.laborHours))
+                                }
+                            } else {
+                                LabeledContent("Production rate", value: String(format: "%.0f sq ft/hr", estimate.productionSquareFeetPerHour))
+                            }
+                            LabeledContent("Estimated labor", value: String(format: "%.1f hr", estimate.totalLaborHours ?? estimate.laborHours))
+                        }
+                    }.padding(14).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                 }
 
                 if !walkthrough.transcript.isEmpty {
@@ -288,5 +417,218 @@ private struct WalkthroughReviewView: View {
 
     private func metric(_ title: String, _ value: Int) -> some View {
         VStack(alignment: .leading, spacing: 2) { Text("\(value)").font(.headline); Text(title).font(.caption2).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+
+private struct PostScanEstimateView: View {
+    let walkthrough: WalkthroughScan
+    let onSave: (WalkthroughScan) -> Void
+    let onDiscard: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var confirmed = false
+    @State private var roomName: String
+    @State private var wallRate = "150"
+    @State private var paintDoors = false
+    @State private var paintWindows = false
+    @State private var paintTrim = false
+    @State private var paintCeiling = false
+    @State private var doorQuantity: String
+    @State private var doorRate = "2"
+    @State private var windowQuantity: String
+    @State private var windowRate = "2"
+    @State private var trimQuantity: String
+    @State private var trimRate = "50"
+    @State private var ceilingQuantity: String
+    @State private var ceilingRate = "125"
+
+    init(walkthrough: WalkthroughScan, onSave: @escaping (WalkthroughScan) -> Void, onDiscard: @escaping () -> Void) {
+        self.walkthrough = walkthrough
+        self.onSave = onSave
+        self.onDiscard = onDiscard
+        let m = walkthrough.measurements
+        _roomName = State(initialValue: walkthrough.room.name)
+        _doorQuantity = State(initialValue: String(m?.detectedDoorCount ?? walkthrough.room.doorCount))
+        _windowQuantity = State(initialValue: String(m?.detectedWindowCount ?? walkthrough.room.windowCount))
+        _trimQuantity = State(initialValue: String(format: "%.1f", m?.estimatedTrimLinearFeet ?? m?.wallLinearFeet ?? 0))
+        _ceilingQuantity = State(initialValue: String(format: "%.0f", m?.ceilingSquareFeet ?? 0))
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text("Room scan complete").font(.title2.bold())
+                    Text("Confirm the detected measurements, then choose exactly what is being painted. Checked scopes expand so their quantity and production rate can be corrected before the estimate is created.").foregroundStyle(.secondary)
+                }
+
+                Section("Room name") {
+                    TextField("e.g. Living Room, Bedroom 2, Main Hall", text:$roomName).textInputAutocapitalization(.words)
+                    Text("This name follows the scan, 3D model, tagged evidence, estimate lines, and proposal so the next person knows exactly which room they are reviewing.").font(.caption).foregroundStyle(.secondary)
+                }
+
+                if let m = walkthrough.measurements {
+                    Section("Measured room") {
+                        LabeledContent("Wall length", value: String(format: "%.1f ft", m.wallLinearFeet))
+                        LabeledContent("Average wall height", value: String(format: "%.1f ft", m.averageWallHeightFeet))
+                        LabeledContent("Paintable wall area", value: String(format: "%.0f sq ft", m.paintableWallSquareFeet))
+                        if let ceiling = m.ceilingSquareFeet { LabeledContent("Ceiling footprint", value: String(format: "%.0f sq ft", ceiling)) }
+                        LabeledContent("Detected doors", value: "\(m.detectedDoorCount ?? walkthrough.room.doorCount)")
+                        LabeledContent("Detected windows", value: "\(m.detectedWindowCount ?? walkthrough.room.windowCount)")
+                    }
+                }
+
+                Section("Paint walls") {
+                    Label("Included", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    if let area = walkthrough.measurements?.paintableWallSquareFeet { LabeledContent("Quantity", value: String(format: "%.0f sq ft", area)) }
+                    rateField("Production rate", text: $wallRate, suffix: "sq ft/hr")
+                    if let hours = wallHours { LabeledContent("Wall labor", value: String(format: "%.1f hr", hours)) }
+                }
+
+                scopeSection(title: "Paint Doors", isOn: $paintDoors, icon: "door.left.hand.open") {
+                    quantityRateFields(quantity: $doorQuantity, quantitySuffix: "doors", rate: $doorRate, rateSuffix: "doors/hr", labor: doorHours)
+                }
+
+                scopeSection(title: "Paint Windows", isOn: $paintWindows, icon: "window.vertical.closed") {
+                    quantityRateFields(quantity: $windowQuantity, quantitySuffix: "windows", rate: $windowRate, rateSuffix: "windows/hr", labor: windowHours)
+                }
+
+                scopeSection(title: "Paint Trim", isOn: $paintTrim, icon: "ruler") {
+                    Text("Starts with detected wall perimeter (base) plus one face of detected door/window casing. Correct it here for crown, omitted casing, closets, or unusual trim.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    quantityRateFields(quantity: $trimQuantity, quantitySuffix: "linear ft", rate: $trimRate, rateSuffix: "linear ft/hr", labor: trimHours)
+                }
+
+                scopeSection(title: "Paint Ceiling", isOn: $paintCeiling, icon: "rectangle.topthird.inset.filled") {
+                    Text("Ceiling area starts from RoomPlan's detected floor footprint for the room. Adjust if the ceiling is vaulted, tray-shaped, or otherwise non-planar.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    quantityRateFields(quantity: $ceilingQuantity, quantitySuffix: "sq ft", rate: $ceilingRate, rateSuffix: "sq ft/hr", labor: ceilingHours)
+                }
+
+                Section("Verification") {
+                    Toggle("Measurements are reasonably accurate", isOn: $confirmed)
+                    LabeledContent("Estimated room labor", value: String(format: "%.1f hours", totalHours))
+                        .font(.headline)
+                    Text("This is a production estimate, not a final price. Prep, coats, materials, labor cost, overhead and profit can be refined in the estimate editor.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Create room estimate")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Discard", role: .destructive) { dismiss(); onDiscard() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create Estimate") { createEstimate() }
+                        .disabled(!confirmed || !ratesAreValid || roomName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }.interactiveDismissDisabled()
+    }
+
+    @ViewBuilder
+    private func scopeSection<Content: View>(title: String, isOn: Binding<Bool>, icon: String, @ViewBuilder content: () -> Content) -> some View {
+        Section {
+            Toggle(isOn: isOn) { Label(title, systemImage: icon).font(.headline) }
+            if isOn.wrappedValue { content() }
+        }
+    }
+
+    @ViewBuilder
+    private func quantityRateFields(quantity: Binding<String>, quantitySuffix: String, rate: Binding<String>, rateSuffix: String, labor: Double?) -> some View {
+        rateField("Quantity", text: quantity, suffix: quantitySuffix)
+        rateField("Production rate", text: rate, suffix: rateSuffix)
+        if let labor { LabeledContent("Estimated labor", value: String(format: "%.1f hr", labor)) }
+    }
+
+    private func rateField(_ label: String, text: Binding<String>, suffix: String) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("0", text: text).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 78)
+            Text(suffix).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private var wallHours: Double? { hours(quantity: walkthrough.measurements?.paintableWallSquareFeet, rate: Double(wallRate)) }
+    private var doorHours: Double? { paintDoors ? hours(quantity: Double(doorQuantity), rate: Double(doorRate)) : nil }
+    private var windowHours: Double? { paintWindows ? hours(quantity: Double(windowQuantity), rate: Double(windowRate)) : nil }
+    private var trimHours: Double? { paintTrim ? hours(quantity: Double(trimQuantity), rate: Double(trimRate)) : nil }
+    private var ceilingHours: Double? { paintCeiling ? hours(quantity: Double(ceilingQuantity), rate: Double(ceilingRate)) : nil }
+    private var totalHours: Double { [wallHours, doorHours, windowHours, trimHours, ceilingHours].compactMap { $0 }.reduce(0,+) }
+
+    private var ratesAreValid: Bool {
+        guard (Double(wallRate) ?? 0) > 0 else { return false }
+        if paintDoors && !validPair(doorQuantity, doorRate) { return false }
+        if paintWindows && !validPair(windowQuantity, windowRate) { return false }
+        if paintTrim && !validPair(trimQuantity, trimRate) { return false }
+        if paintCeiling && !validPair(ceilingQuantity, ceilingRate) { return false }
+        return true
+    }
+
+    private func validPair(_ quantity: String, _ rate: String) -> Bool { (Double(quantity) ?? -1) >= 0 && (Double(rate) ?? 0) > 0 }
+    private func hours(quantity: Double?, rate: Double?) -> Double? {
+        guard let quantity, let rate, quantity >= 0, rate > 0 else { return nil }
+        return quantity / rate
+    }
+
+    private func createEstimate() {
+        guard let wallRateValue = Double(wallRate), let wallQty = walkthrough.measurements?.paintableWallSquareFeet, let wallLabor = wallHours else { return }
+        var lines: [ScopeEstimateLine] = [
+            .init(kind: .walls, enabled: true, quantity: wallQty, unit: "sqft", productionRate: wallRateValue, laborHours: wallLabor)
+        ]
+        func add(_ kind: EstimateScopeKind, enabled: Bool, quantity: String, unit: String, rate: String, labor: Double?) {
+            guard enabled, let q = Double(quantity), let r = Double(rate), let labor else { return }
+            lines.append(.init(kind: kind, enabled: true, quantity: q, unit: unit, productionRate: r, laborHours: labor))
+        }
+        add(.doors, enabled: paintDoors, quantity: doorQuantity, unit: "each", rate: doorRate, labor: doorHours)
+        add(.windows, enabled: paintWindows, quantity: windowQuantity, unit: "each", rate: windowRate, labor: windowHours)
+        add(.trim, enabled: paintTrim, quantity: trimQuantity, unit: "lf", rate: trimRate, labor: trimHours)
+        add(.ceiling, enabled: paintCeiling, quantity: ceilingQuantity, unit: "sqft", rate: ceilingRate, labor: ceilingHours)
+
+        var updated = walkthrough
+        updated.room.name = roomName.trimmingCharacters(in:.whitespacesAndNewlines)
+        updated.room.verificationRequired = !confirmed
+        updated.autoEstimate = AutoEstimateResult(
+            productionSquareFeetPerHour: wallRateValue,
+            laborHours: wallLabor,
+            measurementsConfirmed: confirmed,
+            scopeLines: lines,
+            totalLaborHours: lines.reduce(0) { $0 + $1.laborHours }
+        )
+        dismiss(); onSave(updated)
+    }
+}
+
+private struct ProposalDraftView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+    let project:ProjectSummary
+    private var scans:[WalkthroughScan]{model.walkthroughs(for:project.id)}
+    private var totalLabor:Double{scans.compactMap{$0.autoEstimate?.totalLaborHours ?? $0.autoEstimate?.laborHours}.reduce(0,+)}
+    private var evidenceCount:Int{scans.reduce(0){$0+$1.captures.count}}
+    private var scopeTotals:[(EstimateScopeKind,Double,String,Double)]{var totals:[EstimateScopeKind:(Double,String,Double)]=[:];for scan in scans{for line in scan.autoEstimate?.scopeLines?.filter(\.enabled) ?? []{let c=totals[line.kind] ?? (0,line.unit,0);totals[line.kind]=(c.0+line.quantity,line.unit,c.2+line.laborHours)}};return EstimateScopeKind.allCases.compactMap{kind in guard let v=totals[kind] else{return nil};return(kind,v.0,v.1,v.2)}}
+    var body:some View{NavigationStack{List{
+        Section{VStack(alignment:.leading,spacing:7){Text("WALKTHROUGH COMPLETE").font(.caption2.bold()).tracking(1.2).foregroundStyle(.secondary);Text("\(project.name) Proposal Draft").font(.title2.bold());Text("All captured rooms are archived and the measured painting scope is assembled below. Pricing, materials, coats, prep, overhead and profit can be layered onto this production draft next.").foregroundStyle(.secondary)}.padding(.vertical,6)}
+        Section("Project summary"){LabeledContent("Client",value:project.client.isEmpty ? "Not assigned":project.client);LabeledContent("Location",value:project.location.isEmpty ? "Not assigned":project.location);LabeledContent("Rooms",value:"\(scans.count)");LabeledContent("Tagged evidence",value:"\(evidenceCount)");LabeledContent("Production labor",value:String(format:"%.1f hr",totalLabor)).font(.headline)}
+        if !scopeTotals.isEmpty{Section("Combined measured scope"){ForEach(scopeTotals,id:\.0){kind,quantity,unit,labor in VStack(alignment:.leading,spacing:4){HStack{Text(kind.rawValue).font(.headline);Spacer();Text(String(format:"%.1f hr",labor)).foregroundStyle(.secondary)};Text("\(formatQuantity(quantity)) \(unit)").font(.caption).foregroundStyle(.secondary)}.padding(.vertical,4)}}}
+        Section("Rooms"){ForEach(scans){scan in VStack(alignment:.leading,spacing:6){HStack{Text(scan.room.name).font(.headline);Spacer();Label("Archived",systemImage:"archivebox.fill").font(.caption2.bold()).foregroundStyle(.secondary)};if let m=scan.measurements{Text(String(format:"%.0f sq ft paintable walls · %.1f ft avg height",m.paintableWallSquareFeet,m.averageWallHeightFeet)).font(.caption).foregroundStyle(.secondary)};if let auto=scan.autoEstimate{Text(String(format:"%.1f labor hours",auto.totalLaborHours ?? auto.laborHours)).font(.caption).foregroundStyle(.secondary)}else{Text("Measurements captured · estimate confirmation pending").font(.caption).foregroundStyle(.orange)}}.padding(.vertical,5)}}
+        if scans.contains(where:{!$0.transcript.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty}){Section("Walkthrough notes"){ForEach(scans.filter{!$0.transcript.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty}){scan in VStack(alignment:.leading,spacing:4){Text(scan.room.name).font(.headline);Text(scan.transcript).font(.subheadline).foregroundStyle(.secondary)}.padding(.vertical,4)}}}
+        Section{Label("Production draft saved",systemImage:"checkmark.seal.fill").foregroundStyle(.green);Text("The walkthrough archive is complete. This proposal remains a draft until pricing and final scope are reviewed.").font(.caption).foregroundStyle(.secondary)}
+    }.navigationTitle("Estimate / Proposal").navigationBarTitleDisplayMode(.inline).toolbar{ToolbarItem(placement:.confirmationAction){Button("Done"){dismiss()}}}}}
+    private func formatQuantity(_ value:Double)->String{value.rounded()==value ? String(Int(value)):String(format:"%.1f",value)}
+}
+
+private struct RoomModelPreview: UIViewControllerRepresentable {
+    let url: URL
+    func makeCoordinator() -> Coordinator { Coordinator(url: url) }
+    func makeUIViewController(context: Context) -> QLPreviewController {
+        let controller = QLPreviewController(); controller.dataSource = context.coordinator; return controller
+    }
+    func updateUIViewController(_ uiViewController: QLPreviewController, context: Context) {}
+    final class Coordinator: NSObject, QLPreviewControllerDataSource {
+        let url: URL; init(url: URL) { self.url = url }
+        func numberOfPreviewItems(in controller: QLPreviewController) -> Int { 1 }
+        func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem { url as NSURL }
     }
 }

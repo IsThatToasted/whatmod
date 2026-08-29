@@ -2,13 +2,15 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @State private var cloud = SupabaseService.shared
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 26) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("OPERATIONS").font(.caption2.weight(.bold)).foregroundStyle(.secondary).tracking(1.5)
+                    Text("EMPLOYEE WORKSPACE").font(.caption2.weight(.bold)).foregroundStyle(.secondary).tracking(1.5)
                     Text("Good afternoon.").font(.largeTitle.bold())
-                    Text("Everything your field and office need, without the tool sprawl.").foregroundStyle(.secondary)
+                    Text("Your jobs, field capture, estimates and time in one focused workspace.").foregroundStyle(.secondary)
                 }
                 Button { model.selectedTab = .estimate } label: {
                     Label("Start Smart Estimate", systemImage: "wand.and.stars").frame(maxWidth: .infinity)
@@ -16,23 +18,45 @@ struct HomeView: View {
                 metricStrip
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Projects").font(.title2.bold())
-                    ForEach(ProjectSummary.samples) { project in
-                        VStack(alignment: .leading, spacing: 7) {
-                            HStack { Text(project.name).font(.headline); Spacer(); Text(project.status).font(.caption.weight(.semibold)).foregroundStyle(.secondary) }
-                            Text("\(project.location) · \(project.client)").font(.caption).foregroundStyle(.secondary)
-                            ProgressView(value: project.progress)
-                        }.padding(.vertical, 6)
+                    ForEach(model.projects.prefix(5)) { project in
+                        Button {
+                            model.selectProject(project)
+                            model.selectedTab = .projects
+                        } label: {
+                            VStack(alignment: .leading, spacing: 7) {
+                                HStack {
+                                    Text(project.name).font(.headline).foregroundStyle(.primary)
+                                    Spacer()
+                                    Text(project.status).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                                }
+                                Text(project.location).font(.caption).foregroundStyle(.secondary)
+                                ProgressView(value: project.progress)
+                            }.padding(.vertical, 7).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens this project in Projects")
                     }
                 }
             }.padding()
-        }.navigationTitle("Aurelium Field").navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationTitle("Aurelium Field")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if cloud.isAdmin {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { model.workspaceMode = .admin } label: { Image(systemName: "shield.lefthalf.filled") }
+                        .accessibilityLabel("Switch to Admin View")
+                }
+            }
+        }
     }
 
     private var metricStrip: some View {
         HStack(spacing: 10) {
-            metric("Pipeline", "$184k")
-            metric("Active", "6")
-            metric("Paint margin", "38.4%")
+            metric("Projects", "\(model.projects.count)")
+            metric("Field capture", "Ready")
+            metric("My time", "GPS")
         }
     }
     private func metric(_ title: String, _ value: String) -> some View {
