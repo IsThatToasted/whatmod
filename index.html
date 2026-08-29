@@ -2,295 +2,188 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WhatMod for Chrome — Moderator tools for Whatnot mods</title>
-  <meta name="description" content="WhatMod for Chrome is a free moderation toolkit for Whatnot mods. Save messages, organize notes, manage reminders, and customize your mod workspace." />
-  <meta name="theme-color" content="#6d28ff" />
-  <meta property="og:title" content="WhatMod for Chrome — Built for mods. By mods." />
-  <meta property="og:description" content="A clean Chrome extension for Whatnot moderators: message banks, notes, reminders, shoe cards, dashboard tools, and customization." />
-  <meta property="og:image" content="assets/cover.png" />
-  <meta property="og:type" content="website" />
-  <meta name="google-site-verification" content="aVkuum8qbix59l4tZZJ4tyTkWgIE4bmRMtAq11MW4XM" />
-  <link rel="preload" as="image" href="assets/cover.png?v=20260520-chrome" />
-  <link rel="stylesheet" href="styles.css?v=20260520-chrome" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#071013" />
+  <title>ScooterCast Live</title>
+  <link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <header class="site-header" data-nav>
-    <a class="brand" href="#top" aria-label="WhatMod home">
-      <span class="brand-mark">W</span><span>What<span>Mod</span></span>
-    </a>
-
-    <nav class="nav-links" aria-label="Main navigation">
-      <a href="#features">Features</a>
-      <a href="#preview">Preview</a>
-      <a href="#install">Chrome</a>
-      <a href="#privacy">Privacy</a>
-      <a href="#faq">FAQ</a>
-      <a href="/purchases/">Tools</a>
-    </nav>
-
-    <div class="header-actions">
-      <a class="header-cta" href="#install">WhatMod for Chrome</a>
-    </div>
-
-    <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false" data-menu>☰</button>
-  </header>
-
-  <main id="top">
-    <section class="hero section-grid">
-      <div class="hero-copy reveal">
-        <p class="eyebrow">WhatMod for Chrome</p>
-        <h1>Moderator tools made simple for Whatnot mods.</h1>
-        <p class="hero-lede">
-          WhatMod is a free Chrome extension that helps moderators keep messages, notes,
-          reminders, shoe details, and dashboard tools organized in one polished workspace.
-        </p>
-
-        <div class="hero-actions">
-          <a class="button button-primary" href="#install">Get WhatMod for Chrome</a>
-          <a class="button button-secondary" href="#preview">See the toolkit</a>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand-link" href="./">
+        <div>
+          <div class="eyebrow">LIVE LOCAL RIDES</div>
+          <h1>SCOOTERCAST</h1>
         </div>
+      </a>
+      <div class="top-actions">
+        <span id="explorerCount" class="count-pill hidden">0 RIDERS</span>
+        <div id="liveBadge" class="badge offline">EXPLORER</div>
+      </div>
+    </header>
 
-        <div class="stats" aria-label="WhatMod highlights">
-          <div><strong>Free</strong><span>No license required</span></div>
-          <div><strong>Local</strong><span>Saved in your browser</span></div>
-          <div><strong>Custom</strong><span>Built around your flow</span></div>
+    <section id="errorPanel" class="error-panel hidden"></section>
+
+    <section id="explorerView" class="explorer-view hidden">
+      <div class="ride-tabs">
+        <button id="liveTab" class="ride-tab active">Live</button>
+        <button id="replayTab" class="ride-tab">Replays</button>
+      </div>
+
+      <div id="liveExplorerPanel">
+      <div class="explorer-hero">
+        <div>
+          <div class="eyebrow">LIVE EXPLORER</div>
+          <h2>See who’s riding now.</h2>
+          <p>Only riders who enable <strong>Show in Live Explorer</strong> appear here.</p>
         </div>
+        <button id="refreshExplorer" class="refresh-button">↻ Refresh</button>
+      </div>
+      <div id="riderGrid" class="rider-grid"></div>
+      <div id="emptyExplorer" class="empty-explorer hidden">
+        <div class="radar">◎</div>
+        <h3>No public rides right now</h3>
+        <p>When a rider goes live and enables Explorer visibility, they’ll appear here.</p>
+      </div>
       </div>
 
-      <div class="hero-media reveal delay-1">
-        <img src="assets/cover.png?v=20260520-chrome" alt="WhatMod branded splash graphic showing moderator tools for Whatnot mods" />
-      </div>
-    </section>
-
-    <section class="trust-strip" aria-label="Core pillars">
-      <span>Protect</span><span>Manage</span><span>Moderate</span><span>Organize</span>
-    </section>
-
-    <section id="features" class="section">
-      <div class="section-heading reveal">
-        <p class="eyebrow">Built for daily moderation</p>
-        <h2>Everything a mod reaches for during a live show.</h2>
-      </div>
-
-      <div class="feature-grid">
-        <article class="card reveal">
-          <div class="icon">⚡</div>
-          <h3>Custom Dash</h3>
-          <p>Create quick-access buttons for the messages and tools you use most while a stream is live.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">💬</div>
-          <h3>Message Banks</h3>
-          <p>Organize reusable messages for rules, sizing, reminders, announcements, and common chat moments.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">👟</div>
-          <h3>Shoes</h3>
-          <p>Keep size, condition, and product notes easy to reference when questions come in fast.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">⏰</div>
-          <h3>Auto Reminders</h3>
-          <p>Prepare reminder text for recurring show moments so important information stays close.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">📝</div>
-          <h3>Notes</h3>
-          <p>Save seller details, show instructions, reusable notes, and helpful moderation context.</p>
-        </article>
-
-        <article class="card reveal">
-          <div class="icon">🎨</div>
-          <h3>Customization</h3>
-          <p>Adjust your workspace so WhatMod feels clean, comfortable, and ready for daily use.</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="preview" class="section split-section">
-      <div class="panel reveal">
-        <p class="eyebrow">Preview</p>
-        <h2>A focused workspace for busy mods.</h2>
-        <p>
-          When chat is moving fast, WhatMod keeps the tools you need close without forcing you to jump
-          between documents, old messages, and extra tabs.
-        </p>
-
-        <ul class="check-list">
-          <li>Reusable message banks for common chat situations</li>
-          <li>Notes, shoe cards, and reminders in one place</li>
-          <li>Visual settings that make the extension feel like yours</li>
-          <li>Simple setup with no desktop app or subscription required</li>
-        </ul>
-      </div>
-
-      <div class="mockup reveal delay-1" aria-label="WhatMod extension mockup">
-        <div class="mockup-top"><span></span><span></span><span></span></div>
-        <div class="mockup-body">
-          <div class="sidebar">
-            <b>WhatMod</b>
-            <span>Dashboard</span>
-            <span>Custom Dash</span>
-            <span>Message Banks</span>
-            <span>Shoes</span>
-            <span>Notes</span>
+      <div id="replayExplorerPanel" class="hidden">
+        <div class="explorer-hero">
+          <div>
+            <div class="eyebrow">RIDE ARCHIVE</div>
+            <h2>Past rides.</h2>
+            <p>Replay the route, telemetry, reactions, and saved moments.</p>
           </div>
+          <button id="refreshReplays" class="refresh-button">↻ Refresh</button>
+        </div>
+        <div id="replayGrid" class="rider-grid"></div>
+        <div id="emptyReplays" class="empty-explorer hidden">
+          <div class="radar">↺</div>
+          <h3>No completed rides yet</h3>
+          <p>Ended rides will appear here automatically.</p>
+        </div>
+      </div>
+    </section>
 
-          <div class="mock-content">
-            <div class="message-card">
-              <strong>Welcome message</strong>
-              <p>Welcome in! Please read the show details and ask questions before bidding.</p>
-            </div>
+    <section id="replayView" class="hidden">
+      <div class="replay-header">
+        <div>
+          <div class="eyebrow">RIDE REPLAY</div>
+          <h2 id="replayTitle">Scooter Ride</h2>
+          <p id="replaySummary">Loading replay…</p>
+        </div>
+        <a class="refresh-button" href="./">← Ride Archive</a>
+      </div>
 
-            <div class="message-card">
-              <strong>Reminder</strong>
-              <p>Make sure your address is updated before entering any giveaways.</p>
-            </div>
-
-            <div class="message-card">
-              <strong>Sizing help</strong>
-              <p>Need sizing help? Drop the item and size you are looking for in chat.</p>
+      <section class="replay-media-grid">
+        <div id="replayVideoCard" class="video-card replay-video-card">
+          <video id="replayVideo" controls playsinline preload="metadata"></video>
+          <div class="video-overlay top-left">RECORDED RIDE</div>
+          <div id="noReplayVideo" class="placeholder hidden">
+            <div>
+              <h2>No video recording</h2>
+              <p>This ride still has its full telemetry and map replay.</p>
             </div>
           </div>
         </div>
-      </div>
+
+        <div class="map-card replay-map-card">
+          <div id="replayMap"></div>
+          <div class="map-label">ROUTE REPLAY</div>
+        </div>
+      </section>
+
+      <section class="replay-stats-panel replay-stats-wide">
+          <article class="metric primary"><span>SPEED</span><strong id="replaySpeed">0.0</strong><small>MPH</small></article>
+          <article class="metric"><span>DISTANCE</span><strong id="replayDistance">0.00</strong><small>MI</small></article>
+          <article class="metric"><span>AVG SPEED</span><strong id="replayAverageSpeed">0.0</strong><small>MPH</small></article>
+          <article class="metric"><span>MAX SPEED</span><strong id="replayMaxSpeed">0.0</strong><small>MPH</small></article>
+          <article class="metric"><span>ALTITUDE</span><strong id="replayAltitude">0</strong><small>FT</small></article>
+          <article class="metric"><span>BATTERY</span><strong id="replayBattery">—</strong><small>%</small></article>
+          <article class="metric"><span>GPS</span><strong id="replayGPS">—</strong></article>
+          <article class="metric"><span>MOVING</span><strong id="replayMoving">00:00</strong></article>
+      </section>
+
+      <section class="replay-controls cardlike">
+        <div class="replay-time-row">
+          <strong id="replayElapsed">00:00</strong>
+          <span id="replayDuration">00:00</span>
+        </div>
+        <input id="replaySlider" type="range" min="0" max="0" value="0" step="1">
+        <div id="replayMarkers" class="replay-markers"></div>
+        <div class="replay-buttons">
+          <button id="replayPlayPause">▶ Play</button>
+          <button id="replayRestart">↺ Restart</button>
+        </div>
+      </section>
+
+      <section class="replay-events">
+        <div class="eyebrow">MOMENTS & REACTIONS</div>
+        <div id="replayEventsList" class="replay-events-list"></div>
+      </section>
     </section>
 
-    <section class="section dark-band">
-      <div class="section-heading reveal">
-        <p class="eyebrow">Why WhatMod</p>
-        <h2>Simple tools that support the way moderators already work.</h2>
+    <section id="viewerView" class="hidden">
+      <div class="viewer-toolbar">
+        <div class="view-modes" role="group" aria-label="Viewer layout">
+          <button data-view-mode="split" class="view-mode active">Split</button>
+          <button data-view-mode="video" class="view-mode">Video</button>
+          <button data-view-mode="map" class="view-mode">Map</button>
+        </div>
+        <div id="streamHealth" class="stream-health">CONNECTING</div>
       </div>
 
-      <div class="benefit-grid">
-        <div>
-          <strong>Less repeated typing</strong>
-          <p>Keep trusted messages ready so you are not rewriting the same replies throughout every show.</p>
+      <section id="heroGrid" class="hero-grid">
+        <div class="video-card">
+          <video id="video" autoplay playsinline></video>
+          <audio id="audio" autoplay></audio>
+          <div class="video-overlay top-left"><span id="rideTitle">Scooter Ride</span></div>
+          <div class="video-overlay bottom-left"><span id="networkLabel">Connecting…</span></div>
+          <div id="videoPlaceholder" class="placeholder">
+            <div class="pulse-dot"></div>
+            <h2>Waiting for rider video</h2>
+            <p id="videoMessage">Telemetry can continue even if video temporarily drops.</p>
+          </div>
         </div>
 
-        <div>
-          <strong>Cleaner organization</strong>
-          <p>Store messages, notes, reminders, and shoe details in a single extension workspace.</p>
+        <div class="map-card">
+          <div id="map"></div>
+          <div class="map-label">LIVE POSITION</div>
         </div>
+      </section>
 
-        <div>
-          <strong>Daily comfort</strong>
-          <p>Use a polished interface built to feel good during long streams and everyday moderation.</p>
-        </div>
-      </div>
-    </section>
+      <section class="metrics">
+        <article class="metric primary"><span>SPEED</span><strong id="speed">0.0</strong><small>MPH</small></article>
+        <article class="metric"><span>DISTANCE</span><strong id="distance">0.00</strong><small>MI</small></article>
+        <article class="metric"><span>HEADING</span><strong id="heading">—</strong></article>
+        <article class="metric"><span>ALTITUDE</span><strong id="altitude">0</strong><small>FT</small></article>
+        <article class="metric"><span>PHONE</span><strong id="battery">—</strong><small>%</small></article>
+        <article class="metric"><span>RIDE TIME</span><strong id="elapsed">00:00</strong></article>
+        <article class="metric"><span>AVG SPEED</span><strong id="averageSpeed">0.0</strong><small>MPH</small></article>
+        <article class="metric"><span>MAX SPEED</span><strong id="maxSpeed">0.0</strong><small>MPH</small></article>
+        <article class="metric"><span>MOVING</span><strong id="movingTime">00:00</strong></article>
+        <article class="metric"><span>GPS QUALITY</span><strong id="gpsQuality">—</strong></article>
+      </section>
 
-    <section id="install" class="section install-section">
-      <div class="install-card reveal">
-        <div>
-          <p class="eyebrow">Available for Chrome</p>
-          <h2>WhatMod for Chrome</h2>
-          <p class="price"><span>$</span>0 <small>/ free</small></p>
-          <p class="muted">
-            No license. No subscription. No Windows or Mac download. Install the extension in Chrome and keep your moderation setup in your browser.
-          </p>
-        </div>
+      <section class="viewer-interactions">
+        <button class="reaction-button" data-emoji="👋" data-label="Viewer waved">👋 <span>Wave</span></button>
+        <button class="reaction-button" data-emoji="❤️" data-label="Viewer loved this">❤️ <span>Love it</span></button>
+        <button class="reaction-button" data-emoji="🔥" data-label="Viewer says this is awesome">🔥 <span>Awesome</span></button>
+        <button id="saveMoment" class="reaction-button moment-button">📸 <span>Save Moment</span></button>
+        <span id="reactionStatus" class="reaction-status"></span>
+      </section>
 
-        <ul class="check-list">
-          <li>Custom Dash</li>
-          <li>Message Banks</li>
-          <li>Shoe notes and condition cards</li>
-          <li>Auto reminder tools</li>
-          <li>Saved notes and preferences</li>
-          <li>Visual customization options</li>
-        </ul>
-
-        <a class="button button-primary full" href="#" aria-label="Chrome Web Store link coming soon">
-          Chrome Web Store Coming Soon
-        </a>
-
-        <p class="tiny">Replace this button URL with your Chrome Web Store listing once it is published.</p>
-      </div>
-    </section>
-
-    <section id="privacy" class="section privacy-section">
-      <div class="panel reveal">
-        <p class="eyebrow">Privacy-first setup</p>
-        <h2>Your workspace stays yours.</h2>
-        <p>
-          WhatMod is designed to save your messages, notes, reminders, and preferences locally in Chrome.
-          It does not require an account, payment, subscription, or separate desktop app.
-        </p>
-        <ul class="check-list">
-          <li>No paid license required for the Chrome extension</li>
-          <li>No Stripe checkout or subscription flow</li>
-          <li>No Windows or Mac installer needed</li>
-          <li>Independent tool; not affiliated with Whatnot</li>
-        </ul>
-      </div>
-    </section>
-
-    <section id="faq" class="section faq-section">
-      <div class="section-heading reveal">
-        <p class="eyebrow">FAQ</p>
-        <h2>Everything moderators want to know.</h2>
-      </div>
-
-      <div class="faq-list">
-        <details open>
-          <summary>What is WhatMod?</summary>
-          <p>
-            WhatMod is a Chrome extension built for Whatnot moderators. It helps organize saved messages,
-            notes, reminders, shoe details, and dashboard tools in one customizable workspace.
-          </p>
-        </details>
-
-        <details>
-          <summary>Is WhatMod free?</summary>
-          <p>
-            Yes. WhatMod for Chrome is currently planned as a free extension with no license, subscription,
-            or paid account required.
-          </p>
-        </details>
-
-        <details>
-          <summary>Do I need Windows or Mac downloads?</summary>
-          <p>
-            No. WhatMod now runs as a Chrome extension, so there are no separate Windows or Mac desktop downloads.
-          </p>
-        </details>
-
-        <details>
-          <summary>Does WhatMod collect my data?</summary>
-          <p>
-            WhatMod is designed to store your saved messages, notes, reminders, and preferences locally in your browser.
-            It does not require an account or subscription.
-          </p>
-        </details>
-
-        <details>
-          <summary>Who is WhatMod made for?</summary>
-          <p>
-            WhatMod was designed for Whatnot moderators who want faster access to common messages,
-            cleaner notes, reusable show information, and a more organized moderation workflow.
-          </p>
-        </details>
-
-        <details>
-          <summary>Is WhatMod affiliated with Whatnot?</summary>
-          <p>
-            No. WhatMod is an independent moderation tool created for moderators who work within the Whatnot ecosystem.
-          </p>
-        </details>
-      </div>
+      <section class="statusbar">
+        <span id="gpsStatus">GPS —</span>
+        <span id="lastUpdate">No telemetry yet</span>
+        <a href="./">← Live Explorer</a>
+      </section>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="brand"><span class="brand-mark">W</span><span>What<span>Mod</span></span></div>
-    <p>WhatMod for Chrome. Moderator tools for Whatnot mods. Built for mods. By mods.</p>
-  </footer>
-
-  <script src="script.js?v=20260520-chrome" defer></script>
+  <script src="./config.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
