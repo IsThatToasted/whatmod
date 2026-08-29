@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/app.css';
 
+(window as Window & { __AURELIUM_BOOTED__?: boolean }).__AURELIUM_BOOTED__ = true;
+
 class AppErrorBoundary extends React.Component<React.PropsWithChildren, { failed: boolean }> {
   state = { failed: false };
 
