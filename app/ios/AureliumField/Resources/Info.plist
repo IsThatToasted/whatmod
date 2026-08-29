@@ -9,8 +9,8 @@
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.8.0</string>
-  <key>CFBundleVersion</key><string>11</string>
+  <key>CFBundleShortVersionString</key><string>0.8.1</string>
+  <key>CFBundleVersion</key><string>12</string>
   <key>CFBundleURLTypes</key>
   <array><dict><key>CFBundleURLName</key><string>com.aurelium.field.auth</string><key>CFBundleURLSchemes</key><array><string>aureliumfield</string></array></dict></array>
   <key>NSCameraUsageDescription</key><string>Aurelium Field uses the camera to capture jobsite photos and spatial room measurements.</string>

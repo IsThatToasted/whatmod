@@ -14,35 +14,48 @@
     <main class="card">
       <div class="mark">A</div>
       <h2>Opening secure sign in…</h2>
-      <p class="sub" id="status">Connecting Aurelium Field to your Google account.</p>
+      <p class="sub" id="status">Connecting Aurelium Field to your account.</p>
     </main>
     <script>
-      (async function () {
+      (function () {
         const status = document.getElementById('status');
-        const state = new URLSearchParams(location.search).get('state') || '';
-        if (!/^[a-zA-Z0-9-]{20,100}$/.test(state)) {
+        const params = new URLSearchParams(location.search);
+        const state = params.get('state') || '';
+        const endpointRaw = params.get('endpoint') || '';
+
+        const fail = (code) => {
           status.className = 'sub error';
-          status.textContent = 'Sign in could not start. Reference: AF-AUTH-201';
+          status.textContent = `Sign in could not start. Reference: ${code}`;
+        };
+
+        if (!/^[a-zA-Z0-9-]{20,100}$/.test(state)) {
+          fail('AF-AUTH-201');
           return;
         }
-        try {
-          const response = await fetch('./mobile-auth-config.json', { cache: 'no-store' });
-          if (!response.ok) throw new Error('config');
-          const config = await response.json();
-          const endpoint = new URL(config.cloudURL);
-          if (endpoint.protocol !== 'https:') throw new Error('endpoint');
 
+        let endpoint;
+        try {
+          endpoint = new URL(endpointRaw);
+          const host = endpoint.hostname.toLowerCase();
+          const trustedHostedWorkspace = host.endsWith('.supabase.co');
+          if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || !trustedHostedWorkspace) {
+            fail('AF-AUTH-207');
+            return;
+          }
+        } catch (_) {
+          fail('AF-AUTH-207');
+          return;
+        }
+
+        try {
           document.cookie = `af_ios_auth_state=${encodeURIComponent(state)}; Max-Age=600; Path=/app/; Secure; SameSite=Lax`;
 
           const authorize = new URL('/auth/v1/authorize', endpoint.origin);
           authorize.searchParams.set('provider', 'google');
-          // Reuse the same HTTPS redirect that already works for the web app.
-          // The app root performs a pre-React native handoff only when the short-lived state cookie exists.
           authorize.searchParams.set('redirect_to', 'https://whatmod.com/app/');
           location.replace(authorize.toString());
         } catch (_) {
-          status.className = 'sub error';
-          status.textContent = 'Sign in could not start. Reference: AF-AUTH-201';
+          fail('AF-AUTH-208');
         }
       })();
     </script>

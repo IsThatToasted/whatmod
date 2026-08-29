@@ -233,9 +233,13 @@ final class WorkspaceService {
             return
         }
         if config == nil { config = RuntimeConfig.load() }
+        guard let activeConfig = config else {
+            errorMessage = NativeCloudError.configuration.localizedDescription
+            return
+        }
 
         do {
-            let callback = try await NativeWebAuthCoordinator.shared.signIn()
+            let callback = try await NativeWebAuthCoordinator.shared.signIn(cloudURL: activeConfig.cloudURL)
             let newSession = try sessionFromCallback(callback)
             sessionStore.save(newSession)
             apply(newSession)
@@ -721,13 +725,16 @@ private final class NativeWebAuthCoordinator: NSObject, ASWebAuthenticationPrese
     private var webSession: ASWebAuthenticationSession?
     private var expectedState: String?
 
-    func signIn() async throws -> URL {
+    func signIn(cloudURL: String) async throws -> URL {
         let state = UUID().uuidString.lowercased()
         expectedState = state
         guard var components = URLComponents(string: "https://whatmod.com/app/ios-auth.html") else {
             throw NativeCloudError.authentication("AF-AUTH-201")
         }
-        components.queryItems = [URLQueryItem(name: "state", value: state)]
+        components.queryItems = [
+            URLQueryItem(name: "state", value: state),
+            URLQueryItem(name: "endpoint", value: cloudURL)
+        ]
         guard let startURL = components.url else { throw NativeCloudError.authentication("AF-AUTH-201") }
 
         return try await withCheckedThrowingContinuation { continuation in
