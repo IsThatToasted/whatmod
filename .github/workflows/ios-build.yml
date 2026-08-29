@@ -160,7 +160,7 @@ jobs:
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA-v0.7.3-bootstrap-safe
+          name: AureliumField-iPhone-IPA-v0.7.1-launch-safe
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -169,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log-v0.7.3-bootstrap-safe
+          name: AureliumField-xcodebuild-log-v0.7.1-launch-safe
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7
