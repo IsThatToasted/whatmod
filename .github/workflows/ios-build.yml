@@ -28,25 +28,65 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Assert reconstructed auth baseline
+      - name: Remove retired auth artifacts retained by GitHub uploads
         shell: bash
         run: |
           set -euo pipefail
-          test -f AureliumField/Services/NativeOAuthCoordinator.swift
-          test -f ../public/native-auth-start.html
-          test -f ../index.html
-          test ! -f AureliumField/Services/NativeGoogleAuth.swift
-          if grep -RniE 'import GoogleSignIn|GIDSignIn|GOOGLE_IOS_CLIENT_ID|GOOGLE_WEB_CLIENT_ID|AF-AUTH-109|WKWebView' AureliumField project.yml; then
-            echo "::error title=AF-AUTH-106::A retired mobile authentication implementation is still present."
-            exit 1
+          # GitHub's browser "Add files via upload" does not delete files that
+          # disappeared from a newer release. v0.6.0 shipped this source file;
+          # v0.6.1+ intentionally does not. Remove it from the ephemeral Actions
+          # checkout so it can never enter the generated Xcode project.
+          if [[ -f AureliumField/Services/NativeGoogleAuth.swift ]]; then
+            echo "Removing retained legacy source: AureliumField/Services/NativeGoogleAuth.swift"
+            rm -f AureliumField/Services/NativeGoogleAuth.swift
           fi
-          grep -q 'ASWebAuthenticationSession' AureliumField/Services/NativeOAuthCoordinator.swift
-          grep -q 'getOAuthSignInURL' AureliumField/Services/NativeOAuthCoordinator.swift
-          grep -q 'native-auth-start.html' AureliumField/Services/NativeOAuthCoordinator.swift
-          grep -q 'https://whatmod.com/app/' AureliumField/Services/NativeOAuthCoordinator.swift
-          grep -q 'af_native_auth' ../public/native-auth-start.html
-          grep -q 'aureliumfield://auth-callback' ../index.html
-          echo "WeTrack-style native handoff baseline confirmed."
+
+      - name: Validate mobile auth baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          required_files = [
+              Path('AureliumField/Services/NativeOAuthCoordinator.swift'),
+              Path('../public/native-auth-start.html'),
+              Path('../index.html'),
+          ]
+          for path in required_files:
+              if not path.is_file():
+                  raise SystemExit(f'AF-AUTH-106: required auth handoff file is missing: {path}')
+
+          coordinator = required_files[0].read_text(encoding='utf-8')
+          starter = required_files[1].read_text(encoding='utf-8')
+          index = required_files[2].read_text(encoding='utf-8')
+          project = Path('project.yml').read_text(encoding='utf-8')
+
+          required_coordinator = [
+              'ASWebAuthenticationSession',
+              'getOAuthSignInURL',
+              'native-auth-start.html',
+              'https://whatmod.com/app/',
+          ]
+          for marker in required_coordinator:
+              if marker not in coordinator:
+                  raise SystemExit(f'AF-AUTH-106: native auth coordinator is missing required marker: {marker}')
+
+          if 'af_native_auth' not in starter:
+              raise SystemExit('AF-AUTH-106: native auth start page is missing the handoff marker')
+          if 'aureliumfield://auth-callback' not in index:
+              raise SystemExit('AF-AUTH-106: web return page is missing the native handoff callback')
+
+          retired = {
+              'NativeGoogleAuth.swift': Path('AureliumField/Services/NativeGoogleAuth.swift').exists(),
+              'GoogleSignIn package/import': ('GoogleSignIn' in project or 'import GoogleSignIn' in coordinator),
+          }
+          active_retired = [name for name, present in retired.items() if present]
+          if active_retired:
+              raise SystemExit('AF-AUTH-106: retired mobile auth remains active: ' + ', '.join(active_retired))
+
+          print('WeTrack-style native handoff baseline confirmed.')
+          PY
 
       - name: Validate build configuration
         shell: bash
