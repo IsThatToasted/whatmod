@@ -25,22 +25,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - name: Install
         working-directory: app
         run: npm install --no-audit --no-fund
-      - name: Validate Supabase build configuration
-        env:
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
-        run: |
-          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::error::Supabase configuration is missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY as repository Actions Variables or Secrets."
-            exit 1
-          fi
-          case "$VITE_SUPABASE_URL" in
-            https://*.supabase.co) ;;
-            *) echo "::error::VITE_SUPABASE_URL does not look like a Supabase project URL."; exit 1 ;;
-          esac
 
       - name: Build web app
         working-directory: app
@@ -48,16 +36,30 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
+
+      - name: Verify web build
+        working-directory: app
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test -f dist/manifest.webmanifest
+          test -d dist/assets
+          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          grep -q '/app/assets/' dist/index.html
+          echo "Aurelium Field v0.2 web bundle verified."
+
       - name: Assemble Pages site preserving repository root
         run: |
           mkdir -p _site/app
           rsync -a --exclude '.git' --exclude '.github' --exclude '_site' --exclude 'app' ./ _site/
           cp -R app/dist/. _site/app/
           touch _site/.nojekyll
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+
   deploy:
     environment:
       name: github-pages

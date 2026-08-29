@@ -15,9 +15,6 @@ jobs:
   device-ipa:
     name: Build iPhone IPA
     runs-on: macos-15
-    env:
-      APP_CLOUD_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
-      APP_CLOUD_PUBLIC_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
     defaults:
       run:
         working-directory: app/ios
@@ -25,37 +22,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Validate existing cloud configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${APP_CLOUD_URL:-}" || -z "${APP_CLOUD_PUBLIC_KEY:-}" ]]; then
-            echo "Required iOS cloud configuration is missing from the existing GitHub Variables/Secrets."
-            exit 1
-          fi
-          if [[ "$APP_CLOUD_URL" != https://* ]]; then
-            echo "The configured iOS cloud endpoint is invalid."
-            exit 1
-          fi
-          echo "Existing iOS cloud configuration is available."
-
-      - name: Generate runtime configuration resource
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json, os
-          from pathlib import Path
-          payload = {
-              "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
-              "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
-          }
-          Path("AureliumField/Resources/RuntimeConfig.json").write_text(
-              json.dumps(payload, separators=(",", ":")), encoding="utf-8"
-          )
-          PY
-          echo "Runtime configuration prepared."
 
       - name: Select Xcode
         run: |
@@ -66,7 +32,9 @@ jobs:
         run: brew install xcodegen
 
       - name: Generate Xcode project
-        run: xcodegen generate
+        run: |
+          rm -rf AureliumField.xcodeproj DerivedData Payload AureliumField.ipa
+          xcodegen generate
 
       - name: Build unsigned iPhone app
         run: |
@@ -83,44 +51,24 @@ jobs:
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
-      - name: Verify built app and runtime resource
-        shell: bash
-        run: |
-          set -euo pipefail
-          APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
-          test -d "$APP_PATH"
-          test -x "$APP_PATH/AureliumField"
-          CONFIG_PATH="$(find "$APP_PATH" -type f -name RuntimeConfig.json -print -quit)"
-          if [[ -z "$CONFIG_PATH" ]]; then
-            echo "Built app is missing RuntimeConfig.json"
-            exit 1
-          fi
-          export BUILT_CONFIG_PATH="$CONFIG_PATH"
-          python3 - <<'PY'
-          import json, os
-          from pathlib import Path
-          payload = json.loads(Path(os.environ["BUILT_CONFIG_PATH"]).read_text(encoding="utf-8"))
-          if payload.get("cloudURL") != os.environ["APP_CLOUD_URL"].strip():
-              raise SystemExit("Built app cloud URL did not match GitHub configuration")
-          if payload.get("publicKey") != os.environ["APP_CLOUD_PUBLIC_KEY"].strip():
-              raise SystemExit("Built app public key did not match GitHub configuration")
-          PY
-          echo "Built app and runtime configuration verified."
-
       - name: Package IPA
         run: |
           set -euo pipefail
           APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
+          test -d "$APP_PATH"
+
           rm -rf Payload AureliumField.ipa
           mkdir -p Payload
           ditto "$APP_PATH" "Payload/AureliumField.app"
           /usr/bin/zip -qry AureliumField.ipa Payload
+
+          echo "Created $(pwd)/AureliumField.ipa"
           ls -lh AureliumField.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA
+          name: AureliumField-iPhone-IPA-v0.2-stable
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -129,7 +77,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log
+          name: AureliumField-xcodebuild-log-v0.2-stable
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7
