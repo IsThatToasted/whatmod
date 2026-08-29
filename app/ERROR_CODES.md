@@ -61,3 +61,9 @@ Raw technical errors may be emitted only in local DEBUG/development diagnostics.
 - `AF-AUTH-106` — system authentication session could not be started
 - `AF-AUTH-107` — system authentication session returned without a callback URL
 - `AF-AUTH-108` — callback was received but could not be converted into an authenticated native session
+
+## Native Google Sign-In — v0.5.8
+- `AF-AUTH-109` — native Google client configuration missing or invalid
+- `AF-AUTH-110` — native Google account chooser could not be presented
+- `AF-AUTH-111` — Google returned no usable native ID token
+- `AF-AUTH-112` — native Google credentials could not be exchanged for an Aurelium session

@@ -1,4 +1,5 @@
 import SwiftUI
+import GoogleSignIn
 
 struct AuthGateView: View {
     @Environment(AppModel.self) private var model
@@ -17,7 +18,11 @@ struct AuthGateView: View {
             }
         }
         .task { if cloud.isLoading { await cloud.bootstrap() } }
-        .onOpenURL { url in Task { await cloud.handle(url) } }
+        .onOpenURL { url in
+            if !GIDSignIn.sharedInstance.handle(url) {
+                Task { await cloud.handle(url) }
+            }
+        }
         .alert("Aurelium Field", isPresented: Binding(get: { cloud.errorMessage != nil }, set: { if !$0 { cloud.errorMessage = nil } })) {
             Button("OK", role: .cancel) { cloud.errorMessage = nil }
         } message: { Text(cloud.errorMessage ?? AFPublicError.text(.unknown)) }

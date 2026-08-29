@@ -101,3 +101,8 @@ The native runtime configuration loader no longer assumes `RuntimeConfig.json` i
 ## v0.5.7 native OAuth reconstruction
 
 The native Google sign-in flow mirrors the working WeTrack pattern. Aurelium generates the hosted OAuth URL, opens it in `ASWebAuthenticationSession`, receives `aureliumfield://auth-callback`, and converts that callback directly into the persisted native session. There is no web bridge page. The auth redirect allowlist only needs the exact native callback in addition to the normal web URL.
+
+
+## Google Auth
+
+Web uses hosted OAuth. iOS v0.5.8 uses native Google Sign-In with `GOOGLE_IOS_CLIENT_ID` and `GOOGLE_WEB_CLIENT_ID`.

@@ -1,23 +1,20 @@
 import Foundation
 import Observation
 import Supabase
-import AuthenticationServices
+import GoogleSignIn
 import UIKit
 
 
-private final class AFOAuthPresentationContextProvider: NSObject, ASWebAuthenticationPresentationContextProviding {
-    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        let scenes = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .filter { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }
-
-        if let keyWindow = scenes.flatMap(\.windows).first(where: \.isKeyWindow) {
-            return keyWindow
-        }
-        if let window = scenes.flatMap(\.windows).first {
-            return window
-        }
-        return ASPresentationAnchor()
+private extension UIApplication {
+    var afTopViewController: UIViewController? {
+        let scenes = connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.first(where: { $0.activationState == .foregroundActive })?.windows.first(where: \.isKeyWindow)
+            ?? scenes.flatMap(\.windows).first
+        var controller = window?.rootViewController
+        while let presented = controller?.presentedViewController { controller = presented }
+        if let navigation = controller as? UINavigationController { controller = navigation.visibleViewController }
+        if let tab = controller as? UITabBarController { controller = tab.selectedViewController }
+        return controller
     }
 }
 
@@ -61,10 +58,6 @@ final class SupabaseService {
     var organizationID: UUID? { membership?.organizationID }
     var isAdmin: Bool { ["owner", "admin"].contains(membership?.role ?? "") }
 
-    private static let oauthCallbackURL = URL(string: "aureliumfield://auth-callback")!
-    private let oauthPresentationContext = AFOAuthPresentationContextProvider()
-    private var activeOAuthSession: ASWebAuthenticationSession?
-
     private init() {
         if let url = AFRuntimeConfig.cloudURL, AFRuntimeConfig.isConfigured {
             client = SupabaseClient(supabaseURL: url, supabaseKey: AFRuntimeConfig.publicKey)
@@ -92,89 +85,57 @@ final class SupabaseService {
             errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace.")
             return
         }
+        guard let iosClientID = AFRuntimeConfig.googleIOSClientID,
+              let webClientID = AFRuntimeConfig.googleWebClientID else {
+            errorMessage = AFPublicError.text(.nativeGoogleConfig, "Sign in is temporarily unavailable.")
+            return
+        }
+        guard let presenter = UIApplication.shared.afTopViewController else {
+            errorMessage = AFPublicError.text(.nativeGooglePresentation, "We couldn't open sign in.")
+            return
+        }
 
         do {
-            // Match the proven WeTrack flow: generate the hosted OAuth URL without
-            // allowing the SDK to launch a browser, then let ASWebAuthenticationSession
-            // own the browser lifecycle and callback.
-            let oauthURL = try await client.auth.getOAuthSignInURL(
-                provider: .google,
-                redirectTo: Self.oauthCallbackURL
+            GIDSignIn.sharedInstance.configuration = GIDConfiguration(
+                clientID: iosClientID,
+                serverClientID: webClientID
             )
 
-            let callbackURL = try await openOAuthSession(url: oauthURL)
-            let session = try await client.auth.session(from: callbackURL)
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
+            guard let idToken = result.user.idToken?.tokenString, !idToken.isEmpty else {
+                throw AFPublicError.error(.nativeGoogleToken, "We couldn't verify sign in.")
+            }
+            let accessToken = result.user.accessToken.tokenString
 
+            try await client.auth.signInWithIdToken(
+                credentials: OpenIDConnectCredentials(
+                    provider: .google,
+                    idToken: idToken,
+                    accessToken: accessToken
+                )
+            )
+
+            let session = try await client.auth.session
             userID = session.user.id
             email = session.user.email
             await loadMembership()
-        } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
-            // User cancellation is not an application error.
-            return
+        } catch let publicError as AFPublicError {
+            errorMessage = publicError.displayText
         } catch {
-            AFPublicError.capture(error, code: .nativeAuthSession)
-            errorMessage = AFPublicError.text(.nativeAuthSession, "We couldn't complete sign in.")
-        }
-    }
-
-    private func openOAuthSession(url: URL) async throws -> URL {
-        activeOAuthSession?.cancel()
-        activeOAuthSession = nil
-
-        return try await withCheckedThrowingContinuation { continuation in
-            var didResume = false
-            let session = ASWebAuthenticationSession(
-                url: url,
-                callbackURLScheme: Self.oauthCallbackURL.scheme
-            ) { [weak self] callbackURL, error in
-                Task { @MainActor in
-                    self?.activeOAuthSession = nil
-                    guard !didResume else { return }
-                    didResume = true
-
-                    if let callbackURL {
-                        continuation.resume(returning: callbackURL)
-                    } else if let error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(throwing: AFPublicError.error(.nativeAuthCallbackMissing, "We couldn't complete sign in."))
-                    }
-                }
-            }
-
-            session.presentationContextProvider = oauthPresentationContext
-            session.prefersEphemeralWebBrowserSession = false
-            activeOAuthSession = session
-
-            if !session.start() {
-                activeOAuthSession = nil
-                if !didResume {
-                    didResume = true
-                    continuation.resume(throwing: AFPublicError.error(.nativeAuthStart, "We couldn't open sign in."))
-                }
-            }
+            AFPublicError.capture(error, code: .nativeGoogleExchange)
+            errorMessage = AFPublicError.text(.nativeGoogleExchange, "We couldn't complete sign in.")
         }
     }
 
     func handle(_ url: URL) async {
-        guard let client else { return }
-        guard url.scheme?.lowercased() == Self.oauthCallbackURL.scheme,
-              url.host?.lowercased() == Self.oauthCallbackURL.host else { return }
-
-        do {
-            let session = try await client.auth.session(from: url)
-            userID = session.user.id
-            email = session.user.email
-            await loadMembership()
-        } catch {
-            AFPublicError.capture(error, code: .authCallback)
-            errorMessage = AFPublicError.text(.authCallback, "We couldn't finish sign in.")
-        }
+        // Reserved for non-Google deep links. Native Google Sign-In is handled by
+        // GIDSignIn before this method is called.
+        _ = url
     }
 
     func signOut() async {
         guard let client else { return }
-        do { try await client.auth.signOut(); userID = nil; email = nil; membership = nil }
+        do { try await client.auth.signOut(); GIDSignIn.sharedInstance.signOut(); userID = nil; email = nil; membership = nil }
         catch { AFPublicError.capture(error, code: .signOut); errorMessage = AFPublicError.text(.signOut, "We couldn't sign out cleanly.") }
     }
 
