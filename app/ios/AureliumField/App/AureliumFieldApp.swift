@@ -8,9 +8,6 @@ struct AureliumFieldApp: App {
         WindowGroup {
             AuthGateView()
                 .environment(model)
-                .onOpenURL { url in
-                    Task { await SupabaseService.shared.handleAuthCallback(url) }
-                }
         }
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 import Supabase
-
+import AuthenticationServices
 
 struct OrganizationMembership: Codable, Identifiable, Hashable {
     var organizationID: UUID
@@ -38,7 +38,6 @@ final class SupabaseService {
     var membership: OrganizationMembership?
     var isLoading = true
     var errorMessage: String?
-    var isSigningIn = false
 
     var isAuthenticated: Bool { userID != nil }
     var organizationID: UUID? { membership?.organizationID }
@@ -54,77 +53,44 @@ final class SupabaseService {
 
     func bootstrap() async {
         defer { isLoading = false }
-        guard let client else {
-            errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace.")
-            return
-        }
+        guard let client else { errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace."); return }
         do {
             let session = try await client.auth.session
-            await applyAuthenticatedSession(session)
+            userID = session.user.id
+            email = session.user.email
+            await loadMembership()
         } catch {
-            // No persisted session is a normal signed-out launch state.
             userID = nil
-            email = nil
             membership = nil
         }
     }
 
     func signInWithGoogle() async {
-        guard !isSigningIn else { return }
-        guard let client else {
-            errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace.")
-            return
-        }
-
-        isSigningIn = true
-        defer { isSigningIn = false }
-
+        guard let client else { errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace."); return }
         do {
-            let session = try await AFNativeOAuthCoordinator.shared.signIn(client: client)
-            await applyAuthenticatedSession(session)
-        } catch is AFNativeOAuthCancellation {
-            // The person closed the sign-in sheet. No error is shown.
-        } catch let publicError as AFPublicError {
-            errorMessage = publicError.displayText
-        } catch {
-            AFPublicError.capture(error, code: .nativeAuthExchange)
-            errorMessage = AFPublicError.text(.nativeAuthExchange, "We couldn't complete sign in.")
-        }
+            try await client.auth.signInWithOAuth(provider: .google, redirectTo: URL(string: "aureliumfield://auth-callback")!)
+            let session = try await client.auth.session
+            userID = session.user.id
+            email = session.user.email
+            await loadMembership()
+        } catch { AFPublicError.capture(error, code: .authentication); errorMessage = AFPublicError.text(.authentication, "We couldn't complete sign in.") }
     }
 
-    func handleAuthCallback(_ url: URL) async {
-        guard !isSigningIn else { return }
+    func handle(_ url: URL) async {
         guard let client else { return }
         do {
-            if let session = try await AFNativeOAuthCoordinator.shared.importExternalCallback(url, client: client) {
-                await applyAuthenticatedSession(session)
-            }
-        } catch let publicError as AFPublicError {
-            errorMessage = publicError.displayText
-        } catch {
-            AFPublicError.capture(error, code: .nativeAuthExchange)
-            errorMessage = AFPublicError.text(.nativeAuthExchange, "We couldn't complete sign in.")
-        }
-    }
-
-    private func applyAuthenticatedSession(_ session: Session) async {
-        userID = session.user.id
-        email = session.user.email
-        await loadMembership()
+            try await client.auth.session(from: url)
+            let session = try await client.auth.session
+            userID = session.user.id
+            email = session.user.email
+            await loadMembership()
+        } catch { AFPublicError.capture(error, code: .authCallback); errorMessage = AFPublicError.text(.authCallback, "We couldn't finish sign in.") }
     }
 
     func signOut() async {
         guard let client else { return }
-        do {
-            try await client.auth.signOut()
-            AFNativeOAuthCoordinator.shared.cancel()
-            userID = nil
-            email = nil
-            membership = nil
-        } catch {
-            AFPublicError.capture(error, code: .signOut)
-            errorMessage = AFPublicError.text(.signOut, "We couldn't sign out cleanly.")
-        }
+        do { try await client.auth.signOut(); userID = nil; email = nil; membership = nil }
+        catch { AFPublicError.capture(error, code: .signOut); errorMessage = AFPublicError.text(.signOut, "We couldn't sign out cleanly.") }
     }
 
     func loadMembership() async {

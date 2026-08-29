@@ -17,6 +17,7 @@ struct AuthGateView: View {
             }
         }
         .task { if cloud.isLoading { await cloud.bootstrap() } }
+        .onOpenURL { url in Task { await cloud.handle(url) } }
         .alert("Aurelium Field", isPresented: Binding(get: { cloud.errorMessage != nil }, set: { if !$0 { cloud.errorMessage = nil } })) {
             Button("OK", role: .cancel) { cloud.errorMessage = nil }
         } message: { Text(cloud.errorMessage ?? AFPublicError.text(.unknown)) }
@@ -34,14 +35,9 @@ private struct LoginView: View {
                 Text("Projects, estimating, field documentation, crews and time—one construction workspace.").foregroundStyle(.secondary)
             }
             Button { Task { await cloud.signInWithGoogle() } } label: {
-                HStack(spacing: 10) {
-                    if cloud.isSigningIn { ProgressView().tint(.white) }
-                    Label(cloud.isSigningIn ? "Signing in…" : "Continue with Google", systemImage: "person.crop.circle.badge.checkmark")
-                }
-                .font(.headline).frame(maxWidth: .infinity).frame(height: 52)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(cloud.isSigningIn)
+                Label("Continue with Google", systemImage: "person.crop.circle.badge.checkmark")
+                    .font(.headline).frame(maxWidth: .infinity).frame(height: 52)
+            }.buttonStyle(.borderedProminent)
             Text("Your company data is separated by organization and protected by organization-level access controls.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(24)

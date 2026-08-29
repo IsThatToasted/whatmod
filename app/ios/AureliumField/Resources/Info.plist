@@ -1,62 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>Aurelium Field</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>0.6.1</string>
-	<key>CFBundleVersion</key>
-	<string>15</string>
-
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLName</key>
-			<string>com.aurelium.field.auth</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>aureliumfield</string>
-			</array>
-		</dict>
-	</array>
-	<key>NSCameraUsageDescription</key>
-	<string>Aurelium Field uses the camera to capture jobsite photos and spatial room measurements.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Aurelium Field uses the microphone to capture narrated walkthrough notes.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Aurelium Field transcribes walkthrough narration into editable field notes.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Aurelium Field records jobsite location while you are clocked in so timecards can be verified.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Aurelium Field can record jobsite location during an active shift when background tracking is enabled by your organization.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-	</array>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>UILaunchScreen</key>
-	<dict/>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-</dict>
-</plist>
+<plist version="1.0"><dict>
+<key>CFBundleDevelopmentRegion</key><string>$(DEVELOPMENT_LANGUAGE)</string>
+<key>CFBundleDisplayName</key><string>Aurelium Field</string>
+<key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+<key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+<key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>0.5.2</string>
+<key>CFBundleVersion</key><string>7</string>
+<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>com.aurelium.field.auth</string><key>CFBundleURLSchemes</key><array><string>aureliumfield</string></array></dict></array>
+<key>NSCameraUsageDescription</key><string>Aurelium Field uses the camera to capture jobsite photos and spatial room measurements.</string>
+<key>NSMicrophoneUsageDescription</key><string>Aurelium Field uses the microphone to capture narrated walkthrough notes.</string>
+<key>NSSpeechRecognitionUsageDescription</key><string>Aurelium Field transcribes walkthrough narration into editable field notes.</string>
+<key>NSLocationWhenInUseUsageDescription</key><string>Aurelium Field records jobsite location while you are clocked in so timecards can be verified.</string>
+<key>NSLocationAlwaysAndWhenInUseUsageDescription</key><string>Aurelium Field can record jobsite location during an active shift when background tracking is enabled by your organization.</string>
+<key>UIBackgroundModes</key><array><string>location</string></array>
+<key>UIApplicationSupportsIndirectInputEvents</key><true/>
+<key>UILaunchScreen</key><dict/>
+<key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
+</dict></plist>

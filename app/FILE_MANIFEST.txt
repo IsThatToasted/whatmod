@@ -1,4 +1,6 @@
 .env.example
+.github/workflows/ios-build.yml
+.github/workflows/web-pages.yml
 .gitignore
 ERROR_CODES.md
 FILE_MANIFEST.txt
@@ -15,7 +17,6 @@ RELEASE-v0.5.1.md
 RELEASE-v0.5.2.md
 RELEASE-v0.5.3.md
 RELEASE-v0.5.4.md
-RELEASE-v0.6.0.md
 index.html
 ios/AureliumField/App/AppModel.swift
 ios/AureliumField/App/AureliumFieldApp.swift
@@ -72,5 +73,3 @@ tsconfig.app.json
 tsconfig.json
 tsconfig.node.json
 vite.config.ts
-ios/AureliumField/Services/NativeOAuthCoordinator.swift
-public/native-auth-start.html

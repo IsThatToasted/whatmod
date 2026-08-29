@@ -1,55 +1,46 @@
-# Aurelium Field Error Codes
+# Aurelium Field — Public Error Reference Codes
 
-User-facing errors intentionally avoid backend/provider implementation details.
+Production UI must never render raw backend/provider errors, provider names, SQL/PostgREST messages, storage errors, API payloads, keys, URLs, or stack traces. Users receive a neutral message plus one of these stable reference codes.
 
-## Configuration
-- `AF-CFG-001` — general runtime configuration failure
-- `AF-CFG-101` — runtime configuration resource missing
-- `AF-CFG-102` — runtime configuration resource unreadable
-- `AF-CFG-103` — runtime configuration malformed/mismatched
-- `AF-CFG-104` — workspace endpoint invalid
-- `AF-CFG-105` — public workspace credential missing
+| Code | Area | Meaning / engineering lookup |
+| --- | --- | --- |
+| AF-CFG-001 | Configuration | General runtime configuration failure/fallback. |
+| AF-CFG-101 | Configuration | iOS runtime configuration resource could not be located in the application bundle. |
+| AF-CFG-102 | Configuration | iOS runtime configuration resource exists but could not be read. |
+| AF-CFG-103 | Configuration | iOS runtime configuration resource is malformed or duplicated. |
+| AF-CFG-104 | Configuration | Runtime workspace endpoint is missing or invalid. |
+| AF-CFG-105 | Configuration | Runtime public client credential is missing. |
+| AF-AUTH-001 | Authentication | Sign-in/session operation failed. |
+| AF-AUTH-002 | Authentication | OAuth/deep-link callback could not establish a session. |
+| AF-AUTH-003 | Authentication | Sign-out failed. |
+| AF-ORG-001 | Organization | Organization creation failed. |
+| AF-ORG-002 | Organization | Organization invitation/join failed. |
+| AF-PROJ-001 | Projects | Project list/load failed. |
+| AF-PROJ-002 | Projects | Project save/update failed. |
+| AF-PROJ-003 | Projects | Project deletion failed. |
+| AF-ADM-001 | Admin | Current user is not authorized for the admin operation. |
+| AF-ADM-002 | Admin | Admin dashboard data failed to load. |
+| AF-ADM-003 | Admin | Admin timecard review/update failed. |
+| AF-ADM-004 | Admin | Permanent admin timecard deletion failed. |
+| AF-ADM-005 | Admin | Employee/member update or removal failed. |
+| AF-ADM-006 | Admin | Employee invitation create/revoke failed. |
+| AF-TIME-001 | Time | Timecard history failed to load. |
+| AF-TIME-002 | Time | Clock-in failed. |
+| AF-TIME-003 | Time | Clock-out failed. |
+| AF-TIME-004 | Time | Timecard submission failed. |
+| AF-TIME-005 | Time | Timecard correction/edit-request failed. |
+| AF-GPS-001 | Location | Required location permission/reading was unavailable. |
+| AF-WALK-001 | Walkthrough | Narration permission/capture failed. |
+| AF-WALK-002 | Walkthrough | Spatial walkthrough capture failed. |
+| AF-WALK-003 | Walkthrough | Tagged evidence capture failed. |
+| AF-WALK-004 | Walkthrough | 3D room model/geometry export failed. |
+| AF-WALK-005 | Walkthrough | Optional review-video capture failed. |
+| AF-WALK-006 | Walkthrough | Walkthrough cloud synchronization failed. |
+| AF-WALK-007 | Walkthrough | Project walkthrough archive/completion failed. |
+| AF-GEN-001 | General | Unclassified recoverable failure. |
 
-## Authentication
-- `AF-AUTH-106` — native hosted sign-in could not start
-- `AF-AUTH-107` — native sign-in did not return a valid handoff callback
-- `AF-AUTH-108` — returned authentication result could not become an Aurelium session
-- `AF-AUTH-001` — authenticated organization/session data could not be loaded
-- `AF-AUTH-003` — sign-out failed
+## UI format
 
-## Organization
-- `AF-ORG-001` — organization creation failed
-- `AF-ORG-002` — organization join/invite acceptance failed
+Example: `We couldn't save that timecard. Reference: AF-TIME-004`
 
-## Projects
-- `AF-PROJ-001` — project load failed
-- `AF-PROJ-002` — project save failed
-- `AF-PROJ-003` — project delete failed
-
-## Administration
-- `AF-ADM-001` — admin access validation failed
-- `AF-ADM-002` — admin data load failed
-- `AF-ADM-003` — admin timecard update/review failed
-- `AF-ADM-004` — admin timecard deletion failed
-- `AF-ADM-005` — employee/member update failed
-- `AF-ADM-006` — employee invite action failed
-
-## Time / GPS
-- `AF-TIME-001` — timecard load failed
-- `AF-TIME-002` — clock-in failed
-- `AF-TIME-003` — clock-out failed
-- `AF-TIME-004` — timecard submission failed
-- `AF-TIME-005` — timecard edit request failed
-- `AF-GPS-001` — location capture failed
-
-## Walkthrough
-- `AF-WALK-001` — speech permission/capture failed
-- `AF-WALK-002` — walkthrough capture failed
-- `AF-WALK-003` — evidence capture failed
-- `AF-WALK-004` — 3D model export failed
-- `AF-WALK-005` — optional video capture failed
-- `AF-WALK-006` — walkthrough sync failed
-- `AF-WALK-007` — walkthrough archive/completion failed
-
-## General
-- `AF-GEN-001` — unclassified failure
+Raw technical errors may be emitted only in local DEBUG/development diagnostics. Production user-facing views must use the public code system.
