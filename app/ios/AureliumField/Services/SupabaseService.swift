@@ -1,22 +1,7 @@
 import Foundation
 import Observation
 import Supabase
-import GoogleSignIn
-import UIKit
 
-
-private extension UIApplication {
-    var afTopViewController: UIViewController? {
-        let scenes = connectedScenes.compactMap { $0 as? UIWindowScene }
-        let window = scenes.first(where: { $0.activationState == .foregroundActive })?.windows.first(where: \.isKeyWindow)
-            ?? scenes.flatMap(\.windows).first
-        var controller = window?.rootViewController
-        while let presented = controller?.presentedViewController { controller = presented }
-        if let navigation = controller as? UINavigationController { controller = navigation.visibleViewController }
-        if let tab = controller as? UITabBarController { controller = tab.selectedViewController }
-        return controller
-    }
-}
 
 struct OrganizationMembership: Codable, Identifiable, Hashable {
     var organizationID: UUID
@@ -53,6 +38,7 @@ final class SupabaseService {
     var membership: OrganizationMembership?
     var isLoading = true
     var errorMessage: String?
+    var isSigningIn = false
 
     var isAuthenticated: Bool { userID != nil }
     var organizationID: UUID? { membership?.organizationID }
@@ -68,57 +54,41 @@ final class SupabaseService {
 
     func bootstrap() async {
         defer { isLoading = false }
-        guard let client else { errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace."); return }
+        guard let client else {
+            errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace.")
+            return
+        }
         do {
             let session = try await client.auth.session
-            userID = session.user.id
-            email = session.user.email
-            await loadMembership()
+            await applyAuthenticatedSession(session)
         } catch {
+            // No persisted session is a normal signed-out launch state.
             userID = nil
+            email = nil
             membership = nil
         }
     }
 
     func signInWithGoogle() async {
+        guard !isSigningIn else { return }
         guard let client else {
             errorMessage = AFPublicError.text(AFRuntimeConfig.publicErrorCode, "Aurelium Field could not connect to your workspace.")
             return
         }
-        guard let iosClientID = AFRuntimeConfig.googleIOSClientID,
-              let webClientID = AFRuntimeConfig.googleWebClientID else {
-            errorMessage = AFPublicError.text(.nativeGoogleConfig, "Sign in is temporarily unavailable.")
-            return
-        }
-        guard let presenter = UIApplication.shared.afTopViewController else {
-            errorMessage = AFPublicError.text(.nativeGooglePresentation, "We couldn't open sign in.")
-            return
-        }
+
+        isSigningIn = true
+        defer { isSigningIn = false }
 
         do {
-            GIDSignIn.sharedInstance.configuration = GIDConfiguration(
-                clientID: iosClientID,
-                serverClientID: webClientID
-            )
-
-            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
-            guard let idToken = result.user.idToken?.tokenString, !idToken.isEmpty else {
-                throw AFPublicError.error(.nativeGoogleToken, "We couldn't verify sign in.")
-            }
-            let accessToken = result.user.accessToken.tokenString
-
-            try await client.auth.signInWithIdToken(
+            let google = try await AFNativeGoogleAuth.signIn()
+            let session = try await client.auth.signInWithIdToken(
                 credentials: OpenIDConnectCredentials(
                     provider: .google,
-                    idToken: idToken,
-                    accessToken: accessToken
+                    idToken: google.idToken,
+                    accessToken: google.accessToken
                 )
             )
-
-            let session = try await client.auth.session
-            userID = session.user.id
-            email = session.user.email
-            await loadMembership()
+            await applyAuthenticatedSession(session)
         } catch let publicError as AFPublicError {
             errorMessage = publicError.displayText
         } catch {
@@ -127,16 +97,24 @@ final class SupabaseService {
         }
     }
 
-    func handle(_ url: URL) async {
-        // Reserved for non-Google deep links. Native Google Sign-In is handled by
-        // GIDSignIn before this method is called.
-        _ = url
+    private func applyAuthenticatedSession(_ session: Session) async {
+        userID = session.user.id
+        email = session.user.email
+        await loadMembership()
     }
 
     func signOut() async {
         guard let client else { return }
-        do { try await client.auth.signOut(); GIDSignIn.sharedInstance.signOut(); userID = nil; email = nil; membership = nil }
-        catch { AFPublicError.capture(error, code: .signOut); errorMessage = AFPublicError.text(.signOut, "We couldn't sign out cleanly.") }
+        do {
+            try await client.auth.signOut()
+            AFNativeGoogleAuth.signOut()
+            userID = nil
+            email = nil
+            membership = nil
+        } catch {
+            AFPublicError.capture(error, code: .signOut)
+            errorMessage = AFPublicError.text(.signOut, "We couldn't sign out cleanly.")
+        }
     }
 
     func loadMembership() async {
