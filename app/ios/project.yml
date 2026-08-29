@@ -6,6 +6,10 @@ options:
 settings:
   base:
     SWIFT_VERSION: '5.10'
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift.git
+    exactVersion: 2.49.0
 targets:
   AureliumField:
     type: application
@@ -35,8 +39,8 @@ targets:
       path: AureliumField/Resources/Info.plist
       properties:
         CFBundleDisplayName: Aurelium Field
-        CFBundleShortVersionString: 0.8.1
-        CFBundleVersion: 12
+        CFBundleShortVersionString: 0.8.2
+        CFBundleVersion: 13
         CFBundleURLTypes:
           - CFBundleURLName: com.aurelium.field.auth
             CFBundleURLSchemes:
@@ -55,6 +59,9 @@ targets:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+    dependencies:
+      - package: Supabase
+        product: Supabase
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.aurelium.field

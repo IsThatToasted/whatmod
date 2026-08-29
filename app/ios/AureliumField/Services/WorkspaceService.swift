@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Supabase
 import AuthenticationServices
 import UIKit
 import Security
@@ -239,15 +240,43 @@ final class WorkspaceService {
         }
 
         do {
-            let callback = try await NativeWebAuthCoordinator.shared.signIn(cloudURL: activeConfig.cloudURL)
-            let newSession = try sessionFromCallback(callback)
+            guard let supabaseURL = URL(string: activeConfig.cloudURL),
+                  let callbackURL = URL(string: "aureliumfield://auth-callback") else {
+                throw NativeCloudError.configuration
+            }
+
+            // Official Supabase Google OAuth flow. The client is created only when the
+            // user taps Sign In, so Supabase Auth is never initialized during app launch.
+            let authClient = SupabaseClient(
+                supabaseURL: supabaseURL,
+                supabaseKey: activeConfig.publicKey
+            )
+            let oauthSession = try await authClient.auth.signInWithOAuth(
+                provider: .google,
+                redirectTo: callbackURL
+            ) { webSession in
+                webSession.prefersEphemeralWebBrowserSession = false
+            }
+
+            let newSession = NativeSession(
+                accessToken: oauthSession.accessToken,
+                refreshToken: oauthSession.refreshToken,
+                expiresAt: Date(timeIntervalSince1970: oauthSession.expiresAt),
+                userID: oauthSession.user.id,
+                email: oauthSession.user.email
+            )
             sessionStore.save(newSession)
             apply(newSession)
             try await loadMembershipThrowing()
+        } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+            return
         } catch is CancellationError {
             return
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Sign in could not be completed. Reference: AF-AUTH-201"
+            errorMessage = "Sign in could not be completed. Reference: AF-AUTH-209"
+#if DEBUG
+            print("[Aurelium Auth] \(error)")
+#endif
         }
     }
 
@@ -291,25 +320,6 @@ final class WorkspaceService {
         userID = nil
         email = nil
         membership = nil
-    }
-
-    private func sessionFromCallback(_ url: URL) throws -> NativeSession {
-        guard url.scheme?.lowercased() == "aureliumfield", url.host?.lowercased() == "auth-callback" else {
-            throw NativeCloudError.authentication("AF-AUTH-202")
-        }
-        let fragment = Self.parameters(from: url.fragment ?? "")
-        if fragment["error"] != nil || fragment["error_description"] != nil {
-            throw NativeCloudError.authentication("AF-AUTH-203")
-        }
-        guard let access = fragment["access_token"], !access.isEmpty,
-              let refresh = fragment["refresh_token"], !refresh.isEmpty else {
-            throw NativeCloudError.authentication("AF-AUTH-204")
-        }
-        let payload = try Self.decodeJWT(access)
-        guard let uid = UUID(uuidString: payload.sub) else {
-            throw NativeCloudError.authentication("AF-AUTH-205")
-        }
-        return NativeSession(accessToken: access, refreshToken: refresh, expiresAt: Date(timeIntervalSince1970: payload.exp), userID: uid, email: payload.email)
     }
 
     private func refreshSession(_ value: NativeSession) async throws -> NativeSession {
@@ -718,70 +728,6 @@ final class WorkspaceService {
 }
 
 private struct EmptyPayload: Encodable {}
-
-@MainActor
-private final class NativeWebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContextProviding {
-    static let shared = NativeWebAuthCoordinator()
-    private var webSession: ASWebAuthenticationSession?
-    private var expectedState: String?
-
-    func signIn(cloudURL: String) async throws -> URL {
-        let state = UUID().uuidString.lowercased()
-        expectedState = state
-        guard var components = URLComponents(string: "https://whatmod.com/app/ios-auth.html") else {
-            throw NativeCloudError.authentication("AF-AUTH-201")
-        }
-        components.queryItems = [
-            URLQueryItem(name: "state", value: state),
-            URLQueryItem(name: "endpoint", value: cloudURL)
-        ]
-        guard let startURL = components.url else { throw NativeCloudError.authentication("AF-AUTH-201") }
-
-        return try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: startURL, callbackURLScheme: "aureliumfield") { [weak self] callbackURL, error in
-                Task { @MainActor in
-                    defer { self?.webSession = nil }
-                    if let authError = error as? ASWebAuthenticationSessionError, authError.code == .canceledLogin {
-                        continuation.resume(throwing: CancellationError())
-                        return
-                    }
-                    if error != nil {
-                        continuation.resume(throwing: NativeCloudError.authentication("AF-AUTH-201"))
-                        return
-                    }
-                    guard let callbackURL,
-                          let callback = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
-                          callback.scheme?.lowercased() == "aureliumfield",
-                          callback.host?.lowercased() == "auth-callback",
-                          callback.queryItems?.first(where: { $0.name == "state" })?.value == self?.expectedState else {
-                        continuation.resume(throwing: NativeCloudError.authentication("AF-AUTH-202"))
-                        return
-                    }
-                    continuation.resume(returning: callbackURL)
-                }
-            }
-            session.presentationContextProvider = self
-            session.prefersEphemeralWebBrowserSession = false
-            self.webSession = session
-            guard session.start() else {
-                self.webSession = nil
-                continuation.resume(throwing: NativeCloudError.authentication("AF-AUTH-201"))
-                return
-            }
-        }
-    }
-
-    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        if let window = scenes.flatMap({ $0.windows }).first(where: { $0.isKeyWindow }) {
-            return window
-        }
-        if let window = scenes.flatMap({ $0.windows }).first {
-            return window
-        }
-        return ASPresentationAnchor()
-    }
-}
 
 private struct KeychainSessionStore {
     let service: String
