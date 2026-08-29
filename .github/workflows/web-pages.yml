@@ -26,6 +26,19 @@ jobs:
         with:
           node-version: 22
 
+      - name: Remove retired auth-bridge leftovers
+        run: |
+          rm -f app/src/auth/NativeAuthBridge.tsx app/public/native-auth-start.html
+
+      - name: Validate web cloud configuration
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${VITE_SUPABASE_URL:-}" || { echo "::error title=AF-CFG-101::Missing VITE_SUPABASE_URL"; exit 1; }
+          test -n "${VITE_SUPABASE_ANON_KEY:-}" || { echo "::error title=AF-CFG-105::Missing VITE_SUPABASE_ANON_KEY"; exit 1; }
+
       - name: Install
         working-directory: app
         run: npm install --no-audit --no-fund
@@ -46,7 +59,7 @@ jobs:
           test -d dist/assets
           test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
           grep -q '/app/assets/' dist/index.html
-          echo "Aurelium Field v0.2 web bundle verified."
+          echo "Aurelium Field rebuilt web bundle verified."
 
       - name: Assemble Pages site preserving repository root
         run: |

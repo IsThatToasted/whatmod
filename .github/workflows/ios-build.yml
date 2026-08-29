@@ -18,6 +18,9 @@ jobs:
     defaults:
       run:
         working-directory: app/ios
+    env:
+      APP_CLOUD_URL: ${{ vars.VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+      APP_CLOUD_PUBLIC_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
 
     steps:
       - name: Checkout repository
@@ -30,6 +33,26 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Validate cloud build configuration
+        run: |
+          set -euo pipefail
+          if [ -z "${APP_CLOUD_URL:-}" ] || [ -z "${APP_CLOUD_PUBLIC_KEY:-}" ]; then
+            echo "::error title=AF-CFG-101::Aurelium Field iOS is missing its workspace build configuration."
+            exit 1
+          fi
+          case "$APP_CLOUD_URL" in https://*) ;; *) echo "::error title=AF-CFG-104::Workspace endpoint is invalid."; exit 1;; esac
+          echo "Workspace build configuration resolved."
+
+      - name: Generate bundled runtime configuration
+        run: |
+          set -euo pipefail
+          mkdir -p AureliumField/Resources
+          python3 - <<'PY'
+          import json, os
+          with open('AureliumField/Resources/RuntimeConfig.json','w',encoding='utf-8') as f:
+              json.dump({'cloudURL':os.environ['APP_CLOUD_URL'].strip(),'publicKey':os.environ['APP_CLOUD_PUBLIC_KEY'].strip()},f,separators=(',',':'))
+          PY
 
       - name: Generate Xcode project
         run: |
@@ -51,24 +74,43 @@ jobs:
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
-      - name: Package IPA
+      - name: Verify built application
         run: |
           set -euo pipefail
           APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
           test -d "$APP_PATH"
+          python3 - <<'PY'
+          import json, os, pathlib, plistlib, sys
+          app=pathlib.Path('DerivedData/Build/Products/Release-iphoneos/AureliumField.app')
+          expected_url=os.environ['APP_CLOUD_URL'].strip(); expected_key=os.environ['APP_CLOUD_PUBLIC_KEY'].strip()
+          configs=list(app.rglob('RuntimeConfig.json'))
+          if not configs:
+              sys.exit('AF-CFG-101: built app is missing RuntimeConfig.json')
+          data=json.loads(configs[0].read_text())
+          if data.get('cloudURL') != expected_url or data.get('publicKey') != expected_key:
+              sys.exit('AF-CFG-103: built runtime configuration does not match GitHub configuration')
+          with open(app/'Info.plist','rb') as f: info=plistlib.load(f)
+          schemes=[]
+          for item in info.get('CFBundleURLTypes',[]): schemes += item.get('CFBundleURLSchemes',[])
+          print('Built app runtime configuration verified.')
+          print('Launch metadata:', 'present' if 'UILaunchScreen' in info else 'not reported by processed plist')
+          print('Aurelium callback scheme:', 'present' if 'aureliumfield' in schemes else 'not reported by processed plist')
+          PY
 
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
           rm -rf Payload AureliumField.ipa
           mkdir -p Payload
           ditto "$APP_PATH" "Payload/AureliumField.app"
           /usr/bin/zip -qry AureliumField.ipa Payload
-
-          echo "Created $(pwd)/AureliumField.ipa"
           ls -lh AureliumField.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA-v0.2-stable
+          name: AureliumField-iPhone-IPA-v0.7.0-rebuilt
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -77,7 +119,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log-v0.2-stable
+          name: AureliumField-xcodebuild-log-v0.7.0-rebuilt
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7
