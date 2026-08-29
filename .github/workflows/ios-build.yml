@@ -28,6 +28,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Assert clean native auth baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE 'ASWebAuthenticationSession|aureliumfield://auth-callback|signInWithOAuth\(|getOAuthSignInURL\(|WKWebView' AureliumField --include='*.swift'; then
+            echo "::error title=AF-AUTH-109::Legacy hosted OAuth code was found in the native target."
+            exit 1
+          fi
+          test -f AureliumField/Services/NativeGoogleAuth.swift
+          echo "Clean native authentication baseline confirmed."
+
       - name: Validate build configuration
         shell: bash
         run: |
@@ -81,19 +92,13 @@ jobs:
           with plist_path.open("rb") as handle:
               plist = plistlib.load(handle)
 
-          url_types = []
-          for entry in plist.get("CFBundleURLTypes", []):
-              schemes = [str(value) for value in entry.get("CFBundleURLSchemes", [])]
-              if any(value.startswith("com.googleusercontent.apps.") for value in schemes):
-                  continue
-              url_types.append(entry)
-
-          url_types.append({
+          # Authentication reset: the native target gets exactly one auth URL scheme,
+          # Google's reversed iOS client ID. No Aurelium/Supabase OAuth callback remains.
+          plist["CFBundleURLTypes"] = [{
               "CFBundleTypeRole": "Editor",
               "CFBundleURLName": "google-sign-in",
               "CFBundleURLSchemes": [reversed_client],
-          })
-          plist["CFBundleURLTypes"] = url_types
+          }]
           plist["GIDClientID"] = ios_client
           plist["GIDServerClientID"] = web_client
 
@@ -127,6 +132,8 @@ jobs:
           reversed_client = "com.googleusercontent.apps." + expected["googleIOSClientID"][:-len(suffix)]
           if reversed_client not in schemes:
               raise SystemExit("AF-AUTH-109: generated Info.plist is missing the native Google callback scheme")
+          if "aureliumfield" in schemes:
+              raise SystemExit("AF-AUTH-109: legacy hosted-OAuth callback scheme is still present")
           if plist.get("GIDClientID") != expected["googleIOSClientID"] or plist.get("GIDServerClientID") != expected["googleWebClientID"]:
               raise SystemExit("AF-AUTH-109: generated Info.plist client configuration did not match build inputs")
           PY
@@ -197,6 +204,8 @@ jobs:
           reversed_client = "com.googleusercontent.apps." + expected["googleIOSClientID"][:-len(suffix)]
           if reversed_client not in schemes:
               raise SystemExit("AF-AUTH-109: built app is missing the native Google callback scheme")
+          if "aureliumfield" in schemes:
+              raise SystemExit("AF-AUTH-109: built app still contains the legacy hosted-OAuth callback scheme")
           if plist.get("GIDClientID") != expected["googleIOSClientID"] or plist.get("GIDServerClientID") != expected["googleWebClientID"]:
               raise SystemExit("AF-AUTH-109: built app Google client configuration did not match build inputs")
           PY
@@ -240,6 +249,8 @@ jobs:
               reversed_client = "com.googleusercontent.apps." + expected["googleIOSClientID"][:-len(suffix)]
               if reversed_client not in schemes:
                   raise SystemExit("AF-AUTH-109: packaged IPA is missing the native Google callback scheme")
+              if "aureliumfield" in schemes:
+                  raise SystemExit("AF-AUTH-109: packaged IPA still contains the legacy hosted-OAuth callback scheme")
           print("Packaged IPA native sign-in configuration verified.")
           PY
 
