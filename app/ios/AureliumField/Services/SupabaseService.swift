@@ -44,11 +44,8 @@ final class SupabaseService {
     var isAdmin: Bool { ["owner", "admin"].contains(membership?.role ?? "") }
 
     private init() {
-        let info = Bundle.main.infoDictionary ?? [:]
-        let urlString = (info["SUPABASE_URL"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let key = (info["SUPABASE_ANON_KEY"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if let url = URL(string: urlString), urlString.hasPrefix("https://"), !key.isEmpty {
-            client = SupabaseClient(supabaseURL: url, supabaseKey: key)
+        if let url = AureliumRuntimeConfig.cloudURL, AureliumRuntimeConfig.isConfigured {
+            client = SupabaseClient(supabaseURL: url, supabaseKey: AureliumRuntimeConfig.publicKey)
         } else {
             client = nil
         }

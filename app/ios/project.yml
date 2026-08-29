@@ -15,7 +15,26 @@ targets:
     type: application
     platform: iOS
     sources:
-      - AureliumField
+      - AureliumField/App/AppModel.swift
+      - AureliumField/App/AureliumFieldApp.swift
+      - AureliumField/App/RootView.swift
+      - AureliumField/Features/AuthView.swift
+      - AureliumField/Features/Estimator/EstimatorView.swift
+      - AureliumField/Features/Home/HomeView.swift
+      - AureliumField/Features/Projects/FieldView.swift
+      - AureliumField/Features/Projects/ProjectsView.swift
+      - AureliumField/Features/Team/AdminWorkspaceView.swift
+      - AureliumField/Features/Team/TeamView.swift
+      - AureliumField/Models/Domain.swift
+      - AureliumField/Services/RoomPlanCaptureView.swift
+      - AureliumField/Services/RuntimeConfig.swift
+      - AureliumField/Services/ScanRecordingService.swift
+      - AureliumField/Services/SpeechCaptureService.swift
+      - AureliumField/Services/SupabaseService.swift
+      - AureliumField/Services/TimeClockService.swift
+      - AureliumField/Services/WalkthroughCloudSync.swift
+      - path: AureliumField/Resources/RuntimeConfig.json
+        buildPhase: resources
     dependencies:
       - package: Supabase
         product: Supabase
