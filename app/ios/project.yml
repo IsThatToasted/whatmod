@@ -18,6 +18,7 @@ targets:
       - path: AureliumField
         excludes:
           - Resources/RuntimeConfig.json
+          - Services/NativeGoogleAuth.swift
       - path: AureliumField/Resources/RuntimeConfig.json
         buildPhase: resources
     dependencies:
