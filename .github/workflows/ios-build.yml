@@ -5,8 +5,6 @@ on:
     branches: [main]
     paths:
       - 'app/ios/**'
-      - 'app/public/native-auth-start.html'
-      - 'app/index.html'
       - '.github/workflows/ios-build.yml'
   workflow_dispatch:
 
@@ -28,136 +26,65 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Remove retired auth artifacts retained by GitHub uploads
+      - name: Remove post-stable auth experiments
         shell: bash
         run: |
           set -euo pipefail
-          # GitHub's browser "Add files via upload" does not delete files that
-          # disappeared from a newer release. v0.6.0 shipped this source file;
-          # v0.6.1+ intentionally does not. Remove it from the ephemeral Actions
-          # checkout so it can never enter the generated Xcode project.
-          if [[ -f AureliumField/Services/NativeGoogleAuth.swift ]]; then
-            echo "Removing retained legacy source: AureliumField/Services/NativeGoogleAuth.swift"
-            rm -f AureliumField/Services/NativeGoogleAuth.swift
-          fi
+          rm -f AureliumField/Services/NativeGoogleAuth.swift
+          rm -f AureliumField/Services/NativeOAuthCoordinator.swift
+          echo "Post-v0.5.4 native auth experiment files removed from build checkout if present."
 
-      - name: Validate mobile auth baseline
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          required_files = [
-              Path('AureliumField/Services/NativeOAuthCoordinator.swift'),
-              Path('../public/native-auth-start.html'),
-              Path('../index.html'),
-          ]
-          for path in required_files:
-              if not path.is_file():
-                  raise SystemExit(f'AF-AUTH-106: required auth handoff file is missing: {path}')
-
-          coordinator = required_files[0].read_text(encoding='utf-8')
-          starter = required_files[1].read_text(encoding='utf-8')
-          index = required_files[2].read_text(encoding='utf-8')
-          project = Path('project.yml').read_text(encoding='utf-8')
-
-          required_coordinator = [
-              'ASWebAuthenticationSession',
-              'getOAuthSignInURL',
-              'native-auth-start.html',
-              'https://whatmod.com/app/',
-          ]
-          for marker in required_coordinator:
-              if marker not in coordinator:
-                  raise SystemExit(f'AF-AUTH-106: native auth coordinator is missing required marker: {marker}')
-
-          if 'af_native_auth' not in starter:
-              raise SystemExit('AF-AUTH-106: native auth start page is missing the handoff marker')
-          if 'aureliumfield://auth-callback' not in index:
-              raise SystemExit('AF-AUTH-106: web return page is missing the native handoff callback')
-
-          retired = {
-              'NativeGoogleAuth.swift': Path('AureliumField/Services/NativeGoogleAuth.swift').exists(),
-              'GoogleSignIn package/import': ('GoogleSignIn' in project or 'import GoogleSignIn' in coordinator),
-          }
-          active_retired = [name for name, present in retired.items() if present]
-          if active_retired:
-              raise SystemExit('AF-AUTH-106: retired mobile auth remains active: ' + ', '.join(active_retired))
-
-          print('WeTrack-style native handoff baseline confirmed.')
-          PY
-
-      - name: Validate build configuration
+      - name: Validate app configuration
         shell: bash
         run: |
           set -euo pipefail
           if [[ -z "${APP_CLOUD_URL:-}" || -z "${APP_CLOUD_PUBLIC_KEY:-}" ]]; then
-            echo "::error title=AF-CFG-001::Required iOS workspace configuration is missing."
+            echo "::error title=AF-CFG-001::Required iOS build configuration is missing."
             exit 1
           fi
           if [[ "$APP_CLOUD_URL" != https://* ]]; then
-            echo "::error title=AF-CFG-104::The configured workspace endpoint is invalid."
+            echo "::error title=AF-CFG-001::The configured service endpoint is invalid."
             exit 1
           fi
-          echo "iOS workspace inputs are present."
+          echo "iOS runtime configuration inputs are present."
 
-      - name: Generate native runtime configuration
+      - name: Generate bundled runtime configuration
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, os, plistlib
+          import json
+          import os
           from pathlib import Path
 
           payload = {
               "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
               "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
           }
-          Path("AureliumField/Resources/RuntimeConfig.json").write_text(
-              json.dumps(payload, separators=(",", ":")), encoding="utf-8"
-          )
-
-          plist_path = Path("AureliumField/Resources/Info.plist")
-          with plist_path.open("rb") as handle:
-              plist = plistlib.load(handle)
-          plist["CFBundleURLTypes"] = [{
-              "CFBundleTypeRole": "Editor",
-              "CFBundleURLName": "com.aurelium.field.auth",
-              "CFBundleURLSchemes": ["aureliumfield"],
-          }]
-          plist.pop("GIDClientID", None)
-          plist.pop("GIDServerClientID", None)
-          with plist_path.open("wb") as handle:
-              plistlib.dump(plist, handle, sort_keys=False)
+          output = Path("AureliumField/Resources/RuntimeConfig.json")
+          output.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
           PY
-          echo "Native runtime configuration generated (values hidden)."
+          echo "Runtime configuration resource generated (values hidden)."
 
-      - name: Verify generated authentication configuration
+      - name: Verify generated runtime configuration
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, os, plistlib
+          import json
+          import os
           from pathlib import Path
 
-          expected = {
-              "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
-              "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
-          }
-          payload = json.loads(Path("AureliumField/Resources/RuntimeConfig.json").read_text(encoding="utf-8"))
-          if payload != expected:
-              raise SystemExit("AF-CFG-103: generated runtime configuration did not match build inputs")
-
-          with Path("AureliumField/Resources/Info.plist").open("rb") as handle:
-              plist = plistlib.load(handle)
-          schemes = [s for entry in plist.get("CFBundleURLTypes", []) for s in entry.get("CFBundleURLSchemes", [])]
-          if schemes != ["aureliumfield"]:
-              raise SystemExit("AF-AUTH-107: generated Info.plist does not contain the single Aurelium handoff scheme")
-          if "GIDClientID" in plist or "GIDServerClientID" in plist:
-              raise SystemExit("AF-AUTH-106: retired native Google client configuration remains in Info.plist")
+          path = Path("AureliumField/Resources/RuntimeConfig.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          if payload.get("cloudURL") != os.environ["APP_CLOUD_URL"].strip():
+              raise SystemExit("AF-CFG-001: generated service endpoint did not match build input")
+          if payload.get("publicKey") != os.environ["APP_CLOUD_PUBLIC_KEY"].strip():
+              raise SystemExit("AF-CFG-001: generated public client key did not match build input")
+          if not payload["cloudURL"].startswith("https://") or not payload["publicKey"]:
+              raise SystemExit("AF-CFG-001: generated runtime configuration is incomplete")
           PY
-          echo "Generated native handoff configuration verified."
+          echo "Generated runtime resource verified."
 
       - name: Select Xcode
         run: |
@@ -169,48 +96,6 @@ jobs:
 
       - name: Generate Xcode project
         run: xcodegen generate
-
-      - name: Verify Xcode plist ownership
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import plistlib
-          from pathlib import Path
-
-          plist_path = Path("AureliumField/Resources/Info.plist")
-          with plist_path.open("rb") as handle:
-              plist = plistlib.load(handle)
-          schemes = [s for entry in plist.get("CFBundleURLTypes", []) for s in entry.get("CFBundleURLSchemes", [])]
-          if "aureliumfield" not in schemes:
-              raise SystemExit("AF-AUTH-107: XcodeGen modified the source Info.plist and removed the handoff scheme")
-          print("Source Info.plist survived XcodeGen with Aurelium handoff scheme intact.")
-          PY
-
-          xcodebuild \
-            -project AureliumField.xcodeproj \
-            -scheme AureliumField \
-            -configuration Release \
-            -sdk iphoneos \
-            -showBuildSettings > xcode-build-settings.txt
-
-          python3 - <<'PY'
-          from pathlib import Path
-          text = Path("xcode-build-settings.txt").read_text(encoding="utf-8", errors="replace")
-          settings = {}
-          for line in text.splitlines():
-              if " = " in line:
-                  key, value = line.strip().split(" = ", 1)
-                  settings[key] = value
-
-          plist_file = settings.get("INFOPLIST_FILE", "")
-          generated = settings.get("GENERATE_INFOPLIST_FILE", "")
-          if plist_file != "AureliumField/Resources/Info.plist":
-              raise SystemExit(f"AF-AUTH-107: unexpected INFOPLIST_FILE build setting: {plist_file!r}")
-          if generated.upper() not in {"NO", "NO "}:
-              raise SystemExit(f"AF-AUTH-107: Xcode is still generating Info.plist: {generated!r}")
-          print("Xcode is using the checked-in Info.plist directly.")
-          PY
 
       - name: Build unsigned iPhone app
         run: |
@@ -227,7 +112,7 @@ jobs:
             CODE_SIGN_IDENTITY='' \
             clean build | tee xcodebuild-device.log
 
-      - name: Verify built application
+      - name: Verify runtime configuration inside built app
         shell: bash
         run: |
           set -euo pipefail
@@ -237,64 +122,68 @@ jobs:
 
           CONFIG_PATHS="$(find "$APP_PATH" -type f -name 'RuntimeConfig.json' -print)"
           CONFIG_COUNT="$(printf '%s\n' "$CONFIG_PATHS" | sed '/^$/d' | wc -l | tr -d ' ')"
-          if [[ "$CONFIG_COUNT" -ne 1 ]]; then
-            echo "::error title=AF-CFG-103::Built app runtime resource count was ${CONFIG_COUNT}."
+          if [[ "$CONFIG_COUNT" -eq 0 ]]; then
+            echo "::error title=AF-CFG-101::The built iOS app is missing its runtime configuration resource."
             exit 1
           fi
-          export BUILT_RUNTIME_CONFIG="$(printf '%s\n' "$CONFIG_PATHS" | head -n 1)"
-          export BUILT_APP_INFO_PLIST="$APP_PATH/Info.plist"
+          if [[ "$CONFIG_COUNT" -gt 1 ]]; then
+            echo "::error title=AF-CFG-103::The built iOS app contains multiple runtime configuration resources."
+            exit 1
+          fi
 
+          CONFIG_PATH="$(printf '%s\n' "$CONFIG_PATHS" | head -n 1)"
+          CONFIG_RELATIVE_PATH="${CONFIG_PATH#${APP_PATH}/}"
+          echo "Runtime configuration bundle path: ${CONFIG_RELATIVE_PATH}"
+          export BUILT_RUNTIME_CONFIG="$CONFIG_PATH"
           python3 - <<'PY'
-          import json, os, plistlib
+          import json
+          import os
           from pathlib import Path
-          expected = {
-              "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
-              "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
-          }
+
           payload = json.loads(Path(os.environ["BUILT_RUNTIME_CONFIG"]).read_text(encoding="utf-8"))
-          if payload != expected:
-              raise SystemExit("AF-CFG-103: built app runtime configuration did not match build inputs")
-          with Path(os.environ["BUILT_APP_INFO_PLIST"]).open("rb") as handle:
-              plist = plistlib.load(handle)
-          schemes = [s for entry in plist.get("CFBundleURLTypes", []) for s in entry.get("CFBundleURLSchemes", [])]
-          if schemes != ["aureliumfield"]:
-              raise SystemExit("AF-AUTH-107: built app is missing the Aurelium handoff scheme")
-          if "GIDClientID" in plist or "GIDServerClientID" in plist:
-              raise SystemExit("AF-AUTH-106: retired Google SDK configuration survived into the built app")
+          expected_url = os.environ["APP_CLOUD_URL"].strip()
+          expected_key = os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
+          if payload.get("cloudURL") != expected_url or payload.get("publicKey") != expected_key:
+              raise SystemExit("AF-CFG-103: built application runtime configuration did not match build inputs")
+          if not payload.get("cloudURL", "").startswith("https://") or not payload.get("publicKey"):
+              raise SystemExit("AF-CFG-104: built application runtime configuration is incomplete")
           PY
-          echo "Built native app configuration verified."
+          echo "Built iOS runtime configuration verified (values hidden)."
 
       - name: Package IPA
         run: |
           set -euo pipefail
           APP_PATH="DerivedData/Build/Products/Release-iphoneos/AureliumField.app"
+          test -d "$APP_PATH"
           rm -rf Payload AureliumField.ipa
           mkdir -p Payload
           ditto "$APP_PATH" "Payload/AureliumField.app"
           /usr/bin/zip -qry AureliumField.ipa Payload
+          echo "Created AureliumField.ipa"
           ls -lh AureliumField.ipa
 
-      - name: Verify packaged IPA
+      - name: Verify runtime configuration inside packaged IPA
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import json, os, plistlib, zipfile
-          expected = {
-              "cloudURL": os.environ["APP_CLOUD_URL"].strip(),
-              "publicKey": os.environ["APP_CLOUD_PUBLIC_KEY"].strip(),
-          }
-          with zipfile.ZipFile("AureliumField.ipa") as archive:
-              configs = [name for name in archive.namelist() if name.endswith("/RuntimeConfig.json")]
-              if len(configs) != 1:
-                  raise SystemExit(f"AF-CFG-103: packaged IPA runtime resource count was {len(configs)}")
-              if json.loads(archive.read(configs[0]).decode("utf-8")) != expected:
+          import json
+          import os
+          import zipfile
+
+          ipa = "AureliumField.ipa"
+          expected_url = os.environ["APP_CLOUD_URL"].strip()
+          expected_key = os.environ["APP_CLOUD_PUBLIC_KEY"].strip()
+          with zipfile.ZipFile(ipa) as archive:
+              matches = [name for name in archive.namelist() if name.endswith("/RuntimeConfig.json")]
+              if len(matches) != 1:
+                  raise SystemExit(f"AF-CFG-101: packaged IPA runtime resource count was {len(matches)}")
+              payload = json.loads(archive.read(matches[0]).decode("utf-8"))
+              if payload.get("cloudURL") != expected_url or payload.get("publicKey") != expected_key:
                   raise SystemExit("AF-CFG-103: packaged IPA runtime configuration did not match build inputs")
-              plist = plistlib.loads(archive.read("Payload/AureliumField.app/Info.plist"))
-              schemes = [s for entry in plist.get("CFBundleURLTypes", []) for s in entry.get("CFBundleURLSchemes", [])]
-              if schemes != ["aureliumfield"]:
-                  raise SystemExit("AF-AUTH-107: packaged IPA is missing the Aurelium handoff scheme")
-          print("Packaged IPA authentication handoff verified.")
+              if not payload.get("cloudURL", "").startswith("https://") or not payload.get("publicKey"):
+                  raise SystemExit("AF-CFG-104: packaged IPA runtime configuration is incomplete")
+              print("Packaged IPA runtime resource verified at " + matches[0].replace("Payload/AureliumField.app/", ""))
           PY
 
       - name: Upload IPA

@@ -25,6 +25,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Remove post-stable web auth experiments
+        run: |
+          rm -f app/src/auth/NativeAuthBridge.tsx
+          rm -f app/public/native-auth-start.html
+          echo "Post-v0.5.4 web auth experiment files removed from build checkout if present."
       - name: Install
         working-directory: app
         run: npm install --no-audit --no-fund
