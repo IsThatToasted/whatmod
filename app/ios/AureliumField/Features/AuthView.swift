@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AuthGateView: View {
     @Environment(AppModel.self) private var model
@@ -57,7 +58,7 @@ private struct SignedInCheckpointView: View {
                 if cloud.workspacePrepared {
                     cloud.enterPreparedWorkspace()
                 } else {
-                    Task { await cloud.confirmWorkspaceEntry() }
+                    cloud.confirmWorkspaceEntry()
                 }
             } label: {
                 Label(cloud.workspacePrepared ? "Enter Home" : "Prepare Workspace",
@@ -67,6 +68,12 @@ private struct SignedInCheckpointView: View {
                     .frame(height: 52)
             }
             .buttonStyle(.borderedProminent)
+
+            Button("Copy Diagnostic Details") {
+                UIPasteboard.general.string = cloud.productionDiagnosticSummary
+            }
+            .buttonStyle(.bordered)
+            .frame(maxWidth: .infinity)
 
             Button("Sign Out", role: .destructive) {
                 Task { await cloud.signOut() }
