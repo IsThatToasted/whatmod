@@ -26,11 +26,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Remove retired native auth leftovers
+        run: |
+          set -euo pipefail
+          # GitHub's browser upload UI adds/replaces files but does not remove files
+          # that disappeared from a newer release. These paths belong to retired
+          # authentication experiments and are not part of the active XcodeGen source list.
+          rm -f \
+            AureliumField/Services/NativeOAuthCoordinator.swift \
+            AureliumField/Services/NativeGoogleAuth.swift \
+            AureliumField/Services/SupabaseService.swift
+          echo "Retired native auth leftovers removed from Actions checkout."
+
       - name: Validate native architecture
         run: |
           set -euo pipefail
+          # Validate the sanitized checkout. Stale files retained by GitHub uploads
+          # cannot block or contaminate this build.
           if grep -RniE '^import Supabase|SupabaseClient|supabase-swift|GoogleSignIn|GIDSignIn|whatmod.com/app/ios-auth.html' AureliumField project.yml; then
-            echo "::error title=AF-IOS-002::Retired native auth implementation is still present."
+            echo "::error title=AF-IOS-002::Retired native auth implementation is still present after checkout sanitation."
             exit 1
           fi
           grep -q 'UIApplication.shared.open' AureliumField/Services/WorkspaceService.swift
@@ -186,7 +200,7 @@ jobs:
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA-v0.8.4-safari-callback-safe
+          name: AureliumField-iPhone-IPA-v0.8.5-stale-auth-cleanup
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -195,7 +209,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log-v0.8.4-safari-callback-safe
+          name: AureliumField-xcodebuild-log-v0.8.5-stale-auth-cleanup
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7
