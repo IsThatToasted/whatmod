@@ -58,8 +58,11 @@ jobs:
             exit 1
           fi
           grep -q 'URLSession.shared.data' AureliumField/Services/WorkspaceService.swift
-          grep -q 'native-session-v3' AureliumField/Services/WorkspaceService.swift
-          echo "Direct Supabase Google OAuth + Safari deep-link callback architecture confirmed."
+          grep -q 'native-session-v4' AureliumField/Services/WorkspaceService.swift
+          grep -q 'workspace_entering' AureliumField/Services/WorkspaceService.swift
+          grep -q 'SignedInCheckpointView' AureliumField/Features/AuthView.swift
+          grep -q 'validateAuthenticatedUser' AureliumField/Services/WorkspaceService.swift
+          echo "Direct Supabase Google OAuth + two-phase crash-recovery architecture confirmed."
 
       - name: Select Xcode
         run: |
@@ -153,6 +156,11 @@ jobs:
           xcrun simctl openurl "$SIM_UDID" 'aureliumfield://auth-callback#error=access_denied&error_description=first&error_description=second'
           sleep 2
 
+          # Verify callback handling did not poison the next launch.
+          xcrun simctl terminate "$SIM_UDID" com.aurelium.field
+          xcrun simctl launch "$SIM_UDID" com.aurelium.field
+          sleep 3
+
           if ! xcrun simctl terminate "$SIM_UDID" com.aurelium.field; then
             echo "::error title=AF-IOS-001::Aurelium Field exited during startup or OAuth callback handling in the iPhone Simulator."
             xcrun simctl spawn "$SIM_UDID" log show --last 2m --style compact --predicate 'process == "AureliumField"' || true
@@ -200,7 +208,7 @@ jobs:
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA-v0.8.5-stale-auth-cleanup
+          name: AureliumField-iPhone-IPA-v0.8.6-auth-recovery
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -209,7 +217,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log-v0.8.5-stale-auth-cleanup
+          name: AureliumField-xcodebuild-log-v0.8.6-auth-recovery
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7
