@@ -184,6 +184,7 @@ final class WorkspaceService {
     private var session: NativeSession?
     private let membershipCacheKey = "aurelium.ios.membership.v4"
     private let recoveryPhaseKey = "aurelium.ios.auth.recovery.phase.v1"
+    private let workspaceDiagnosticKey = "aurelium.ios.workspace.diagnostic.v1"
     private let sessionStore = KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v4")
     private let legacySessionStores = [
         KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v3"),
@@ -215,7 +216,8 @@ final class WorkspaceService {
             // terminated the previous process. Recover to the explicit signed-in checkpoint.
             clearCachedMembership()
             clearRecoveryPhase()
-            recoveryReference = "Aurelium recovered from an interrupted workspace transition (\(previousPhase)). Reference: AF-WORK-201"
+            let diagnosticCode = workspaceDiagnosticCode()
+            recoveryReference = "Aurelium recovered from an interrupted workspace transition. Reference: AF-WORK-201\(diagnosticCode.map { " / \($0)" } ?? "")"
             errorMessage = recoveryReference
         }
 
@@ -309,7 +311,7 @@ final class WorkspaceService {
             workspacePrepared = false
             setRecoveryPhase("checkpoint")
             requiresWorkspaceConfirmation = true
-            errorMessage = "Your account is signed in, but the workspace could not be prepared yet. Reference: AF-AUTH-212"
+            errorMessage = "Your account is signed in, but the workspace could not be prepared yet. Reference: AF-WORK-203"
         }
     }
 
@@ -355,6 +357,30 @@ final class WorkspaceService {
         UserDefaults.standard.removeObject(forKey: recoveryPhaseKey)
     }
 
+    private func setWorkspaceDiagnostic(_ value: String) {
+        // Deliberately stores only a coarse stage marker. Never persist tokens, response bodies,
+        // email addresses, organization names, or other account data in diagnostics.
+        UserDefaults.standard.set(value, forKey: workspaceDiagnosticKey)
+    }
+
+    var workspaceDiagnostic: String? {
+        UserDefaults.standard.string(forKey: workspaceDiagnosticKey)
+    }
+
+    private func workspaceDiagnosticCode() -> String? {
+        switch workspaceDiagnostic {
+        case "membership_request_started": return "D01"
+        case "membership_response_received": return "D02"
+        case "membership_response_invalid_json": return "D03"
+        case "membership_empty": return "D04"
+        case "membership_scalar_parse_failed": return "D05"
+        case "membership_inactive": return "D06"
+        case "membership_loaded_org_metadata_unavailable": return "D07"
+        case "membership_ready": return "D08"
+        default: return nil
+        }
+    }
+
     func loadMembership() async {
         do { try await loadMembershipThrowing() }
         catch {
@@ -364,14 +390,99 @@ final class WorkspaceService {
 
     private func loadMembershipThrowing() async throws {
         guard let userID else { membership = nil; return }
-        let rows: [OrganizationMembership] = try await selectRows(
-            table: "organization_members",
-            columns: "organization_id,user_id,role,display_name,active,organizations(id,name,slug)",
-            filters: [CloudFilter("user_id", userID.uuidString), CloudFilter("active", "true")],
-            limit: 1
+
+        // Keep workspace recovery deliberately primitive. Do not decode a nested PostgREST
+        // relationship here: this is the first authenticated network request after OAuth and it
+        // must never be capable of taking down the native process because a relationship shape
+        // or optional database field changed.
+        setWorkspaceDiagnostic("membership_request_started")
+        let membershipQuery = [
+            URLQueryItem(name: "select", value: "organization_id,user_id,role,display_name,active"),
+            URLQueryItem(name: "user_id", value: "eq.\(userID.uuidString)"),
+            URLQueryItem(name: "active", value: "eq.true"),
+            URLQueryItem(name: "limit", value: "1")
+        ]
+
+        // A fresh OAuth callback should not need a token refresh. More importantly, workspace
+        // repair must not silently enter the refresh-token path while we are proving stability.
+        let data = try await requestData(
+            path: "/rest/v1/organization_members",
+            method: "GET",
+            queryItems: membershipQuery,
+            retryOnUnauthorized: false
         )
-        membership = rows.first
-        cacheMembership(membership)
+        setWorkspaceDiagnostic("membership_response_received")
+
+        guard let array = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            setWorkspaceDiagnostic("membership_response_invalid_json")
+            throw NativeCloudError.api(200, "Workspace membership response was invalid. Reference: AF-WORK-202")
+        }
+
+        guard let row = array.first else {
+            membership = nil
+            clearCachedMembership()
+            setWorkspaceDiagnostic("membership_empty")
+            return
+        }
+
+        guard let organizationIDString = row["organization_id"] as? String,
+              let organizationID = UUID(uuidString: organizationIDString),
+              let returnedUserIDString = row["user_id"] as? String,
+              let returnedUserID = UUID(uuidString: returnedUserIDString),
+              returnedUserID == userID,
+              let role = row["role"] as? String else {
+            setWorkspaceDiagnostic("membership_scalar_parse_failed")
+            throw NativeCloudError.api(200, "Workspace membership record was invalid. Reference: AF-WORK-202")
+        }
+
+        let active = (row["active"] as? Bool) ?? true
+        guard active else {
+            membership = nil
+            clearCachedMembership()
+            setWorkspaceDiagnostic("membership_inactive")
+            return
+        }
+
+        let displayName = row["display_name"] as? String
+        var organizationInfo: OrganizationInfo?
+
+        // Organization display metadata is intentionally best-effort. Membership itself is the
+        // security boundary; a missing name/slug must never prevent an employee from opening the app.
+        do {
+            let orgQuery = [
+                URLQueryItem(name: "select", value: "id,name,slug"),
+                URLQueryItem(name: "id", value: "eq.\(organizationID.uuidString)"),
+                URLQueryItem(name: "limit", value: "1")
+            ]
+            let orgData = try await requestData(
+                path: "/rest/v1/organizations",
+                method: "GET",
+                queryItems: orgQuery,
+                retryOnUnauthorized: false
+            )
+            if let orgRows = try JSONSerialization.jsonObject(with: orgData) as? [[String: Any]],
+               let org = orgRows.first,
+               let idString = org["id"] as? String,
+               let id = UUID(uuidString: idString),
+               let name = org["name"] as? String {
+                organizationInfo = OrganizationInfo(id: id, name: name, slug: (org["slug"] as? String) ?? "")
+            }
+        } catch {
+            // Non-fatal by design. The UI can display a generic organization label.
+            setWorkspaceDiagnostic("membership_loaded_org_metadata_unavailable")
+        }
+
+        let resolved = OrganizationMembership(
+            organizationID: organizationID,
+            userID: returnedUserID,
+            role: role,
+            displayName: displayName,
+            active: active,
+            organization: organizationInfo
+        )
+        membership = resolved
+        cacheMembership(resolved)
+        setWorkspaceDiagnostic("membership_ready")
     }
 
     private func apply(_ value: NativeSession) {
