@@ -26,8 +26,11 @@ final class RiderViewModel: ObservableObject {
     private var startedAt: Date?
 
     init() {
-        installLifecycleObservers()
+        // Initialize every stored property before invoking any instance method.
+        // Xcode 16.4 correctly rejects use of `self` while `isDiscoverable`
+        // is still uninitialized.
         isDiscoverable = StreamSettings.shared.explorerDefault
+        installLifecycleObservers()
     }
 
     func requestPermissions() {
