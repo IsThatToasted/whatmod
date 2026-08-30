@@ -161,6 +161,47 @@ private enum NativeCloudError: LocalizedError {
     }
 }
 
+
+private final class WorkspaceBootstrapTransport: @unchecked Sendable {
+    static let shared = WorkspaceBootstrapTransport()
+
+    struct Result: @unchecked Sendable {
+        let data: Data
+        let response: HTTPURLResponse
+    }
+
+    private let session: URLSession
+
+    private init() {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 20
+        configuration.timeoutIntervalForResource = 30
+        configuration.waitsForConnectivity = false
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        let queue = OperationQueue()
+        queue.name = "com.aurelium.field.workspace-bootstrap"
+        queue.maxConcurrentOperationCount = 1
+        session = URLSession(configuration: configuration, delegate: nil, delegateQueue: queue)
+    }
+
+    func perform(_ request: URLRequest) async throws -> Result {
+        try await withCheckedThrowingContinuation { continuation in
+            let task = session.dataTask(with: request) { data, response, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let http = response as? HTTPURLResponse else {
+                    continuation.resume(throwing: NativeCloudError.invalidResponse)
+                    return
+                }
+                continuation.resume(returning: Result(data: data ?? Data(), response: http))
+            }
+            task.resume()
+        }
+    }
+}
+
 @MainActor @Observable
 final class WorkspaceService {
     static let shared = WorkspaceService()
@@ -370,6 +411,7 @@ final class WorkspaceService {
     private func workspaceDiagnosticCode() -> String? {
         switch workspaceDiagnostic {
         case "membership_request_started": return "D01"
+        case "membership_request_constructed": return "D01B"
         case "membership_response_received": return "D02"
         case "membership_response_invalid_json": return "D03"
         case "membership_empty": return "D04"
@@ -403,15 +445,33 @@ final class WorkspaceService {
             URLQueryItem(name: "limit", value: "1")
         ]
 
-        // A fresh OAuth callback should not need a token refresh. More importantly, workspace
-        // repair must not silently enter the refresh-token path while we are proving stability.
-        let data = try await requestData(
-            path: "/rest/v1/organization_members",
-            method: "GET",
-            queryItems: membershipQuery,
-            retryOnUnauthorized: false
-        )
+        // This is intentionally NOT routed through requestData() or URLSession.data(for:).
+        // On physical devices the first authenticated URLSession async request was terminating
+        // the process before a response could be observed (AF-WORK-201 / D01). Use a dedicated
+        // completion-handler transport for this one critical bootstrap request.
+        guard let config, let activeSession = session else {
+            throw NativeCloudError.authentication("AF-AUTH-207")
+        }
+        let base = config.cloudURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        var components = URLComponents(string: base + "/rest/v1/organization_members")
+        components?.queryItems = membershipQuery
+        guard let membershipURL = components?.url else { throw NativeCloudError.configuration }
+
+        var membershipRequest = URLRequest(url: membershipURL)
+        membershipRequest.httpMethod = "GET"
+        membershipRequest.setValue(config.publicKey, forHTTPHeaderField: "apikey")
+        membershipRequest.setValue("Bearer \(activeSession.accessToken)", forHTTPHeaderField: "Authorization")
+        membershipRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        membershipRequest.timeoutInterval = 20
+
+        setWorkspaceDiagnostic("membership_request_constructed")
+        let result = try await WorkspaceBootstrapTransport.shared.perform(membershipRequest)
         setWorkspaceDiagnostic("membership_response_received")
+
+        guard (200..<300).contains(result.response.statusCode) else {
+            throw NativeCloudError.api(result.response.statusCode, "Workspace membership request failed. Reference: AF-WORK-204")
+        }
+        let data = result.data
 
         guard let array = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
             setWorkspaceDiagnostic("membership_response_invalid_json")

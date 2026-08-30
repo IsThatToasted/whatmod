@@ -35,7 +35,7 @@ targets:
       path: AureliumField/Resources/Info.plist
       properties:
         CFBundleDisplayName: Aurelium Field
-        CFBundleShortVersionString: 0.8.9
+        CFBundleShortVersionString: 0.8.10
         CFBundleVersion: 19
         CFBundleURLTypes:
           - CFBundleURLName: com.aurelium.field.auth
