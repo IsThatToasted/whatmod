@@ -171,6 +171,8 @@ final class WorkspaceService {
     var isLoading = true
     var errorMessage: String?
     var oauthInProgress = false
+    var requiresWorkspaceConfirmation = false
+    var recoveryReference: String?
 
     var isAuthenticated: Bool { userID != nil && session != nil }
     var organizationID: UUID? { membership?.organizationID }
@@ -179,8 +181,13 @@ final class WorkspaceService {
 
     private var config: RuntimeConfig?
     private var session: NativeSession?
-    private let membershipCacheKey = "aurelium.ios.membership.v3"
-    private let sessionStore = KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v3")
+    private let membershipCacheKey = "aurelium.ios.membership.v4"
+    private let recoveryPhaseKey = "aurelium.ios.auth.recovery.phase.v1"
+    private let sessionStore = KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v4")
+    private let legacySessionStores = [
+        KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v3"),
+        KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v2")
+    ]
 
     private init() {
         // Deliberately no cloud/auth SDK construction during process launch.
@@ -191,14 +198,41 @@ final class WorkspaceService {
         isLoading = true
         defer { isLoading = false }
 
+        // Retire all earlier experimental session namespaces. A bad session from a previous
+        // auth architecture must never be able to brick a newly installed build.
+        legacySessionStores.forEach { $0.clear() }
+
         guard let runtime = RuntimeConfig.load(), URL(string: runtime.cloudURL) != nil else {
             errorMessage = NativeCloudError.configuration.localizedDescription
             return
         }
         config = runtime
 
+        let previousPhase = UserDefaults.standard.string(forKey: recoveryPhaseKey)
+        if let previousPhase, previousPhase != "checkpoint" {
+            sessionStore.clear()
+            clearCachedMembership()
+            clearIdentity()
+            clearRecoveryPhase()
+            recoveryReference = "Aurelium recovered from an interrupted sign-in (\(previousPhase)). Reference: AF-AUTH-211"
+            errorMessage = recoveryReference
+            return
+        }
+
         guard var stored = sessionStore.load() else {
             clearIdentity()
+            requiresWorkspaceConfirmation = false
+            if previousPhase == "checkpoint" { clearRecoveryPhase() }
+            return
+        }
+
+        // A checkpoint is intentionally resumable without any network activity. This makes
+        // a completed OAuth handoff safe even if the user closes the app before entering Home.
+        if previousPhase == "checkpoint" {
+            apply(stored)
+            membership = cachedMembership(for: stored.userID)
+            requiresWorkspaceConfirmation = membership != nil
+            if membership == nil { clearRecoveryPhase() }
             return
         }
 
@@ -215,14 +249,13 @@ final class WorkspaceService {
             do {
                 try await loadMembershipThrowing()
             } catch {
-                // A cached membership is enough to keep the native workspace usable.
-                // A transient network failure should never terminate or log the user out.
                 if membership == nil {
                     errorMessage = "Workspace membership could not be refreshed. Reference: AF-ORG-101"
                 }
             }
         } catch {
             sessionStore.clear()
+            clearCachedMembership()
             clearIdentity()
         }
     }
@@ -254,22 +287,48 @@ final class WorkspaceService {
     func handleOAuthCallback(_ url: URL) async {
         guard url.scheme?.lowercased() == "aureliumfield" else { return }
         oauthInProgress = false
+        setRecoveryPhase("callback_received")
+
         do {
-            let newSession = try sessionFromCallback(url)
-            sessionStore.save(newSession)
-            apply(newSession)
-            do {
-                try await loadMembershipThrowing()
-            } catch {
-                // Authentication succeeded even if organization hydration is temporarily unavailable.
-                membership = cachedMembership(for: newSession.userID)
-                if membership == nil {
-                    errorMessage = "Signed in, but your organization could not be loaded. Reference: AF-ORG-101"
-                }
+            let candidate = try sessionFromCallback(url)
+            setRecoveryPhase("identity_validation")
+            try await validateAuthenticatedUser(candidate)
+
+            // Two-phase auth commit: use the candidate in memory first. Nothing is persisted
+            // until the authenticated workspace has hydrated successfully.
+            apply(candidate)
+            setRecoveryPhase("membership_hydration")
+            try await loadMembershipThrowing()
+
+            sessionStore.save(candidate)
+            if membership != nil {
+                requiresWorkspaceConfirmation = true
+                setRecoveryPhase("checkpoint")
+            } else {
+                // A valid signed-in user without membership must be allowed into onboarding.
+                requiresWorkspaceConfirmation = false
+                clearRecoveryPhase()
             }
         } catch {
+            sessionStore.clear()
+            clearCachedMembership()
+            clearIdentity()
+            requiresWorkspaceConfirmation = false
+            clearRecoveryPhase()
             errorMessage = (error as? LocalizedError)?.errorDescription ?? "Sign in could not be completed. Reference: AF-AUTH-201"
         }
+    }
+
+    func confirmWorkspaceEntry() {
+        guard isAuthenticated, membership != nil else { return }
+        setRecoveryPhase("workspace_entering")
+        requiresWorkspaceConfirmation = false
+    }
+
+    func markWorkspaceStable() {
+        guard isAuthenticated else { return }
+        clearRecoveryPhase()
+        recoveryReference = nil
     }
 
 
@@ -278,6 +337,9 @@ final class WorkspaceService {
         let previousSession = session
         sessionStore.clear()
         clearCachedMembership()
+        clearRecoveryPhase()
+        recoveryReference = nil
+        requiresWorkspaceConfirmation = false
         clearIdentity()
 
         // Local sign-out must never depend on the network. Revoke remotely as best effort.
@@ -286,6 +348,32 @@ final class WorkspaceService {
                 try? await requestData(path: "/auth/v1/logout", method: "POST", body: nil, additionalHeaders: [:], sessionOverride: previousSession, retryOnUnauthorized: false)
             }
         }
+    }
+
+    private struct AuthUserVerification: Decodable {
+        let id: UUID
+        let email: String?
+    }
+
+    private func validateAuthenticatedUser(_ candidate: NativeSession) async throws {
+        let data = try await requestData(
+            path: "/auth/v1/user",
+            method: "GET",
+            sessionOverride: candidate,
+            retryOnUnauthorized: false
+        )
+        let user = try Self.decoder().decode(AuthUserVerification.self, from: data)
+        guard user.id == candidate.userID else {
+            throw NativeCloudError.authentication("AF-AUTH-205")
+        }
+    }
+
+    private func setRecoveryPhase(_ phase: String) {
+        UserDefaults.standard.set(phase, forKey: recoveryPhaseKey)
+    }
+
+    private func clearRecoveryPhase() {
+        UserDefaults.standard.removeObject(forKey: recoveryPhaseKey)
     }
 
     func loadMembership() async {

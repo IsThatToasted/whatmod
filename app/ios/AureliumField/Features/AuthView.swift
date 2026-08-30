@@ -10,16 +10,66 @@ struct AuthGateView: View {
                 ProgressView("Opening Aurelium Field…")
             } else if !cloud.isAuthenticated {
                 LoginView()
+            } else if cloud.requiresWorkspaceConfirmation {
+                SignedInCheckpointView()
             } else if cloud.membership == nil {
                 OrganizationOnboardingView()
             } else {
-                RootView().task { await model.refreshProjectsFromCloud() }
+                RootView().task {
+                    await model.refreshProjectsFromCloud()
+                    try? await Task.sleep(for: .milliseconds(900))
+                    cloud.markWorkspaceStable()
+                }
             }
         }
         .task { if cloud.isLoading { await cloud.bootstrap() } }
         .alert("Workspace error", isPresented: Binding(get: { cloud.errorMessage != nil }, set: { if !$0 { cloud.errorMessage = nil } })) {
             Button("OK", role: .cancel) { cloud.errorMessage = nil }
         } message: { Text(cloud.errorMessage ?? "Unknown error") }
+    }
+}
+
+
+private struct SignedInCheckpointView: View {
+    @State private var cloud = WorkspaceService.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            Spacer()
+            Image(systemName: "checkmark.shield.fill")
+                .font(.system(size: 54))
+                .foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Signed in successfully")
+                    .font(.largeTitle.bold())
+                Text("Your account and company workspace were verified. Open the workspace when you're ready.")
+                    .foregroundStyle(.secondary)
+            }
+            if let email = cloud.email {
+                LabeledContent("Account", value: email)
+                    .font(.subheadline)
+            }
+            Button {
+                cloud.confirmWorkspaceEntry()
+            } label: {
+                Label("Open Workspace", systemImage: "arrow.right.circle.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+            }
+            .buttonStyle(.borderedProminent)
+
+            Button("Sign Out", role: .destructive) {
+                Task { await cloud.signOut() }
+            }
+            .frame(maxWidth: .infinity)
+
+            Text("This checkpoint prevents a failed workspace screen from trapping the app in a crash loop. If Aurelium cannot safely open Home, the next launch will automatically recover to Sign In.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding(24)
     }
 }
 
