@@ -72,7 +72,10 @@ final class LiveStreamManager: ObservableObject {
                 // Pre-warm the audio engine before the peer connection starts.
                 // Failure here is non-fatal; the post-connect microphone retry
                 // still gets a chance to recover.
-                try? await AudioManager.shared.setRecordingAlwaysPreparedMode(true)
+                try? await AudioManager.shared.setRecordingAlwaysPreparedMode(
+                    true,
+                    audioProcessingOptions: nil
+                )
             }
 
             try await room.connect(url: url, token: token)
@@ -249,7 +252,10 @@ final class LiveStreamManager: ObservableObject {
         do {
             if isMicrophoneMuted {
                 configureLiveKitAudioPolicy()
-                try await AudioManager.shared.setRecordingAlwaysPreparedMode(true)
+                try await AudioManager.shared.setRecordingAlwaysPreparedMode(
+                    true,
+                    audioProcessingOptions: nil
+                )
                 try await enableMicrophoneWithRetry(in: room)
                 isMicrophoneMuted = false
             } else {
@@ -293,23 +299,20 @@ final class LiveStreamManager: ObservableObject {
         activeStabilizationLabel = "Off"
         stabilizationSupported = false
         backgroundCameraAccessLabel = "Not checked"
-        try? await AudioManager.shared.setRecordingAlwaysPreparedMode(false)
+        try? await AudioManager.shared.setRecordingAlwaysPreparedMode(
+            false,
+            audioProcessingOptions: nil
+        )
         state = .idle
     }
 
 
     private func configureLiveKitAudioPolicy() {
+        // Use LiveKit 2.16's built-in AVAudioSession management.
+        // Do not manually activate AVAudioSession or construct a custom
+        // AudioSessionConfiguration here.
         AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = true
-        AudioManager.shared.isSpeakerOutputPreferred = true
-        AudioManager.shared.sessionConfiguration = AudioSessionConfiguration(
-            category: .playAndRecord,
-            categoryOptions: [
-                .defaultToSpeaker,
-                .allowBluetooth,
-                .mixWithOthers
-            ],
-            mode: .videoChat
-        )
+        AudioManager.shared.audioSession.isSpeakerOutputPreferred = true
     }
 
     private func enableMicrophoneWithRetry(in room: Room) async throws {
@@ -323,12 +326,15 @@ final class LiveStreamManager: ObservableObject {
             )
             return
         } catch {
-            // Audio-session activation can race camera/route setup on a physical
-            // iPhone. Re-prewarm once after a short delay and then surface the
-            // real second error if it still cannot publish.
+            // Physical-device camera/audio startup can race. Give LiveKit's
+            // automatic audio-session observer one short retry window.
             try? await Task.sleep(for: .milliseconds(350))
             configureLiveKitAudioPolicy()
-            try? await AudioManager.shared.setRecordingAlwaysPreparedMode(true)
+
+            try? await AudioManager.shared.setRecordingAlwaysPreparedMode(
+                true,
+                audioProcessingOptions: nil
+            )
 
             _ = try await room.localParticipant.setMicrophone(
                 enabled: true,
