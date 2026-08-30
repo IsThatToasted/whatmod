@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Remove retired auth-bridge leftovers
+      - name: Remove retired web-auth leftovers
         run: |
           rm -f app/src/auth/NativeAuthBridge.tsx app/public/native-auth-start.html
 
@@ -50,23 +50,39 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
-      - name: Verify web build
+      - name: Verify compiled web bundle
         working-directory: app
         run: |
           set -euo pipefail
           test -f dist/index.html
-          test -f dist/manifest.webmanifest
           test -d dist/assets
-          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          JS_FILE="$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          test -n "$JS_FILE"
           grep -q '/app/assets/' dist/index.html
-          echo "Aurelium Field rebuilt web bundle verified."
+          grep -q 'v0.8.4-safari-callback-safe' dist/index.html
+          if grep -q '/src/main.tsx' dist/index.html; then
+            echo "::error title=AF-WEB-001::Vite source entry leaked into production HTML"
+            exit 1
+          fi
+          echo '{"release":"v0.8.4","surface":"web","compiled":true}' > dist/build-info.json
 
-      - name: Assemble Pages site preserving repository root
+      - name: Assemble Pages artifact
         run: |
+          set -euo pipefail
+          rm -rf _site
           mkdir -p _site/app
           rsync -a --exclude '.git' --exclude '.github' --exclude '_site' --exclude 'app' ./ _site/
           cp -R app/dist/. _site/app/
+          # Explicit copies make public assets deterministic even if Vite behavior changes.
+          cp app/public/manifest.webmanifest _site/app/manifest.webmanifest
+          cp app/public/sw.js _site/app/sw.js
           touch _site/.nojekyll
+          test -f _site/app/index.html
+          test -f _site/app/manifest.webmanifest
+          test -f _site/app/build-info.json
+          ASSET_PATH="$(grep -oE '/app/assets/[^\" ]+\.js' _site/app/index.html | head -1)"
+          test -n "$ASSET_PATH"
+          test -f "_site${ASSET_PATH}"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -83,3 +99,24 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify live Aurelium deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://whatmod.com/app"
+          for attempt in {1..12}; do
+            HTML="$(curl -fsSL --retry 2 --retry-delay 1 "$BASE/?af_verify=${GITHUB_SHA}" || true)"
+            INFO="$(curl -fsSL --retry 2 --retry-delay 1 "$BASE/build-info.json?af_verify=${GITHUB_SHA}" || true)"
+            MANIFEST_STATUS="$(curl -sS -o /tmp/manifest -w '%{http_code}' "$BASE/manifest.webmanifest?af_verify=${GITHUB_SHA}" || true)"
+            if [[ "$HTML" == *"/app/assets/"* && "$INFO" == *'"compiled":true'* && "$MANIFEST_STATUS" == "200" ]]; then
+              ASSET="$(printf '%s' "$HTML" | grep -oE '/app/assets/[^\" ]+\.js' | head -1)"
+              curl -fsSL "$BASE${ASSET}?af_verify=${GITHUB_SHA}" -o /tmp/aurelium.js
+              test -s /tmp/aurelium.js
+              echo "Live compiled Aurelium deployment verified."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error title=AF-WEB-003::whatmod.com/app is not serving the compiled Pages artifact. Check Settings > Pages > Build and deployment > Source and select GitHub Actions."
+          exit 1

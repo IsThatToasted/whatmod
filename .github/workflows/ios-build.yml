@@ -26,6 +26,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate native architecture
+        run: |
+          set -euo pipefail
+          if grep -RniE '^import Supabase|SupabaseClient|supabase-swift|GoogleSignIn|GIDSignIn|whatmod.com/app/ios-auth.html' AureliumField project.yml; then
+            echo "::error title=AF-IOS-002::Retired native auth implementation is still present."
+            exit 1
+          fi
+          grep -q 'UIApplication.shared.open' AureliumField/Services/WorkspaceService.swift
+          grep -q '/auth/v1/authorize' AureliumField/Services/WorkspaceService.swift
+          grep -q 'provider.*google' AureliumField/Services/WorkspaceService.swift
+          grep -q 'redirect_to.*aureliumfield://auth-callback' AureliumField/Services/WorkspaceService.swift
+          grep -q 'handleOAuthCallback' AureliumField/Services/WorkspaceService.swift
+          grep -q 'onOpenURL' AureliumField/App/AureliumFieldApp.swift
+          if grep -q 'Dictionary(uniqueKeysWithValues' AureliumField/Services/WorkspaceService.swift; then
+            echo "::error title=AF-IOS-003::Unsafe OAuth callback parser is present."
+            exit 1
+          fi
+          grep -q 'URLSession.shared.data' AureliumField/Services/WorkspaceService.swift
+          grep -q 'native-session-v3' AureliumField/Services/WorkspaceService.swift
+          echo "Direct Supabase Google OAuth + Safari deep-link callback architecture confirmed."
+
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -113,13 +134,18 @@ jobs:
           xcrun simctl launch "$SIM_UDID" com.aurelium.field
           sleep 5
 
+          # Exercise the real SwiftUI deep-link callback path with duplicate OAuth keys.
+          # Older callback parsing used Dictionary(uniqueKeysWithValues:) and could fatal-error here.
+          xcrun simctl openurl "$SIM_UDID" 'aureliumfield://auth-callback#error=access_denied&error_description=first&error_description=second'
+          sleep 2
+
           if ! xcrun simctl terminate "$SIM_UDID" com.aurelium.field; then
-            echo "::error title=AF-IOS-001::Aurelium Field exited during startup in the iPhone Simulator."
+            echo "::error title=AF-IOS-001::Aurelium Field exited during startup or OAuth callback handling in the iPhone Simulator."
             xcrun simctl spawn "$SIM_UDID" log show --last 2m --style compact --predicate 'process == "AureliumField"' || true
             exit 1
           fi
 
-          echo "Aurelium Field survived the iOS launch smoke test."
+          echo "Aurelium Field survived launch and OAuth callback smoke tests."
 
       - name: Verify built application
         run: |
@@ -160,7 +186,7 @@ jobs:
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA-v0.7.1-launch-safe
+          name: AureliumField-iPhone-IPA-v0.8.4-safari-callback-safe
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -169,7 +195,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log-v0.7.1-launch-safe
+          name: AureliumField-xcodebuild-log-v0.8.4-safari-callback-safe
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7
