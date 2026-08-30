@@ -172,6 +172,7 @@ final class WorkspaceService {
     var errorMessage: String?
     var oauthInProgress = false
     var requiresWorkspaceConfirmation = false
+    var workspacePrepared = false
     var recoveryReference: String?
 
     var isAuthenticated: Bool { userID != nil && session != nil }
@@ -210,54 +211,31 @@ final class WorkspaceService {
 
         let previousPhase = UserDefaults.standard.string(forKey: recoveryPhaseKey)
         if let previousPhase, previousPhase != "checkpoint" {
-            sessionStore.clear()
+            // Preserve the authenticated session but never auto-enter a screen that may have
+            // terminated the previous process. Recover to the explicit signed-in checkpoint.
             clearCachedMembership()
-            clearIdentity()
             clearRecoveryPhase()
-            recoveryReference = "Aurelium recovered from an interrupted sign-in (\(previousPhase)). Reference: AF-AUTH-211"
+            recoveryReference = "Aurelium recovered from an interrupted workspace transition (\(previousPhase)). Reference: AF-WORK-201"
             errorMessage = recoveryReference
-            return
         }
 
-        guard var stored = sessionStore.load() else {
+        guard let stored = sessionStore.load() else {
             clearIdentity()
             requiresWorkspaceConfirmation = false
-            if previousPhase == "checkpoint" { clearRecoveryPhase() }
+            workspacePrepared = false
+            clearRecoveryPhase()
             return
         }
 
-        // A checkpoint is intentionally resumable without any network activity. This makes
-        // a completed OAuth handoff safe even if the user closes the app before entering Home.
-        // Always return to the explicit checkpoint; do not auto-enter the authenticated workspace.
-        if previousPhase == "checkpoint" {
-            apply(stored)
-            membership = cachedMembership(for: stored.userID)
-            requiresWorkspaceConfirmation = true
-            return
-        }
-
-        do {
-            if stored.expiresAt.timeIntervalSinceNow < 90 {
-                stored = try await refreshSession(stored)
-            }
-            apply(stored)
-
-            if let cached = cachedMembership(for: stored.userID) {
-                membership = cached
-            }
-
-            do {
-                try await loadMembershipThrowing()
-            } catch {
-                if membership == nil {
-                    errorMessage = "Workspace membership could not be refreshed. Reference: AF-ORG-101"
-                }
-            }
-        } catch {
-            sessionStore.clear()
-            clearCachedMembership()
-            clearIdentity()
-        }
+        // Every authenticated cold launch intentionally returns to the safe checkpoint.
+        // No token refresh, membership request, project sync, RoomPlan service, or authenticated
+        // feature tree is allowed to execute before the user explicitly opens the workspace.
+        apply(stored)
+        membership = cachedMembership(for: stored.userID)
+        workspacePrepared = false
+        requiresWorkspaceConfirmation = true
+        setRecoveryPhase("checkpoint")
+        return
     }
 
     func signInWithGoogle() async {
@@ -298,6 +276,7 @@ final class WorkspaceService {
             sessionStore.save(candidate)
             apply(candidate)
             membership = cachedMembership(for: candidate.userID)
+            workspacePrepared = false
             requiresWorkspaceConfirmation = true
             setRecoveryPhase("checkpoint")
         } catch {
@@ -314,28 +293,37 @@ final class WorkspaceService {
         guard isAuthenticated else { return }
         setRecoveryPhase("membership_hydration")
         do {
-            // This PostgREST request doubles as session validation. A valid new user with no
-            // organization receives an empty 200 response and continues to onboarding.
+            // Membership hydration is deliberately separated from constructing the authenticated
+            // SwiftUI workspace. A successful response stops at a second safe checkpoint.
             try await loadMembershipThrowing()
             if membership == nil {
+                workspacePrepared = false
                 requiresWorkspaceConfirmation = false
                 clearRecoveryPhase()
             } else {
-                setRecoveryPhase("workspace_entering")
-                requiresWorkspaceConfirmation = false
+                workspacePrepared = true
+                requiresWorkspaceConfirmation = true
+                setRecoveryPhase("checkpoint")
             }
         } catch {
-            // Keep the committed session and the safe checkpoint so a transient backend/network
-            // failure cannot brick the app or force another OAuth round-trip.
+            workspacePrepared = false
             setRecoveryPhase("checkpoint")
             requiresWorkspaceConfirmation = true
-            errorMessage = "Your account is signed in, but the workspace could not be opened yet. Reference: AF-AUTH-212"
+            errorMessage = "Your account is signed in, but the workspace could not be prepared yet. Reference: AF-AUTH-212"
         }
+    }
+
+    func enterPreparedWorkspace() {
+        guard isAuthenticated, membership != nil, workspacePrepared else { return }
+        setRecoveryPhase("workspace_entering")
+        requiresWorkspaceConfirmation = false
     }
 
     func markWorkspaceStable() {
         guard isAuthenticated else { return }
-        clearRecoveryPhase()
+        // Keep the session anchored to the checkpoint across cold launches. This prevents any
+        // authenticated feature regression from becoming a permanent launch crash loop.
+        setRecoveryPhase("checkpoint")
         recoveryReference = nil
     }
 
@@ -348,6 +336,7 @@ final class WorkspaceService {
         clearRecoveryPhase()
         recoveryReference = nil
         requiresWorkspaceConfirmation = false
+        workspacePrepared = false
         clearIdentity()
 
         // Local sign-out must never depend on the network. Revoke remotely as best effort.

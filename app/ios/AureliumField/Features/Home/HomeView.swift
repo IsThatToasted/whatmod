@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var cloud = WorkspaceService.shared
+    @State private var syncingProjects = false
 
     var body: some View {
         ScrollView {
@@ -15,6 +16,24 @@ struct HomeView: View {
                 Button { model.selectedTab = .estimate } label: {
                     Label("Start Smart Estimate", systemImage: "wand.and.stars").frame(maxWidth: .infinity)
                 }.buttonStyle(.borderedProminent).controlSize(.large).tint(.primary)
+
+                Button {
+                    guard !syncingProjects else { return }
+                    syncingProjects = true
+                    Task {
+                        await model.refreshProjectsFromCloud()
+                        syncingProjects = false
+                    }
+                } label: {
+                    HStack {
+                        Label(syncingProjects ? "Syncing projects…" : "Sync Projects", systemImage: "arrow.triangle.2.circlepath")
+                        Spacer()
+                        if syncingProjects { ProgressView().controlSize(.small) }
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(syncingProjects)
+
                 metricStrip
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Projects").font(.title2.bold())

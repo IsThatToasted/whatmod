@@ -15,11 +15,13 @@ struct AuthGateView: View {
             } else if cloud.membership == nil {
                 OrganizationOnboardingView()
             } else {
-                RootView().task {
-                    await model.refreshProjectsFromCloud()
-                    try? await Task.sleep(for: .milliseconds(900))
-                    cloud.markWorkspaceStable()
-                }
+                RootView()
+                    .task {
+                        // Stabilize the authenticated native shell before starting any cloud sync.
+                        // Project refresh is user/deferred initiated from Home instead of auth entry.
+                        await Task.yield()
+                        cloud.markWorkspaceStable()
+                    }
             }
         }
         .task { if cloud.isLoading { await cloud.bootstrap() } }
@@ -42,7 +44,9 @@ private struct SignedInCheckpointView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Signed in successfully")
                     .font(.largeTitle.bold())
-                Text("Google sign-in completed. Open the workspace to connect your company data.")
+                Text(cloud.workspacePrepared
+                     ? "Your organization is loaded and the native workspace is ready."
+                     : "Google sign-in completed. Prepare the workspace to connect your company data.")
                     .foregroundStyle(.secondary)
             }
             if let email = cloud.email {
@@ -50,9 +54,14 @@ private struct SignedInCheckpointView: View {
                     .font(.subheadline)
             }
             Button {
-                Task { await cloud.confirmWorkspaceEntry() }
+                if cloud.workspacePrepared {
+                    cloud.enterPreparedWorkspace()
+                } else {
+                    Task { await cloud.confirmWorkspaceEntry() }
+                }
             } label: {
-                Label("Open Workspace", systemImage: "arrow.right.circle.fill")
+                Label(cloud.workspacePrepared ? "Enter Home" : "Prepare Workspace",
+                      systemImage: cloud.workspacePrepared ? "house.fill" : "arrow.right.circle.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
@@ -64,7 +73,7 @@ private struct SignedInCheckpointView: View {
             }
             .frame(maxWidth: .infinity)
 
-            Text("This checkpoint prevents a failed workspace screen from trapping the app in a crash loop. If Aurelium cannot safely open Home, the next launch will automatically recover to Sign In.")
+            Text("Workspace preparation and Home are intentionally separated. A failed feature screen can never trap Aurelium in a launch crash loop; the next launch returns here safely.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
