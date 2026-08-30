@@ -423,7 +423,21 @@ private struct AdminInvitesView: View {
 @ToolbarContentBuilder
 private func adminEmployeeToolbar(model: AppModel) -> some ToolbarContent {
     ToolbarItem(placement: .topBarTrailing) {
-        Button { model.workspaceMode = .employee } label: { Label("Employee View", systemImage: "person.crop.circle") }
+        Menu {
+            Button {
+                model.workspaceMode = .employee
+            } label: {
+                Label("Employee View", systemImage: "person.crop.circle")
+            }
+            Button(role: .destructive) {
+                model.workspaceMode = .employee
+                Task { await WorkspaceService.shared.signOut() }
+            } label: {
+                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+            }
+        } label: {
+            Label("Account", systemImage: "person.crop.circle.badge.gearshape")
+        }
     }
 }
 

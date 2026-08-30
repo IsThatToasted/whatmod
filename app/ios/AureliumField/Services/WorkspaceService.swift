@@ -1,7 +1,5 @@
 import Foundation
 import Observation
-import Supabase
-import AuthenticationServices
 import UIKit
 import Security
 
@@ -172,6 +170,7 @@ final class WorkspaceService {
     var membership: OrganizationMembership?
     var isLoading = true
     var errorMessage: String?
+    var oauthInProgress = false
 
     var isAuthenticated: Bool { userID != nil && session != nil }
     var organizationID: UUID? { membership?.organizationID }
@@ -180,8 +179,8 @@ final class WorkspaceService {
 
     private var config: RuntimeConfig?
     private var session: NativeSession?
-    private let membershipCacheKey = "aurelium.ios.membership.v2"
-    private let sessionStore = KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v2")
+    private let membershipCacheKey = "aurelium.ios.membership.v3"
+    private let sessionStore = KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v3")
 
     private init() {
         // Deliberately no cloud/auth SDK construction during process launch.
@@ -234,60 +233,59 @@ final class WorkspaceService {
             return
         }
         if config == nil { config = RuntimeConfig.load() }
-        guard let activeConfig = config else {
-            errorMessage = NativeCloudError.configuration.localizedDescription
+        guard let activeConfig = config,
+              let startURL = Self.googleOAuthURL(cloudURL: activeConfig.cloudURL) else {
+            errorMessage = NativeCloudError.authentication("AF-AUTH-210").localizedDescription
             return
         }
 
+        oauthInProgress = true
+        let opened = await withCheckedContinuation { continuation in
+            UIApplication.shared.open(startURL, options: [:]) { success in
+                continuation.resume(returning: success)
+            }
+        }
+        if !opened {
+            oauthInProgress = false
+            errorMessage = NativeCloudError.authentication("AF-AUTH-210").localizedDescription
+        }
+    }
+
+    func handleOAuthCallback(_ url: URL) async {
+        guard url.scheme?.lowercased() == "aureliumfield" else { return }
+        oauthInProgress = false
         do {
-            guard let supabaseURL = URL(string: activeConfig.cloudURL),
-                  let callbackURL = URL(string: "aureliumfield://auth-callback") else {
-                throw NativeCloudError.configuration
-            }
-
-            // Official Supabase Google OAuth flow. The client is created only when the
-            // user taps Sign In, so Supabase Auth is never initialized during app launch.
-            let authClient = SupabaseClient(
-                supabaseURL: supabaseURL,
-                supabaseKey: activeConfig.publicKey
-            )
-            let oauthSession = try await authClient.auth.signInWithOAuth(
-                provider: .google,
-                redirectTo: callbackURL
-            ) { webSession in
-                webSession.prefersEphemeralWebBrowserSession = false
-            }
-
-            let newSession = NativeSession(
-                accessToken: oauthSession.accessToken,
-                refreshToken: oauthSession.refreshToken,
-                expiresAt: Date(timeIntervalSince1970: oauthSession.expiresAt),
-                userID: oauthSession.user.id,
-                email: oauthSession.user.email
-            )
+            let newSession = try sessionFromCallback(url)
             sessionStore.save(newSession)
             apply(newSession)
-            try await loadMembershipThrowing()
-        } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
-            return
-        } catch is CancellationError {
-            return
+            do {
+                try await loadMembershipThrowing()
+            } catch {
+                // Authentication succeeded even if organization hydration is temporarily unavailable.
+                membership = cachedMembership(for: newSession.userID)
+                if membership == nil {
+                    errorMessage = "Signed in, but your organization could not be loaded. Reference: AF-ORG-101"
+                }
+            }
         } catch {
-            errorMessage = "Sign in could not be completed. Reference: AF-AUTH-209"
-#if DEBUG
-            print("[Aurelium Auth] \(error)")
-#endif
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Sign in could not be completed. Reference: AF-AUTH-201"
         }
     }
 
 
     func signOut() async {
-        if let current = session {
-            try? await requestData(path: "/auth/v1/logout", method: "POST", body: nil, additionalHeaders: [:], sessionOverride: current, retryOnUnauthorized: false)
-        }
+        oauthInProgress = false
+        let previousSession = session
         sessionStore.clear()
         clearCachedMembership()
         clearIdentity()
+
+        // Local sign-out must never depend on the network. Revoke remotely as best effort.
+        if let previousSession {
+            Task { @MainActor in
+                try? await requestData(path: "/auth/v1/logout", method: "POST", body: nil, additionalHeaders: [:], sessionOverride: previousSession, retryOnUnauthorized: false)
+            }
+        }
     }
 
     func loadMembership() async {
@@ -320,6 +318,25 @@ final class WorkspaceService {
         userID = nil
         email = nil
         membership = nil
+    }
+
+    private func sessionFromCallback(_ url: URL) throws -> NativeSession {
+        guard url.scheme?.lowercased() == "aureliumfield", url.host?.lowercased() == "auth-callback" else {
+            throw NativeCloudError.authentication("AF-AUTH-202")
+        }
+        let fragment = Self.parameters(from: url)
+        if fragment["error"] != nil || fragment["error_code"] != nil || fragment["error_description"] != nil {
+            throw NativeCloudError.authentication("AF-AUTH-203")
+        }
+        guard let access = fragment["access_token"], !access.isEmpty,
+              let refresh = fragment["refresh_token"], !refresh.isEmpty else {
+            throw NativeCloudError.authentication("AF-AUTH-204")
+        }
+        let payload = try Self.decodeJWT(access)
+        guard let uid = UUID(uuidString: payload.sub) else {
+            throw NativeCloudError.authentication("AF-AUTH-205")
+        }
+        return NativeSession(accessToken: access, refreshToken: refresh, expiresAt: Date(timeIntervalSince1970: payload.exp), userID: uid, email: payload.email)
     }
 
     private func refreshSession(_ value: NativeSession) async throws -> NativeSession {
@@ -682,12 +699,33 @@ final class WorkspaceService {
         UserDefaults.standard.removeObject(forKey: membershipCacheKey)
     }
 
-    private static func parameters(from fragment: String) -> [String: String] {
-        var components = URLComponents()
-        components.query = fragment
-        return Dictionary(uniqueKeysWithValues: (components.queryItems ?? []).compactMap { item in
-            item.value.map { (item.name, $0) }
-        })
+    private static func parameters(from url: URL) -> [String: String] {
+        var result: [String: String] = [:]
+        for raw in [url.query, url.fragment].compactMap({ $0 }) where !raw.isEmpty {
+            var components = URLComponents()
+            components.query = raw
+            for item in components.queryItems ?? [] {
+                if let value = item.value {
+                    // OAuth redirects can legally repeat parameter names. Last value wins;
+                    // Never use a uniqueness-enforcing dictionary initializer here; OAuth redirects may repeat keys.
+                    result[item.name] = value
+                }
+            }
+        }
+        return result
+    }
+
+    private static func googleOAuthURL(cloudURL: String) -> URL? {
+        let base = cloudURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard var components = URLComponents(string: base + "/auth/v1/authorize") else { return nil }
+        components.queryItems = [
+            URLQueryItem(name: "provider", value: "google"),
+            URLQueryItem(name: "redirect_to", value: "aureliumfield://auth-callback")
+        ]
+        guard let url = components.url,
+              url.scheme?.lowercased() == "https",
+              url.path == "/auth/v1/authorize" else { return nil }
+        return url
     }
 
     private static func decodeJWT(_ token: String) throws -> JWTPayload {

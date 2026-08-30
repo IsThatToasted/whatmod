@@ -25,7 +25,6 @@ struct AuthGateView: View {
 
 private struct LoginView: View {
     @State private var cloud = WorkspaceService.shared
-    @State private var signingIn = false
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             Spacer()
@@ -35,21 +34,17 @@ private struct LoginView: View {
                 Text("Projects, estimating, field documentation, crews and time—one construction workspace.").foregroundStyle(.secondary)
             }
             Button {
-                signingIn = true
-                Task {
-                    await cloud.signInWithGoogle()
-                    signingIn = false
-                }
+                Task { await cloud.signInWithGoogle() }
             } label: {
-                if signingIn {
-                    ProgressView().frame(maxWidth: .infinity).frame(height: 52)
-                } else {
-                    Label("Continue with Google", systemImage: "person.crop.circle.badge.checkmark")
-                        .font(.headline).frame(maxWidth: .infinity).frame(height: 52)
-                }
+                Label("Continue with Google", systemImage: "person.crop.circle.badge.checkmark")
+                    .font(.headline).frame(maxWidth: .infinity).frame(height: 52)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(signingIn)
+            if cloud.oauthInProgress {
+                Text("Complete sign in in Safari. Aurelium Field will reopen automatically.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Text("Your company data is separated by organization and protected by organization-level access controls.").font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.padding(24)
@@ -87,6 +82,10 @@ private struct OrganizationOnboardingView: View {
                     }
                 }
                 if let error { Section { Text(error).foregroundStyle(.red) } }
+                Section("Account") {
+                    if let email = cloud.email { LabeledContent("Signed in", value: email) }
+                    Button("Sign Out", role: .destructive) { Task { await cloud.signOut() } }
+                }
             }
             .navigationTitle("Get started")
             .overlay { if working { ProgressView().controlSize(.large) } }

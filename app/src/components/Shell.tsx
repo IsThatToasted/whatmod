@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { BriefcaseBusiness, ClipboardCheck, House, MessageSquare, Sparkles, UsersRound, Settings, Camera, ShieldCheck } from 'lucide-react';
+import { BriefcaseBusiness, ClipboardCheck, House, MessageSquare, Sparkles, UsersRound, Settings, Camera, ShieldCheck, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthGate';
 
 const links = [
@@ -13,7 +13,7 @@ const links = [
 ] as const;
 
 export function Shell() {
-  const {isAdmin,membership}=useAuth();
+  const {isAdmin,membership,signOut}=useAuth();
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -22,6 +22,7 @@ export function Shell() {
         <div className="sidebar-footer employee-sidebar-footer">
           {isAdmin&&<Link className="admin-switch" to="/admin"><ShieldCheck size={18}/><div><strong>Admin View</strong><span>Manage {membership?.organization?.name??'organization'}</span></div></Link>}
           <div className="field-ready"><ClipboardCheck size={18}/><div><strong>Employee View</strong><span>Field-ready workspace</span></div></div>
+          <button className="signout-button" onClick={()=>void signOut()}><LogOut size={17}/><span>Sign Out</span></button>
         </div>
       </aside>
       <main className="main"><Outlet /></main>

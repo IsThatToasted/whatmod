@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Clock3, Copy, LayoutDashboard, Pencil, RefreshCw, ShieldCheck, UserMinus, UserPlus, UsersRound, XCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock3, Copy, LayoutDashboard, Pencil, RefreshCw, ShieldCheck, UserMinus, UserPlus, UsersRound, XCircle, Trash2, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthGate';
 import { supabase } from '../lib/supabase';
 
@@ -13,7 +13,7 @@ type Invite={id:string;email:string|null;role:string;token:string;expires_at:str
 const roles=['crew','foreman','estimator','pm','office','admin','owner'];
 
 export function AdminWorkspace(){
- const {membership}=useAuth();
+ const {membership,signOut}=useAuth();
  const [tab,setTab]=useState<AdminTab>('overview');
  const [members,setMembers]=useState<Member[]>([]); const [timecards,setTimecards]=useState<TimeRow[]>([]); const [requests,setRequests]=useState<EditRequest[]>([]); const [invites,setInvites]=useState<Invite[]>([]); const [projects,setProjects]=useState<Project[]>([]);
  const [editingMember,setEditingMember]=useState<Member|null>(null); const [editingTime,setEditingTime]=useState<TimeRow|null>(null); const [error,setError]=useState(''); const [busy,setBusy]=useState(false);
@@ -41,9 +41,9 @@ export function AdminWorkspace(){
       <AdminNav active={tab==='employees'} icon={<UsersRound size={19}/>} label="Employees" onClick={()=>setTab('employees')}/>
       <AdminNav active={tab==='invites'} icon={<UserPlus size={19}/>} label="Invites" badge={pendingInvites.length} onClick={()=>setTab('invites')}/>
     </nav>
-    <Link className="button secondary admin-return" to="/"><ArrowLeft size={17}/>Employee View</Link>
+    <div className="admin-sidebar-actions"><Link className="button secondary admin-return" to="/"><ArrowLeft size={17}/>Employee View</Link><button className="button secondary danger-soft" onClick={()=>void signOut()}><LogOut size={17}/>Sign Out</button></div>
    </aside>
-   <main className="admin-main"><div className="admin-mobile-bar"><Link to="/" className="button ghost"><ArrowLeft size={17}/>Employee</Link><strong>Admin</strong><button className="icon-button" onClick={()=>void load()} aria-label="Refresh"><RefreshCw size={18}/></button></div>
+   <main className="admin-main"><div className="admin-mobile-bar"><Link to="/" className="button ghost"><ArrowLeft size={17}/>Employee</Link><strong>Admin</strong><div className="admin-mobile-actions"><button className="icon-button" onClick={()=>void load()} aria-label="Refresh"><RefreshCw size={18}/></button><button className="icon-button" onClick={()=>void signOut()} aria-label="Sign out"><LogOut size={18}/></button></div></div>
      <div className="admin-mobile-tabs">{(['overview','timecards','employees','invites'] as AdminTab[]).map(x=><button key={x} className={tab===x?'active':''} onClick={()=>setTab(x)}>{x==='timecards'?'Time':x[0].toUpperCase()+x.slice(1)}</button>)}</div>
      {tab==='overview'&&<Overview active={activeMembers.length} submitted={pending.length} edits={requests.length} invites={pendingInvites.length} setTab={setTab}/>} 
      {tab==='timecards'&&<Timecards rows={timecards} requests={requests} names={names} projectNames={projectNames} onEdit={setEditingTime} onDecision={async(id,approve,note)=>{if(!supabase)return;const {error}=await supabase.rpc('admin_decide_time_entry',{entry_id:id,approve,decision_note:note||null});if(error)setError(error.message);else await load()}} onEditDecision={async(id,approve)=>{if(!supabase)return;const {error}=await supabase.rpc('decide_time_entry_edit',{request_id:id,approve,admin_note:null});if(error)setError(error.message);else await load()}} onDelete={async row=>{if(!supabase||!confirm(`DELETE this timecard for ${names.get(row.user_id)??'employee'}? This permanently removes the timecard, GPS samples, and edit-request history.`))return;const {error}=await supabase.rpc('admin_delete_time_entry',{entry_id:row.id});if(error)setError(error.message);else await load()}}/>}

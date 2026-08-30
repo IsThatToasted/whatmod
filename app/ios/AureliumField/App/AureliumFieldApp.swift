@@ -8,6 +8,9 @@ struct AureliumFieldApp: App {
         WindowGroup {
             AuthGateView()
                 .environment(model)
+                .onOpenURL { url in
+                    Task { await WorkspaceService.shared.handleOAuthCallback(url) }
+                }
         }
     }
 }
