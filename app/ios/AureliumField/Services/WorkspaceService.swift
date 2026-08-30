@@ -228,11 +228,11 @@ final class WorkspaceService {
 
         // A checkpoint is intentionally resumable without any network activity. This makes
         // a completed OAuth handoff safe even if the user closes the app before entering Home.
+        // Always return to the explicit checkpoint; do not auto-enter the authenticated workspace.
         if previousPhase == "checkpoint" {
             apply(stored)
             membership = cachedMembership(for: stored.userID)
-            requiresWorkspaceConfirmation = membership != nil
-            if membership == nil { clearRecoveryPhase() }
+            requiresWorkspaceConfirmation = true
             return
         }
 
@@ -291,24 +291,15 @@ final class WorkspaceService {
 
         do {
             let candidate = try sessionFromCallback(url)
-            setRecoveryPhase("identity_validation")
-            try await validateAuthenticatedUser(candidate)
 
-            // Two-phase auth commit: use the candidate in memory first. Nothing is persisted
-            // until the authenticated workspace has hydrated successfully.
-            apply(candidate)
-            setRecoveryPhase("membership_hydration")
-            try await loadMembershipThrowing()
-
+            // Supabase has already issued the access/refresh tokens. Persist the callback result
+            // immediately and stop at a safe checkpoint. Do not insert another auth request
+            // between the deep-link callback and the first stable native screen.
             sessionStore.save(candidate)
-            if membership != nil {
-                requiresWorkspaceConfirmation = true
-                setRecoveryPhase("checkpoint")
-            } else {
-                // A valid signed-in user without membership must be allowed into onboarding.
-                requiresWorkspaceConfirmation = false
-                clearRecoveryPhase()
-            }
+            apply(candidate)
+            membership = cachedMembership(for: candidate.userID)
+            requiresWorkspaceConfirmation = true
+            setRecoveryPhase("checkpoint")
         } catch {
             sessionStore.clear()
             clearCachedMembership()
@@ -319,10 +310,27 @@ final class WorkspaceService {
         }
     }
 
-    func confirmWorkspaceEntry() {
-        guard isAuthenticated, membership != nil else { return }
-        setRecoveryPhase("workspace_entering")
-        requiresWorkspaceConfirmation = false
+    func confirmWorkspaceEntry() async {
+        guard isAuthenticated else { return }
+        setRecoveryPhase("membership_hydration")
+        do {
+            // This PostgREST request doubles as session validation. A valid new user with no
+            // organization receives an empty 200 response and continues to onboarding.
+            try await loadMembershipThrowing()
+            if membership == nil {
+                requiresWorkspaceConfirmation = false
+                clearRecoveryPhase()
+            } else {
+                setRecoveryPhase("workspace_entering")
+                requiresWorkspaceConfirmation = false
+            }
+        } catch {
+            // Keep the committed session and the safe checkpoint so a transient backend/network
+            // failure cannot brick the app or force another OAuth round-trip.
+            setRecoveryPhase("checkpoint")
+            requiresWorkspaceConfirmation = true
+            errorMessage = "Your account is signed in, but the workspace could not be opened yet. Reference: AF-AUTH-212"
+        }
     }
 
     func markWorkspaceStable() {
@@ -347,24 +355,6 @@ final class WorkspaceService {
             Task { @MainActor in
                 try? await requestData(path: "/auth/v1/logout", method: "POST", body: nil, additionalHeaders: [:], sessionOverride: previousSession, retryOnUnauthorized: false)
             }
-        }
-    }
-
-    private struct AuthUserVerification: Decodable {
-        let id: UUID
-        let email: String?
-    }
-
-    private func validateAuthenticatedUser(_ candidate: NativeSession) async throws {
-        let data = try await requestData(
-            path: "/auth/v1/user",
-            method: "GET",
-            sessionOverride: candidate,
-            retryOnUnauthorized: false
-        )
-        let user = try Self.decoder().decode(AuthUserVerification.self, from: data)
-        guard user.id == candidate.userID else {
-            throw NativeCloudError.authentication("AF-AUTH-205")
         }
     }
 

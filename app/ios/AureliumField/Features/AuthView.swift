@@ -42,7 +42,7 @@ private struct SignedInCheckpointView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Signed in successfully")
                     .font(.largeTitle.bold())
-                Text("Your account and company workspace were verified. Open the workspace when you're ready.")
+                Text("Google sign-in completed. Open the workspace to connect your company data.")
                     .foregroundStyle(.secondary)
             }
             if let email = cloud.email {
@@ -50,7 +50,7 @@ private struct SignedInCheckpointView: View {
                     .font(.subheadline)
             }
             Button {
-                cloud.confirmWorkspaceEntry()
+                Task { await cloud.confirmWorkspaceEntry() }
             } label: {
                 Label("Open Workspace", systemImage: "arrow.right.circle.fill")
                     .font(.headline)
