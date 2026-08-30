@@ -62,6 +62,30 @@ struct RideAPI {
         return try decoder.decode(RideSession.self, from: data)
     }
 
+    func sendRiderHeartbeat(_ rideID: UUID) async throws {
+        guard !AppConfig.riderAdminKey.isEmpty else {
+            throw RideAPIError.server("Rider credential is not configured.")
+        }
+
+        guard let apiURL = AppConfig.rideAPIURL else {
+            throw RideAPIError.server("Ride API URL is invalid.")
+        }
+
+        var request = URLRequest(
+            url: apiURL.appending(queryItems: [
+                URLQueryItem(name: "action", value: "rider-heartbeat")
+            ])
+        )
+
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(AppConfig.riderAdminKey, forHTTPHeaderField: "x-rider-key")
+        request.httpBody = try encoder.encode(["ride_id": rideID.uuidString])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response: response, data: data)
+    }
+
     func sendTelemetry(_ telemetry: TelemetryPayload) async throws {
         guard !AppConfig.riderAdminKey.isEmpty else {
             throw RideAPIError.server("Rider credential is not configured.")

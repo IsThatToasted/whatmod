@@ -1,5 +1,7 @@
 import Foundation
 import AVFoundation
+import UIKit
+import LiveKit
 
 enum StreamQuality: String, CaseIterable, Identifiable {
     case p480 = "480p"
@@ -29,6 +31,28 @@ enum StreamQuality: String, CaseIterable, Identifiable {
         case .p480: return 30
         case .p720: return 30
         case .p1080: return 30
+        }
+    }
+
+    /// Camera motion needs substantially more bitrate than a static video call.
+    /// These are ceilings; WebRTC/LiveKit can still adapt downward if uplink
+    /// bandwidth genuinely cannot sustain them.
+    var maxBitrate: Int {
+        switch self {
+        case .p480: return 2_000_000
+        case .p720: return 4_000_000
+        case .p1080: return 6_000_000
+        }
+    }
+
+    var simulcastLayers: [VideoParameters] {
+        switch self {
+        case .p480:
+            return [.presetH180_169]
+        case .p720:
+            return [.presetH360_169]
+        case .p1080:
+            return [.presetH540_169, .presetH360_169]
         }
     }
 }
@@ -96,7 +120,10 @@ final class StreamSettings: ObservableObject {
     }
 
     @Published var keepScreenAwake: Bool {
-        didSet { UserDefaults.standard.set(keepScreenAwake, forKey: "keepScreenAwake") }
+        didSet {
+            UserDefaults.standard.set(keepScreenAwake, forKey: "keepScreenAwake")
+            UIApplication.shared.isIdleTimerDisabled = keepScreenAwake
+        }
     }
 
     private init() {
@@ -119,5 +146,13 @@ final class StreamSettings: ObservableObject {
         startWithMicrophone = defaults.object(forKey: "startWithMicrophone") as? Bool ?? true
         explorerDefault = defaults.object(forKey: "explorerDefault") as? Bool ?? true
         keepScreenAwake = defaults.object(forKey: "keepScreenAwake") as? Bool ?? true
+
+        // The preference applies whenever ScooterCast is foreground-active,
+        // not only after Start Ride is pressed.
+        UIApplication.shared.isIdleTimerDisabled = keepScreenAwake
+    }
+
+    func reapplyScreenAwakePreference() {
+        UIApplication.shared.isIdleTimerDisabled = keepScreenAwake
     }
 }

@@ -21,6 +21,7 @@ final class LiveStreamManager: ObservableObject {
     @Published var isMicrophoneMuted = false
     @Published var activeStabilizationLabel = "Off"
     @Published var stabilizationSupported = false
+    @Published var backgroundCameraAccessLabel = "Not checked"
 
     private(set) var room: Room?
 
@@ -47,10 +48,32 @@ final class LiveStreamManager: ObservableObject {
         isMicrophoneMuted = !microphoneEnabled
 
         do {
-            // LiveKit 2.16.0 in this project uses the default Room initializer.
-            // We pass camera capture options when enabling the camera instead.
-            let room = Room()
+            // LiveKit normally suspends local camera tracks when iOS backgrounds
+            // the application. ScooterCast is a continuous ride broadcaster, so
+            // keep the local video publication alive until End Ride is explicitly
+            // pressed or the process is terminated.
+            let roomOptions = RoomOptions(
+                suspendLocalVideoTracksInBackground: false
+            )
+            let room = Room(
+                delegate: nil,
+                connectOptions: nil,
+                roomOptions: roomOptions
+            )
             self.room = room
+
+            // Let LiveKit own AVAudioSession. LiveKit 2.16 is designed to
+            // automatically switch to playAndRecord when local audio is
+            // published. We keep a fixed ride-friendly session policy but do
+            // not manually activate/deactivate AVAudioSession ourselves.
+            configureLiveKitAudioPolicy()
+
+            if microphoneEnabled {
+                // Pre-warm the audio engine before the peer connection starts.
+                // Failure here is non-fatal; the post-connect microphone retry
+                // still gets a chance to recover.
+                try? await AudioManager.shared.setRecordingAlwaysPreparedMode(true)
+            }
 
             try await room.connect(url: url, token: token)
 
@@ -60,7 +83,7 @@ final class LiveStreamManager: ObservableObject {
                     position: preferredCamera,
                     quality: quality
                 ),
-                publishOptions: nil
+                publishOptions: videoPublishOptions(for: quality)
             )
 
             if let video = publication?.track as? VideoTrack {
@@ -71,10 +94,12 @@ final class LiveStreamManager: ObservableObject {
                     .first
             }
 
+            configureCameraForBackgroundMultitasking()
+
             // Microphone is optional and must never abort video startup.
             if microphoneEnabled {
                 do {
-                    _ = try await room.localParticipant.setMicrophone(enabled: true, captureOptions: nil, publishOptions: nil)
+                    try await enableMicrophoneWithRetry(in: room)
                     isMicrophoneMuted = false
                 } catch {
                     isMicrophoneMuted = true
@@ -126,6 +151,7 @@ final class LiveStreamManager: ObservableObject {
                 if switched {
                     cameraPosition = cameraPosition == .front ? .back : .front
                     localVideoTrack = localTrack
+                    configureCameraForBackgroundMultitasking()
                     applyConfiguredStabilization()
                     scheduleStabilizationStatusRefresh()
                     errorMessage = nil
@@ -153,7 +179,7 @@ final class LiveStreamManager: ObservableObject {
                     position: next,
                     quality: selectedQuality
                 ),
-                publishOptions: nil
+                publishOptions: videoPublishOptions(for: selectedQuality)
             )
 
             if let video = publication?.track as? VideoTrack {
@@ -165,6 +191,7 @@ final class LiveStreamManager: ObservableObject {
             }
 
             cameraPosition = next
+            configureCameraForBackgroundMultitasking()
             applyConfiguredStabilization()
             scheduleStabilizationStatusRefresh()
             errorMessage = nil
@@ -184,7 +211,7 @@ final class LiveStreamManager: ObservableObject {
                         position: cameraPosition,
                         quality: selectedQuality
                     ),
-                    publishOptions: nil
+                    publishOptions: videoPublishOptions(for: selectedQuality)
                 )
 
                 if let video = publication?.track as? VideoTrack {
@@ -196,6 +223,7 @@ final class LiveStreamManager: ObservableObject {
                 }
 
                 isVideoMuted = false
+                configureCameraForBackgroundMultitasking()
                 applyConfiguredStabilization()
                 scheduleStabilizationStatusRefresh()
             } else {
@@ -220,11 +248,9 @@ final class LiveStreamManager: ObservableObject {
 
         do {
             if isMicrophoneMuted {
-                _ = try await room.localParticipant.setMicrophone(
-                    enabled: true,
-                    captureOptions: nil,
-                    publishOptions: nil
-                )
+                configureLiveKitAudioPolicy()
+                try await AudioManager.shared.setRecordingAlwaysPreparedMode(true)
+                try await enableMicrophoneWithRetry(in: room)
                 isMicrophoneMuted = false
             } else {
                 _ = try await room.localParticipant.setMicrophone(
@@ -266,9 +292,85 @@ final class LiveStreamManager: ObservableObject {
         isMicrophoneMuted = false
         activeStabilizationLabel = "Off"
         stabilizationSupported = false
+        backgroundCameraAccessLabel = "Not checked"
+        try? await AudioManager.shared.setRecordingAlwaysPreparedMode(false)
         state = .idle
     }
 
+
+    private func configureLiveKitAudioPolicy() {
+        AudioManager.shared.audioSession.isAutomaticConfigurationEnabled = true
+        AudioManager.shared.isSpeakerOutputPreferred = true
+        AudioManager.shared.sessionConfiguration = AudioSessionConfiguration(
+            category: .playAndRecord,
+            categoryOptions: [
+                .defaultToSpeaker,
+                .allowBluetooth,
+                .mixWithOthers
+            ],
+            mode: .videoChat
+        )
+    }
+
+    private func enableMicrophoneWithRetry(in room: Room) async throws {
+        configureLiveKitAudioPolicy()
+
+        do {
+            _ = try await room.localParticipant.setMicrophone(
+                enabled: true,
+                captureOptions: nil,
+                publishOptions: nil
+            )
+            return
+        } catch {
+            // Audio-session activation can race camera/route setup on a physical
+            // iPhone. Re-prewarm once after a short delay and then surface the
+            // real second error if it still cannot publish.
+            try? await Task.sleep(for: .milliseconds(350))
+            configureLiveKitAudioPolicy()
+            try? await AudioManager.shared.setRecordingAlwaysPreparedMode(true)
+
+            _ = try await room.localParticipant.setMicrophone(
+                enabled: true,
+                captureOptions: nil,
+                publishOptions: nil
+            )
+        }
+    }
+
+    private func configureCameraForBackgroundMultitasking() {
+        guard let capturer = currentCameraCapturer() else {
+            backgroundCameraAccessLabel = "Camera unavailable"
+            return
+        }
+
+        let session = capturer.captureSession
+
+        // Prevent AVCaptureSession from attempting to take over the same
+        // AVAudioSession that LiveKit uses for microphone publishing.
+        session.usesApplicationAudioSession = true
+        session.automaticallyConfiguresApplicationAudioSession = false
+
+        if session.isMultitaskingCameraAccessSupported {
+            session.isMultitaskingCameraAccessEnabled = true
+            backgroundCameraAccessLabel = "Background camera enabled"
+        } else {
+            // The LiveKit room, microphone and GPS remain alive in background.
+            // iOS may suspend actual camera frames on devices/OS versions where
+            // multitasking camera access is unavailable.
+            backgroundCameraAccessLabel = "Background camera unsupported"
+        }
+    }
+
+    func refreshBackgroundMediaConfiguration() {
+        guard state == .live else { return }
+
+        configureCameraForBackgroundMultitasking()
+
+        if !isMicrophoneMuted {
+            configureLiveKitAudioPolicy()
+        }
+    }
 
     private func currentCameraCapturer() -> CameraCapturer? {
         guard let room else { return nil }
@@ -436,6 +538,20 @@ final class LiveStreamManager: ObservableObject {
             // LiveKit 2.16 / iOS 17 project depend on newer enum cases.
             return "Enhanced"
         }
+    }
+
+    private func videoPublishOptions(for quality: StreamQuality) -> VideoPublishOptions {
+        VideoPublishOptions(
+            encoding: VideoEncoding(
+                maxBitrate: quality.maxBitrate,
+                maxFps: quality.fps
+            ),
+            simulcast: true,
+            simulcastLayers: quality.simulcastLayers,
+            preferredCodec: .h264,
+            preferredBackupCodec: .h264,
+            degradationPreference: .maintainResolution
+        )
     }
 
     private func cameraOptions(

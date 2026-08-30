@@ -286,6 +286,16 @@ struct RiderHomeView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
+
+            if let recordingError = vm.recordingError, !recordingError.isEmpty {
+                HStack(alignment: .top, spacing: 7) {
+                    Image(systemName: "record.circle")
+                    Text("Recording: \(recordingError)")
+                        .textSelection(.enabled)
+                }
+                .font(.caption)
+                .foregroundStyle(.orange)
+            }
         }
         .padding(18)
         .background(.ultraThinMaterial.opacity(0.55))
