@@ -213,6 +213,7 @@ final class WorkspaceService {
     private let membershipCacheKey = "aurelium.ios.membership.v4"
     private let recoveryPhaseKey = "aurelium.ios.auth.recovery.phase.v1"
     private let workspaceDiagnosticKey = "aurelium.ios.workspace.diagnostic.v1"
+    private let workspaceHTTPStatusKey = "aurelium.ios.workspace.httpStatus.v1"
     private let sessionStore = KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v4")
     private let legacySessionStores = [
         KeychainSessionStore(service: "com.aurelium.field", account: "native-session-v3"),
@@ -343,7 +344,9 @@ final class WorkspaceService {
                     self.workspacePrepared = false
                     self.setRecoveryPhase("checkpoint")
                     self.requiresWorkspaceConfirmation = true
-                    self.errorMessage = "Your account is signed in, but the workspace could not be prepared yet. Reference: AF-WORK-203"
+                    let status = UserDefaults.standard.object(forKey: self.workspaceHTTPStatusKey) as? Int
+                    let suffix = status.map { " / S\($0)" } ?? ""
+                    self.errorMessage = "Your account is signed in, but the workspace could not be prepared yet. Reference: AF-WORK-203\(suffix)"
                 }
             }
         }
@@ -405,6 +408,11 @@ final class WorkspaceService {
         switch workspaceDiagnostic {
         case "membership_request_started": return "D01"
         case "membership_request_constructed": return "D01B"
+        case "membership_rpc_constructed": return "R01"
+        case "membership_rpc_response": return "R02"
+        case "membership_rpc_fallback": return "R03"
+        case "membership_fallback_constructed": return "F01"
+        case "membership_fallback_response": return "F02"
         case "membership_header_rejected": return "H01"
         case "membership_response_received": return "D02"
         case "membership_response_invalid_json": return "D03"
@@ -431,7 +439,58 @@ final class WorkspaceService {
             return
         }
 
+        // Production mobile bootstrap uses a server-side RPC keyed only from auth.uid().
+        // This avoids coupling the first authenticated screen to table RLS/relationship shape.
         let base = config.cloudURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let rpcURL = URL(string: base + "/rest/v1/rpc/get_my_workspace") else {
+            completion(.failure(NativeCloudError.configuration)); return
+        }
+        var rpcRequest = URLRequest(url: rpcURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        rpcRequest.httpMethod = "POST"
+        rpcRequest.httpBody = Data("{}".utf8)
+        rpcRequest.setValue(publicKey, forHTTPHeaderField: "apikey")
+        rpcRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        rpcRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        rpcRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        setWorkspaceDiagnostic("membership_rpc_constructed")
+
+        WorkspaceBootstrapTransport.shared.perform(rpcRequest) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure(let error):
+                self.setWorkspaceHTTPStatusFromBackground(nil)
+                completion(.failure(error))
+            case .success(let payload):
+                let data = payload.0
+                let response = payload.1
+                self.setWorkspaceHTTPStatusFromBackground(response.statusCode)
+                self.setWorkspaceDiagnosticFromBackground("membership_rpc_response")
+
+                if (200..<300).contains(response.statusCode) {
+                    self.parseWorkspaceMembership(data: data, fallbackUserID: userID, completion: completion)
+                    return
+                }
+
+                // If the database has not received migration 007 yet, PostgREST reports the RPC
+                // as missing. Fall back to the scalar table query so existing installs remain usable.
+                if response.statusCode == 404 || response.statusCode == 400 {
+                    self.setWorkspaceDiagnosticFromBackground("membership_rpc_fallback")
+                    self.loadMembershipTableFallback(userID: userID, base: base, publicKey: publicKey, accessToken: accessToken, completion: completion)
+                    return
+                }
+
+                completion(.failure(NativeCloudError.api(response.statusCode, "Workspace access was rejected. Reference: AF-WORK-204")))
+            }
+        }
+    }
+
+    nonisolated private func loadMembershipTableFallback(
+        userID: UUID,
+        base: String,
+        publicKey: String,
+        accessToken: String,
+        completion: @escaping (Result<OrganizationMembership?, Error>) -> Void
+    ) {
         var components = URLComponents(string: base + "/rest/v1/organization_members")
         components?.queryItems = [
             URLQueryItem(name: "select", value: "organization_id,user_id,role,display_name,active"),
@@ -442,64 +501,90 @@ final class WorkspaceService {
         guard let url = components?.url else {
             completion(.failure(NativeCloudError.configuration)); return
         }
-
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         request.httpMethod = "GET"
         request.setValue(publicKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        setWorkspaceDiagnostic("membership_request_constructed")
+        setWorkspaceDiagnosticFromBackground("membership_fallback_constructed")
 
         WorkspaceBootstrapTransport.shared.perform(request) { [weak self] result in
             guard let self else { return }
             switch result {
             case .failure(let error):
+                self.setWorkspaceHTTPStatusFromBackground(nil)
                 completion(.failure(error))
             case .success(let payload):
-                self.setWorkspaceDiagnosticFromBackground("membership_response_received")
                 let data = payload.0
                 let response = payload.1
+                self.setWorkspaceHTTPStatusFromBackground(response.statusCode)
+                self.setWorkspaceDiagnosticFromBackground("membership_fallback_response")
                 guard (200..<300).contains(response.statusCode) else {
-                    completion(.failure(NativeCloudError.api(response.statusCode, "Workspace membership request failed. Reference: AF-WORK-204")))
+                    completion(.failure(NativeCloudError.api(response.statusCode, "Workspace access was rejected. Reference: AF-WORK-204")))
                     return
                 }
-                guard let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-                    self.setWorkspaceDiagnosticFromBackground("membership_response_invalid_json")
-                    completion(.failure(NativeCloudError.api(200, "Workspace membership response was invalid. Reference: AF-WORK-202")))
-                    return
-                }
-                guard let row = array.first else {
-                    self.setWorkspaceDiagnosticFromBackground("membership_empty")
-                    completion(.success(nil))
-                    return
-                }
-                guard let orgString = row["organization_id"] as? String,
-                      let memberString = row["user_id"] as? String,
-                      let orgID = UUID(uuidString: orgString),
-                      let memberID = UUID(uuidString: memberString),
-                      let role = row["role"] as? String else {
-                    self.setWorkspaceDiagnosticFromBackground("membership_scalar_parse_failed")
-                    completion(.failure(NativeCloudError.api(200, "Workspace membership record was invalid. Reference: AF-WORK-202")))
-                    return
-                }
-                let active = (row["active"] as? Bool) ?? true
-                guard active else {
-                    self.setWorkspaceDiagnosticFromBackground("membership_inactive")
-                    completion(.success(nil))
-                    return
-                }
-                let displayName = row["display_name"] as? String
-                let resolved = OrganizationMembership(
-                    organizationID: orgID, userID: memberID, role: role, displayName: displayName, active: active,
-                    organization: OrganizationInfo(id: orgID, name: "Workspace", slug: "")
-                )
-                completion(.success(resolved))
+                self.parseWorkspaceMembership(data: data, fallbackUserID: userID, completion: completion)
             }
         }
     }
 
+    nonisolated private func parseWorkspaceMembership(
+        data: Data,
+        fallbackUserID: UUID,
+        completion: @escaping (Result<OrganizationMembership?, Error>) -> Void
+    ) {
+        guard let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            setWorkspaceDiagnosticFromBackground("membership_response_invalid_json")
+            completion(.failure(NativeCloudError.api(200, "Workspace membership response was invalid. Reference: AF-WORK-202")))
+            return
+        }
+        guard let row = array.first else {
+            setWorkspaceDiagnosticFromBackground("membership_empty")
+            completion(.success(nil))
+            return
+        }
+        guard let orgString = row["organization_id"] as? String,
+              let orgID = UUID(uuidString: orgString),
+              let role = row["role"] as? String else {
+            setWorkspaceDiagnosticFromBackground("membership_scalar_parse_failed")
+            completion(.failure(NativeCloudError.api(200, "Workspace membership record was invalid. Reference: AF-WORK-202")))
+            return
+        }
+        let memberID: UUID = {
+            if let memberString = row["user_id"] as? String, let value = UUID(uuidString: memberString) { return value }
+            return fallbackUserID
+        }()
+        let active = (row["active"] as? Bool) ?? true
+        guard active else {
+            setWorkspaceDiagnosticFromBackground("membership_inactive")
+            completion(.success(nil))
+            return
+        }
+        let displayName = row["display_name"] as? String
+        let orgName = (row["organization_name"] as? String) ?? "Workspace"
+        let orgSlug = (row["organization_slug"] as? String) ?? ""
+        let resolved = OrganizationMembership(
+            organizationID: orgID,
+            userID: memberID,
+            role: role,
+            displayName: displayName,
+            active: active,
+            organization: OrganizationInfo(id: orgID, name: orgName, slug: orgSlug)
+        )
+        setWorkspaceDiagnosticFromBackground("membership_ready")
+        completion(.success(resolved))
+    }
+
     nonisolated private func setWorkspaceDiagnosticFromBackground(_ value: String) {
         UserDefaults.standard.set(value, forKey: "aurelium.ios.workspace.diagnostic.v1")
+    }
+
+    nonisolated private func setWorkspaceHTTPStatusFromBackground(_ status: Int?) {
+        if let status {
+            UserDefaults.standard.set(status, forKey: "aurelium.ios.workspace.httpStatus.v1")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "aurelium.ios.workspace.httpStatus.v1")
+        }
     }
 
     var productionDiagnosticSummary: String {
@@ -509,7 +594,10 @@ final class WorkspaceService {
         let tokenSegments = session?.accessToken.split(separator: ".").count ?? 0
         let keyLength = config?.publicKey.utf8.count ?? 0
         let host = config.flatMap { URL(string: $0.cloudURL)?.host } ?? "unavailable"
-        return "AF iOS 0.9.0 | phase=\(phase) | workspace=\(stage) | authenticated=\(isAuthenticated) | tokenChars=\(tokenLength) | tokenSegments=\(tokenSegments) | publicKeyChars=\(keyLength) | endpointHost=\(host)"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
+        let httpStatus = UserDefaults.standard.object(forKey: workspaceHTTPStatusKey) as? Int
+        return "AF iOS \(version) (\(build)) | phase=\(phase) | workspace=\(stage) | workspaceHTTP=\(httpStatus.map(String.init) ?? "none") | authenticated=\(isAuthenticated) | tokenChars=\(tokenLength) | tokenSegments=\(tokenSegments) | publicKeyChars=\(keyLength) | endpointHost=\(host)"
     }
 
     func loadMembership() async {
