@@ -17,6 +17,7 @@ app/ios/AureliumField/Features/Team/TeamView.swift
 app/ios/AureliumField/Models/Domain.swift
 app/ios/AureliumField/Resources/Info.plist
 app/ios/AureliumField/Resources/RuntimeConfig.json
+app/ios/AureliumField/Services/FieldOperationsService.swift
 app/ios/AureliumField/Services/RoomPlanCaptureView.swift
 app/ios/AureliumField/Services/RuntimeConfig.swift
 app/ios/AureliumField/Services/ScanRecordingService.swift
@@ -54,6 +55,8 @@ app/supabase/migrations/003_auth_org_time_estimator.sql
 app/supabase/migrations/004_admin_workspace_safe.sql
 app/supabase/migrations/005_project_walkthrough_completion.sql
 app/supabase/migrations/006_project_detail_fields.sql
+app/supabase/migrations/007_mobile_workspace_bootstrap.sql
+app/supabase/migrations/008_field_operations.sql
 app/tsconfig.app.json
 app/tsconfig.json
 app/tsconfig.node.json

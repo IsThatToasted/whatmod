@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { BriefcaseBusiness, ClipboardCheck, House, MessageSquare, Sparkles, UsersRound, Settings, Camera, ShieldCheck, LogOut } from 'lucide-react';
+import { BriefcaseBusiness, ClipboardCheck, House, MessageSquare, Sparkles, UsersRound, Settings, Camera, Clock3, ShieldCheck, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthGate';
 
 const links = [
@@ -7,7 +7,7 @@ const links = [
   ['/projects', 'Projects', BriefcaseBusiness],
   ['/estimator', 'Smart Estimate', Sparkles],
   ['/field', 'Field', Camera],
-  ['/team', 'Team', UsersRound],
+  ['/team', 'My Time', Clock3],
   ['/inbox', 'Inbox', MessageSquare],
   ['/settings', 'Settings', Settings]
 ] as const;
