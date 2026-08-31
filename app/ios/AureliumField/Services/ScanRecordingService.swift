@@ -60,26 +60,53 @@ final class ScanRecordingService {
     func stop() async -> (fileName: String?, duration: Double?) {
         let duration = startedAt.map { Date().timeIntervalSince($0) }
         isRecording = false
-        captureTask?.cancel()
+
+        // Stop frame production before touching AVAssetWriter state. The previous implementation
+        // could finalize the writer while the capture task was still appending a frame, which can
+        // make markAsFinished() raise an Objective-C exception on a physical device.
+        let task = captureTask
         captureTask = nil
+        task?.cancel()
+        if let task { await task.value }
 
         guard let writer, let input, let outputName else {
             resetWriterState()
             return (nil, duration)
         }
 
-        input.markAsFinished()
-        let finalStatus: AVAssetWriter.Status = await withCheckedContinuation { continuation in
-            writer.finishWriting { continuation.resume(returning: writer.status) }
-        }
-
         let output = AppMediaStore.url(for: outputName)
-        if finalStatus == .completed, FileManager.default.fileExists(atPath: output.path) {
-            let size = (try? output.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            if size > 1024 {
-                resetWriterState()
-                return (outputName, duration)
+
+        switch writer.status {
+        case .writing:
+            // markAsFinished is only valid while the writer is actively writing.
+            if input.isReadyForMoreMediaData || writer.status == .writing {
+                input.markAsFinished()
             }
+            let finalStatus: AVAssetWriter.Status = await withCheckedContinuation { continuation in
+                writer.finishWriting { continuation.resume(returning: writer.status) }
+            }
+            if finalStatus == .completed, FileManager.default.fileExists(atPath: output.path) {
+                let size = (try? output.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                if size > 1024 {
+                    resetWriterState()
+                    return (outputName, duration)
+                }
+            }
+
+        case .completed:
+            if FileManager.default.fileExists(atPath: output.path) {
+                let size = (try? output.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                if size > 1024 {
+                    resetWriterState()
+                    return (outputName, duration)
+                }
+            }
+
+        case .unknown, .failed, .cancelled:
+            // No valid writing session exists. Never call markAsFinished()/finishWriting here.
+            if writer.status == .unknown { writer.cancelWriting() }
+        @unknown default:
+            writer.cancelWriting()
         }
 
         let message = writer.error?.localizedDescription ?? "The review video could not be finalized."
