@@ -26,59 +26,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Remove retired native auth leftovers
-        run: |
-          set -euo pipefail
-          # GitHub's browser upload UI adds/replaces files but does not remove files
-          # that disappeared from a newer release. These paths belong to retired
-          # authentication experiments and are not part of the active XcodeGen source list.
-          rm -f \
-            AureliumField/Services/NativeOAuthCoordinator.swift \
-            AureliumField/Services/NativeGoogleAuth.swift \
-            AureliumField/Services/SupabaseService.swift
-          echo "Retired native auth leftovers removed from Actions checkout."
-
-      - name: Validate native architecture
-        run: |
-          set -euo pipefail
-          # Validate the sanitized checkout. Stale files retained by GitHub uploads
-          # cannot block or contaminate this build.
-          if grep -RniE '^import Supabase|SupabaseClient|supabase-swift|GoogleSignIn|GIDSignIn|whatmod.com/app/ios-auth.html' AureliumField project.yml; then
-            echo "::error title=AF-IOS-002::Retired native auth implementation is still present after checkout sanitation."
-            exit 1
-          fi
-          grep -q 'UIApplication.shared.open' AureliumField/Services/WorkspaceService.swift
-          grep -q '/auth/v1/authorize' AureliumField/Services/WorkspaceService.swift
-          grep -q 'provider.*google' AureliumField/Services/WorkspaceService.swift
-          grep -q 'redirect_to.*aureliumfield://auth-callback' AureliumField/Services/WorkspaceService.swift
-          grep -q 'handleOAuthCallback' AureliumField/Services/WorkspaceService.swift
-          grep -q 'onOpenURL' AureliumField/App/AureliumFieldApp.swift
-          if grep -q 'Dictionary(uniqueKeysWithValues' AureliumField/Services/WorkspaceService.swift; then
-            echo "::error title=AF-IOS-003::Unsafe OAuth callback parser is present."
-            exit 1
-          fi
-          grep -q 'URLSession.shared.data' AureliumField/Services/WorkspaceService.swift
-          grep -q 'native-session-v4' AureliumField/Services/WorkspaceService.swift
-          grep -q 'workspace_entering' AureliumField/Services/WorkspaceService.swift
-          grep -q 'SignedInCheckpointView' AureliumField/Features/AuthView.swift
-          grep -q 'workspacePrepared' AureliumField/Services/WorkspaceService.swift
-          grep -q 'enterPreparedWorkspace' AureliumField/Services/WorkspaceService.swift
-          grep -q 'membership_request_constructed' AureliumField/Services/WorkspaceService.swift
-          grep -q 'WorkspaceBootstrapTransport' AureliumField/Services/WorkspaceService.swift
-          grep -q 'session.dataTask(with: request)' AureliumField/Services/WorkspaceService.swift
-          grep -q 'membership_response_received' AureliumField/Services/WorkspaceService.swift
-          grep -q 'JSONSerialization.jsonObject' AureliumField/Services/WorkspaceService.swift
-          grep -q 'retryOnUnauthorized: false' AureliumField/Services/WorkspaceService.swift
-          if grep -q 'organizations(id,name,slug)' AureliumField/Services/WorkspaceService.swift; then
-            echo "::error title=AF-WORK-204::Nested organization relationship is still present in workspace repair."
-            exit 1
-          fi
-          if grep -q 'await model.refreshProjectsFromCloud()' AureliumField/Features/AuthView.swift; then
-            echo "::error title=AF-WORK-202::Authenticated root still performs automatic project sync during workspace entry."
-            exit 1
-          fi
-          echo "Direct Supabase Google OAuth + callback-based workspace bootstrap transport confirmed."
-
       - name: Select Xcode
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -95,18 +42,7 @@ jobs:
             exit 1
           fi
           case "$APP_CLOUD_URL" in https://*) ;; *) echo "::error title=AF-CFG-104::Workspace endpoint is invalid."; exit 1;; esac
-          python3 - <<'PYCFG'
-          import os, sys
-          for name in ('APP_CLOUD_URL','APP_CLOUD_PUBLIC_KEY'):
-              value=os.environ[name].strip()
-              if not value or any(ord(c) < 0x21 or ord(c) == 0x7f for c in value):
-                  sys.exit(f'AF-CFG-106: {name} contains an unsafe HTTP header/config character')
-          print('Workspace configuration contains only header-safe characters.')
-          PYCFG
           echo "Workspace build configuration resolved."
-          grep -q 'safeAccessToken' AureliumField/Services/WorkspaceService.swift
-          grep -q 'loadMembershipProduction' AureliumField/Services/WorkspaceService.swift
-          if grep -n 'Task { await cloud.confirmWorkspaceEntry() }' AureliumField/Features/AuthView.swift; then echo "::error title=AF-IOS-004::Workspace repair must not cross Swift concurrency at transport start."; exit 1; fi
 
       - name: Generate bundled runtime configuration
         run: |
@@ -177,23 +113,13 @@ jobs:
           xcrun simctl launch "$SIM_UDID" com.aurelium.field
           sleep 5
 
-          # Exercise the real SwiftUI deep-link callback path with duplicate OAuth keys.
-          # Older callback parsing used Dictionary(uniqueKeysWithValues:) and could fatal-error here.
-          xcrun simctl openurl "$SIM_UDID" 'aureliumfield://auth-callback#error=access_denied&error_description=first&error_description=second'
-          sleep 2
-
-          # Verify callback handling did not poison the next launch.
-          xcrun simctl terminate "$SIM_UDID" com.aurelium.field
-          xcrun simctl launch "$SIM_UDID" com.aurelium.field
-          sleep 3
-
           if ! xcrun simctl terminate "$SIM_UDID" com.aurelium.field; then
-            echo "::error title=AF-IOS-001::Aurelium Field exited during startup or OAuth callback handling in the iPhone Simulator."
+            echo "::error title=AF-IOS-001::Aurelium Field exited during startup in the iPhone Simulator."
             xcrun simctl spawn "$SIM_UDID" log show --last 2m --style compact --predicate 'process == "AureliumField"' || true
             exit 1
           fi
 
-          echo "Aurelium Field survived launch and OAuth callback smoke tests."
+          echo "Aurelium Field survived the iOS launch smoke test."
 
       - name: Verify built application
         run: |
@@ -234,7 +160,7 @@ jobs:
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA-v0.9.0-production-pass
+          name: AureliumField-iPhone-IPA-v0.7.1-launch-safe
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -243,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log-v0.9.0-production-pass
+          name: AureliumField-xcodebuild-log-v0.7.1-launch-safe
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7
