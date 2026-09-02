@@ -151,6 +151,7 @@ jobs:
       - name: Build unsigned iPhone app
         run: |
           set -o pipefail
+          set +e
           xcodebuild \
             -project AureliumField.xcodeproj \
             -scheme AureliumField \
@@ -161,7 +162,25 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY='' \
+            SWIFT_COMPILATION_MODE=singlefile \
+            SWIFT_ENABLE_BATCH_MODE=NO \
             clean build | tee xcodebuild-device.log
+          BUILD_STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$BUILD_STATUS" -ne 0 ]; then
+            echo "::group::Swift/Xcode compiler diagnostics"
+            python3 - <<'PYDIAG'
+          import pathlib, re
+          log = pathlib.Path('xcodebuild-device.log')
+          if log.exists():
+              lines = log.read_text(errors='replace').splitlines()
+              interesting = [line for line in lines if re.search(r'\berror:|failed frontend command|SwiftCompile|CompileSwift', line, re.I)]
+              for line in interesting[-160:]:
+                  print(line)
+          PYDIAG
+            echo "::endgroup::"
+            exit "$BUILD_STATUS"
+          fi
 
       - name: Smoke test app launch in iPhone Simulator
         run: |
@@ -194,6 +213,8 @@ jobs:
             -derivedDataPath DerivedDataSimulator \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
+            SWIFT_COMPILATION_MODE=singlefile \
+            SWIFT_ENABLE_BATCH_MODE=NO \
             clean build | tee xcodebuild-simulator.log
 
           SIM_APP="DerivedDataSimulator/Build/Products/Debug-iphonesimulator/AureliumField.app"
@@ -280,7 +301,7 @@ jobs:
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-iPhone-IPA-v0.9.4-estimate-ui-polish
+          name: AureliumField-iPhone-IPA-v0.10.1-build-fix
           path: app/ios/AureliumField.ipa
           if-no-files-found: error
           retention-days: 30
@@ -289,7 +310,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: AureliumField-xcodebuild-log-v0.9.4-estimate-ui-polish
+          name: AureliumField-xcodebuild-log-v0.10.1-build-fix
           path: app/ios/xcodebuild-device.log
           if-no-files-found: ignore
           retention-days: 7

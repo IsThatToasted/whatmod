@@ -66,12 +66,12 @@ jobs:
           JS_FILE="$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
           test -n "$JS_FILE"
           grep -q '/app/assets/' dist/index.html
-          grep -q 'v0.9.3-field-time' dist/index.html
+          grep -q 'v0.10.1-build-fix' dist/index.html
           if grep -q '/src/main.tsx' dist/index.html; then
             echo "::error title=AF-WEB-001::Vite source entry leaked into production HTML"
             exit 1
           fi
-          echo '{"release":"v0.9.3","surface":"web","compiled":true}' > dist/build-info.json
+          echo '{"release":"v0.10.1","surface":"web","compiled":true}' > dist/build-info.json
 
       - name: Assemble Pages artifact
         run: |
