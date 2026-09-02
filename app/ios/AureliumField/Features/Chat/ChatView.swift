@@ -115,57 +115,43 @@ struct ChatView: View {
                 limit: 100
             )
             conversations = rows
+            errorReference = nil
         } catch {
             errorReference = "AF-CHAT-101"
         }
     }
 
     private func createChannel() async {
-        guard let organizationID = cloud.organizationID,
-              let userID = cloud.userID else { return }
+        guard let organizationID = cloud.organizationID else { return }
 
         let name = newChannelName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
 
-        struct ConversationInsert: Encodable {
-            let organization_id: UUID
-            let kind: String
-            let title: String
-            let created_by: UUID
-        }
-        struct IDRow: Decodable { let id: UUID }
-        struct MemberInsert: Encodable {
-            let conversation_id: UUID
-            let organization_id: UUID
-            let user_id: UUID
+        struct Params: Encodable {
+            let p_organization_id: UUID
+            let p_title: String
+            let p_project_id: UUID?
         }
 
         do {
-            let row: IDRow = try await cloud.insertReturning(
-                table: "chat_conversations",
-                payload: ConversationInsert(
-                    organization_id: organizationID,
-                    kind: "channel",
-                    title: name,
-                    created_by: userID
+            let conversationID: UUID = try await cloud.rpcValue(
+                "chat_create_channel",
+                params: Params(
+                    p_organization_id: organizationID,
+                    p_title: name,
+                    p_project_id: nil
                 ),
-                columns: "id",
-                as: IDRow.self
-            )
-            try await cloud.insertRecord(
-                table: "chat_members",
-                payload: MemberInsert(
-                    conversation_id: row.id,
-                    organization_id: organizationID,
-                    user_id: userID
-                )
+                as: UUID.self
             )
             newChannelName = ""
             await loadConversations()
+            selected = conversations.first(where: { $0.id == conversationID })
+            errorReference = nil
         } catch {
             errorReference = "AF-CHAT-102"
         }
     }
+
 }
 
 private struct ChatConversationRow: View {
@@ -275,6 +261,7 @@ private struct ConversationView: View {
                 limit: 300
             )
             messages = rows
+            errorReference = nil
         } catch {
             errorReference = "AF-CHAT-103"
         }
@@ -306,6 +293,7 @@ private struct ConversationView: View {
                 )
             )
             await refresh()
+            errorReference = nil
         } catch {
             draft = text
             errorReference = "AF-CHAT-104"

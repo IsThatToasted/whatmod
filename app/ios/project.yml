@@ -22,9 +22,14 @@ targets:
       - AureliumField/Features/Chat/ChatView.swift
       - AureliumField/Features/Payroll/PayrollAdminView.swift
       - AureliumField/Features/Estimator/EstimatorView.swift
+      - AureliumField/Features/Estimator/SmartScannerV2View.swift
+      - AureliumField/Features/Estimator/BlueprintEstimateView.swift
       - AureliumField/Features/Team/TeamView.swift
       - AureliumField/Features/Team/AdminWorkspaceView.swift
       - AureliumField/Services/RoomPlanCaptureView.swift
+      - AureliumField/Services/ExteriorSmartScanService.swift
+      - AureliumField/Services/BlueprintAnalysisService.swift
+      - AureliumField/Services/BlueprintCloudSync.swift
       - AureliumField/Services/ScanRecordingService.swift
       - AureliumField/Services/SpeechCaptureService.swift
       - AureliumField/Services/WorkspaceService.swift
@@ -38,8 +43,8 @@ targets:
       path: AureliumField/Resources/Info.plist
       properties:
         CFBundleDisplayName: Aurelium Field
-        CFBundleShortVersionString: '0.10.2'
-        CFBundleVersion: '27'
+        CFBundleShortVersionString: '0.11.0'
+        CFBundleVersion: '29'
         CFBundleURLTypes:
           - CFBundleURLName: com.aurelium.field.auth
             CFBundleURLSchemes:

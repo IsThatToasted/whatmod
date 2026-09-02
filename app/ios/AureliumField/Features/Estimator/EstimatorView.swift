@@ -6,8 +6,10 @@ import QuickLook
 struct EstimatorView: View {
     @Environment(AppModel.self) private var model
     @State private var projectSearch = ""
+    @State private var showingScannerChooser = false
     @State private var showingScan = false
-    @State private var showingExterior = false
+    @State private var showingExteriorSmartScan = false
+    @State private var showingBlueprintEstimate = false
     @State private var showingCompleteConfirmation = false
     @State private var showingProposal = false
     @State private var editingWalkthrough: WalkthroughScan?
@@ -30,22 +32,22 @@ struct EstimatorView: View {
                 }
 
                 if let project = model.selectedProject {
-                    Button { showingScan = true } label: {
+                    Button { showingScannerChooser = true } label: {
                         HStack(spacing: 14) {
-                            Image(systemName: "viewfinder").font(.title2).frame(width: 36)
+                            Image(systemName: "viewfinder.circle.fill").font(.title2).frame(width: 36)
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Start Smart Walkthrough").font(.headline)
-                                Text("Scan + narration + tagged photos + video").font(.caption).foregroundStyle(.secondary)
+                                Text("Smart Scanner").font(.headline)
+                                Text("Interior or exterior · LiDAR + guided detection + Teach Scanner").font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer(); Image(systemName: "chevron.right").foregroundStyle(.secondary)
                         }
                         .padding(16).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
                     }
                     .buttonStyle(.plain)
-                    .accessibilityHint("Starts a walkthrough for \(project.name)")
+                    .accessibilityHint("Choose interior or exterior smart scanning for \(project.name)")
 
-                    Button { showingExterior = true } label: {
-                        HStack(spacing:14){Image(systemName:"building.2.crop.circle").font(.title2).frame(width:36);VStack(alignment:.leading,spacing:3){Text("Exterior / Large Surface").font(.headline);Text("Segment long elevations and correct dimensions manually").font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"chevron.right").foregroundStyle(.secondary)}
+                    Button { showingBlueprintEstimate = true } label: {
+                        HStack(spacing:14){Image(systemName:"doc.text.magnifyingglass").font(.title2).frame(width:36);VStack(alignment:.leading,spacing:3){Text("Blueprint Estimate").font(.headline);Text("Read plans, finish schedules and dimensions; flag gaps before proposal").font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"chevron.right").foregroundStyle(.secondary)}
                         .padding(16).background(.thinMaterial,in:RoundedRectangle(cornerRadius:18))
                     }.buttonStyle(.plain)
 
@@ -59,6 +61,19 @@ struct EstimatorView: View {
         }
         .navigationTitle("Smart Estimate")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingScannerChooser) {
+            if let project = model.selectedProject {
+                NavigationStack {
+                    SmartScannerV2View(project: project, roomCount: model.walkthroughs(for: project.id).count) {
+                        showingScannerChooser = false
+                        showingScan = true
+                    } onExterior: {
+                        showingScannerChooser = false
+                        showingExteriorSmartScan = true
+                    }
+                }
+            }
+        }
         .fullScreenCover(isPresented: $showingScan) {
             if let project = model.selectedProject {
                 SmartScanExperience(project: project, suggestedRoomName: "Room \(model.walkthroughs(for: project.id).count + 1)") { result in
@@ -67,7 +82,17 @@ struct EstimatorView: View {
                 } onCancel: { showingScan = false }
             }
         }
-        .sheet(isPresented:$showingExterior) { if let project=model.selectedProject { ExteriorSurfaceView(project:project) { scan in model.addWalkthrough(scan); showingExterior=false } } }
+        .fullScreenCover(isPresented: $showingExteriorSmartScan) {
+            if let project = model.selectedProject {
+                ExteriorSmartScanView(project: project) { scan, samples in
+                    model.addExteriorWalkthrough(scan, samples: samples)
+                    showingExteriorSmartScan = false
+                } onCancel: { showingExteriorSmartScan = false }
+            }
+        }
+        .sheet(isPresented: $showingBlueprintEstimate) {
+            if let project = model.selectedProject { NavigationStack { BlueprintEstimateView(project: project) } }
+        }
         .confirmationDialog("Walkthrough Complete?", isPresented: $showingCompleteConfirmation, titleVisibility: .visible) {
             Button("Walkthrough Complete") { if let project=model.selectedProject { model.completeWalkthroughSet(for:project.id); showingProposal=true } }
             Button("Cancel", role:.cancel) {}
@@ -365,198 +390,6 @@ private struct ScopeEstimateEditorRow: View {
     }
 }
 
-private struct ExteriorSurfaceView: View {
-    let project: ProjectSummary
-    let onSave: (WalkthroughScan) -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var name = "Exterior Elevation"
-    @State private var segments: [MeasuredWall] = [
-        MeasuredWall(id: UUID(), lengthFeet: 0, heightFeet: 0, grossSquareFeet: 0)
-    ]
-    @State private var openings = 0.0
-    @State private var notes = ""
-    @State private var productionRate = 150.0
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                introductionSection
-                elevationSection
-                productionSection
-                notesSection
-            }
-            .navigationTitle("Exterior Surface")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!canSave)
-                }
-            }
-        }
-    }
-
-    private var introductionSection: some View {
-        Section {
-            Text("Large exterior capture")
-                .font(.title2.bold())
-            Text("RoomPlan is intentionally not used as the measurement authority here. Break a long elevation into visible segments, enter corrected dimensions, subtract openings, and attach notes. This protects estimate accuracy around corners, obstructions and partial visibility.")
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var elevationSection: some View {
-        Section("Elevation") {
-            TextField("Name", text: $name)
-            ForEach($segments) { $segment in
-                ExteriorSegmentRow(segment: $segment)
-            }
-            .onDelete { offsets in
-                segments.remove(atOffsets: offsets)
-            }
-            Button("Add wall segment") {
-                segments.append(
-                    MeasuredWall(id: UUID(), lengthFeet: 0, heightFeet: 0, grossSquareFeet: 0)
-                )
-            }
-        }
-    }
-
-    private var productionSection: some View {
-        Section("Openings & production") {
-            TextField("Doors/windows/openings sq ft", value: $openings, format: .number)
-                .keyboardType(.decimalPad)
-            TextField("Production sq ft/hr", value: $productionRate, format: .number)
-                .keyboardType(.decimalPad)
-            LabeledContent("Paintable area", value: String(format: "%.0f sq ft", paintableArea))
-            LabeledContent("Labor", value: String(format: "%.1f hr", laborHours))
-        }
-    }
-
-    private var notesSection: some View {
-        Section("Field notes") {
-            TextField(
-                "Obstructions, stories, access, corrections",
-                text: $notes,
-                axis: .vertical
-            )
-            .lineLimit(4...10)
-        }
-    }
-
-    private var grossArea: Double {
-        segments.reduce(0) { $0 + ($1.lengthFeet * $1.heightFeet) }
-    }
-
-    private var paintableArea: Double {
-        max(0, grossArea - openings)
-    }
-
-    private var laborHours: Double {
-        guard productionRate > 0 else { return 0 }
-        return paintableArea / productionRate
-    }
-
-    private var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        paintableArea > 0 &&
-        productionRate > 0
-    }
-
-    private func save() {
-        let validSegments = segments.map { segment in
-            MeasuredWall(
-                id: segment.id,
-                lengthFeet: segment.lengthFeet,
-                heightFeet: segment.heightFeet,
-                grossSquareFeet: segment.lengthFeet * segment.heightFeet
-            )
-        }
-        let averageHeight = validSegments.isEmpty
-            ? 0
-            : validSegments.map(\.heightFeet).reduce(0, +) / Double(validSegments.count)
-        let wallLinearFeet = validSegments.map(\.lengthFeet).reduce(0, +)
-
-        let measurements = RoomMeasurementSummary(
-            wallLinearFeet: wallLinearFeet,
-            averageWallHeightFeet: averageHeight,
-            grossWallSquareFeet: grossArea,
-            openingsSquareFeet: openings,
-            paintableWallSquareFeet: paintableArea,
-            ceilingSquareFeet: nil,
-            detectedDoorCount: nil,
-            detectedWindowCount: nil,
-            estimatedTrimLinearFeet: nil
-        )
-        let wallScope = ScopeEstimateLine(
-            kind: .walls,
-            enabled: true,
-            quantity: paintableArea,
-            unit: "sq ft",
-            productionRate: productionRate,
-            laborHours: laborHours
-        )
-        let room = CapturedRoomSummary(
-            id: UUID(),
-            name: name,
-            wallCount: validSegments.count,
-            doorCount: 0,
-            windowCount: 0,
-            source: .manual,
-            verificationRequired: false
-        )
-        let estimate = AutoEstimateResult(
-            productionSquareFeetPerHour: productionRate,
-            laborHours: laborHours,
-            measurementsConfirmed: true,
-            scopeLines: [wallScope],
-            totalLaborHours: laborHours
-        )
-        let scan = WalkthroughScan(
-            id: UUID(),
-            projectID: project.id,
-            createdAt: .now,
-            room: room,
-            transcript: notes,
-            captures: [],
-            videoFileName: nil,
-            durationSeconds: nil,
-            usdzFileName: nil,
-            roomPlanJSONFileName: nil,
-            measurements: measurements,
-            autoEstimate: estimate,
-            measuredWalls: validSegments,
-            archivedAt: nil
-        )
-
-        onSave(scan)
-        dismiss()
-    }
-}
-
-private struct ExteriorSegmentRow: View {
-    @Binding var segment: MeasuredWall
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                TextField("Length ft", value: $segment.lengthFeet, format: .number)
-                    .keyboardType(.decimalPad)
-                Text("×")
-                TextField("Height ft", value: $segment.heightFeet, format: .number)
-                    .keyboardType(.decimalPad)
-                Text("ft")
-            }
-            Text(String(format: "%.0f sq ft", segment.lengthFeet * segment.heightFeet))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
 private struct SmartScanExperience: View {
     let project: ProjectSummary
     let suggestedRoomName: String
@@ -616,7 +449,7 @@ private struct SmartScanExperience: View {
         }
         .alert("RoomPlan framing", isPresented: $showingFramingHelp) {
             Button("OK", role: .cancel) { }
-        } message: { Text("RoomPlan measurement capture stays at its native camera framing to protect tracking accuracy. Start as far back as practical and move steadily. For long exterior walls, use Exterior / Large Surface instead of forcing RoomPlan to behave like an exterior scanner.") }
+        } message: { Text("RoomPlan measurement capture stays at its native camera framing to protect tracking accuracy. Start as far back as practical and move steadily. For exterior work, return to Smart Scanner and choose Exterior. Aurelium uses a separate ARKit + LiDAR capture engine there rather than forcing RoomPlan beyond its interior design target.") }
         .alert("Walkthrough issue", isPresented: Binding(get: { errorMessage != nil || speech.errorMessage != nil }, set: { if !$0 { errorMessage = nil; speech.errorMessage = nil } })) {
             Button("OK", role: .cancel) { errorMessage = nil; speech.errorMessage = nil }
         } message: { Text(errorMessage ?? speech.errorMessage ?? "Unknown error") }
@@ -893,8 +726,10 @@ private struct PostScanEstimateView: View {
     @State private var paintTrim = false
     @State private var paintCeiling = false
     @State private var doorQuantity: String
+    @State private var confirmedDoorCount: String
     @State private var doorRate = "2"
     @State private var windowQuantity: String
+    @State private var confirmedWindowCount: String
     @State private var windowRate = "2"
     @State private var trimQuantity: String
     @State private var trimRate = "50"
@@ -907,8 +742,12 @@ private struct PostScanEstimateView: View {
         self.onDiscard = onDiscard
         let m = walkthrough.measurements
         _roomName = State(initialValue: walkthrough.room.name)
-        _doorQuantity = State(initialValue: String(m?.detectedDoorCount ?? walkthrough.room.doorCount))
-        _windowQuantity = State(initialValue: String(m?.detectedWindowCount ?? walkthrough.room.windowCount))
+        let rawDoors = m?.detectedDoorCount ?? walkthrough.room.doorCount
+        let rawWindows = m?.detectedWindowCount ?? walkthrough.room.windowCount
+        _doorQuantity = State(initialValue: String(rawDoors))
+        _confirmedDoorCount = State(initialValue: String(rawDoors))
+        _windowQuantity = State(initialValue: String(rawWindows))
+        _confirmedWindowCount = State(initialValue: String(rawWindows))
         _trimQuantity = State(initialValue: String(format: "%.1f", m?.estimatedTrimLinearFeet ?? m?.wallLinearFeet ?? 0))
         _ceilingQuantity = State(initialValue: String(format: "%.0f", m?.ceilingSquareFeet ?? 0))
     }
@@ -935,6 +774,14 @@ private struct PostScanEstimateView: View {
                         LabeledContent("Detected doors", value: "\(m.detectedDoorCount ?? walkthrough.room.doorCount)")
                         LabeledContent("Detected windows", value: "\(m.detectedWindowCount ?? walkthrough.room.windowCount)")
                     }
+                }
+
+                Section("Teach Scanner") {
+                    Text("Correct what RoomPlan saw before choosing paint scope. These corrections are saved as labeled examples so future Aurelium detection can be evaluated and trained against real field data.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    HStack { Label("Doors", systemImage: "door.left.hand.open"); Spacer(); TextField("0", text: $confirmedDoorCount).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width:72).onChange(of: confirmedDoorCount) { _, value in doorQuantity = value } }
+                    HStack { Label("Windows", systemImage: "window.vertical.closed"); Spacer(); TextField("0", text: $confirmedWindowCount).keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width:72).onChange(of: confirmedWindowCount) { _, value in windowQuantity = value } }
+                    Text("Use the exterior scanner's live Teach controls when dimensions or roof slope need geometric correction.").font(.caption).foregroundStyle(.secondary)
                 }
 
                 Section("Paint walls") {
@@ -1016,7 +863,7 @@ private struct PostScanEstimateView: View {
     private var totalHours: Double { [wallHours, doorHours, windowHours, trimHours, ceilingHours].compactMap { $0 }.reduce(0,+) }
 
     private var ratesAreValid: Bool {
-        guard (Double(wallRate) ?? 0) > 0 else { return false }
+        guard (Double(wallRate) ?? 0) > 0, Int(confirmedDoorCount) != nil, Int(confirmedWindowCount) != nil else { return false }
         if paintDoors && !validPair(doorQuantity, doorRate) { return false }
         if paintWindows && !validPair(windowQuantity, windowRate) { return false }
         if paintTrim && !validPair(trimQuantity, trimRate) { return false }
@@ -1047,6 +894,9 @@ private struct PostScanEstimateView: View {
         var updated = walkthrough
         updated.room.name = roomName.trimmingCharacters(in:.whitespacesAndNewlines)
         updated.room.verificationRequired = !confirmed
+        let rawDoors = walkthrough.measurements?.detectedDoorCount ?? walkthrough.room.doorCount
+        let rawWindows = walkthrough.measurements?.detectedWindowCount ?? walkthrough.room.windowCount
+        updated.scannerCorrections = ScannerCorrectionSummary(rawDoorCount: rawDoors, rawWindowCount: rawWindows, confirmedDoorCount: max(0, Int(confirmedDoorCount) ?? rawDoors), confirmedWindowCount: max(0, Int(confirmedWindowCount) ?? rawWindows))
         updated.autoEstimate = AutoEstimateResult(
             productionSquareFeetPerHour: wallRateValue,
             laborHours: wallLabor,
