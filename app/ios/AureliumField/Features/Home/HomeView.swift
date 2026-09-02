@@ -14,8 +14,14 @@ struct HomeView: View {
                     Text("Your jobs, field capture, estimates and time in one focused workspace.").foregroundStyle(.secondary)
                 }
                 Button { model.selectedTab = .estimate } label: {
-                    Label("Start Smart Estimate", systemImage: "wand.and.stars").frame(maxWidth: .infinity)
-                }.buttonStyle(.borderedProminent).controlSize(.large).tint(.primary)
+                    Label("Start Smart Estimate", systemImage: "wand.and.stars")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(.accentColor)
 
                 Button {
                     guard !syncingProjects else { return }

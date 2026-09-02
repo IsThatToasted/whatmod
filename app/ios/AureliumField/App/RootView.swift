@@ -20,6 +20,7 @@ struct RootView: View {
 
 private struct EmployeeWorkspaceView: View {
     @Environment(AppModel.self) private var model
+    @State private var showingEstimator = false
 
     var body: some View {
         @Bindable var model = model
@@ -30,8 +31,8 @@ private struct EmployeeWorkspaceView: View {
                     NavigationStack { HomeView() }
                 case .projects:
                     NavigationStack { ProjectsView() }
-                case .estimate:
-                    NavigationStack { EstimatorView() }
+                case .chat:
+                    NavigationStack { ChatView() }
                 case .field:
                     NavigationStack { FieldView() }
                 case .team:
@@ -40,11 +41,15 @@ private struct EmployeeWorkspaceView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
+            HStack {
+                Menu { Button("Field Workspace") { showingEstimator = false }; Button("Smart Estimate") { showingEstimator = true } } label: { Label("Aurelium", systemImage: "square.grid.2x2") }.font(.caption.bold())
+                Spacer(); Text("Field").font(.caption).foregroundStyle(.secondary)
+            }.padding(.horizontal, 14).padding(.vertical, 7).background(.bar)
             Divider()
             HStack(spacing: 0) {
                 workspaceTab(.home, title: "Home", icon: "house")
                 workspaceTab(.projects, title: "Projects", icon: "briefcase")
-                workspaceTab(.estimate, title: "Estimate", icon: "wand.and.stars")
+                workspaceTab(.chat, title: "Chat", icon: "bubble.left.and.bubble.right")
                 workspaceTab(.field, title: "Field", icon: "camera")
                 workspaceTab(.team, title: "My Time", icon: "clock.badge.checkmark")
             }
@@ -53,6 +58,7 @@ private struct EmployeeWorkspaceView: View {
             .padding(.bottom, 6)
             .background(.bar)
         }
+        .fullScreenCover(isPresented: $showingEstimator) { NavigationStack { EstimatorView().toolbar { ToolbarItem(placement: .topBarLeading) { Button("Back to Field") { showingEstimator = false } } } } }
     }
 
     private func workspaceTab(_ tab: AppTab, title: String, icon: String) -> some View {

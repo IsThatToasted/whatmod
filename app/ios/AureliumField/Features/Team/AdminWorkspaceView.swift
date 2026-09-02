@@ -1,7 +1,7 @@
 import SwiftUI
 import Observation
 
-private enum AdminTab: Hashable { case overview, timecards, employees, invites }
+private enum AdminTab: Hashable { case overview, timecards, payroll, employees, invites }
 
 struct AdminWorkspaceView: View {
     @Environment(AppModel.self) private var model
@@ -17,6 +17,9 @@ struct AdminWorkspaceView: View {
                 .tabItem { Label("Timecards", systemImage: "clock.badge.checkmark") }
                 .badge(store.pendingReviewCount)
                 .tag(AdminTab.timecards)
+            NavigationStack { PayrollAdminView() }
+                .tabItem { Label("Payroll", systemImage: "dollarsign.circle") }
+                .tag(AdminTab.payroll)
             NavigationStack { AdminEmployeesView() }
                 .tabItem { Label("Employees", systemImage: "person.3") }
                 .tag(AdminTab.employees)

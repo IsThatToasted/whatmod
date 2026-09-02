@@ -19,6 +19,8 @@ targets:
       - AureliumField/Features/Home/HomeView.swift
       - AureliumField/Features/Projects/ProjectsView.swift
       - AureliumField/Features/Projects/FieldView.swift
+      - AureliumField/Features/Chat/ChatView.swift
+      - AureliumField/Features/Payroll/PayrollAdminView.swift
       - AureliumField/Features/Estimator/EstimatorView.swift
       - AureliumField/Features/Team/TeamView.swift
       - AureliumField/Features/Team/AdminWorkspaceView.swift
@@ -36,8 +38,8 @@ targets:
       path: AureliumField/Resources/Info.plist
       properties:
         CFBundleDisplayName: Aurelium Field
-        CFBundleShortVersionString: '0.9.3'
-        CFBundleVersion: '23'
+        CFBundleShortVersionString: '0.10.0'
+        CFBundleVersion: '25'
         CFBundleURLTypes:
           - CFBundleURLName: com.aurelium.field.auth
             CFBundleURLSchemes:

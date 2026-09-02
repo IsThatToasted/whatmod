@@ -7,8 +7,10 @@ struct EstimatorView: View {
     @Environment(AppModel.self) private var model
     @State private var projectSearch = ""
     @State private var showingScan = false
+    @State private var showingExterior = false
     @State private var showingCompleteConfirmation = false
     @State private var showingProposal = false
+    @State private var editingWalkthrough: WalkthroughScan?
 
     private var matchingProjects: [ProjectSummary] {
         let q = projectSearch.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -42,6 +44,11 @@ struct EstimatorView: View {
                     .buttonStyle(.plain)
                     .accessibilityHint("Starts a walkthrough for \(project.name)")
 
+                    Button { showingExterior = true } label: {
+                        HStack(spacing:14){Image(systemName:"building.2.crop.circle").font(.title2).frame(width:36);VStack(alignment:.leading,spacing:3){Text("Exterior / Large Surface").font(.headline);Text("Segment long elevations and correct dimensions manually").font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"chevron.right").foregroundStyle(.secondary)}
+                        .padding(16).background(.thinMaterial,in:RoundedRectangle(cornerRadius:18))
+                    }.buttonStyle(.plain)
+
                     walkthroughSection(project)
                     if !model.walkthroughs(for: project.id).isEmpty { walkthroughCompletionCard(project) }
                 } else {
@@ -60,6 +67,7 @@ struct EstimatorView: View {
                 } onCancel: { showingScan = false }
             }
         }
+        .sheet(isPresented:$showingExterior) { if let project=model.selectedProject { ExteriorSurfaceView(project:project) { scan in model.addWalkthrough(scan); showingExterior=false } } }
         .confirmationDialog("Walkthrough Complete?", isPresented: $showingCompleteConfirmation, titleVisibility: .visible) {
             Button("Walkthrough Complete") { if let project=model.selectedProject { model.completeWalkthroughSet(for:project.id); showingProposal=true } }
             Button("Cancel", role:.cancel) {}
@@ -67,6 +75,7 @@ struct EstimatorView: View {
             if let project=model.selectedProject { Text("This archives all \(model.walkthroughs(for:project.id).count) room walkthroughs for \(project.name) and opens the combined estimate/proposal draft.") }
         }
         .sheet(isPresented:$showingProposal) { if let project=model.selectedProject { ProposalDraftView(project:project) } }
+        .sheet(item: $editingWalkthrough) { scan in WalkthroughEditView(walkthrough: scan) { model.updateWalkthrough($0); editingWalkthrough = nil } }
     }
 
     private var projectPicker: some View {
@@ -126,7 +135,13 @@ struct EstimatorView: View {
                             Spacer(); Image(systemName: "chevron.right").foregroundStyle(.tertiary)
                         }.padding(12).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                     }.buttonStyle(.plain)
-                    .contextMenu { Button("Delete walkthrough", role: .destructive) { model.deleteWalkthrough(scan) } }
+                    .contextMenu {
+                        if scan.archivedAt == nil { Button("Edit walkthrough") { editingWalkthrough = scan } }
+                        Button("Delete walkthrough", role: .destructive) { model.deleteWalkthrough(scan) }
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if scan.archivedAt == nil { Button("Edit") { editingWalkthrough = scan }.font(.caption.bold()).buttonStyle(.bordered).padding(8) }
+                    }
                 }
             }
         }
@@ -137,9 +152,62 @@ struct EstimatorView: View {
         return VStack(alignment:.leading,spacing:12){
             HStack{VStack(alignment:.leading,spacing:3){Text("READY TO WRAP UP?").font(.caption2.bold()).tracking(1.1).foregroundStyle(.secondary);Text("Complete the project walkthrough").font(.headline)};Spacer();Text("\(archived)/\(scans.count) archived").font(.caption).foregroundStyle(.secondary)}
             Text("Use this after every room you need has been scanned and reviewed. Aurelium will archive the walkthrough set and assemble the room estimates into a proposal draft.").font(.subheadline).foregroundStyle(.secondary)
-            Button{showingCompleteConfirmation=true}label:{Label("Walkthrough Complete",systemImage:"checkmark.seal.fill").font(.headline).frame(maxWidth:.infinity)}.buttonStyle(.borderedProminent).controlSize(.large).tint(.primary)
+            Button { showingCompleteConfirmation = true } label: {
+                Label("Complete Project Walkthrough", systemImage: "checkmark.seal.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(.accentColor)
         }.padding(16).background(.thinMaterial,in:RoundedRectangle(cornerRadius:18))
     }
+}
+
+private struct WalkthroughEditView: View {
+    let walkthrough: WalkthroughScan
+    let onSave: (WalkthroughScan) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var roomName: String
+    @State private var notes: String
+    @State private var lines: [ScopeEstimateLine]
+
+    init(walkthrough: WalkthroughScan, onSave: @escaping (WalkthroughScan) -> Void) {
+        self.walkthrough = walkthrough; self.onSave = onSave
+        _roomName = State(initialValue: walkthrough.room.name)
+        _notes = State(initialValue: walkthrough.transcript)
+        let fallback = [ScopeEstimateLine(kind:.walls,enabled:true,quantity:walkthrough.measurements?.paintableWallSquareFeet ?? 0,unit:"sq ft",productionRate:150,laborHours:0),ScopeEstimateLine(kind:.doors,enabled:false,quantity:Double(walkthrough.room.doorCount),unit:"doors",productionRate:2,laborHours:0),ScopeEstimateLine(kind:.windows,enabled:false,quantity:Double(walkthrough.room.windowCount),unit:"windows",productionRate:2,laborHours:0),ScopeEstimateLine(kind:.trim,enabled:false,quantity:walkthrough.measurements?.estimatedTrimLinearFeet ?? 0,unit:"linear ft",productionRate:50,laborHours:0),ScopeEstimateLine(kind:.ceiling,enabled:false,quantity:walkthrough.measurements?.ceilingSquareFeet ?? 0,unit:"sq ft",productionRate:125,laborHours:0)]
+        _lines = State(initialValue: walkthrough.autoEstimate?.scopeLines ?? fallback)
+    }
+    var body: some View { NavigationStack { Form {
+        Section("Room") { TextField("Room name", text:$roomName); TextField("Notes",text:$notes,axis:.vertical).lineLimit(3...8) }
+        Section("Estimate scope") { ForEach($lines) { $line in VStack(alignment:.leading,spacing:8){Toggle(line.kind.rawValue,isOn:$line.enabled);if line.enabled{HStack{Text("Quantity");Spacer();TextField("0",value:$line.quantity,format:.number).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width:90);Text(line.unit).font(.caption).foregroundStyle(.secondary)};HStack{Text("Production rate");Spacer();TextField("0",value:$line.productionRate,format:.number).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width:90);Text("/ hr").font(.caption).foregroundStyle(.secondary)};LabeledContent("Labor",value:String(format:"%.2f hr",line.productionRate > 0 ? line.quantity / line.productionRate : 0))}}.padding(.vertical,4)} }
+        Section { LabeledContent("Recalculated room labor", value:String(format:"%.2f hr",totalHours)); Text("Editing changes scope assumptions only. RoomPlan geometry and captured evidence are preserved.").font(.caption).foregroundStyle(.secondary) }
+    }.navigationTitle("Edit Walkthrough").toolbar{ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}};ToolbarItem(placement:.confirmationAction){Button("Save"){save()}.disabled(roomName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || lines.contains(where:{$0.enabled && $0.productionRate <= 0}))}} } }
+    private var totalHours:Double{lines.filter(\.enabled).reduce(0){$0 + ($1.productionRate > 0 ? $1.quantity/$1.productionRate:0)}}
+    private func save(){var copy=walkthrough;copy.room.name=roomName.trimmingCharacters(in:.whitespacesAndNewlines);copy.transcript=notes;var updated=lines;for i in updated.indices{updated[i].laborHours=updated[i].enabled && updated[i].productionRate > 0 ? updated[i].quantity/updated[i].productionRate:0};let wall=updated.first(where:{$0.kind == .walls});copy.autoEstimate=AutoEstimateResult(productionSquareFeetPerHour:wall?.productionRate ?? copy.autoEstimate?.productionSquareFeetPerHour ?? 150,laborHours:wall?.laborHours ?? 0,measurementsConfirmed:copy.autoEstimate?.measurementsConfirmed ?? false,scopeLines:updated,totalLaborHours:updated.reduce(0){$0+$1.laborHours});onSave(copy);dismiss()}
+}
+
+private struct ExteriorSurfaceView: View {
+    let project: ProjectSummary
+    let onSave: (WalkthroughScan) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = "Exterior Elevation"
+    @State private var segments: [MeasuredWall] = [MeasuredWall(id:UUID(),lengthFeet:0,heightFeet:0,grossSquareFeet:0)]
+    @State private var openings = 0.0
+    @State private var notes = ""
+    @State private var productionRate = 150.0
+    private var gross:Double{segments.reduce(0){$0+$1.lengthFeet*$1.heightFeet}}
+    private var paintable:Double{max(0,gross-openings)}
+    private var labor:Double{productionRate > 0 ? paintable/productionRate:0}
+    var body: some View { NavigationStack { Form {
+        Section { Text("Large exterior capture").font(.title2.bold());Text("RoomPlan is intentionally not used as the measurement authority here. Break a long elevation into visible segments, enter corrected dimensions, subtract openings, and attach notes. This protects estimate accuracy around corners, obstructions and partial visibility.").foregroundStyle(.secondary) }
+        Section("Elevation") { TextField("Name",text:$name);ForEach($segments){$segment in VStack(alignment:.leading){HStack{TextField("Length ft",value:$segment.lengthFeet,format:.number).keyboardType(.decimalPad);Text("×");TextField("Height ft",value:$segment.heightFeet,format:.number).keyboardType(.decimalPad);Text("ft")};Text(String(format:"%.0f sq ft",segment.lengthFeet*segment.heightFeet)).font(.caption).foregroundStyle(.secondary)}}.onDelete{segments.remove(atOffsets:$0)};Button("Add wall segment"){segments.append(MeasuredWall(id:UUID(),lengthFeet:0,heightFeet:0,grossSquareFeet:0))} }
+        Section("Openings & production") { TextField("Doors/windows/openings sq ft",value:$openings,format:.number).keyboardType(.decimalPad);TextField("Production sq ft/hr",value:$productionRate,format:.number).keyboardType(.decimalPad);LabeledContent("Paintable area",value:String(format:"%.0f sq ft",paintable));LabeledContent("Labor",value:String(format:"%.1f hr",labor)) }
+        Section("Field notes") { TextField("Obstructions, stories, access, corrections",text:$notes,axis:.vertical).lineLimit(4...10) }
+    }.navigationTitle("Exterior Surface").toolbar { ToolbarItem(placement:.cancellationAction){Button("Cancel"){dismiss()}};ToolbarItem(placement:.confirmationAction){Button("Save"){save()}.disabled(name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || paintable <= 0 || productionRate <= 0)} } } }
+    private func save(){let valid=segments.map{MeasuredWall(id:$0.id,lengthFeet:$0.lengthFeet,heightFeet:$0.heightFeet,grossSquareFeet:$0.lengthFeet*$0.heightFeet)};let avg=valid.isEmpty ? 0:valid.map(\.heightFeet).reduce(0,+)/Double(valid.count);let m=RoomMeasurementSummary(wallLinearFeet:valid.map(\.lengthFeet).reduce(0,+),averageWallHeightFeet:avg,grossWallSquareFeet:gross,openingsSquareFeet:openings,paintableWallSquareFeet:paintable,ceilingSquareFeet:nil,detectedDoorCount:nil,detectedWindowCount:nil,estimatedTrimLinearFeet:nil);let line=ScopeEstimateLine(kind:.walls,enabled:true,quantity:paintable,unit:"sq ft",productionRate:productionRate,laborHours:labor);let room=CapturedRoomSummary(id:UUID(),name:name,wallCount:valid.count,doorCount:0,windowCount:0,source:.manual,verificationRequired:false);onSave(WalkthroughScan(id:UUID(),projectID:project.id,createdAt:.now,room:room,transcript:notes,captures:[],videoFileName:nil,durationSeconds:nil,usdzFileName:nil,roomPlanJSONFileName:nil,measurements:m,autoEstimate:AutoEstimateResult(productionSquareFeetPerHour:productionRate,laborHours:labor,measurementsConfirmed:true,scopeLines:[line],totalLaborHours:labor),measuredWalls:valid,archivedAt:nil));dismiss()}
 }
 
 private struct SmartScanExperience: View {
@@ -158,6 +226,7 @@ private struct SmartScanExperience: View {
     @State private var captureConfirmation: EvidenceTag?
     @State private var pendingWalkthrough: WalkthroughScan?
     @State private var showingEstimateConfirm = false
+    @State private var showingFramingHelp = false
 
     var body: some View {
         ZStack {
@@ -198,6 +267,9 @@ private struct SmartScanExperience: View {
                 }
             }
         }
+        .alert("RoomPlan framing", isPresented: $showingFramingHelp) {
+            Button("OK", role: .cancel) { }
+        } message: { Text("RoomPlan measurement capture stays at its native camera framing to protect tracking accuracy. Start as far back as practical and move steadily. For long exterior walls, use Exterior / Large Surface instead of forcing RoomPlan to behave like an exterior scanner.") }
         .alert("Walkthrough issue", isPresented: Binding(get: { errorMessage != nil || speech.errorMessage != nil }, set: { if !$0 { errorMessage = nil; speech.errorMessage = nil } })) {
             Button("OK", role: .cancel) { errorMessage = nil; speech.errorMessage = nil }
         } message: { Text(errorMessage ?? speech.errorMessage ?? "Unknown error") }
@@ -217,6 +289,9 @@ private struct SmartScanExperience: View {
                 }
             }.foregroundStyle(.white)
             Spacer()
+            Button { showingFramingHelp = true } label: {
+                Label("1×", systemImage: "viewfinder").font(.caption.bold()).padding(.horizontal, 10).frame(height: 42).background(.black.opacity(0.76), in: Capsule()).foregroundStyle(.white)
+            }
             Button {
                 Task {
                     if speech.isRecording { speech.stop() }
@@ -355,7 +430,12 @@ private struct WalkthroughReviewView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(walkthrough.room.name).font(.title2.bold())
                     Text(walkthrough.createdAt.formatted(date: .long, time: .shortened)).foregroundStyle(.secondary)
-                    HStack { metric("Walls", walkthrough.room.wallCount); metric("Windows", walkthrough.room.windowCount); metric("Doors", walkthrough.room.doorCount); metric("Tags", walkthrough.captures.count) }
+                    HStack {
+                        metric("Walls", walkthrough.room.wallCount)
+                        metric("Windows", estimateCount(for: .windows, fallback: walkthrough.room.windowCount))
+                        metric("Doors", estimateCount(for: .doors, fallback: walkthrough.room.doorCount))
+                        metric("Tags", walkthrough.captures.count)
+                    }
                 }
 
                 if let measurements = walkthrough.measurements {
@@ -364,7 +444,12 @@ private struct WalkthroughReviewView: View {
                         LabeledContent("Wall length", value: String(format: "%.1f ft", measurements.wallLinearFeet))
                         LabeledContent("Average height", value: String(format: "%.1f ft", measurements.averageWallHeightFeet))
                         LabeledContent("Gross wall area", value: String(format: "%.0f sq ft", measurements.grossWallSquareFeet))
-                        LabeledContent("Doors + windows", value: String(format: "− %.0f sq ft", measurements.openingsSquareFeet))
+                        LabeledContent("RoomPlan opening area", value: String(format: "− %.0f sq ft", measurements.openingsSquareFeet))
+                        if measurements.openingsSquareFeet <= 0.01 && hasManualOpeningScope {
+                            Text("Door/window quantities below were confirmed during estimate review because RoomPlan did not detect usable opening geometry for this scan.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         LabeledContent("Paintable walls", value: String(format: "%.0f sq ft", measurements.paintableWallSquareFeet))
                         if let walls = walkthrough.measuredWalls {
                             ForEach(Array(walls.enumerated()), id: \.element.id) { index, wall in
@@ -375,7 +460,7 @@ private struct WalkthroughReviewView: View {
                             Divider()
                             if let lines = estimate.scopeLines {
                                 ForEach(lines.filter(\.enabled)) { line in
-                                    LabeledContent(line.kind.rawValue, value: String(format: "%.1f hr", line.laborHours))
+                                    LabeledContent(line.kind.rawValue, value: scopeSummary(line))
                                 }
                             } else {
                                 LabeledContent("Production rate", value: String(format: "%.0f sq ft/hr", estimate.productionSquareFeetPerHour))
@@ -417,6 +502,32 @@ private struct WalkthroughReviewView: View {
 
     private func metric(_ title: String, _ value: Int) -> some View {
         VStack(alignment: .leading, spacing: 2) { Text("\(value)").font(.headline); Text(title).font(.caption2).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func estimateCount(for kind: EstimateScopeKind, fallback: Int) -> Int {
+        guard let line = walkthrough.autoEstimate?.scopeLines?.first(where: { $0.enabled && $0.kind == kind }) else { return fallback }
+        return max(0, Int(line.quantity.rounded()))
+    }
+
+    private var hasManualOpeningScope: Bool {
+        estimateCount(for: .doors, fallback: 0) > 0 || estimateCount(for: .windows, fallback: 0) > 0
+    }
+
+    private func scopeSummary(_ line: ScopeEstimateLine) -> String {
+        let quantity: String
+        if line.quantity.rounded() == line.quantity {
+            quantity = String(Int(line.quantity))
+        } else {
+            quantity = String(format: "%.1f", line.quantity)
+        }
+        let unit: String
+        switch line.kind {
+        case .doors: unit = line.quantity == 1 ? "door" : "doors"
+        case .windows: unit = line.quantity == 1 ? "window" : "windows"
+        case .trim: unit = "linear ft"
+        case .walls, .ceiling: unit = "sq ft"
+        }
+        return "\(quantity) \(unit) · " + String(format: "%.1f hr", line.laborHours)
     }
 }
 

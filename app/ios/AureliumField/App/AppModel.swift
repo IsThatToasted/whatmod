@@ -77,6 +77,13 @@ final class AppModel {
         }
     }
 
+    func updateWalkthrough(_ walkthrough: WalkthroughScan) {
+        guard walkthrough.archivedAt == nil, let index = walkthroughs.firstIndex(where: { $0.id == walkthrough.id }) else { return }
+        walkthroughs[index] = walkthrough
+        persist()
+        Task { await WalkthroughCloudSync.shared.updateEstimateMetadata(walkthrough) }
+    }
+
     func deleteWalkthrough(_ walkthrough: WalkthroughScan) {
         deleteWalkthroughMedia(walkthrough)
         walkthroughs.removeAll { $0.id == walkthrough.id }
@@ -135,5 +142,5 @@ final class AppModel {
 enum WorkspaceMode: Hashable { case employee, admin }
 
 enum AppTab: Hashable {
-    case home, projects, estimate, field, team
+    case home, projects, chat, field, team
 }
