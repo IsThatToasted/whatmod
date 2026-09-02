@@ -26,9 +26,16 @@ jobs:
         with:
           node-version: 22
 
-      - name: Remove retired auth-bridge leftovers
+      - name: Remove retired web-auth leftovers
         run: |
           rm -f app/src/auth/NativeAuthBridge.tsx app/public/native-auth-start.html
+
+      - name: Protect stable web sign-in baseline
+        run: |
+          set -euo pipefail
+          echo "750e5a9c4bd8b03e9776921c1501807b486c5ca8557fc2ff5dcf052046b806b0  app/src/auth/AuthGate.tsx" | sha256sum -c -
+          echo "b7f048db9fce2694786c63c5ea234341b52b6ca8e9cd759c53281ed99b554832  app/src/lib/supabase.ts" | sha256sum -c -
+          echo "Stable web sign-in source is unchanged."
 
       - name: Validate web cloud configuration
         env:
@@ -50,23 +57,39 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
-      - name: Verify web build
+      - name: Verify compiled web bundle
         working-directory: app
         run: |
           set -euo pipefail
           test -f dist/index.html
-          test -f dist/manifest.webmanifest
           test -d dist/assets
-          test -n "$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          JS_FILE="$(find dist/assets -maxdepth 1 -type f -name '*.js' -print -quit)"
+          test -n "$JS_FILE"
           grep -q '/app/assets/' dist/index.html
-          echo "Aurelium Field rebuilt web bundle verified."
+          grep -q 'v0.9.3-field-time' dist/index.html
+          if grep -q '/src/main.tsx' dist/index.html; then
+            echo "::error title=AF-WEB-001::Vite source entry leaked into production HTML"
+            exit 1
+          fi
+          echo '{"release":"v0.9.3","surface":"web","compiled":true}' > dist/build-info.json
 
-      - name: Assemble Pages site preserving repository root
+      - name: Assemble Pages artifact
         run: |
+          set -euo pipefail
+          rm -rf _site
           mkdir -p _site/app
           rsync -a --exclude '.git' --exclude '.github' --exclude '_site' --exclude 'app' ./ _site/
           cp -R app/dist/. _site/app/
+          # Explicit copies make public assets deterministic even if Vite behavior changes.
+          cp app/public/manifest.webmanifest _site/app/manifest.webmanifest
+          cp app/public/sw.js _site/app/sw.js
           touch _site/.nojekyll
+          test -f _site/app/index.html
+          test -f _site/app/manifest.webmanifest
+          test -f _site/app/build-info.json
+          ASSET_PATH="$(grep -oE '/app/assets/[^\" ]+\.js' _site/app/index.html | head -1)"
+          test -n "$ASSET_PATH"
+          test -f "_site${ASSET_PATH}"
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -83,3 +106,9 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Deployment diagnostics
+        shell: bash
+        run: |
+          echo "Pages deployment completed: ${{ steps.deployment.outputs.page_url }}"
+          echo "Live custom-domain verification is intentionally non-blocking; DNS/CDN propagation can briefly return 404 after a successful Pages deployment."
