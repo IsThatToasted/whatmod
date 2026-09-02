@@ -114,7 +114,7 @@ final class BlueprintAnalysisService {
         if quantities.isEmpty && (upper.contains("FLOOR PLAN") || upper.contains("ELEVATION")) { issues.append(BlueprintIssue(pageNumber:pageNumber,severity:.blocking,message:"No explicit paintable area or reliable dimensions were extracted. Verify scale/dimensions before proposal generation.")) }
         if !upper.contains("PAINT") && !upper.contains("PNT") && upper.contains("FINISH") { issues.append(BlueprintIssue(pageNumber:pageNumber,severity:.warning,message:"Finish information was found but paint scope is not explicit on this sheet.")) }
 
-        return BlueprintPageAnalysis(pageNumber:pageNumber,title:title,recognizedText:text,drawingScale:scale,roomNames:rooms,finishCodes:finishes,quantities:quantities,issues:issues)
+        return BlueprintPageAnalysis(pageNumber:pageNumber,title:title,recognizedText:text,drawingScale:scale,roomNames:rooms,finishCodes:finishes,quantities:quantities,issues:issues,roomGeometries:roomDimensions.map { BlueprintRoomGeometry(label: $0.label, lengthFeet: $0.lengthFeet, widthFeet: $0.widthFeet) })
     }
 
     private func extractScale(from text:String)->String? {

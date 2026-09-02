@@ -198,74 +198,135 @@ private struct WalkthroughEditView: View {
     @State private var roomName: String
     @State private var notes: String
     @State private var lines: [ScopeEstimateLine]
+    @State private var measurementsConfirmed: Bool
+    @State private var paintableWallSquareFeet: Double
+    @State private var ceilingSquareFeet: Double
+    @State private var trimLinearFeet: Double
+    @State private var averageWallHeightFeet: Double
 
     init(walkthrough: WalkthroughScan, onSave: @escaping (WalkthroughScan) -> Void) {
         self.walkthrough = walkthrough
         self.onSave = onSave
+        let m = walkthrough.measurements
         _roomName = State(initialValue: walkthrough.room.name)
         _notes = State(initialValue: walkthrough.transcript)
         _lines = State(initialValue: walkthrough.autoEstimate?.scopeLines ?? Self.fallbackLines(for: walkthrough))
+        _measurementsConfirmed = State(initialValue: walkthrough.autoEstimate?.measurementsConfirmed ?? false)
+        _paintableWallSquareFeet = State(initialValue: m?.paintableWallSquareFeet ?? 0)
+        _ceilingSquareFeet = State(initialValue: m?.ceilingSquareFeet ?? 0)
+        _trimLinearFeet = State(initialValue: m?.estimatedTrimLinearFeet ?? m?.wallLinearFeet ?? 0)
+        _averageWallHeightFeet = State(initialValue: m?.averageWallHeightFeet ?? 0)
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Text("Re-open the original walkthrough assumptions, adjust what is actually being painted, and let Aurelium recalculate without rescanning or replacing the captured geometry.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 roomSection
+                detectedSection
+                measurementsSection
                 estimateScopeSection
                 summarySection
             }
             .navigationTitle("Edit Walkthrough")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!canSave)
-                }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Save & Recalculate") { save() }.disabled(!canSave) }
             }
         }
     }
 
     private var roomSection: some View {
-        Section("Room") {
-            TextField("Room name", text: $roomName)
-            TextField("Notes", text: $notes, axis: .vertical)
-                .lineLimit(3...8)
+        Section("Room & notes") {
+            TextField("Room / elevation name", text: $roomName)
+            TextField("Walkthrough notes", text: $notes, axis: .vertical).lineLimit(3...10)
         }
     }
 
-    private var estimateScopeSection: some View {
-        Section("Estimate scope") {
-            ForEach($lines) { $line in
-                ScopeEstimateEditorRow(line: $line)
-            }
-        }
-    }
-
-    private var summarySection: some View {
-        Section {
-            LabeledContent(
-                "Recalculated room labor",
-                value: String(format: "%.2f hr", totalHours)
-            )
-            Text("Editing changes scope assumptions only. RoomPlan geometry and captured evidence are preserved.")
+    private var detectedSection: some View {
+        Section("Scanner detection") {
+            LabeledContent("Detected doors", value: "\(rawDoorCount)")
+            LabeledContent("Confirmed doors", value: String(format: "%.0f", quantity(for: .doors)))
+            LabeledContent("Detected windows", value: "\(rawWindowCount)")
+            LabeledContent("Confirmed windows", value: String(format: "%.0f", quantity(for: .windows)))
+            Text("Detected values remain attached to the original scan. Your confirmed quantities below drive the estimate and become correction data for Teach Scanner.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private var canSave: Bool {
-        let hasName = !roomName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let ratesValid = !lines.contains { $0.enabled && $0.productionRate <= 0 }
-        return hasName && ratesValid
+    private var measurementsSection: some View {
+        Section("Measured geometry") {
+            Toggle("Measurements reviewed / confirmed", isOn: $measurementsConfirmed)
+            measurementRow("Paintable wall area", value: $paintableWallSquareFeet, unit: "sq ft")
+            measurementRow("Ceiling area", value: $ceilingSquareFeet, unit: "sq ft")
+            measurementRow("Estimated trim", value: $trimLinearFeet, unit: "linear ft")
+            measurementRow("Average wall height", value: $averageWallHeightFeet, unit: "ft")
+            Button("Reset scope quantities from geometry") { resetScopeQuantitiesFromGeometry() }
+                .font(.subheadline)
+        }
     }
 
-    private var totalHours: Double {
-        lines.reduce(0) { partial, line in
-            guard line.enabled, line.productionRate > 0 else { return partial }
-            return partial + (line.quantity / line.productionRate)
+    private var estimateScopeSection: some View {
+        Section("Paint scope") {
+            Text("Toggle each surface exactly as you would during the original walkthrough review.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach($lines) { $line in ScopeEstimateEditorRow(line: $line) }
         }
+    }
+
+    private var summarySection: some View {
+        Section("Recalculated estimate") {
+            ForEach(lines.filter(\.enabled)) { line in
+                LabeledContent(line.kind.rawValue, value: String(format: "%.2f hr", labor(for: line)))
+            }
+            LabeledContent("Room labor", value: String(format: "%.2f hr", totalHours))
+                .font(.headline)
+            Text("RoomPlan/AR geometry, saved 3D data, tagged photos and video evidence are preserved. Only reviewable estimate metadata is updated.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var rawDoorCount: Int { walkthrough.scannerCorrections?.rawDoorCount ?? walkthrough.measurements?.detectedDoorCount ?? walkthrough.room.doorCount }
+    private var rawWindowCount: Int { walkthrough.scannerCorrections?.rawWindowCount ?? walkthrough.measurements?.detectedWindowCount ?? walkthrough.room.windowCount }
+
+    private var canSave: Bool {
+        let hasName = !roomName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let ratesValid = !lines.contains { $0.enabled && ($0.productionRate <= 0 || $0.quantity < 0) }
+        return hasName && ratesValid && paintableWallSquareFeet >= 0 && ceilingSquareFeet >= 0 && trimLinearFeet >= 0 && averageWallHeightFeet >= 0
+    }
+
+    private var totalHours: Double { lines.reduce(0) { $0 + labor(for: $1) } }
+    private func labor(for line: ScopeEstimateLine) -> Double { guard line.enabled, line.productionRate > 0 else { return 0 }; return line.quantity / line.productionRate }
+    private func quantity(for kind: EstimateScopeKind) -> Double { lines.first(where: { $0.kind == kind })?.quantity ?? 0 }
+
+    @ViewBuilder private func measurementRow(_ title: String, value: Binding<Double>, unit: String) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            TextField("0", value: value, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 90)
+            Text(unit).font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private func resetScopeQuantitiesFromGeometry() {
+        updateQuantity(.walls, paintableWallSquareFeet)
+        updateQuantity(.ceiling, ceilingSquareFeet)
+        updateQuantity(.trim, trimLinearFeet)
+        updateQuantity(.doors, Double(walkthrough.scannerCorrections?.confirmedDoorCount ?? walkthrough.room.doorCount))
+        updateQuantity(.windows, Double(walkthrough.scannerCorrections?.confirmedWindowCount ?? walkthrough.room.windowCount))
+    }
+
+    private func updateQuantity(_ kind: EstimateScopeKind, _ value: Double) {
+        guard let index = lines.firstIndex(where: { $0.kind == kind }) else { return }
+        lines[index].quantity = value
     }
 
     private func save() {
@@ -274,21 +335,32 @@ private struct WalkthroughEditView: View {
         copy.transcript = notes
 
         var updatedLines = lines
-        for index in updatedLines.indices {
-            let line = updatedLines[index]
-            updatedLines[index].laborHours = line.enabled && line.productionRate > 0
-                ? line.quantity / line.productionRate
-                : 0
+        for index in updatedLines.indices { updatedLines[index].laborHours = labor(for: updatedLines[index]) }
+
+        if var m = copy.measurements {
+            m.paintableWallSquareFeet = paintableWallSquareFeet
+            m.ceilingSquareFeet = ceilingSquareFeet > 0 ? ceilingSquareFeet : nil
+            m.estimatedTrimLinearFeet = trimLinearFeet
+            m.averageWallHeightFeet = averageWallHeightFeet
+            copy.measurements = m
         }
 
+        let confirmedDoors = Int(quantity(for: .doors).rounded())
+        let confirmedWindows = Int(quantity(for: .windows).rounded())
+        copy.scannerCorrections = ScannerCorrectionSummary(
+            rawDoorCount: rawDoorCount,
+            rawWindowCount: rawWindowCount,
+            confirmedDoorCount: confirmedDoors,
+            confirmedWindowCount: confirmedWindows
+        )
+
         let wallLine = updatedLines.first { $0.kind == .walls }
-        let total = updatedLines.reduce(0) { $0 + $1.laborHours }
         copy.autoEstimate = AutoEstimateResult(
             productionSquareFeetPerHour: wallLine?.productionRate ?? copy.autoEstimate?.productionSquareFeetPerHour ?? 150,
             laborHours: wallLine?.laborHours ?? 0,
-            measurementsConfirmed: copy.autoEstimate?.measurementsConfirmed ?? false,
+            measurementsConfirmed: measurementsConfirmed,
             scopeLines: updatedLines,
-            totalLaborHours: total
+            totalLaborHours: updatedLines.reduce(0) { $0 + $1.laborHours }
         )
 
         onSave(copy)
@@ -297,46 +369,11 @@ private struct WalkthroughEditView: View {
 
     private static func fallbackLines(for walkthrough: WalkthroughScan) -> [ScopeEstimateLine] {
         [
-            ScopeEstimateLine(
-                kind: .walls,
-                enabled: true,
-                quantity: walkthrough.measurements?.paintableWallSquareFeet ?? 0,
-                unit: "sq ft",
-                productionRate: 150,
-                laborHours: 0
-            ),
-            ScopeEstimateLine(
-                kind: .doors,
-                enabled: false,
-                quantity: Double(walkthrough.room.doorCount),
-                unit: "doors",
-                productionRate: 2,
-                laborHours: 0
-            ),
-            ScopeEstimateLine(
-                kind: .windows,
-                enabled: false,
-                quantity: Double(walkthrough.room.windowCount),
-                unit: "windows",
-                productionRate: 2,
-                laborHours: 0
-            ),
-            ScopeEstimateLine(
-                kind: .trim,
-                enabled: false,
-                quantity: walkthrough.measurements?.estimatedTrimLinearFeet ?? 0,
-                unit: "linear ft",
-                productionRate: 50,
-                laborHours: 0
-            ),
-            ScopeEstimateLine(
-                kind: .ceiling,
-                enabled: false,
-                quantity: walkthrough.measurements?.ceilingSquareFeet ?? 0,
-                unit: "sq ft",
-                productionRate: 125,
-                laborHours: 0
-            )
+            ScopeEstimateLine(kind: .walls, enabled: true, quantity: walkthrough.measurements?.paintableWallSquareFeet ?? 0, unit: "sq ft", productionRate: 150, laborHours: 0),
+            ScopeEstimateLine(kind: .doors, enabled: false, quantity: Double(walkthrough.scannerCorrections?.confirmedDoorCount ?? walkthrough.room.doorCount), unit: "doors", productionRate: 2, laborHours: 0),
+            ScopeEstimateLine(kind: .windows, enabled: false, quantity: Double(walkthrough.scannerCorrections?.confirmedWindowCount ?? walkthrough.room.windowCount), unit: "windows", productionRate: 2, laborHours: 0),
+            ScopeEstimateLine(kind: .trim, enabled: false, quantity: walkthrough.measurements?.estimatedTrimLinearFeet ?? 0, unit: "linear ft", productionRate: 50, laborHours: 0),
+            ScopeEstimateLine(kind: .ceiling, enabled: false, quantity: walkthrough.measurements?.ceilingSquareFeet ?? 0, unit: "sq ft", productionRate: 125, laborHours: 0)
         ]
     }
 }

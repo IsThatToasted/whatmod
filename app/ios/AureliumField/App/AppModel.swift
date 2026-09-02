@@ -115,9 +115,39 @@ final class AppModel {
 
     func updateWalkthrough(_ walkthrough: WalkthroughScan) {
         guard walkthrough.archivedAt == nil, let index = walkthroughs.firstIndex(where: { $0.id == walkthrough.id }) else { return }
+        let previous = walkthroughs[index]
         walkthroughs[index] = walkthrough
+        recordEditedCorrections(previous: previous, updated: walkthrough)
+        rebuildActiveEstimate(for: walkthrough.projectID)
         persist()
         Task { await WalkthroughCloudSync.shared.updateEstimateMetadata(walkthrough) }
+    }
+
+    private func rebuildActiveEstimate(for projectID: UUID) {
+        guard activeEstimate.projectID == projectID || selectedProjectID == projectID else { return }
+        let scans = walkthroughs(for: projectID)
+        activeEstimate.projectID = projectID
+        activeEstimate.rooms = scans.map(\.room)
+        activeEstimate.notes = scans.compactMap { scan in
+            let text = scan.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty ? nil : WalkthroughNote(id: UUID(), timestamp: scan.createdAt, transcript: "\(scan.room.name): \(text)")
+        }
+    }
+
+    private func recordEditedCorrections(previous: WalkthroughScan, updated: WalkthroughScan) {
+        guard updated.room.source == .roomPlan, let c = updated.scannerCorrections else { return }
+        let old = previous.scannerCorrections
+        var samples: [ScannerLearningSample] = []
+        if c.confirmedDoorCount != c.rawDoorCount && c.confirmedDoorCount != old?.confirmedDoorCount {
+            samples.append(.init(projectID: updated.projectID, walkthroughID: updated.id, mode: .interior, feature: .door, action: "edit_count_correction", predictedCount: c.rawDoorCount, correctedCount: c.confirmedDoorCount))
+        }
+        if c.confirmedWindowCount != c.rawWindowCount && c.confirmedWindowCount != old?.confirmedWindowCount {
+            samples.append(.init(projectID: updated.projectID, walkthroughID: updated.id, mode: .interior, feature: .window, action: "edit_count_correction", predictedCount: c.rawWindowCount, correctedCount: c.confirmedWindowCount))
+        }
+        if !samples.isEmpty {
+            scannerLearningSamples.append(contentsOf: samples)
+            Task { await syncLearningSamples(samples) }
+        }
     }
 
     func deleteWalkthrough(_ walkthrough: WalkthroughScan) {

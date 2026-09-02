@@ -246,6 +246,13 @@ struct BlueprintQuantity: Identifiable, Codable, Hashable {
     var needsVerification: Bool
 }
 
+struct BlueprintRoomGeometry: Codable, Hashable, Identifiable {
+    var id: UUID = UUID()
+    var label: String
+    var lengthFeet: Double
+    var widthFeet: Double
+}
+
 struct BlueprintPageAnalysis: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var pageNumber: Int
@@ -256,6 +263,23 @@ struct BlueprintPageAnalysis: Identifiable, Codable, Hashable {
     var finishCodes: [String]
     var quantities: [BlueprintQuantity]
     var issues: [BlueprintIssue]
+}
+
+
+struct BlueprintAssumptions: Codable, Hashable {
+    var wallHeightFeet: Double? = nil
+    var coats: Int = 2
+    var wastePercent: Double = 5
+    var wallProductionRate: Double = 150
+    var ceilingProductionRate: Double = 125
+    var trimProductionRate: Double = 50
+    var doorProductionRate: Double = 2
+    var windowProductionRate: Double = 2
+    var includeWalls: Bool = true
+    var includeCeilings: Bool = true
+    var includeTrim: Bool = true
+    var includeDoors: Bool = true
+    var includeWindows: Bool = true
 }
 
 struct BlueprintEstimateDraft: Identifiable, Codable, Hashable {
@@ -269,4 +293,6 @@ struct BlueprintEstimateDraft: Identifiable, Codable, Hashable {
     var totalPaintableSquareFeet: Double
     var totalLaborHours: Double
     var notes: String = ""
+    var assumptions: BlueprintAssumptions? = nil
+    var reviewedAt: Date? = nil
 }

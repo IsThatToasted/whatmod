@@ -6,6 +6,7 @@ app/README.md
 app/RELEASE-v0.10.1-BUILD-FIX.md
 app/RELEASE-v0.10.3-CHAT-RLS-FIX.md
 app/RELEASE-v0.11.0-SMART-ESTIMATE-REVAMP.md
+app/RELEASE-v0.12.0-ESTIMATE-CHAT-POLISH.md
 app/index.html
 app/ios/AureliumField/App/AppModel.swift
 app/ios/AureliumField/App/AureliumFieldApp.swift
@@ -71,6 +72,7 @@ app/supabase/migrations/008_field_operations.sql
 app/supabase/migrations/009_payroll_chat_walkthrough_editing.sql
 app/supabase/migrations/010_chat_rls_repair.sql
 app/supabase/migrations/011_smart_scanner_blueprint_estimates.sql
+app/supabase/migrations/012_chat_audience_admin_groups.sql
 app/tsconfig.app.json
 app/tsconfig.app.tsbuildinfo
 app/tsconfig.json
