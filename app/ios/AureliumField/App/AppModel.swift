@@ -4,6 +4,7 @@ import Observation
 @MainActor @Observable
 final class AppModel {
     var selectedTab: AppTab = .home
+    var isSmartEstimatePresented = false
     var workspaceMode: WorkspaceMode = .employee
     var projects: [ProjectSummary] = []
     var walkthroughs: [WalkthroughScan] = []

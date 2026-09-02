@@ -22,7 +22,6 @@ struct RootView: View {
 
 private struct EmployeeWorkspaceView: View {
     @Environment(AppModel.self) private var model
-    @State private var showingEstimator = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,8 +31,13 @@ private struct EmployeeWorkspaceView: View {
             Divider()
             primaryTabBar
         }
-        .fullScreenCover(isPresented: $showingEstimator) {
-            SmartEstimateWorkspace(onClose: { showingEstimator = false })
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { model.isSmartEstimatePresented },
+                set: { model.isSmartEstimatePresented = $0 }
+            )
+        ) {
+            SmartEstimateWorkspace(onClose: { model.isSmartEstimatePresented = false })
         }
     }
 
@@ -57,10 +61,10 @@ private struct EmployeeWorkspaceView: View {
         HStack {
             Menu {
                 Button("Field Workspace") {
-                    showingEstimator = false
+                    model.isSmartEstimatePresented = false
                 }
                 Button("Smart Estimate") {
-                    showingEstimator = true
+                    model.isSmartEstimatePresented = true
                 }
             } label: {
                 Label("Aurelium", systemImage: "square.grid.2x2")

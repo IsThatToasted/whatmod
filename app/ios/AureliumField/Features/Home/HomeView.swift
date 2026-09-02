@@ -13,7 +13,7 @@ struct HomeView: View {
                     Text("Good afternoon.").font(.largeTitle.bold())
                     Text("Your jobs, field capture, estimates and time in one focused workspace.").foregroundStyle(.secondary)
                 }
-                Button { model.selectedTab = .estimate } label: {
+                Button { model.isSmartEstimatePresented = true } label: {
                     Label("Start Smart Estimate", systemImage: "wand.and.stars")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
