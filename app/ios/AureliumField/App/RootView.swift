@@ -13,7 +13,9 @@ struct RootView: View {
             }
         }
         .onChange(of: cloud.isAdmin) { _, isAdmin in
-            if !isAdmin { model.workspaceMode = .employee }
+            if !isAdmin {
+                model.workspaceMode = .employee
+            }
         }
     }
 }
@@ -23,42 +25,69 @@ private struct EmployeeWorkspaceView: View {
     @State private var showingEstimator = false
 
     var body: some View {
-        @Bindable var model = model
         VStack(spacing: 0) {
-            Group {
-                switch model.selectedTab {
-                case .home:
-                    NavigationStack { HomeView() }
-                case .projects:
-                    NavigationStack { ProjectsView() }
-                case .chat:
-                    NavigationStack { ChatView() }
-                case .field:
-                    NavigationStack { FieldView() }
-                case .team:
-                    NavigationStack { TeamView() }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            HStack {
-                Menu { Button("Field Workspace") { showingEstimator = false }; Button("Smart Estimate") { showingEstimator = true } } label: { Label("Aurelium", systemImage: "square.grid.2x2") }.font(.caption.bold())
-                Spacer(); Text("Field").font(.caption).foregroundStyle(.secondary)
-            }.padding(.horizontal, 14).padding(.vertical, 7).background(.bar)
+            activeWorkspace
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            workspaceSwitcher
             Divider()
-            HStack(spacing: 0) {
-                workspaceTab(.home, title: "Home", icon: "house")
-                workspaceTab(.projects, title: "Projects", icon: "briefcase")
-                workspaceTab(.chat, title: "Chat", icon: "bubble.left.and.bubble.right")
-                workspaceTab(.field, title: "Field", icon: "camera")
-                workspaceTab(.team, title: "My Time", icon: "clock.badge.checkmark")
-            }
-            .padding(.horizontal, 4)
-            .padding(.top, 8)
-            .padding(.bottom, 6)
-            .background(.bar)
+            primaryTabBar
         }
-        .fullScreenCover(isPresented: $showingEstimator) { NavigationStack { EstimatorView().toolbar { ToolbarItem(placement: .topBarLeading) { Button("Back to Field") { showingEstimator = false } } } } }
+        .fullScreenCover(isPresented: $showingEstimator) {
+            SmartEstimateWorkspace(onClose: { showingEstimator = false })
+        }
+    }
+
+    @ViewBuilder
+    private var activeWorkspace: some View {
+        switch model.selectedTab {
+        case .home:
+            NavigationStack { HomeView() }
+        case .projects:
+            NavigationStack { ProjectsView() }
+        case .chat:
+            NavigationStack { ChatView() }
+        case .field:
+            NavigationStack { FieldView() }
+        case .team:
+            NavigationStack { TeamView() }
+        }
+    }
+
+    private var workspaceSwitcher: some View {
+        HStack {
+            Menu {
+                Button("Field Workspace") {
+                    showingEstimator = false
+                }
+                Button("Smart Estimate") {
+                    showingEstimator = true
+                }
+            } label: {
+                Label("Aurelium", systemImage: "square.grid.2x2")
+                    .font(.caption.bold())
+            }
+            Spacer()
+            Text("Field")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .background(.bar)
+    }
+
+    private var primaryTabBar: some View {
+        HStack(spacing: 0) {
+            workspaceTab(.home, title: "Home", icon: "house")
+            workspaceTab(.projects, title: "Projects", icon: "briefcase")
+            workspaceTab(.chat, title: "Chat", icon: "bubble.left.and.bubble.right")
+            workspaceTab(.field, title: "Field", icon: "camera")
+            workspaceTab(.team, title: "My Time", icon: "clock.badge.checkmark")
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+        .background(.bar)
     }
 
     private func workspaceTab(_ tab: AppTab, title: String, icon: String) -> some View {
@@ -79,5 +108,20 @@ private struct EmployeeWorkspaceView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(model.selectedTab == tab ? .isSelected : [])
+    }
+}
+
+private struct SmartEstimateWorkspace: View {
+    let onClose: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            EstimatorView()
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Back to Field", action: onClose)
+                    }
+                }
+        }
     }
 }
