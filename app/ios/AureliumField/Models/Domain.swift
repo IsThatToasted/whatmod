@@ -263,6 +263,7 @@ struct BlueprintPageAnalysis: Identifiable, Codable, Hashable {
     var finishCodes: [String]
     var quantities: [BlueprintQuantity]
     var issues: [BlueprintIssue]
+    var roomGeometries: [BlueprintRoomGeometry]? = nil
 }
 
 

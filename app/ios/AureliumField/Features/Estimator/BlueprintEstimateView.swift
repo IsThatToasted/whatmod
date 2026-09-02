@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -141,8 +142,8 @@ struct BlueprintEstimateView: View {
                 metric("Verified", "\(confidence)%")
             }
             HStack(spacing: 16) {
-                Label("\(blocking) blocking", systemImage: "octagon.fill").foregroundStyle(blocking == 0 ? .secondary : .red)
-                Label("\(warnings) warnings", systemImage: "exclamationmark.triangle.fill").foregroundStyle(warnings == 0 ? .secondary : .orange)
+                Label("\(blocking) blocking", systemImage: "octagon.fill").foregroundStyle(blocking == 0 ? Color.secondary : Color.red)
+                Label("\(warnings) warnings", systemImage: "exclamationmark.triangle.fill").foregroundStyle(warnings == 0 ? Color.secondary : Color.orange)
             }
             .font(.caption.bold())
         }
@@ -163,8 +164,8 @@ struct BlueprintEstimateView: View {
             }
             HStack(spacing: 8) {
                 assumptionChip("\(a.coats) coats")
-                assumptionChip("\(a.wastePercent, specifier: "%.0f")% waste")
-                assumptionChip(a.wallHeightFeet.map { "\($0, specifier: "%.1f") ft fallback" } ?? "Plan heights only")
+                assumptionChip(String(format: "%.0f%% waste", a.wastePercent))
+                assumptionChip(a.wallHeightFeet.map { String(format: "%.1f ft fallback", $0) } ?? "Plan heights only")
             }
         }
         .padding(16)
@@ -238,7 +239,7 @@ struct BlueprintEstimateView: View {
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 3) {
-                            Text("\(q.quantity, specifier: "%.1f") \(q.unit)").font(.headline.monospacedDigit())
+                            Text(String(format: "%.1f %@", q.quantity, q.unit)).font(.headline.monospacedDigit())
                             Text("\(Int(q.confidence * 100))% confidence").font(.caption2).foregroundStyle(.secondary)
                         }
                     }
