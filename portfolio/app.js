@@ -64,7 +64,7 @@ const projects = [
     ],
     tags: ["Swift", "SwiftUI", "LiveKit", "iOS 17"],
     mark: "SC",
-    image: ""
+    image: "./photos/scootercast.png"
   }
 ];
 
