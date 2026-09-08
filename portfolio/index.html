@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="description" content="Brian M. Chambers — Independent developer and product builder." />
+  <title>Brian M. Chambers — Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="noise"></div>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Back to top">BMC</a>
+    <nav class="nav" aria-label="Primary navigation">
+      <a href="#work">Work</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero section-shell">
+      <div class="hero-copy reveal">
+        <p class="eyebrow">Independent Developer • Product Builder • Lead Painter</p>
+        <h1>I build practical software around real problems.</h1>
+        <p class="hero-lede">
+          I’m Brian M. Chambers. My background is in commercial painting and field leadership, and outside of work I design and build software products across web, iOS, and Windows.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#work">View selected work</a>
+          <a class="button ghost" href="mailto:your@email.com">Get in touch</a>
+        </div>
+      </div>
+
+      <div class="hero-visual reveal delay-1" aria-hidden="true">
+        <div class="orbital-card">
+          <div class="orbital-grid"></div>
+          <div class="orbit orbit-a"></div>
+          <div class="orbit orbit-b"></div>
+          <div class="orbit-dot dot-a"></div>
+          <div class="orbit-dot dot-b"></div>
+          <div class="orbit-core">B</div>
+          <div class="status-chip chip-one">Web</div>
+          <div class="status-chip chip-two">iOS</div>
+          <div class="status-chip chip-three">Windows</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="metrics section-shell reveal" aria-label="Experience highlights">
+      <div class="metric"><strong>5</strong><span>Featured projects</span></div>
+      <div class="metric"><strong>3</strong><span>Platforms</span></div>
+      <div class="metric"><strong>10+ yrs</strong><span>Field experience</span></div>
+      <div class="metric"><strong>Solo</strong><span>Product ownership</span></div>
+    </section>
+
+    <section id="work" class="work section-shell">
+      <div class="section-heading reveal">
+        <p class="eyebrow">Selected Work</p>
+        <h2>Projects built from idea to working product.</h2>
+        <p>Each project started with a specific problem or product idea and was iterated through design, debugging, deployment, and real use.</p>
+      </div>
+
+      <div class="project-stack" id="projectStack"></div>
+    </section>
+
+    <section id="about" class="about section-shell">
+      <div class="about-panel reveal">
+        <div>
+          <p class="eyebrow">About</p>
+          <h2>Field experience shaped how I build software.</h2>
+        </div>
+        <div class="about-copy">
+          <p>
+            I’ve spent years working in commercial painting environments where reliability, speed, communication, and practical problem-solving matter every day. That mindset carries directly into the software I build.
+          </p>
+          <p>
+            I’m most interested in tools that reduce friction, organize complicated workflows, or turn a rough idea into something people can actually use. I work independently across product planning, UI/UX, frontend development, backend integration, deployment, testing, and iteration.
+          </p>
+          <div class="tag-row">
+            <span>JavaScript</span><span>Swift / SwiftUI</span><span>Supabase</span><span>GitHub Pages</span><span>GitHub Actions</span><span>Responsive UI</span><span>API Integration</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="contact section-shell reveal">
+      <div class="contact-card">
+        <p class="eyebrow">Contact</p>
+        <h2>Have a project, role, or problem worth solving?</h2>
+        <p>I’m open to conversations around software, construction technology, product development, and practical automation.</p>
+        <div class="contact-actions">
+          <a class="button primary" href="mailto:your@email.com">your@email.com</a>
+          <a class="button ghost" href="https://github.com/whatmod" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="section-shell footer">
+    <span>© <span id="year"></span> Brian M. Chambers</span>
+    <span>Built as a static portfolio for GitHub Pages.</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
