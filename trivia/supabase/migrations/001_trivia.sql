@@ -1,11 +1,10 @@
 -- WhatMod Trivia - production schema
 -- Run this once in the Supabase SQL editor on a new project.
 -- This migration keeps correct answers out of normal client SELECT access.
-create extension if not exists pgcrypto;
-
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   username text not null check (char_length(username) between 2 and 24),
+  username_customized boolean not null default false,
   avatar_url text,
   xp bigint not null default 0 check (xp >= 0),
   wins integer not null default 0 check (wins >= 0),
@@ -15,6 +14,9 @@ create table if not exists public.profiles (
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- Makes this migration safe to re-run over an earlier partial install.
+alter table public.profiles add column if not exists username_customized boolean not null default false;
 
 create table if not exists public.questions (
   id uuid primary key default gen_random_uuid(),
@@ -135,11 +137,24 @@ grant select on public.games, public.game_players to authenticated;
 
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path=public as $$
+declare
+  google_name text;
+  google_avatar text;
 begin
-  insert into public.profiles(user_id,username,avatar_url)
-  values(new.id,
-    left(coalesce(nullif(new.raw_user_meta_data->>'full_name',''),nullif(new.raw_user_meta_data->>'name',''),'Player'),24),
-    new.raw_user_meta_data->>'avatar_url')
+  google_name := left(coalesce(
+    nullif(new.raw_user_meta_data->>'full_name',''),
+    nullif(new.raw_user_meta_data->>'name',''),
+    nullif(new.raw_user_meta_data->>'given_name',''),
+    nullif(split_part(coalesce(new.email,''),'@',1),''),
+    'Player'
+  ),24);
+  google_avatar := coalesce(
+    nullif(new.raw_user_meta_data->>'avatar_url',''),
+    nullif(new.raw_user_meta_data->>'picture','')
+  );
+
+  insert into public.profiles(user_id,username,username_customized,avatar_url)
+  values(new.id,google_name,false,google_avatar)
   on conflict(user_id) do nothing;
   return new;
 end $$;
@@ -186,6 +201,39 @@ begin
   return out;
 end $$;
 
+create or replace function public.sync_my_google_profile()
+returns public.profiles language plpgsql security definer set search_path=public as $$
+declare
+  p public.profiles;
+  u auth.users;
+  google_name text;
+  google_avatar text;
+begin
+  if auth.uid() is null then raise exception 'Sign in required'; end if;
+  select * into u from auth.users where id=auth.uid();
+  if u.id is null then raise exception 'User not found'; end if;
+
+  google_name := left(coalesce(
+    nullif(u.raw_user_meta_data->>'full_name',''),
+    nullif(u.raw_user_meta_data->>'name',''),
+    nullif(u.raw_user_meta_data->>'given_name',''),
+    nullif(split_part(coalesce(u.email,''),'@',1),''),
+    'Player'
+  ),24);
+  google_avatar := coalesce(
+    nullif(u.raw_user_meta_data->>'avatar_url',''),
+    nullif(u.raw_user_meta_data->>'picture','')
+  );
+
+  insert into profiles(user_id,username,username_customized,avatar_url)
+  values(u.id,google_name,false,google_avatar)
+  on conflict(user_id) do update set
+    username = case when profiles.username_customized then profiles.username else excluded.username end,
+    avatar_url = coalesce(excluded.avatar_url,profiles.avatar_url)
+  returning * into p;
+  return p;
+end $$;
+
 create or replace function public.update_my_profile(p_username text)
 returns public.profiles language plpgsql security definer set search_path=public as $$
 declare p public.profiles;
@@ -193,7 +241,7 @@ begin
   if auth.uid() is null then raise exception 'Sign in required'; end if;
   p_username:=trim(p_username);
   if char_length(p_username)<2 or char_length(p_username)>24 then raise exception 'Display name must be 2-24 characters'; end if;
-  update profiles set username=p_username where user_id=auth.uid() returning * into p;
+  update profiles set username=p_username,username_customized=true where user_id=auth.uid() returning * into p;
   return p;
 end $$;
 
@@ -346,7 +394,8 @@ $$;
 create or replace function public.daily_question_id(p_day date)
 returns uuid language sql stable security definer set search_path=public as $$
   select id from questions where is_active and question_type='numeric'
-  order by encode(digest(id::text || p_day::text,'sha256'),'hex') limit 1;
+  -- md5(text) is built into PostgreSQL, so this deterministic daily shuffle has no extension dependency.
+  order by md5(id::text || ':' || p_day::text) limit 1;
 $$;
 
 create or replace function public.get_daily_question()
@@ -394,6 +443,7 @@ begin
   return qid;
 end $$;
 
+grant execute on function public.sync_my_google_profile() to authenticated;
 grant execute on function public.update_my_profile(text) to authenticated;
 grant execute on function public.create_lobby(text,text,int,int,text,int,text) to authenticated;
 grant execute on function public.join_lobby(text) to authenticated;

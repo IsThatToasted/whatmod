@@ -11,5 +11,5 @@ window.TRIVIA_CONFIG = {
 
   // Demo mode lets the UI run before Supabase is configured.
   // Set false for production.
-  demoMode: false
+  demoMode: true
 };

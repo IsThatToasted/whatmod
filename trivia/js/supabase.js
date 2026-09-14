@@ -56,11 +56,18 @@ export async function rpc(name, args = {}) {
   return data;
 }
 
+export async function syncMyGoogleProfile() {
+  if (!state.session?.user || !state.supabase) return null;
+  try { return await rpc("sync_my_google_profile"); }
+  catch (error) { console.warn("Profile metadata sync skipped:", error.message); return null; }
+}
+
 export async function loadProfile() {
   if (!state.session?.user || !state.supabase) return null;
+  await syncMyGoogleProfile();
   const { data, error } = await state.supabase
     .from("profiles")
-    .select("user_id,username,avatar_url,xp,wins,games_played,daily_streak,is_admin,created_at")
+    .select("user_id,username,username_customized,avatar_url,xp,wins,games_played,daily_streak,is_admin,created_at")
     .eq("user_id", state.session.user.id)
     .single();
   if (error) throw error;

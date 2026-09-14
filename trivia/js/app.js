@@ -13,6 +13,9 @@ const $ = (s, el=document) => el.querySelector(s);
 const $$ = (s, el=document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const uid = () => Math.random().toString(36).slice(2);
+const firstName = value => String(value || "Player").trim().split(/\s+/)[0] || "Player";
+const initials = value => String(value || "?").trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||"").join("") || "?";
+const categoryGlyph = value => ({Science:"⚗",Technology:"⌁",History:"⌛",Geography:"⌖",Animals:"◌",Space:"✦",Sports:"◆",Entertainment:"★",Business:"▰",Any:"✦"}[value] || "✦");
 let answerStartedAt = 0;
 let refreshTimer = null;
 let demo = null;
@@ -36,109 +39,126 @@ function toast(message, tone="") {
 function appShell(content) {
   const p = state.profile;
   const xp = xpToNextLevel(p?.xp || 0);
-  const avatar = p?.avatar_url || state.session?.user?.user_metadata?.avatar_url || "";
+  const avatar = p?.avatar_url || state.session?.user?.user_metadata?.avatar_url || state.session?.user?.user_metadata?.picture || "";
+  const name = p?.username || state.session?.user?.user_metadata?.full_name || state.session?.user?.user_metadata?.name || "Player";
   return `
-  <header class="topbar">
-    <button class="brand plain" data-nav="home"><span class="brand-mark">?</span><span>${esc(state.config.appName || "WhatMod Trivia")}</span></button>
-    <nav class="desktop-nav">
-      <button class="nav-pill ${state.view==="home"?"active":""}" data-nav="home">Play</button>
-      <button class="nav-pill ${state.view==="leaderboard"?"active":""}" data-nav="leaderboard">Leaderboard</button>
-      <button class="nav-pill ${state.view==="how"?"active":""}" data-nav="how">How it works</button>
+  <div class="game-bg" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+  <header class="topbar game-hud">
+    <button class="brand plain" data-nav="home"><span class="brand-mark"><b>?</b></span><span class="brand-copy"><strong>${esc(state.config.appName || "WhatMod Trivia")}</strong><small>PLAY • GUESS • CLIMB</small></span></button>
+    <nav class="desktop-nav hud-nav">
+      <button class="nav-pill ${state.view==="home"?"active":""}" data-nav="home"><span>▶</span> Play</button>
+      <button class="nav-pill ${state.view==="leaderboard"?"active":""}" data-nav="leaderboard"><span>♛</span> Ranks</button>
+      <button class="nav-pill ${state.view==="how"?"active":""}" data-nav="how"><span>?</span> Rules</button>
     </nav>
     <div class="user-zone">
-      ${p ? `<button class="level-chip" data-nav="profile"><span>Lv ${xp.level}</span><span class="mini-xp"><i style="width:${Math.round(xp.progress*100)}%"></i></span></button>` : ""}
-      ${state.session ? `<button class="avatar-btn" data-nav="profile">${avatar?`<img src="${esc(avatar)}" alt="">`:"<span>🙂</span>"}</button>`:
-        `<button class="btn small primary" data-action="login">Sign in with Google</button>`}
+      ${p ? `<button class="hud-level" data-nav="profile"><span class="level-orb">${xp.level}</span><span class="hud-level-copy"><b>${esc(firstName(name))}</b><small>${xp.needed.toLocaleString()} XP to Lv ${xp.level+1}</small><span class="mini-xp"><i style="width:${Math.round(xp.progress*100)}%"></i></span></span></button>` : ""}
+      ${state.session ? `<button class="avatar-btn" data-nav="profile">${avatar?`<img src="${esc(avatar)}" alt="${esc(name)}">`:`<span>${esc(initials(name))}</span>`}</button>`:
+        `<button class="btn small primary google-btn" data-action="login"><span>G</span> Sign in</button>`}
     </div>
   </header>
   <main class="page">${content}</main>
   <nav class="mobile-nav">
-    <button data-nav="home" class="${state.view==="home"?"active":""}"><span>◉</span>Play</button>
+    <button data-nav="home" class="${state.view==="home"?"active":""}"><span>▶</span>Play</button>
     <button data-nav="leaderboard" class="${state.view==="leaderboard"?"active":""}"><span>♛</span>Ranks</button>
-    <button data-nav="profile" class="${state.view==="profile"?"active":""}"><span>☺</span>Profile</button>
+    <button data-nav="profile" class="${state.view==="profile"?"active":""}"><span>☺</span>Player</button>
   </nav>`;
 }
 
 function guestBanner() {
   if (state.session) return "";
-  return `<div class="notice"><b>Play instantly in demo mode.</b> Sign in with Google on the live build to save XP, streaks, wins, and multiplayer history.</div>`;
+  return `<div class="guest-quest"><span class="quest-dot">!</span><div><b>Guest run</b><small>Sign in with Google to keep XP, streaks, wins and your player name.</small></div><button class="btn tiny primary" data-action="login">Save progress</button></div>`;
 }
 
 function homeView() {
   const p = state.profile;
   const lvl = xpToNextLevel(p?.xp || 0);
+  const displayName = p?.username || state.session?.user?.user_metadata?.full_name || state.session?.user?.user_metadata?.name || "Player";
   return appShell(`
-    <section class="hero">
-      <div class="eyebrow">DAILY ESTIMATION + LIVE TRIVIA</div>
-      <h1>Guess smarter.<br><span>Level up together.</span></h1>
-      <p>One daily question, precision-based scoring, friend lobbies, streamer-sized events, and a profile that keeps every win.</p>
-      ${guestBanner()}
+    <section class="hub-head">
+      <div>
+        <div class="season-pill"><span></span> SEASON 01 • OPEN BETA</div>
+        <h1>Ready, <span>${esc(firstName(displayName))}</span>?</h1>
+        <p>Choose a mode, make the impossible guess, and turn being <em>almost right</em> into XP.</p>
+      </div>
+      ${p ? `<div class="player-rank-card">
+        <div class="rank-ring" style="--p:${Math.round(lvl.progress*100)}"><span>${lvl.level}</span></div>
+        <div><small>CURRENT LEVEL</small><b>${Number(p.xp||0).toLocaleString()} XP</b><span>${lvl.needed.toLocaleString()} XP until Level ${lvl.level+1}</span></div>
+      </div>` : ""}
+    </section>
+    ${guestBanner()}
+
+    <section class="play-grid">
+      <article class="play-card daily-card">
+        <div class="card-top"><span class="mode-badge hot">DAILY QUEST</span><span class="card-glyph">∞</span></div>
+        <div class="card-art"><div class="planet"><i></i></div><div class="spark s1">✦</div><div class="spark s2">✧</div></div>
+        <div class="card-copy"><h2>Today's Estimate</h2><p>One shot. One global question. Get close enough to climb.</p></div>
+        <div class="reward-row"><span>REWARD</span><b>Precision XP + Streak</b></div>
+        <button class="btn play-btn primary" data-action="daily"><span>Play daily</span><b>→</b></button>
+      </article>
+
+      <article class="play-card party-card">
+        <div class="card-top"><span class="mode-badge">PARTY MODE</span><span class="card-glyph">♟</span></div>
+        <div class="party-faces"><span>⚡</span><span>★</span><span>◆</span><span>+</span></div>
+        <div class="card-copy"><h2>Host a Game</h2><p>Build a custom lobby for friends, classes, Discord, or your stream.</p></div>
+        <div class="mini-tags"><span>2–20K players</span><span>Custom rules</span><span>Live scores</span></div>
+        <button class="btn play-btn" data-nav="create"><span>Create lobby</span><b>＋</b></button>
+      </article>
+
+      <article class="play-card join-card">
+        <div class="card-top"><span class="mode-badge cool">QUICK JOIN</span><span class="card-glyph">#</span></div>
+        <div class="join-big">
+          <label for="quick-code">ENTER PARTY CODE</label>
+          <input id="quick-code" maxlength="6" autocomplete="off" placeholder="ABC123">
+        </div>
+        <p>No setup. Drop in with the code from your host.</p>
+        <button class="btn play-btn aqua" data-action="quick-join"><span>Join party</span><b>→</b></button>
+      </article>
     </section>
 
-    ${p ? `<section class="profile-strip">
-      <div><span class="label">Level</span><strong>${lvl.level}</strong></div>
-      <div class="grow"><span class="label">${p.xp} XP · ${lvl.ceil-p.xp} to next level</span><div class="xpbar"><i style="width:${Math.round(lvl.progress*100)}%"></i></div></div>
-      <div><span class="label">Wins</span><strong>${p.wins||0}</strong></div>
-      <div><span class="label">Games</span><strong>${p.games_played||0}</strong></div>
-    </section>`:""}
-
-    <section class="mode-grid">
-      <article class="mode-card featured">
-        <div class="card-icon">∞</div><div class="mode-tag">TODAY'S CHALLENGE</div>
-        <h2>Daily Estimate</h2>
-        <p>Make your best numeric guess. The closer you are—even across huge scales—the more XP you earn.</p>
-        <button class="btn primary wide" data-action="daily">Play today's question <span>→</span></button>
+    <section class="dashboard-grid">
+      <article class="hud-panel quest-panel">
+        <div class="panel-title"><span>⚔</span><div><small>PLAYER QUEST</small><b>Level ${lvl.level} → ${lvl.level+1}</b></div><strong>${Math.round(lvl.progress*100)}%</strong></div>
+        <div class="quest-xp"><i style="width:${Math.round(lvl.progress*100)}%"></i></div>
+        <div class="quest-stats"><span><b>${Number(p?.wins||0)}</b> wins</span><span><b>${Number(p?.games_played||0)}</b> games</span><span><b>${Number(p?.daily_streak||0)}</b> day streak</span></div>
       </article>
-      <article class="mode-card">
-        <div class="card-icon">＋</div><div class="mode-tag">HOST</div>
-        <h2>Create a Lobby</h2>
-        <p>Pick category, difficulty, timer, question count, and room size. Share one six-character code.</p>
-        <button class="btn wide" data-nav="create">Create game</button>
-      </article>
-      <article class="mode-card">
-        <div class="card-icon">#</div><div class="mode-tag">JOIN</div>
-        <h2>Enter a Code</h2>
-        <p>Jump directly into a friend's room or a creator's live game.</p>
-        <div class="join-inline"><input id="quick-code" maxlength="6" placeholder="ABC123"><button class="btn" data-action="quick-join">Join</button></div>
-      </article>
-      <article class="mode-card streamer">
-        <div class="card-icon">◈</div><div class="mode-tag">STREAMER MODE</div>
-        <h2>Twitch-ready Games</h2>
-        <p>OBS overlay, shareable join links, chat announcements, and a large-room mode that avoids per-player broadcast spam.</p>
-        <button class="btn wide ghost" data-nav="create" data-mode="event">Create stream game</button>
+      <article class="hud-panel streamer-panel">
+        <span class="stream-icon">◈</span><div><small>CREATOR MODE</small><b>Going live?</b><p>Make a Twitch-sized room with an OBS join overlay.</p></div><button class="btn tiny" data-nav="create" data-mode="event">Launch</button>
       </article>
     </section>
 
-    <section class="feature-row">
-      <div><b>0–1,000</b><span>precision score each round</span></div>
-      <div><b>2–20K</b><span>designed room range*</span></div>
-      <div><b>Live</b><span>leaderboards & distributions</span></div>
-      <div><b>1 code</b><span>zero-friction joining</span></div>
-    </section>
-    <p class="fineprint">*Very large event rooms use a reduced-realtime architecture and require production-scale backend capacity.</p>
+    <section class="category-rail"><span>PLAY YOUR WAY</span>${["Science","Technology","History","Geography","Animals","Space"].map(c=>`<i>${categoryGlyph(c)} ${c}</i>`).join("")}</section>
   `);
 }
 
 function createView(presetEvent=false) {
   return appShell(`
-    <section class="section-head"><button class="back" data-nav="home">←</button><div><div class="eyebrow">NEW GAME</div><h1>Create a lobby</h1><p>Everything can be changed before the first question starts.</p></div></section>
-    <form id="create-form" class="panel form-panel">
-      <div class="form-grid">
-        <label><span>Lobby name</span><input name="title" maxlength="60" placeholder="Friday Night Trivia"></label>
-        <label><span>Category</span><select name="category">
-          <option value="Any">Any category</option><option>Science</option><option>Technology</option><option>History</option><option>Geography</option><option>Animals</option><option>Space</option><option>Sports</option><option>Entertainment</option><option>Business</option>
-        </select></label>
-        <label><span>Difficulty</span><select name="difficulty"><option value="any">Mixed</option><option>easy</option><option>medium</option><option>hard</option></select></label>
-        <label><span>Questions</span><select name="questionCount"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></label>
-        <label><span>Seconds per question</span><select name="secondsPerQuestion"><option>10</option><option selected>20</option><option>30</option><option>45</option><option>60</option></select></label>
-        <label><span>Maximum players</span><input name="maxPlayers" type="number" min="2" max="20000" value="${presetEvent?20000:10}"></label>
-      </div>
-      <div class="segmented-wrap"><span>Room architecture</span><div class="segmented">
-        <label><input type="radio" name="gameMode" value="standard" ${presetEvent?"":"checked"}><span>Standard <small>2–100 recommended</small></span></label>
-        <label><input type="radio" name="gameMode" value="event" ${presetEvent?"checked":""}><span>Event / Twitch <small>batched large-room UX</small></span></label>
-      </div></div>
-      <div class="callout"><b>Question mix</b><span>Numeric estimate questions award partial credit based on proximity. Multiple choice and text questions can also be added to the bank.</span></div>
-      <button class="btn primary big" type="submit">Generate lobby code</button>
+    <section class="game-screen-head"><button class="back game-back" data-nav="home">←</button><div><div class="mode-badge hot">PARTY BUILDER</div><h1>Build your game</h1><p>Pick the rules. We handle the chaos.</p></div><div class="screen-number">01</div></section>
+    <form id="create-form" class="setup-shell">
+      <section class="setup-main hud-panel">
+        <div class="setup-title"><span>✦</span><div><small>GAME IDENTITY</small><h3>Name the party</h3></div></div>
+        <label class="game-field big-field"><span>LOBBY NAME</span><input name="title" maxlength="60" placeholder="Friday Night Brain Battle"></label>
+
+        <div class="setup-title"><span>⌁</span><div><small>QUESTION PACK</small><h3>Choose the challenge</h3></div></div>
+        <div class="form-grid game-fields">
+          <label class="game-field"><span>CATEGORY</span><select name="category"><option value="Any">✦ Anything goes</option><option>Science</option><option>Technology</option><option>History</option><option>Geography</option><option>Animals</option><option>Space</option><option>Sports</option><option>Entertainment</option><option>Business</option></select></label>
+          <label class="game-field"><span>DIFFICULTY</span><select name="difficulty"><option value="any">⚡ Mixed</option><option>easy</option><option>medium</option><option>hard</option></select></label>
+          <label class="game-field"><span>ROUNDS</span><select name="questionCount"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></label>
+          <label class="game-field"><span>ROUND TIMER</span><select name="secondsPerQuestion"><option>10</option><option selected>20</option><option>30</option><option>45</option><option>60</option></select></label>
+        </div>
+      </section>
+
+      <aside class="setup-side">
+        <section class="hud-panel room-card">
+          <div class="setup-title"><span>♟</span><div><small>ROOM SIZE</small><h3>Party capacity</h3></div></div>
+          <label class="game-field"><span>MAX PLAYERS</span><input name="maxPlayers" type="number" min="2" max="20000" value="${presetEvent?20000:10}"></label>
+          <div class="mode-picker">
+            <label><input type="radio" name="gameMode" value="standard" ${presetEvent?"":"checked"}><span><b>⚡ Standard</b><small>Fast realtime party play</small><em>Best for 2–100</em></span></label>
+            <label><input type="radio" name="gameMode" value="event" ${presetEvent?"checked":""}><span><b>◈ Event / Twitch</b><small>Reduced fan-out large room</small><em>Built for crowds</em></span></label>
+          </div>
+        </section>
+        <section class="loadout-card"><span>YOUR LOADOUT</span><b>Precision scoring</b><p>Numeric guesses earn partial credit from 0–1,000 based on how close they land.</p></section>
+        <button class="btn primary launch-btn" type="submit"><span>Create game</span><b>GENERATE CODE →</b></button>
+      </aside>
     </form>
   `);
 }
@@ -153,42 +173,35 @@ function lobbyView() {
   if (phase === "question" || phase === "results" || phase === "finished") return gameView();
 
   return appShell(`
-    <section class="lobby-layout">
-      <div>
-        <div class="eyebrow">LOBBY OPEN</div>
-        <h1>${esc(g.title || "Trivia Night")}</h1>
-        <div class="code-card"><span>JOIN CODE</span><strong>${esc(g.code)}</strong><button class="copy" data-copy="${esc(g.code)}">Copy code</button></div>
-        <div class="share-url">${esc(joinUrl)}</div>
-        <div class="lobby-actions">
-          <button class="btn" data-copy="${esc(joinUrl)}">Copy join link</button>
-          <a class="btn ghost" target="_blank" rel="noopener" href="?overlay=${encodeURIComponent(g.code)}">Open OBS overlay</a>
-        </div>
+    <section class="party-room-head">
+      <div><span class="mode-badge live"><i></i> LOBBY LIVE</span><h1>${esc(g.title || "Trivia Party")}</h1><p>Invite the squad. The host starts when everyone is ready.</p></div>
+      <div class="party-code"><small>PARTY CODE</small><strong>${esc(g.code)}</strong><button data-copy="${esc(g.code)}">COPY</button></div>
+    </section>
+
+    <section class="party-layout">
+      <div class="party-main">
+        <section class="hud-panel invite-card">
+          <div><small>INVITE LINK</small><b>${esc(joinUrl)}</b></div><button class="btn tiny" data-copy="${esc(joinUrl)}">Copy link</button><a class="btn tiny ghost" target="_blank" rel="noopener" href="?overlay=${encodeURIComponent(g.code)}">OBS overlay</a>
+        </section>
+        <section class="hud-panel roster-card">
+          <div class="panel-title"><span>♟</span><div><small>PARTY ROSTER</small><b>${players.length} / ${g.max_players} joined</b></div><strong class="ready-chip">READY</strong></div>
+          <div class="roster-grid">${players.map((p,i)=>`<article class="roster-player ${p.user_id===g.host_id?"host":""}"><span class="roster-avatar">${p.avatar_url?`<img src="${esc(p.avatar_url)}">`:`${esc(initials(p.username))}`}</span><div><b>${esc(p.username||"Player")}</b><small>${p.user_id===g.host_id?"HOST":"PLAYER " + String(i+1).padStart(2,"0")}</small></div>${p.user_id===g.host_id?`<i>♛</i>`:`<i>✓</i>`}</article>`).join("") || `<div class="empty">Your party is waiting for its first player…</div>`}</div>
+        </section>
       </div>
-      <aside class="panel lobby-side">
-        <div class="panel-head"><div><span class="label">PLAYERS</span><h3>${players.length} / ${g.max_players}</h3></div><span class="pulse">● LIVE</span></div>
-        <div class="player-list">${players.map((p,i)=>`<div class="player"><span class="rank">${i+1}</span>${p.avatar_url?`<img src="${esc(p.avatar_url)}">`:`<i>${esc((p.username||"?")[0])}</i>`}<b>${esc(p.username||"Player")}</b>${p.user_id===g.host_id?`<small>HOST</small>`:""}</div>`).join("") || `<div class="empty">Waiting for players…</div>`}</div>
+
+      <aside class="party-side">
+        <section class="hud-panel rules-card"><small>GAME RULES</small><h3>Match loadout</h3>
+          <div class="rule-row"><span>${categoryGlyph(g.category)} Category</span><b>${esc(g.category)}</b></div>
+          <div class="rule-row"><span>⚡ Difficulty</span><b>${esc(g.difficulty)}</b></div>
+          <div class="rule-row"><span>◫ Rounds</span><b>${g.question_count}</b></div>
+          <div class="rule-row"><span>◷ Timer</span><b>${g.seconds_per_question}s</b></div>
+          <div class="rule-row"><span>◈ Network</span><b>${g.game_mode==="event"?"Event":"Standard"}</b></div>
+        </section>
+        ${meHost?`<section class="host-launch"><small>HOST CONTROL</small><h3>Everyone here?</h3><p>Starting locks the game rules and launches Round 1.</p><button class="btn primary launch-btn" data-action="start-game" ${players.length<1?"disabled":""}><span>START MATCH</span><b>▶</b></button></section>`:`<section class="host-launch waiting-card"><span class="waiting-pulse"></span><small>WAITING FOR HOST</small><h3>You're in.</h3><p>The first question will appear automatically.</p></section>`}
       </aside>
     </section>
 
-    <section class="panel lobby-config">
-      <div><span>Category</span><b>${esc(g.category)}</b></div><div><span>Difficulty</span><b>${esc(g.difficulty)}</b></div>
-      <div><span>Questions</span><b>${g.question_count}</b></div><div><span>Timer</span><b>${g.seconds_per_question}s</b></div>
-      <div><span>Mode</span><b>${g.game_mode==="event"?"Event / Twitch":"Standard"}</b></div>
-    </section>
-
-    ${meHost ? `<section class="host-controls panel">
-      <div><div class="eyebrow">HOST CONTROLS</div><h3>Ready when your room is.</h3><p>Players stay synced automatically once you begin.</p></div>
-      <button class="btn primary big" data-action="start-game" ${players.length<1?"disabled":""}>Start game</button>
-    </section>`:""}
-
-    ${meHost ? `<section class="panel twitch-panel">
-      <div><div class="eyebrow">TWITCH</div><h3>${state.twitch.user?`Connected as ${esc(state.twitch.user.display_name)}`:"Connect your channel"}</h3>
-      <p>Announce this lobby in chat and listen for <code>!trivia</code> / <code>!join</code> interest commands.</p></div>
-      <div class="row-actions">${state.twitch.user
-        ? `<button class="btn" data-action="twitch-announce">Post lobby to chat</button><button class="btn ghost" data-action="twitch-listen">Listen for commands</button><button class="btn danger-soft" data-action="twitch-disconnect">Disconnect</button>`
-        : `<button class="btn twitch" data-action="twitch-connect">Connect Twitch</button>`}</div>
-      ${state.twitch.chatters.length ? `<div class="chat-interest">${state.twitch.chatters.map(c=>`<span>${esc(c.name)}</span>`).join("")}</div>`:""}
-    </section>`:""}
+    ${meHost ? `<section class="hud-panel twitch-panel game-twitch"><div><span class="stream-icon">◈</span><div><small>TWITCH CONTROL</small><b>${state.twitch.user?`Connected as ${esc(state.twitch.user.display_name)}`:"Connect your stream"}</b><p>Post the party code to chat and listen for !trivia / !join.</p></div></div><div class="row-actions">${state.twitch.user?`<button class="btn tiny twitch" data-action="twitch-announce">Post lobby</button><button class="btn tiny" data-action="twitch-listen">Listen</button><button class="btn tiny ghost" data-action="twitch-disconnect">Disconnect</button>`:`<button class="btn twitch" data-action="twitch-connect">Connect Twitch</button>`}</div>${state.twitch.chatters.length?`<div class="chat-interest">${state.twitch.chatters.map(c=>`<span>${esc(c.name)}</span>`).join("")}</div>`:""}</section>`:""}
   `);
 }
 
@@ -202,77 +215,78 @@ function gameView() {
   const g = state.lobby;
   const q = state.currentQuestion;
   if (g.status === "finished") return finalView();
-  if (!q) return appShell(`<section class="center-stage"><div class="spinner"></div><h2>Syncing the next question…</h2></section>`);
+  if (!q) return appShell(`<section class="center-stage loading-stage"><div class="spinner"></div><h2>Loading the arena…</h2><p>Syncing the next question with the party.</p></section>`);
   const host = g.demoHost || g.host_id === state.session?.user?.id;
 
   if (g.status === "results") {
     const rows = state.roundResults || [];
-    const guesses = rows.map(r=>r.answer_numeric).filter(v=>v!==null && v!==undefined);
     return appShell(`
-      <section class="question-stage results-stage">
-        <div class="round-meta"><span>ROUND ${g.current_question_index+1} / ${g.question_count}</span><span>${esc(q.category)} · ${esc(q.difficulty)}</span></div>
-        <h1>${esc(q.prompt)}</h1>
-        <div class="answer-reveal"><span>ANSWER</span><strong>${formatAnswer(q.answer_numeric ?? q.answer_text ?? q.answer_display)} ${esc(q.unit||"")}</strong><p>${esc(q.explanation||"")}</p></div>
-        <div class="chart-card"><canvas id="guess-chart"></canvas></div>
-        <div class="scoreboard panel">
-          <div class="panel-head"><h3>Round leaderboard</h3><span>${rows.length} answers</span></div>
-          ${rows.slice(0,20).map((r,i)=>`<div class="score-row"><span>${i+1}</span><b>${esc(r.username)}</b><span>${r.score} pts</span><strong>${r.total_score}</strong></div>`).join("") || `<div class="empty">No answers this round.</div>`}
+      <section class="arena-head"><div><span class="round-chip">ROUND ${g.current_question_index+1} / ${g.question_count}</span><span class="mode-badge success">RESULTS</span></div><div class="arena-category">${categoryGlyph(q.category)} ${esc(q.category)} · ${esc(q.difficulty)}</div></section>
+      <section class="results-arena">
+        <div class="result-question"><small>THE QUESTION</small><h1>${esc(q.prompt)}</h1></div>
+        <section class="correct-answer-card"><div><small>CORRECT ANSWER</small><strong>${formatAnswer(q.answer_numeric ?? q.answer_text ?? q.answer_display)} <em>${esc(q.unit||"")}</em></strong><p>${esc(q.explanation||"")}</p></div><span>✓</span></section>
+        <div class="result-grid">
+          <section class="hud-panel chart-card game-chart"><div class="panel-title"><span>⌁</span><div><small>THE CROWD</small><b>Guess distribution</b></div></div><canvas id="guess-chart"></canvas></section>
+          <section class="hud-panel scoreboard"><div class="panel-title"><span>♛</span><div><small>LIVE RANKS</small><b>Round leaderboard</b></div><strong>${rows.length} answers</strong></div>${rows.slice(0,20).map((r,i)=>`<div class="score-row ${r.is_me?"me":""}"><span class="score-place">${i+1}</span><b>${esc(r.username)}</b><span>+${r.score}</span><strong>${r.total_score}</strong></div>`).join("") || `<div class="empty">No answers this round.</div>`}</section>
         </div>
-        ${host?`<button class="btn primary big center" data-action="next-round">${g.current_question_index+1>=g.question_count?"Finish game":"Next question"} →</button>`:"<div class='waiting'>Waiting for the host…</div>"}
+        ${host?`<button class="btn primary next-round-btn" data-action="next-round"><span>${g.current_question_index+1>=g.question_count?"FINISH MATCH":"NEXT ROUND"}</span><b>→</b></button>`:`<div class="waiting-banner"><span></span> Waiting for the host to launch the next round…</div>`}
       </section>`);
   }
 
   return appShell(`
-    <section class="question-stage">
-      <div class="round-meta"><span>ROUND ${g.current_question_index+1} / ${g.question_count}</span><span>${esc(q.category)} · ${esc(q.difficulty)}</span></div>
-      <div class="timer-line"><i id="timer-bar"></i></div>
+    <section class="arena-head"><div><span class="round-chip">ROUND ${g.current_question_index+1} / ${g.question_count}</span><span class="mode-badge live"><i></i> LIVE</span></div><div class="arena-category">${categoryGlyph(q.category)} ${esc(q.category)} · ${esc(q.difficulty)}</div></section>
+    <section class="question-arena">
+      <div class="arena-timer"><span>THINK FAST</span><div class="timer-line"><i id="timer-bar"></i></div><b>${g.seconds_per_question}s</b></div>
+      <div class="question-number">Q${String(g.current_question_index+1).padStart(2,"0")}</div>
       <h1>${esc(q.prompt)}</h1>
       ${q.context ? `<p class="question-context">${esc(q.context)}</p>`:""}
-      <form id="answer-form" class="answer-form">
+      <form id="answer-form" class="answer-form game-answer-form">
         ${questionInput(q)}
-        ${q.question_type!=="multiple_choice"?`<button class="btn primary big" type="submit">Lock answer</button>`:""}
+        ${q.question_type!=="multiple_choice"?`<button class="btn primary lock-btn" type="submit"><span>LOCK IT IN</span><b>✓</b></button>`:""}
       </form>
-      <div id="answer-status" class="answer-status">Your answer is final once submitted.</div>
-      ${host?`<button class="btn ghost host-reveal" data-action="reveal-round">Reveal results</button>`:""}
+      <div id="answer-status" class="answer-status"><span>◎</span> One answer. No take-backs.</div>
+      ${host?`<button class="btn ghost host-reveal" data-action="reveal-round">Host: reveal results</button>`:""}
     </section>`);
 }
 
 function finalView() {
   const rows = state.roundResults || [];
   return appShell(`
-    <section class="finish">
-      <div class="trophy">♛</div><div class="eyebrow">GAME COMPLETE</div><h1>Final standings</h1>
-      <p>${esc(state.lobby?.title || "Trivia Night")}</p>
-      <div class="podium">${rows.slice(0,3).map((r,i)=>`<div class="podium-card p${i+1}"><span>#${i+1}</span><b>${esc(r.username)}</b><strong>${r.total_score}</strong><small>points</small></div>`).join("")}</div>
-      <div class="scoreboard panel">${rows.slice(3,50).map((r,i)=>`<div class="score-row"><span>${i+4}</span><b>${esc(r.username)}</b><span>${r.total_score} pts</span></div>`).join("")}</div>
-      <button class="btn primary big" data-nav="home">Back to home</button>
+    <section class="finish game-finish">
+      <div class="victory-burst"><span>♛</span></div><div class="mode-badge hot">MATCH COMPLETE</div><h1>GG, party.</h1><p>${esc(state.lobby?.title || "Trivia Night")}</p>
+      <div class="podium">${rows.slice(0,3).map((r,i)=>`<div class="podium-card p${i+1}"><span class="medal">${i===0?"♛":i===1?"◆":"▲"}</span><small>#${i+1}</small><b>${esc(r.username)}</b><strong>${r.total_score.toLocaleString()}</strong><em>points</em></div>`).join("")}</div>
+      <div class="scoreboard hud-panel">${rows.slice(3,50).map((r,i)=>`<div class="score-row"><span class="score-place">${i+4}</span><b>${esc(r.username)}</b><span>${r.total_score.toLocaleString()} pts</span></div>`).join("")}</div>
+      <button class="btn primary launch-btn finish-btn" data-nav="home"><span>BACK TO PLAY HUB</span><b>→</b></button>
     </section>`);
 }
 
 function dailyView() {
   const q = state.daily?.question || state.daily;
   const result = state.daily?.result;
-  if (!q) return appShell(`<section class="center-stage"><div class="spinner"></div><h2>Picking today's question…</h2></section>`);
+  if (!q) return appShell(`<section class="center-stage loading-stage"><div class="spinner"></div><h2>Generating today's quest…</h2></section>`);
   if (result) {
+    const rankText = result.score >= 950 ? "LEGENDARY" : result.score >= 800 ? "EPIC" : result.score >= 600 ? "RARE" : result.score >= 350 ? "SOLID" : "WILD GUESS";
     return appShell(`
-      <section class="question-stage results-stage daily-result">
-        <div class="eyebrow">TODAY'S RESULT</div>
-        <h1>${esc(q.prompt)}</h1>
-        <div class="score-burst"><span>PRECISION SCORE</span><strong>${result.score}</strong><small>/ 1,000</small></div>
-        <div class="answer-reveal"><span>CORRECT ANSWER</span><strong>${formatAnswer(result.answer_numeric ?? q.answer_numeric)} ${esc(q.unit||"")}</strong>
-          <p>Your guess: <b>${formatAnswer(result.your_answer)}</b> · +${result.xp_awarded} XP</p><p>${esc(result.explanation||q.explanation||"")}</p>
-        </div>
-        <div class="chart-card"><canvas id="daily-chart"></canvas></div>
-        <div class="row-actions center"><button class="btn primary" data-nav="home">Done</button><button class="btn" data-copy="${esc(location.href)}">Share challenge</button></div>
-      </section>`);
+      <section class="daily-results-head"><span class="mode-badge success">QUEST COMPLETE</span><h1>${rankText}</h1><p>You banked <b>+${result.xp_awarded} XP</b> today.</p></section>
+      <section class="daily-result-grid">
+        <article class="score-burst game-score-burst"><span>PRECISION</span><strong>${result.score}</strong><small>/ 1,000</small><i>+${result.xp_awarded} XP</i></article>
+        <article class="hud-panel daily-answer-panel"><small>TODAY'S QUESTION</small><h2>${esc(q.prompt)}</h2><div class="versus-answers"><span><small>YOU GUESSED</small><b>${formatAnswer(result.your_answer)} ${esc(q.unit||"")}</b></span><i>VS</i><span><small>ANSWER</small><b>${formatAnswer(result.answer_numeric ?? q.answer_numeric)} ${esc(q.unit||"")}</b></span></div><p>${esc(result.explanation||q.explanation||"")}</p></article>
+      </section>
+      <section class="hud-panel chart-card daily-chart-card"><div class="panel-title"><span>⌁</span><div><small>GLOBAL READ</small><b>Where everyone landed</b></div></div><canvas id="daily-chart"></canvas></section>
+      <div class="row-actions center"><button class="btn primary" data-nav="home">Claim & return</button><button class="btn" data-copy="${esc(location.href)}">Share challenge</button></div>
+    `);
   }
   return appShell(`
-    <section class="question-stage daily-stage">
-      <div class="daily-kicker"><span>DAILY #${esc(q.daily_number||"—")}</span><span>${esc(q.category)} · ${esc(q.difficulty)}</span></div>
-      <h1>${esc(q.prompt)}</h1>
-      ${q.context?`<p class="question-context">${esc(q.context)}</p>`:""}
-      <form id="daily-form" class="answer-form">${questionInput(q,"daily")}<button class="btn primary big" type="submit">Submit estimate</button></form>
-      <p class="fineprint center">Your first submitted answer is final. Accuracy determines XP.</p>
+    <section class="daily-quest-shell">
+      <div class="daily-side-mark"><span>∞</span><small>DAILY<br>QUEST</small></div>
+      <div class="daily-quest-main">
+        <div class="daily-kicker"><span>DAILY #${esc(q.daily_number||"—")}</span><span>${categoryGlyph(q.category)} ${esc(q.category)} • ${esc(q.difficulty)}</span></div>
+        <div class="quest-reward-chip">+ Precision XP <i>•</i> Keep your streak alive</div>
+        <h1>${esc(q.prompt)}</h1>
+        ${q.context?`<p class="question-context">${esc(q.context)}</p>`:""}
+        <form id="daily-form" class="answer-form game-answer-form">${questionInput(q,"daily")}<button class="btn primary lock-btn" type="submit"><span>SUBMIT FINAL GUESS</span><b>✓</b></button></form>
+        <p class="one-shot"><span>◎</span> One shot per day. Accuracy determines XP.</p>
+      </div>
     </section>`);
 }
 
@@ -288,37 +302,40 @@ async function leaderboardView() {
     try { rows = await loadLeaderboard(); } catch(e) { toast(e.message,"bad"); }
   }
   return appShell(`
-    <section class="section-head"><div><div class="eyebrow">GLOBAL</div><h1>Leaderboard</h1><p>Lifetime XP across daily challenges and multiplayer games.</p></div></section>
-    <section class="panel leaderboard">
-      ${rows.map((r,i)=>`<div class="leader-row ${i<3?"top":""}"><span class="place">${i+1}</span><span class="leader-avatar">${r.avatar_url?`<img src="${esc(r.avatar_url)}">`:(r.username||"?")[0]}</span>
-      <div><b>${esc(r.username)}</b><small>Level ${levelFromXp(r.xp)} · ${r.wins||0} wins</small></div><strong>${Number(r.xp||0).toLocaleString()} XP</strong></div>`).join("")}
+    <section class="game-screen-head rank-head"><div><div class="mode-badge hot">GLOBAL LADDER</div><h1>Hall of guesses</h1><p>Lifetime XP decides who owns the top of the board.</p></div><div class="screen-number">♛</div></section>
+    <section class="leader-shell">
+      <div class="top-three">${rows.slice(0,3).map((r,i)=>`<article class="champ-card c${i+1}"><span class="champ-rank">#${i+1}</span><span class="leader-avatar">${r.avatar_url?`<img src="${esc(r.avatar_url)}">`:esc(initials(r.username))}</span><b>${esc(r.username)}</b><small>LEVEL ${levelFromXp(r.xp)}</small><strong>${Number(r.xp||0).toLocaleString()} XP</strong><em>${r.wins||0} wins</em></article>`).join("")}</div>
+      <section class="hud-panel leaderboard game-leaderboard"><div class="leader-table-head"><span>RANK</span><span>PLAYER</span><span>LEVEL</span><span>WINS</span><span>XP</span></div>${rows.slice(3).map((r,i)=>`<div class="leader-row"><span class="place">${i+4}</span><span class="leader-avatar">${r.avatar_url?`<img src="${esc(r.avatar_url)}">`:esc(initials(r.username))}</span><div><b>${esc(r.username)}</b><small>${r.games_played||0} matches</small></div><span class="level-square">${levelFromXp(r.xp)}</span><span>${r.wins||0}</span><strong>${Number(r.xp||0).toLocaleString()}</strong></div>`).join("")}</section>
     </section>`);
 }
 
 function profileView() {
-  if (!state.session && !state.config.demoMode) return appShell(`<section class="auth-gate"><div class="card-icon">☺</div><h1>Your trivia profile</h1><p>Sign in with Google to save XP, streaks, wins, and game history.</p><button class="btn primary big" data-action="login">Sign in with Google</button></section>`);
-  const p = state.profile || demo?.profile || {username:"Demo Player",xp:760,wins:2,games_played:7,daily_streak:3};
+  if (!state.session && !state.config.demoMode) return appShell(`<section class="auth-gate player-gate"><div class="victory-burst"><span>☺</span></div><div class="mode-badge">PLAYER PROFILE</div><h1>Keep your progress.</h1><p>Google sign-in creates your player card from your Google name and avatar. You can change the display name anytime.</p><button class="btn primary launch-btn" data-action="login"><span>SIGN IN WITH GOOGLE</span><b>G</b></button></section>`);
+  const p = state.profile || demo?.profile || {username:"Demo Player",xp:0,wins:0,games_played:0,daily_streak:0};
   const l = xpToNextLevel(p.xp);
+  const googleName = state.session?.user?.user_metadata?.full_name || state.session?.user?.user_metadata?.name || p.username;
+  const avatar = p.avatar_url || state.session?.user?.user_metadata?.avatar_url || state.session?.user?.user_metadata?.picture || "";
   return appShell(`
-    <section class="profile-page">
-      <div class="profile-hero panel"><div class="huge-level">${l.level}</div><div><div class="eyebrow">LEVEL ${l.level}</div><h1>${esc(p.username)}</h1><p>${p.xp.toLocaleString()} lifetime XP</p></div></div>
-      <div class="xpbar large"><i style="width:${Math.round(l.progress*100)}%"></i></div>
-      <div class="stats-grid"><div><span>Wins</span><strong>${p.wins||0}</strong></div><div><span>Games</span><strong>${p.games_played||0}</strong></div><div><span>Daily streak</span><strong>${p.daily_streak||0}</strong></div><div><span>Next level</span><strong>${Math.max(0,l.ceil-p.xp)} XP</strong></div></div>
-      <form id="profile-form" class="panel profile-form"><label><span>Display name</span><input name="username" maxlength="24" value="${esc(p.username)}"></label><button class="btn" type="submit">Save profile</button></form>
-      ${state.session?`<button class="btn danger-soft" data-action="logout">Sign out</button>`:`<button class="btn primary" data-action="login">Connect Google to save this profile</button>`}
-    </section>`);
+    <section class="profile-game-card">
+      <div class="profile-banner"><div class="profile-avatar-xl">${avatar?`<img src="${esc(avatar)}">`:esc(initials(p.username))}<span>${l.level}</span></div><div><small>PLAYER CARD</small><h1>${esc(p.username)}</h1><p>${state.session?`Google profile: ${esc(googleName)}`:"Local demo profile"}</p></div><div class="profile-power"><small>LIFETIME XP</small><b>${Number(p.xp||0).toLocaleString()}</b></div></div>
+      <div class="profile-progress"><div><span>LEVEL ${l.level}</span><b>${l.needed.toLocaleString()} XP TO LEVEL ${l.level+1}</b></div><div class="xpbar large"><i style="width:${Math.round(l.progress*100)}%"></i></div></div>
+      <div class="stats-grid game-stats"><div><span>♛</span><small>WINS</small><strong>${p.wins||0}</strong></div><div><span>▶</span><small>MATCHES</small><strong>${p.games_played||0}</strong></div><div><span>🔥</span><small>STREAK</small><strong>${p.daily_streak||0}</strong></div><div><span>⚡</span><small>LEVEL</small><strong>${l.level}</strong></div></div>
+    </section>
+    <form id="profile-form" class="hud-panel profile-form game-profile-form"><div><small>DISPLAY NAME</small><h3>How should the arena know you?</h3><p>We start with your Google name. Changing this only changes your trivia display name.</p></div><label><span>PLAYER NAME</span><input name="username" maxlength="24" value="${esc(p.username)}"></label><button class="btn primary" type="submit">Save name</button></form>
+    ${state.session?`<button class="btn danger-soft" data-action="logout">Sign out</button>`:`<button class="btn primary" data-action="login">Connect Google to save this player</button>`}
+  `);
 }
 
 function howView() {
   return appShell(`
-    <section class="section-head"><div><div class="eyebrow">THE RULES</div><h1>Simple to play. Deep enough to master.</h1></div></section>
-    <section class="explainer-grid">
-      <article class="panel"><span>01</span><h3>Estimate</h3><p>Numeric questions reward closeness rather than all-or-nothing correctness. Being off by 10% hurts much less than being off by 10×.</p></article>
-      <article class="panel"><span>02</span><h3>Score</h3><p>Each round is worth up to 1,000 precision points. Multiplayer keeps a running total; XP is awarded to your persistent profile.</p></article>
-      <article class="panel"><span>03</span><h3>See the crowd</h3><p>After reveal, a distribution chart shows where everyone guessed, your position, and the actual answer.</p></article>
-      <article class="panel"><span>04</span><h3>Level up</h3><p>Daily participation, accurate answers, and wins build XP. Levels get progressively harder to earn.</p></article>
+    <section class="game-screen-head"><div><div class="mode-badge cool">HOW TO PLAY</div><h1>Close counts here.</h1><p>Trivia for people who like making a smart guess instead of memorizing everything.</p></div><div class="screen-number">?</div></section>
+    <section class="rule-cards">
+      <article><span>01</span><i>◎</i><h3>Make the guess</h3><p>Numeric questions are designed for estimation. You never need the exact number to score.</p></article>
+      <article><span>02</span><i>⚡</i><h3>Earn precision</h3><p>Every answer earns 0–1,000 points based on closeness, including huge Fermi-scale values.</p></article>
+      <article><span>03</span><i>⌁</i><h3>See the crowd</h3><p>After reveal, the distribution shows your guess, the room, and the real answer.</p></article>
+      <article><span>04</span><i>♛</i><h3>Climb forever</h3><p>XP powers a persistent Level 0+ player profile across daily quests and multiplayer.</p></article>
     </section>
-    <section class="panel long-copy"><h2>Two multiplayer architectures</h2><p><b>Standard rooms</b> are fully realtime and ideal for friends, classrooms, Discord groups, and typical creator games. <b>Event rooms</b> deliberately reduce presence and fan-out traffic so thousands of viewers can submit without every answer becoming a websocket event for every other player.</p></section>`);
+    <section class="hud-panel long-copy network-explainer"><span class="stream-icon">◈</span><div><small>BIG ROOM TECH</small><h2>Party mode when it's 8 friends. Event mode when it's 8,000 viewers.</h2><p>Standard rooms favor rich realtime updates. Event rooms deliberately reduce per-player fan-out so stream audiences can submit without turning every individual answer into a room-wide event.</p></div></section>`);
 }
 
 function overlayView(code) {
@@ -337,10 +354,10 @@ function overlayView(code) {
 
 function demoInit() {
   demo = {
-    profile: { user_id:"demo", username:"Demo Player", avatar_url:"", xp:760, wins:2, games_played:7, daily_streak:3 },
+    profile: { user_id:"demo", username:"Demo Player", avatar_url:"", xp:0, wins:0, games_played:0, daily_streak:0, username_customized:false },
     lobby: null
   };
-  state.profile = demo.profile;
+  if (state.config.demoMode || !isConfigured()) state.profile = demo.profile;
 }
 
 async function navigate(view, opts={}) {

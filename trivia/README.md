@@ -1,4 +1,4 @@
-# WhatMod Trivia
+# WhatMod Trivia V2 — Game UI
 
 A GitHub-Pages-friendly daily estimation trivia + realtime multiplayer app designed for `https://whatmod.com/trivia/`.
 
@@ -37,6 +37,12 @@ whatmod/
 No frontend build step is required, so it does not disturb other pages already hosted from the same repository.
 
 The optional workflow in this package is a validation workflow only. It does not deploy or overwrite the rest of whatmod.com.
+
+## Existing project upgrade
+
+If V1 is already connected and working, run **`supabase/migrations/002_v2_existing_project_upgrade.sql`** once. It fixes the daily-question SQL, adds Google-name syncing, and preserves player-edited names.
+
+For a completely new Supabase project, run the corrected `001_trivia.sql` and then `seed.sql`.
 
 ## 1. Supabase
 
@@ -144,3 +150,11 @@ Demo mode works without any backend keys.
 8. Creator branding themes.
 9. Anti-cheat heuristics and suspicious-response flagging.
 10. Production Event-mode load testing and dedicated burst-ingest path.
+
+
+## V2 changes
+
+- Complete game-style UI overhaul across home, lobby, match, results, leaderboard and profile.
+- New players begin at Level 0; Level 1 begins at 250 XP.
+- Google full name/avatar auto-sync into the trivia profile until the player manually changes their display name.
+- `digest()` removed from the daily selector; deterministic ordering now uses PostgreSQL built-in `md5(text)`, so no pgcrypto namespace issue occurs.
