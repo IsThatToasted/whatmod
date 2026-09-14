@@ -1,0 +1,32 @@
+name: Validate Trivia Static App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'trivia/**'
+      - '.github/workflows/trivia-validate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify required trivia files
+        run: |
+          test -f trivia/index.html
+          test -f trivia/config.js
+          test -f trivia/styles.css
+          test -f trivia/js/app.js
+          test -f trivia/supabase/migrations/001_trivia.sql
+          echo "Trivia static package structure looks good."
+      - name: Check for accidentally committed Supabase secret keys
+        run: |
+          if grep -R -E "sb_secret_|service_role" trivia/config.js; then
+            echo "Do not commit a Supabase secret/service-role key to GitHub Pages."
+            exit 1
+          fi
