@@ -150,14 +150,46 @@ export async function getRoundResults(gameId) {
   return rows || [];
 }
 
-export async function getDailyQuestion() {
-  const rows = await rpc("get_daily_question");
+export async function getDailyState() {
+  const rows = await rpc("get_daily_state");
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
 export async function submitDailyAnswer(answer) {
   const rows = await rpc("submit_daily_answer", { p_answer: String(answer) });
   return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function startPractice({ categories = [], difficulty = "any", questionCount = 10 } = {}) {
+  const rows = await rpc("start_practice", {
+    p_categories: categories,
+    p_difficulty: difficulty,
+    p_question_count: questionCount
+  });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function getPracticeQuestion(sessionId) {
+  const rows = await rpc("get_practice_question", { p_session_id: sessionId });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function submitPracticeAnswer(sessionId, answer, responseMs = 0) {
+  const rows = await rpc("submit_practice_answer", {
+    p_session_id: sessionId,
+    p_answer: String(answer),
+    p_response_ms: Math.max(0, Math.round(responseMs || 0))
+  });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function nextPracticeQuestion(sessionId) {
+  const rows = await rpc("next_practice_question", { p_session_id: sessionId });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function getPracticeSummary(sessionId) {
+  return await rpc("get_practice_summary", { p_session_id: sessionId });
 }
 
 export function subscribeLobby(gameId, onChange) {

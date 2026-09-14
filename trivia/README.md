@@ -158,3 +158,21 @@ Demo mode works without any backend keys.
 - New players begin at Level 0; Level 1 begins at 250 XP.
 - Google full name/avatar auto-sync into the trivia profile until the player manually changes their display name.
 - `digest()` removed from the daily selector; deterministic ordering now uses PostgreSQL built-in `md5(text)`, so no pgcrypto namespace issue occurs.
+
+
+## V3: Daily lock + Practice mode
+
+For an existing V1/V2 Supabase project, run:
+
+`supabase/migrations/003_daily_lock_and_practice.sql`
+
+V3 changes Daily Quest so each authenticated user can receive XP exactly once per database day.
+Reopening Daily after completion returns the saved result instead of a second answer form.
+
+Practice mode is deliberately progression-neutral:
+- choose one or more categories;
+- choose mixed/easy/medium/hard;
+- run 5, 10, 15, or 20 questions;
+- see 0–1,000 precision scoring and correct answers;
+- replay without limits;
+- no XP, streak, win, multiplayer-game, or leaderboard changes.

@@ -9,6 +9,7 @@ export const state = {
   currentQuestion: null,
   roundResults: null,
   daily: null,
+  practice: null,
   subscriptions: [],
   twitch: { token: null, user: null, socket: null, chatters: [] },
 };

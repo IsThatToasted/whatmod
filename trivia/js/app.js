@@ -2,7 +2,8 @@ import { state, setState, subscribe, levelFromXp, xpToNextLevel, cleanupRealtime
 import {
   initSupabase, isConfigured, signInGoogle, signOut, loadProfile, loadLeaderboard, updateProfile,
   createLobby, joinLobby, getLobby, getLobbyPlayers, startLobby, getCurrentQuestion,
-  submitGameAnswer, revealRound, nextRound, getRoundResults, getDailyQuestion, submitDailyAnswer,
+  submitGameAnswer, revealRound, nextRound, getRoundResults, getDailyState, submitDailyAnswer,
+  startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
   subscribeLobby
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
@@ -26,7 +27,13 @@ const SAMPLE = [
   { id:"d3", category:"Geography", difficulty:"medium", question_type:"numeric", prompt:"Roughly how many square kilometers is the area of Pennsylvania?", unit:"km²", answer_numeric:119280, explanation:"Pennsylvania covers about 119,280 km²." },
   { id:"d4", category:"History", difficulty:"easy", question_type:"numeric", prompt:"In what year did the Berlin Wall fall?", unit:"year", answer_numeric:1989, explanation:"The Berlin Wall opened on November 9, 1989." },
   { id:"d5", category:"Animals", difficulty:"medium", question_type:"numeric", prompt:"About how many kilograms can an adult male African elephant weigh?", unit:"kg", answer_numeric:6000, explanation:"Large adult males commonly weigh around 6,000 kg, with exceptional individuals heavier." },
-  { id:"d6", category:"Space", difficulty:"hard", question_type:"numeric", prompt:"Approximately how many Earth days does Venus take to rotate once on its axis?", unit:"days", answer_numeric:243, explanation:"Venus rotates extremely slowly: roughly 243 Earth days per sidereal rotation." }
+  { id:"d6", category:"Space", difficulty:"hard", question_type:"numeric", prompt:"Approximately how many Earth days does Venus take to rotate once on its axis?", unit:"days", answer_numeric:243, explanation:"Venus rotates extremely slowly: roughly 243 Earth days per sidereal rotation." },
+  { id:"d7", category:"Science", difficulty:"easy", question_type:"numeric", prompt:"At sea level, at about what temperature in Celsius does pure water boil?", unit:"°C", answer_numeric:100, explanation:"At standard atmospheric pressure, pure water boils at 100 °C." },
+  { id:"d8", category:"Geography", difficulty:"easy", question_type:"numeric", prompt:"About how many kilometers long is the Nile River?", unit:"km", answer_numeric:6650, explanation:"A commonly cited estimate is roughly 6,650 km." },
+  { id:"d9", category:"Space", difficulty:"easy", question_type:"numeric", prompt:"Approximately how many minutes does sunlight take to reach Earth?", unit:"minutes", answer_numeric:8.3167, explanation:"Sunlight takes about 8 minutes 20 seconds to reach Earth." },
+  { id:"d10", category:"History", difficulty:"medium", question_type:"numeric", prompt:"In what year did Apollo 11 land humans on the Moon?", unit:"year", answer_numeric:1969, explanation:"Apollo 11 landed on the Moon in July 1969." },
+  { id:"d11", category:"Science", difficulty:"medium", question_type:"numeric", prompt:"Approximately how fast is the speed of sound in dry air at 20 °C?", unit:"m/s", answer_numeric:343, explanation:"At 20 °C the speed of sound is about 343 m/s." },
+  { id:"d12", category:"Technology", difficulty:"medium", question_type:"numeric", prompt:"In what year was the World Wide Web first made publicly available by CERN?", unit:"year", answer_numeric:1991, explanation:"The first web software became publicly available in 1991." }
 ];
 
 function toast(message, tone="") {
@@ -87,13 +94,21 @@ function homeView() {
     </section>
     ${guestBanner()}
 
-    <section class="play-grid">
+    <section class="play-grid four-modes">
       <article class="play-card daily-card">
         <div class="card-top"><span class="mode-badge hot">DAILY QUEST</span><span class="card-glyph">∞</span></div>
         <div class="card-art"><div class="planet"><i></i></div><div class="spark s1">✦</div><div class="spark s2">✧</div></div>
-        <div class="card-copy"><h2>Today's Estimate</h2><p>One shot. One global question. Get close enough to climb.</p></div>
+        <div class="card-copy"><h2>Today's Estimate</h2><p>One attempt per calendar day. Your precision earns XP and keeps the streak alive.</p></div>
         <div class="reward-row"><span>REWARD</span><b>Precision XP + Streak</b></div>
         <button class="btn play-btn primary" data-action="daily"><span>Play daily</span><b>→</b></button>
+      </article>
+
+      <article class="play-card practice-card">
+        <div class="card-top"><span class="mode-badge practice-badge">PRACTICE</span><span class="card-glyph">◎</span></div>
+        <div class="practice-art"><span>10</span><i>QUESTIONS</i><b>∞</b></div>
+        <div class="card-copy"><h2>Practice Run</h2><p>Choose your categories and run a private set of questions whenever you want.</p></div>
+        <div class="reward-row no-xp"><span>REWARD</span><b>No XP • Pure practice</b></div>
+        <button class="btn play-btn practice-btn" data-nav="practice-setup"><span>Start practice</span><b>→</b></button>
       </article>
 
       <article class="play-card party-card">
@@ -290,9 +305,106 @@ function dailyView() {
     </section>`);
 }
 
+
+const PRACTICE_CATEGORIES = ["Science","Technology","History","Geography","Animals","Space","Sports","Entertainment","Business"];
+
+function practiceSetupView() {
+  return appShell(`
+    <section class="game-screen-head"><button class="back game-back" data-nav="home">←</button><div><div class="mode-badge practice-badge">PRACTICE MODE</div><h1>Train your guess.</h1><p>Unlimited private rounds. Scores are tracked for the run, but Practice never awards XP, streaks, wins, or leaderboard progress.</p></div><div class="screen-number">◎</div></section>
+    <form id="practice-setup-form" class="practice-setup-shell">
+      <section class="hud-panel practice-builder">
+        <div class="setup-title"><span>◫</span><div><small>ROUND LENGTH</small><h3>How long is the run?</h3></div></div>
+        <div class="practice-counts">
+          ${[5,10,15,20].map(n=>`<label><input type="radio" name="questionCount" value="${n}" ${n===10?"checked":""}><span><b>${n}</b><small>questions</small></span></label>`).join("")}
+        </div>
+
+        <div class="setup-title practice-section-title"><span>⌁</span><div><small>CATEGORY LOADOUT</small><h3>Choose one or mix several</h3></div></div>
+        <div class="practice-categories">
+          ${PRACTICE_CATEGORIES.map(c=>`<label><input type="checkbox" name="categories" value="${c}" checked><span><i>${categoryGlyph(c)}</i><b>${c}</b></span></label>`).join("")}
+        </div>
+
+        <div class="practice-options-row">
+          <label class="game-field"><span>DIFFICULTY</span><select name="difficulty"><option value="any">⚡ Mixed difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label>
+          <div class="practice-zero-xp"><span>0 XP</span><div><b>Practice is consequence-free.</b><small>Replay as much as you want without affecting your account progression.</small></div></div>
+        </div>
+      </section>
+      <aside class="hud-panel practice-sidecard">
+        <div class="practice-target">◎</div><small>TRAINING RUN</small><h2>Sharpen your estimation instinct.</h2><p>Every question still uses the same 0–1,000 precision scoring as competitive play, so you can see exactly how close you were.</p>
+        <ul><li>✓ Unlimited attempts</li><li>✓ Category selection</li><li>✓ Round score + average precision</li><li>✓ Correct answer after every guess</li><li class="muted">× No XP farming</li></ul>
+        <button class="btn practice-btn launch-btn" type="submit"><span>BEGIN PRACTICE</span><b>→</b></button>
+      </aside>
+    </form>
+  `);
+}
+
+function practiceView() {
+  const pr = state.practice;
+  if (!pr) return practiceSetupView();
+
+  if (pr.status === "completed") {
+    const rows = pr.summary || [];
+    const count = pr.question_count || rows.length || 1;
+    const total = Number(pr.total_score || rows.reduce((s,r)=>s+Number(r.score||0),0));
+    const avg = Math.round(total / Math.max(1,count));
+    const grade = avg >= 900 ? "Elite instinct" : avg >= 750 ? "Locked in" : avg >= 550 ? "Getting sharp" : avg >= 350 ? "Warming up" : "Keep training";
+    return appShell(`
+      <section class="practice-complete">
+        <div class="practice-target big">◎</div><div class="mode-badge practice-badge">PRACTICE COMPLETE</div>
+        <h1>${grade}</h1><p>This run changed absolutely nothing on your XP profile — exactly as intended.</p>
+        <div class="practice-summary-stats">
+          <article><small>TOTAL SCORE</small><strong>${total.toLocaleString()}</strong><span>/ ${(count*1000).toLocaleString()}</span></article>
+          <article><small>AVG PRECISION</small><strong>${avg}</strong><span>/ 1,000</span></article>
+          <article><small>QUESTIONS</small><strong>${count}</strong><span>completed</span></article>
+        </div>
+        <section class="hud-panel practice-review">
+          <div class="panel-title"><span>◫</span><div><small>RUN REVIEW</small><b>Every answer</b></div><strong>NO XP</strong></div>
+          ${rows.map((r,i)=>`<div class="practice-review-row"><span>${String(i+1).padStart(2,"0")}</span><div><b>${esc(r.prompt)}</b><small>${categoryGlyph(r.category)} ${esc(r.category)} • You: ${esc(r.your_answer||"—")} • Answer: ${esc(r.correct_answer||"—")}</small></div><strong>${Number(r.score||0)}</strong></div>`).join("")}
+        </section>
+        <div class="row-actions center practice-finish-actions"><button class="btn practice-btn" data-action="practice-restart">Practice again</button><button class="btn" data-nav="home">Back to hub</button></div>
+      </section>`);
+  }
+
+  const q = pr.question;
+  if (!q) return appShell(`<section class="center-stage"><div class="spinner"></div><h2>Loading your practice round…</h2></section>`);
+  const result = pr.result || (q.answered ? q : null);
+
+  if (result) {
+    const correct = result.answer_display ?? result.answer_numeric ?? result.answer_text ?? "—";
+    const your = result.your_answer ?? result.answer_value ?? "—";
+    return appShell(`
+      <section class="practice-arena">
+        <div class="practice-progress-head"><span class="mode-badge practice-badge">PRACTICE</span><b>QUESTION ${Number(pr.current_index||0)+1} / ${pr.question_count}</b><strong>${Number(pr.total_score||0).toLocaleString()} PTS</strong></div>
+        <div class="practice-round-track"><i style="width:${Math.round(((Number(pr.current_index||0)+1)/Math.max(1,pr.question_count))*100)}%"></i></div>
+        <section class="hud-panel practice-reveal-card">
+          <div class="practice-score-orb"><small>PRECISION</small><strong>${Number(result.score||0)}</strong><span>/ 1000</span></div>
+          <div class="practice-reveal-copy"><small>${categoryGlyph(q.category)} ${esc(q.category)} • ${esc(q.difficulty)}</small><h1>${esc(q.prompt)}</h1>
+            <div class="practice-answer-compare"><span><small>YOUR GUESS</small><b>${esc(your)} ${esc(q.unit||"")}</b></span><i>→</i><span><small>CORRECT ANSWER</small><b>${esc(correct)} ${esc(q.unit||"")}</b></span></div>
+            <p>${esc(result.explanation||q.explanation||"")}</p>
+          </div>
+        </section>
+        <div class="practice-no-xp-note"><b>0 XP earned</b><span>Practice scores exist only inside this run.</span></div>
+        <button class="btn practice-btn practice-next-btn" data-action="practice-next">${Number(pr.current_index||0)+1>=pr.question_count?"Finish practice":"Next question"} <b>→</b></button>
+      </section>`);
+  }
+
+  return appShell(`
+    <section class="practice-arena">
+      <div class="practice-progress-head"><span class="mode-badge practice-badge">PRACTICE</span><b>QUESTION ${Number(pr.current_index||0)+1} / ${pr.question_count}</b><strong>${Number(pr.total_score||0).toLocaleString()} PTS</strong></div>
+      <div class="practice-round-track"><i style="width:${Math.round((Number(pr.current_index||0)/Math.max(1,pr.question_count))*100)}%"></i></div>
+      <div class="practice-question-meta"><span>${categoryGlyph(q.category)} ${esc(q.category)}</span><span>${esc(q.difficulty)}</span><span>NO TIMER</span></div>
+      <h1 class="practice-question-title">${esc(q.prompt)}</h1>
+      ${q.context?`<p class="question-context">${esc(q.context)}</p>`:""}
+      <form id="practice-answer-form" class="answer-form game-answer-form">
+        ${questionInput(q,"practice")}
+        ${q.question_type!=="multiple_choice"?`<button class="btn practice-btn lock-btn" type="submit"><span>CHECK MY GUESS</span><b>✓</b></button>`:""}
+      </form>
+      <div class="practice-no-xp-note"><b>PRACTICE MODE</b><span>Unlimited plays • No XP • No streak changes</span></div>
+    </section>`);
+}
+
 async function leaderboardView() {
   let rows = [];
-  if (state.config.demoMode || !isConfigured()) {
+  if (!isConfigured()) {
     rows = [
       {username:"Nova",xp:18400,wins:42,games_played:87},{username:"Quasar",xp:16120,wins:36,games_played:91},
       {username:"MetricMind",xp:14950,wins:31,games_played:72},{username:"EstimateThis",xp:12220,wins:24,games_played:68},
@@ -310,7 +422,7 @@ async function leaderboardView() {
 }
 
 function profileView() {
-  if (!state.session && !state.config.demoMode) return appShell(`<section class="auth-gate player-gate"><div class="victory-burst"><span>☺</span></div><div class="mode-badge">PLAYER PROFILE</div><h1>Keep your progress.</h1><p>Google sign-in creates your player card from your Google name and avatar. You can change the display name anytime.</p><button class="btn primary launch-btn" data-action="login"><span>SIGN IN WITH GOOGLE</span><b>G</b></button></section>`);
+  if (!state.session && isConfigured()) return appShell(`<section class="auth-gate player-gate"><div class="victory-burst"><span>☺</span></div><div class="mode-badge">PLAYER PROFILE</div><h1>Keep your progress.</h1><p>Google sign-in creates your player card from your Google name and avatar. You can change the display name anytime.</p><button class="btn primary launch-btn" data-action="login"><span>SIGN IN WITH GOOGLE</span><b>G</b></button></section>`);
   const p = state.profile || demo?.profile || {username:"Demo Player",xp:0,wins:0,games_played:0,daily_streak:0};
   const l = xpToNextLevel(p.xp);
   const googleName = state.session?.user?.user_metadata?.full_name || state.session?.user?.user_metadata?.name || p.username;
@@ -357,7 +469,7 @@ function demoInit() {
     profile: { user_id:"demo", username:"Demo Player", avatar_url:"", xp:0, wins:0, games_played:0, daily_streak:0, username_customized:false },
     lobby: null
   };
-  if (state.config.demoMode || !isConfigured()) state.profile = demo.profile;
+  if (!isConfigured()) state.profile = demo.profile;
 }
 
 async function navigate(view, opts={}) {
@@ -366,6 +478,8 @@ async function navigate(view, opts={}) {
   else if (view === "create") $("#app").innerHTML = createView(opts.event);
   else if (view === "lobby") $("#app").innerHTML = lobbyView();
   else if (view === "daily") $("#app").innerHTML = dailyView();
+  else if (view === "practice-setup") $("#app").innerHTML = practiceSetupView();
+  else if (view === "practice") $("#app").innerHTML = practiceView();
   else if (view === "leaderboard") $("#app").innerHTML = await leaderboardView();
   else if (view === "profile") $("#app").innerHTML = profileView();
   else if (view === "how") $("#app").innerHTML = howView();
@@ -381,6 +495,8 @@ function bind() {
     if (a==="login") el.onclick = async()=>{ try{ await signInGoogle(); }catch(e){toast(e.message,"bad")} };
     if (a==="logout") el.onclick = async()=>{ await signOut(); navigate("home"); };
     if (a==="daily") el.onclick = openDaily;
+    if (a==="practice-next") el.onclick = practiceNext;
+    if (a==="practice-restart") el.onclick = ()=>{ state.practice=null; navigate("practice-setup"); };
     if (a==="quick-join") el.onclick = ()=> quickJoin($("#quick-code")?.value);
     if (a==="start-game") el.onclick = hostStart;
     if (a==="reveal-round") el.onclick = hostReveal;
@@ -392,12 +508,15 @@ function bind() {
   });
   $("#create-form")?.addEventListener("submit", createSubmit);
   $("#daily-form")?.addEventListener("submit", dailySubmit);
+  $("#practice-setup-form")?.addEventListener("submit", practiceStart);
+  $("#practice-answer-form")?.addEventListener("submit", practiceSubmit);
   $("#answer-form")?.addEventListener("submit", gameSubmit);
   $("#profile-form")?.addEventListener("submit", profileSubmit);
   $$(".choice").forEach(b => b.onclick = () => {
     $$(".choice").forEach(x=>x.classList.remove("selected")); b.classList.add("selected");
     const form = b.closest("form"); form.dataset.choice = b.dataset.answer;
     if (form.id==="answer-form") gameSubmit(new Event("submit"));
+    if (form.id==="practice-answer-form") practiceSubmit(new Event("submit"));
   });
 }
 
@@ -416,20 +535,42 @@ function postRender() {
 
 async function requireAuthOrDemo() {
   if (state.session) return true;
-  if (state.config.demoMode || !isConfigured()) return true;
+  if (!isConfigured()) return true;
   toast("Sign in with Google to play multiplayer.","bad"); return false;
 }
 
 async function openDaily() {
   state.view="daily"; state.daily=null; $("#app").innerHTML=appShell(`<section class="center-stage"><div class="spinner"></div><h2>Loading today's challenge…</h2></section>`);
   try {
-    if (state.config.demoMode || !isConfigured()) {
+    if (!isConfigured()) {
+      const dayKey = new Date().toISOString().slice(0,10);
       const day = Math.floor(Date.now()/86400000);
       const q = {...SAMPLE[day % SAMPLE.length], daily_number: day-20000};
-      state.daily={question:q}; answerStartedAt=performance.now(); await navigate("daily");
+      const savedRaw = localStorage.getItem(`trivia_demo_daily_${dayKey}`);
+      if (savedRaw) {
+        const saved = JSON.parse(savedRaw);
+        state.daily={question:q,result:saved};
+      } else {
+        state.daily={question:q};
+      }
+      answerStartedAt=performance.now(); await navigate("daily");
     } else {
-      if (!state.session) { toast("Sign in with Google to save your daily result.","bad"); return navigate("home"); }
-      const q=await getDailyQuestion(); state.daily={question:q}; answerStartedAt=performance.now(); await navigate("daily");
+      if (!state.session) { toast("Sign in with Google to play the Daily Quest.","bad"); return navigate("home"); }
+      const d=await getDailyState();
+      if (!d) throw new Error("No daily question configured.");
+      const q={
+        id:d.id,daily_number:d.daily_number,category:d.category,difficulty:d.difficulty,
+        question_type:d.question_type,prompt:d.prompt,context:d.context,unit:d.unit,options:d.options
+      };
+      state.daily={question:q};
+      if (d.already_played) {
+        state.daily.result={
+          score:d.score,xp_awarded:d.xp_awarded,your_answer:d.your_answer,
+          answer_numeric:d.answer_numeric,answer_text:d.answer_text,answer_display:d.answer_display,
+          explanation:d.explanation,guesses:d.guesses||[],already_played:true
+        };
+      }
+      answerStartedAt=performance.now(); await navigate("daily");
     }
   } catch(e){ toast(e.message,"bad"); navigate("home");}
 }
@@ -441,16 +582,105 @@ async function dailySubmit(e) {
   const value=q.question_type==="multiple_choice"?form.dataset.choice:$("#daily-answer")?.value;
   if (value===""||value==null){toast("Enter an answer first.","bad");return}
   try {
-    if (state.config.demoMode || !isConfigured()) {
+    if (!isConfigured()) {
+      const dayKey = new Date().toISOString().slice(0,10);
+      if (localStorage.getItem(`trivia_demo_daily_${dayKey}`)) { toast("Today's Daily Quest is already complete.","bad"); return openDaily(); }
       const score=numericScore(value,q.answer_numeric), xp=xpForScore(score,{daily:true});
       demo.profile.xp+=xp; demo.profile.daily_streak++;
       const spread=Array.from({length:68},()=>q.answer_numeric*Math.pow(10,(Math.random()-.5)*1.4));
-      state.daily.result={score,xp_awarded:xp,your_answer:Number(value),answer_numeric:q.answer_numeric,explanation:q.explanation,guesses:spread};
+      const result={score,xp_awarded:xp,your_answer:Number(value),answer_numeric:q.answer_numeric,explanation:q.explanation,guesses:spread,already_played:true};
+      localStorage.setItem(`trivia_demo_daily_${dayKey}`, JSON.stringify(result));
+      state.daily.result=result;
       state.profile=demo.profile; await navigate("daily");
     } else {
       const r=await submitDailyAnswer(value); state.daily.result=r; await loadProfile(); await navigate("daily");
     }
   } catch(err){toast(err.message,"bad")}
+}
+
+
+function demoPracticeQuestion(pr) {
+  const q = pr.questions[pr.current_index];
+  return q ? {...q, ordinal:pr.current_index, answered:false} : null;
+}
+
+async function practiceStart(e) {
+  e.preventDefault();
+  const f = new FormData(e.currentTarget);
+  const categories = f.getAll("categories");
+  const questionCount = Number(f.get("questionCount") || 10);
+  const difficulty = String(f.get("difficulty") || "any");
+  if (!categories.length) { toast("Choose at least one practice category.","bad"); return; }
+
+  try {
+    if (!isConfigured()) {
+      let pool = SAMPLE.filter(q=>categories.includes(q.category) && (difficulty==="any" || q.difficulty===difficulty));
+      if (!pool.length) pool = SAMPLE.filter(q=>categories.includes(q.category));
+      if (!pool.length) throw new Error("No demo questions match those categories.");
+      const shuffled=[...pool].sort(()=>Math.random()-.5);
+      const questions=[];
+      while (questions.length<questionCount) questions.push({...shuffled[questions.length%shuffled.length],id:`${shuffled[questions.length%shuffled.length].id}-${questions.length}`});
+      state.practice={demo:true,questions,question_count:questionCount,current_index:0,total_score:0,status:"active",result:null,summary:[]};
+      state.practice.question=demoPracticeQuestion(state.practice);
+      answerStartedAt=performance.now();
+      return navigate("practice");
+    }
+    if (!state.session) { toast("Sign in with Google to use Practice on the live site.","bad"); return; }
+    const session=await startPractice({categories,difficulty,questionCount});
+    if (!session) throw new Error("Practice session could not be created.");
+    const q=await getPracticeQuestion(session.session_id);
+    state.practice={...session,session_id:session.session_id,question:q,result:q?.answered?q:null,summary:[]};
+    answerStartedAt=performance.now();
+    await navigate("practice");
+  } catch(err){ toast(err.message,"bad"); }
+}
+
+async function practiceSubmit(e) {
+  e?.preventDefault();
+  const pr=state.practice, q=pr?.question, form=$("#practice-answer-form");
+  if(!pr||!q||pr.result) return;
+  const value=q.question_type==="multiple_choice"?form?.dataset.choice:$("#practice-answer")?.value;
+  if(value==null||value===""){toast("Enter a guess first.","bad");return}
+  try {
+    if (pr.demo) {
+      let score=0, correct, your=value;
+      if(q.question_type==="numeric"){score=numericScore(value,q.answer_numeric);correct=q.answer_numeric;}
+      else if(q.question_type==="multiple_choice"){score=String(value)===String(q.correct_option)?1000:0;correct=q.options?.[q.correct_option];your=q.options?.[Number(value)]??value;}
+      else {score=String(value).trim().toLowerCase()===String(q.answer_text).trim().toLowerCase()?1000:0;correct=q.answer_text;}
+      const result={score,your_answer:your,answer_numeric:q.answer_numeric,answer_text:q.answer_text,answer_display:correct,explanation:q.explanation};
+      pr.total_score+=score; pr.result=result;
+      pr.summary.push({prompt:q.prompt,category:q.category,score,your_answer:String(your),correct_answer:String(correct??"—")});
+      return navigate("practice");
+    }
+    const result=await submitPracticeAnswer(pr.session_id,value,performance.now()-answerStartedAt);
+    pr.result=result;
+    pr.total_score=result.total_score;
+    await navigate("practice");
+  } catch(err){toast(err.message,"bad")}
+}
+
+async function practiceNext() {
+  const pr=state.practice;
+  if(!pr) return navigate("practice-setup");
+  try{
+    if(pr.demo){
+      if(pr.current_index+1>=pr.question_count){
+        pr.status="completed"; return navigate("practice");
+      }
+      pr.current_index++; pr.question=demoPracticeQuestion(pr); pr.result=null; answerStartedAt=performance.now();
+      return navigate("practice");
+    }
+    const s=await nextPracticeQuestion(pr.session_id);
+    pr.current_index=s.current_index; pr.question_count=s.question_count; pr.total_score=s.total_score; pr.status=s.status; pr.result=null;
+    if(s.status==="completed"){
+      pr.summary=await getPracticeSummary(pr.session_id);
+      return navigate("practice");
+    }
+    pr.question=await getPracticeQuestion(pr.session_id);
+    pr.result=pr.question?.answered?pr.question:null;
+    answerStartedAt=performance.now();
+    await navigate("practice");
+  }catch(err){toast(err.message,"bad")}
 }
 
 async function createSubmit(e) {
@@ -460,7 +690,7 @@ async function createSubmit(e) {
     maxPlayers:+f.get("maxPlayers"),gameMode:f.get("gameMode"),secondsPerQuestion:+f.get("secondsPerQuestion")};
   if(settings.gameMode==="standard"&&settings.maxPlayers>250) toast("For rooms above 250, Event mode is strongly recommended.");
   try {
-    if (state.config.demoMode || !isConfigured()) {
+    if (!isConfigured()) {
       const code=Math.random().toString(36).slice(2,8).toUpperCase();
       state.lobby={id:"demo-"+uid(),code,host_id:"demo",demoHost:true,status:"lobby",current_question_index:0,...{
         title:settings.title||"Demo Trivia",category:settings.category,difficulty:settings.difficulty,question_count:settings.questionCount,
@@ -476,7 +706,7 @@ async function quickJoin(code) {
   if(!code||code.trim().length<4){toast("Enter a lobby code.","bad");return}
   if(!(await requireAuthOrDemo())) return;
   try {
-    if(state.config.demoMode||!isConfigured()){toast("Demo mode can host a local test lobby. Connect Supabase for cross-device joining.");return navigate("create")}
+    if(!isConfigured()){toast("Demo mode can host a local test lobby. Connect Supabase for cross-device joining.");return navigate("create")}
     await joinLobby(code); await enterLobby(code);
   } catch(e){toast(e.message,"bad")}
 }
@@ -568,7 +798,7 @@ async function profileSubmit(e){
   e.preventDefault(); const username=new FormData(e.currentTarget).get("username").trim();
   if(username.length<2){toast("Display name must be at least 2 characters.","bad");return}
   try{
-    if(state.config.demoMode||!isConfigured()){demo.profile.username=username;state.profile=demo.profile;toast("Demo profile updated");navigate("profile")}
+    if(!isConfigured()){demo.profile.username=username;state.profile=demo.profile;toast("Demo profile updated");navigate("profile")}
     else{await updateProfile(username);toast("Profile saved");navigate("profile")}
   }catch(err){toast(err.message,"bad")}
 }
@@ -597,7 +827,7 @@ async function boot() {
     if(state.session) { try{await joinLobby(join);await enterLobby(join);return}catch(e){toast(e.message,"bad")} }
     else {
       sessionStorage.setItem("pending_join",join.toUpperCase());
-      if(!state.config.demoMode&&isConfigured()){toast("Sign in to join this lobby.");}
+      if(isConfigured()){toast("Sign in to join this lobby.");}
     }
   }
   const pending=sessionStorage.getItem("pending_join");
