@@ -393,7 +393,7 @@ begin
     returning * into s;
   else
     update practice_sessions
-    set current_index=current_index+1
+    set current_index=practice_sessions.current_index+1
     where id=s.id
     returning * into s;
   end if;

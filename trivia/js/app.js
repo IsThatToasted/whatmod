@@ -20,6 +20,33 @@ const categoryGlyph = value => ({Science:"⚗",Technology:"⌁",History:"⌛",Ge
 let answerStartedAt = 0;
 let refreshTimer = null;
 let demo = null;
+const inFlight = new Set();
+
+function beginAction(key) {
+  if (inFlight.has(key)) return false;
+  inFlight.add(key);
+  return true;
+}
+function endAction(key) { inFlight.delete(key); }
+
+function friendlyErrorMessage(error, fallback = "Something went wrong. Please try again.") {
+  const raw = String(error?.message || error || "").trim();
+  const lower = raw.toLowerCase();
+  if (!raw) return fallback;
+  if (lower.includes("column reference") && lower.includes("ambiguous")) return "The game hit a state conflict. Refresh once and try again.";
+  if (lower.includes("jwt") || lower.includes("not authenticated") || lower.includes("sign in required")) return "Your session needs to be refreshed. Sign in again and retry.";
+  if (lower.includes("network") || lower.includes("failed to fetch")) return "We couldn't reach the game server. Check your connection and try again.";
+  if (lower.includes("practice question was already answered")) return "That practice answer is already locked in. Continue to the next question.";
+  if (lower.includes("answer the current practice question first")) return "Lock in your answer before continuing.";
+  if (lower.includes("daily quest is already complete") || lower.includes("already played today")) return "Today's Daily Quest is already complete.";
+  if (lower.includes("answers are closed") || lower.includes("time expired")) return "That round is already closed.";
+  if (raw.length > 180 || /\b(sql|postgres|column|relation|function)\b/i.test(raw)) return fallback;
+  return raw;
+}
+function reportError(error, fallback) {
+  console.error(error);
+  toast(friendlyErrorMessage(error, fallback), "bad");
+}
 
 const SAMPLE = [
   { id:"d1", category:"Science", difficulty:"medium", question_type:"numeric", prompt:"About how many kilometers is the average distance from Earth to the Moon?", unit:"km", answer_numeric:384400, explanation:"The Moon's average orbital distance is about 384,400 km." },
@@ -411,7 +438,7 @@ async function leaderboardView() {
       {username:"FermiFan",xp:10980,wins:19,games_played:56}
     ];
   } else {
-    try { rows = await loadLeaderboard(); } catch(e) { toast(e.message,"bad"); }
+    try { rows = await loadLeaderboard(); } catch(e) { reportError(e); }
   }
   return appShell(`
     <section class="game-screen-head rank-head"><div><div class="mode-badge hot">GLOBAL LADDER</div><h1>Hall of guesses</h1><p>Lifetime XP decides who owns the top of the board.</p></div><div class="screen-number">♛</div></section>
@@ -492,7 +519,7 @@ function bind() {
   $$("[data-copy]").forEach(el => el.onclick = async() => { await navigator.clipboard.writeText(el.dataset.copy); toast("Copied"); });
   $$("[data-action]").forEach(el => {
     const a = el.dataset.action;
-    if (a==="login") el.onclick = async()=>{ try{ await signInGoogle(); }catch(e){toast(e.message,"bad")} };
+    if (a==="login") el.onclick = async()=>{ try{ await signInGoogle(); }catch(e){reportError(e)} };
     if (a==="logout") el.onclick = async()=>{ await signOut(); navigate("home"); };
     if (a==="daily") el.onclick = openDaily;
     if (a==="practice-next") el.onclick = practiceNext;
@@ -501,10 +528,10 @@ function bind() {
     if (a==="start-game") el.onclick = hostStart;
     if (a==="reveal-round") el.onclick = hostReveal;
     if (a==="next-round") el.onclick = hostNext;
-    if (a==="twitch-connect") el.onclick = ()=>{try{connectTwitch()}catch(e){toast(e.message,"bad")}};
+    if (a==="twitch-connect") el.onclick = ()=>{try{connectTwitch()}catch(e){reportError(e)}};
     if (a==="twitch-disconnect") el.onclick = ()=>{disconnectTwitch();navigate("lobby")};
-    if (a==="twitch-announce") el.onclick = async()=>{try{await announceLobby(state.lobby.code);toast("Lobby posted to Twitch chat")}catch(e){toast(e.message,"bad")}};
-    if (a==="twitch-listen") el.onclick = async()=>{try{await listenToTwitchChat(()=>navigate("lobby"));toast("Listening for !trivia and !join")}catch(e){toast(e.message,"bad")}};
+    if (a==="twitch-announce") el.onclick = async()=>{try{await announceLobby(state.lobby.code);toast("Lobby posted to Twitch chat")}catch(e){reportError(e)}};
+    if (a==="twitch-listen") el.onclick = async()=>{try{await listenToTwitchChat(()=>navigate("lobby"));toast("Listening for !trivia and !join")}catch(e){reportError(e)}};
   });
   $("#create-form")?.addEventListener("submit", createSubmit);
   $("#daily-form")?.addEventListener("submit", dailySubmit);
@@ -572,15 +599,16 @@ async function openDaily() {
       }
       answerStartedAt=performance.now(); await navigate("daily");
     }
-  } catch(e){ toast(e.message,"bad"); navigate("home");}
+  } catch(e){ reportError(e); navigate("home");}
 }
 
 async function dailySubmit(e) {
   e?.preventDefault();
+  if (!beginAction("daily-submit")) return;
   const q=state.daily?.question;
   const form=$("#daily-form");
   const value=q.question_type==="multiple_choice"?form.dataset.choice:$("#daily-answer")?.value;
-  if (value===""||value==null){toast("Enter an answer first.","bad");return}
+  if (value===""||value==null){toast("Enter an answer first.","bad");endAction("daily-submit");return}
   try {
     if (!isConfigured()) {
       const dayKey = new Date().toISOString().slice(0,10);
@@ -595,7 +623,8 @@ async function dailySubmit(e) {
     } else {
       const r=await submitDailyAnswer(value); state.daily.result=r; await loadProfile(); await navigate("daily");
     }
-  } catch(err){toast(err.message,"bad")}
+  } catch(err){ reportError(err, "Your Daily answer couldn't be saved. Please try again."); }
+  finally { endAction("daily-submit"); }
 }
 
 
@@ -606,13 +635,16 @@ function demoPracticeQuestion(pr) {
 
 async function practiceStart(e) {
   e.preventDefault();
-  const f = new FormData(e.currentTarget);
-  const categories = f.getAll("categories");
-  const questionCount = Number(f.get("questionCount") || 10);
-  const difficulty = String(f.get("difficulty") || "any");
-  if (!categories.length) { toast("Choose at least one practice category.","bad"); return; }
-
+  if (!beginAction("practice-start")) return;
+  const submitButton=e.currentTarget?.querySelector('button[type="submit"]');
+  if(submitButton) submitButton.disabled=true;
   try {
+    const f = new FormData(e.currentTarget);
+    const categories = f.getAll("categories");
+    const questionCount = Number(f.get("questionCount") || 10);
+    const difficulty = String(f.get("difficulty") || "any");
+    if (!categories.length) { toast("Choose at least one practice category.","bad"); return; }
+
     if (!isConfigured()) {
       let pool = SAMPLE.filter(q=>categories.includes(q.category) && (difficulty==="any" || q.difficulty===difficulty));
       if (!pool.length) pool = SAMPLE.filter(q=>categories.includes(q.category));
@@ -623,24 +655,32 @@ async function practiceStart(e) {
       state.practice={demo:true,questions,question_count:questionCount,current_index:0,total_score:0,status:"active",result:null,summary:[]};
       state.practice.question=demoPracticeQuestion(state.practice);
       answerStartedAt=performance.now();
-      return navigate("practice");
+      await navigate("practice");
+      return;
     }
     if (!state.session) { toast("Sign in with Google to use Practice on the live site.","bad"); return; }
     const session=await startPractice({categories,difficulty,questionCount});
     if (!session) throw new Error("Practice session could not be created.");
     const q=await getPracticeQuestion(session.session_id);
+    if (!q) throw new Error("Practice question could not be loaded.");
     state.practice={...session,session_id:session.session_id,question:q,result:q?.answered?q:null,summary:[]};
     answerStartedAt=performance.now();
     await navigate("practice");
-  } catch(err){ toast(err.message,"bad"); }
+  } catch(err){ reportError(err, "Practice couldn't start. Please try again."); }
+  finally {
+    endAction("practice-start");
+    if(submitButton?.isConnected) submitButton.disabled=false;
+  }
 }
 
 async function practiceSubmit(e) {
   e?.preventDefault();
+  if (!beginAction("practice-submit")) return;
   const pr=state.practice, q=pr?.question, form=$("#practice-answer-form");
-  if(!pr||!q||pr.result) return;
+  if(!pr||!q||pr.result){ endAction("practice-submit"); return; }
   const value=q.question_type==="multiple_choice"?form?.dataset.choice:$("#practice-answer")?.value;
-  if(value==null||value===""){toast("Enter a guess first.","bad");return}
+  if(value==null||value===""){toast("Enter a guess first.","bad");endAction("practice-submit");return}
+  form?.querySelectorAll("input,button").forEach(el=>el.disabled=true);
   try {
     if (pr.demo) {
       let score=0, correct, your=value;
@@ -650,41 +690,71 @@ async function practiceSubmit(e) {
       const result={score,your_answer:your,answer_numeric:q.answer_numeric,answer_text:q.answer_text,answer_display:correct,explanation:q.explanation};
       pr.total_score+=score; pr.result=result;
       pr.summary.push({prompt:q.prompt,category:q.category,score,your_answer:String(your),correct_answer:String(correct??"—")});
-      return navigate("practice");
+      await navigate("practice");
+      return;
     }
     const result=await submitPracticeAnswer(pr.session_id,value,performance.now()-answerStartedAt);
+    if (!result) throw new Error("Practice answer was not saved.");
     pr.result=result;
     pr.total_score=result.total_score;
     await navigate("practice");
-  } catch(err){toast(err.message,"bad")}
+  } catch(err){ reportError(err, "Your practice answer couldn't be saved. Please try again."); }
+  finally {
+    endAction("practice-submit");
+    if(form?.isConnected && !pr?.result) form.querySelectorAll("input,button").forEach(el=>el.disabled=false);
+  }
 }
 
 async function practiceNext() {
+  if (!beginAction("practice-next")) return;
   const pr=state.practice;
-  if(!pr) return navigate("practice-setup");
+  const nextButton=document.querySelector('[data-action="practice-next"]');
+  if(nextButton) nextButton.disabled=true;
   try{
+    if(!pr) { await navigate("practice-setup"); return; }
+    if(!pr.result && !pr.question?.answered){ toast("Lock in your answer before continuing.","bad"); return; }
+
     if(pr.demo){
       if(pr.current_index+1>=pr.question_count){
-        pr.status="completed"; return navigate("practice");
+        pr.status="completed"; await navigate("practice"); return;
       }
       pr.current_index++; pr.question=demoPracticeQuestion(pr); pr.result=null; answerStartedAt=performance.now();
-      return navigate("practice");
+      await navigate("practice");
+      return;
     }
+
     const s=await nextPracticeQuestion(pr.session_id);
+    if(!s) throw new Error("Practice state could not be advanced.");
     pr.current_index=s.current_index; pr.question_count=s.question_count; pr.total_score=s.total_score; pr.status=s.status; pr.result=null;
     if(s.status==="completed"){
       pr.summary=await getPracticeSummary(pr.session_id);
-      return navigate("practice");
+      await navigate("practice");
+      return;
     }
     pr.question=await getPracticeQuestion(pr.session_id);
+    if(!pr.question) throw new Error("The next practice question could not be loaded.");
     pr.result=pr.question?.answered?pr.question:null;
     answerStartedAt=performance.now();
     await navigate("practice");
-  }catch(err){toast(err.message,"bad")}
+  }catch(err){
+    reportError(err, "Practice couldn't move to the next question. Refresh and try again.");
+    // Re-sync the current server state after a failed transition whenever possible.
+    if(pr && !pr.demo && pr.session_id){
+      try {
+        const q=await getPracticeQuestion(pr.session_id);
+        if(q){ pr.current_index=q.ordinal; pr.question_count=q.question_count; pr.total_score=q.total_score; pr.status=q.status; pr.question=q; pr.result=q.answered?q:null; }
+      } catch(syncError) { console.warn("Practice re-sync failed",syncError); }
+    }
+  } finally {
+    endAction("practice-next");
+    if(nextButton?.isConnected) nextButton.disabled=false;
+  }
 }
 
 async function createSubmit(e) {
-  e.preventDefault(); if (!(await requireAuthOrDemo())) return;
+  e.preventDefault();
+  if (!beginAction("create-lobby")) return;
+  if (!(await requireAuthOrDemo())) { endAction("create-lobby"); return; }
   const f=new FormData(e.currentTarget);
   const settings={title:f.get("title"),category:f.get("category"),difficulty:f.get("difficulty"),questionCount:+f.get("questionCount"),
     maxPlayers:+f.get("maxPlayers"),gameMode:f.get("gameMode"),secondsPerQuestion:+f.get("secondsPerQuestion")};
@@ -699,16 +769,19 @@ async function createSubmit(e) {
     } else {
       const g=await createLobby(settings); state.lobby=g; await enterLobby(g.code);
     }
-  } catch(err){toast(err.message,"bad")}
+  } catch(err){reportError(err, "The lobby couldn't be created. Please try again.");}
+  finally { endAction("create-lobby"); }
 }
 
 async function quickJoin(code) {
   if(!code||code.trim().length<4){toast("Enter a lobby code.","bad");return}
-  if(!(await requireAuthOrDemo())) return;
+  if (!beginAction("join-lobby")) return;
   try {
-    if(!isConfigured()){toast("Demo mode can host a local test lobby. Connect Supabase for cross-device joining.");return navigate("create")}
+    if(!(await requireAuthOrDemo())) return;
+    if(!isConfigured()){toast("Demo mode can host a local test lobby. Connect Supabase for cross-device joining.");await navigate("create");return}
     await joinLobby(code); await enterLobby(code);
-  } catch(e){toast(e.message,"bad")}
+  } catch(e){reportError(e, "That lobby couldn't be joined. Check the code and try again.")}
+  finally { endAction("join-lobby"); }
 }
 
 async function enterLobby(code) {
@@ -733,12 +806,14 @@ async function refreshLobby(code) {
 }
 
 async function hostStart() {
+  if (!beginAction("host-transition")) return;
   try{
     if(state.lobby.demoHost){
       state.lobby.status="question"; state.lobby.current_question_index=0; state.currentQuestion={...SAMPLE[0]}; answerStartedAt=performance.now(); return navigate("lobby");
     }
     await startLobby(state.lobby.id); await refreshLobby(state.lobby.code);
-  }catch(e){toast(e.message,"bad")}
+  }catch(e){reportError(e)}
+  finally { endAction("host-transition"); }
 }
 
 async function gameSubmit(e) {
@@ -754,10 +829,11 @@ async function gameSubmit(e) {
     if(state.lobby.demoHost){
       state._demoAnswer=value; toast("Answer locked");
     }else await submitGameAnswer(state.lobby.id,value,performance.now()-answerStartedAt);
-  }catch(err){toast(err.message,"bad")}
+  }catch(err){reportError(err)}
 }
 
 async function hostReveal() {
+  if (!beginAction("host-transition")) return;
   try{
     if(state.lobby.demoHost){
       const q=state.currentQuestion, guess=Number(state._demoAnswer ?? q.answer_numeric*1.4), score=numericScore(guess,q.answer_numeric);
@@ -769,10 +845,12 @@ async function hostReveal() {
       return navigate("lobby");
     }
     await revealRound(state.lobby.id); await refreshLobby(state.lobby.code);
-  }catch(e){toast(e.message,"bad")}
+  }catch(e){reportError(e)}
+  finally { endAction("host-transition"); }
 }
 
 async function hostNext() {
+  if (!beginAction("host-transition")) return;
   try{
     if(state.lobby.demoHost){
       if(state.lobby.current_question_index+1>=state.lobby.question_count||state.lobby.current_question_index+1>=SAMPLE.length){
@@ -783,7 +861,8 @@ async function hostNext() {
       return navigate("lobby");
     }
     await nextRound(state.lobby.id); await refreshLobby(state.lobby.code);
-  }catch(e){toast(e.message,"bad")}
+  }catch(e){reportError(e)}
+  finally { endAction("host-transition"); }
 }
 
 function startTimer() {
@@ -800,7 +879,7 @@ async function profileSubmit(e){
   try{
     if(!isConfigured()){demo.profile.username=username;state.profile=demo.profile;toast("Demo profile updated");navigate("profile")}
     else{await updateProfile(username);toast("Profile saved");navigate("profile")}
-  }catch(err){toast(err.message,"bad")}
+  }catch(err){reportError(err)}
 }
 
 document.addEventListener("keydown", e=>{
@@ -824,14 +903,14 @@ async function boot() {
 
   const join=params.get("join");
   if(join){
-    if(state.session) { try{await joinLobby(join);await enterLobby(join);return}catch(e){toast(e.message,"bad")} }
+    if(state.session) { try{await joinLobby(join);await enterLobby(join);return}catch(e){reportError(e)} }
     else {
       sessionStorage.setItem("pending_join",join.toUpperCase());
       if(isConfigured()){toast("Sign in to join this lobby.");}
     }
   }
   const pending=sessionStorage.getItem("pending_join");
-  if(pending&&state.session){sessionStorage.removeItem("pending_join");try{await joinLobby(pending);await enterLobby(pending);return}catch(e){toast(e.message,"bad")}}
+  if(pending&&state.session){sessionStorage.removeItem("pending_join");try{await joinLobby(pending);await enterLobby(pending);return}catch(e){reportError(e)}}
   navigate("home");
 }
 boot();

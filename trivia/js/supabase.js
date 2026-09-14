@@ -46,7 +46,10 @@ export async function signInGoogle() {
 export async function signOut() {
   cleanupRealtime();
   if (state.supabase) await state.supabase.auth.signOut();
-  setState({ session: null, profile: null, lobby: null, lobbyPlayers: [] });
+  setState({
+    session: null, profile: null, lobby: null, lobbyPlayers: [],
+    currentQuestion: null, roundResults: null, daily: null, practice: null
+  });
 }
 
 export async function rpc(name, args = {}) {

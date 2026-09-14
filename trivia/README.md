@@ -1,4 +1,4 @@
-# WhatMod Trivia V2 — Game UI
+# WhatMod Trivia V4 — Production Hardened Game UI
 
 A GitHub-Pages-friendly daily estimation trivia + realtime multiplayer app designed for `https://whatmod.com/trivia/`.
 
@@ -176,3 +176,7 @@ Practice mode is deliberately progression-neutral:
 - see 0–1,000 precision scoring and correct answers;
 - replay without limits;
 - no XP, streak, win, multiplayer-game, or leaderboard changes.
+
+## V4 production hardening
+
+Existing V3 projects should run `supabase/migrations/004_production_hardening.sql` once. It fixes the Practice `current_index` ambiguity, proactively fixes the same output-column collision class in multiplayer scoring, qualifies mutable round/session columns, and narrows RPC execute privileges. The V4 client also suppresses duplicate in-flight button actions and hides raw database internals from player-facing toasts.
