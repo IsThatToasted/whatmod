@@ -1,0 +1,22 @@
+-- Starter numeric-estimation bank. Add many more through the admin RPC/import pipeline.
+insert into public.questions(category,difficulty,question_type,prompt,unit,answer_numeric,explanation,source_url) values
+('Space','medium','numeric','About how many kilometers is the average distance from Earth to the Moon?','km',384400,'The Moon''s average orbital distance is about 384,400 km.','https://science.nasa.gov/moon/facts/'),
+('Technology','easy','numeric','In what year was the original iPhone released?','year',2007,'Apple released the first iPhone in 2007.','https://www.apple.com/newsroom/2007/01/09Apple-Reinvents-the-Phone-with-iPhone/'),
+('Geography','medium','numeric','Roughly how many square kilometers is the area of Pennsylvania?','km²',119280,'Pennsylvania covers roughly 119,280 square kilometers.','https://www.census.gov/'),
+('History','easy','numeric','In what year did the Berlin Wall fall?','year',1989,'The Berlin Wall opened on November 9, 1989.','https://history.state.gov/'),
+('Animals','medium','numeric','About how many kilograms can a large adult male African elephant weigh?','kg',6000,'Large adult males commonly weigh around 6,000 kg.','https://www.worldwildlife.org/species/african-elephant'),
+('Space','hard','numeric','Approximately how many Earth days does Venus take to rotate once on its axis?','days',243,'Venus takes about 243 Earth days per sidereal rotation.','https://science.nasa.gov/venus/venus-facts/'),
+('Science','easy','numeric','At sea level, at about what temperature in Celsius does pure water boil?','°C',100,'At standard atmospheric pressure, water boils at 100 °C.','https://www.nist.gov/'),
+('Geography','easy','numeric','About how many kilometers long is the Nile River?','km',6650,'Common references place the Nile at roughly 6,650 km long.','https://www.britannica.com/place/Nile-River'),
+('Space','easy','numeric','Approximately how many minutes does sunlight take to reach Earth?','minutes',8.3167,'Light takes about 8 minutes 20 seconds to travel from the Sun to Earth.','https://science.nasa.gov/sun/facts/'),
+('Animals','easy','numeric','Approximately how many hours per day can a domestic cat sleep?','hours',15,'Cats commonly sleep around 12–16 hours per day; 15 is a useful central estimate.','https://www.britannica.com/animal/cat'),
+('History','medium','numeric','In what year did Apollo 11 land humans on the Moon?','year',1969,'Apollo 11 landed on July 20, 1969.','https://www.nasa.gov/mission/apollo-11/'),
+('Science','medium','numeric','Approximately how fast is the speed of sound in dry air at 20 °C?','m/s',343,'At 20 °C, sound travels through dry air at about 343 m/s.','https://www.nist.gov/'),
+('Technology','medium','numeric','In what year was the World Wide Web first made publicly available by CERN?','year',1991,'The first website and web software were opened to a broader community in 1991.','https://home.cern/science/computing/birth-web'),
+('Geography','hard','numeric','Approximately how many square kilometers is Greenland?','km²',2166086,'Greenland is about 2.166 million km².','https://www.britannica.com/place/Greenland'),
+('Animals','hard','numeric','Approximately how many heartbeats per minute can a hummingbird reach during active flight?','bpm',1200,'Some hummingbirds can reach heart rates around 1,200 bpm during activity.','https://www.britannica.com/animal/hummingbird'),
+('Space','medium','numeric','Approximately how many Earth days does Mars take to orbit the Sun?','days',687,'A Martian year is about 687 Earth days.','https://science.nasa.gov/mars/facts/'),
+('Science','hard','numeric','Approximately how many kilometers per second is the speed of light in vacuum?','km/s',299792.458,'The defined speed of light is 299,792,458 m/s.','https://physics.nist.gov/cuu/Constants/'),
+('History','medium','numeric','In what year did the Titanic sink?','year',1912,'RMS Titanic sank in April 1912.','https://www.britannica.com/topic/Titanic'),
+('Geography','medium','numeric','Approximately how many meters above sea level is Mount Everest?','m',8848.86,'The jointly announced official elevation is 8,848.86 m.','https://www.britannica.com/place/Mount-Everest'),
+('Technology','hard','numeric','Approximately how many transistors were in Intel''s original 4004 microprocessor?','transistors',2300,'The Intel 4004 contained about 2,300 transistors.','https://www.intel.com/content/www/us/en/history/museum-story-of-intel-4004.html');
