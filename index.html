@@ -2,188 +2,127 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#071013" />
-  <title>ScooterCast Live</title>
-  <link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f7f3ff" />
+  <meta name="description" content="WhatMod — a growing collection of apps, experiments, games, and useful little things." />
+  <title>WhatMod — Projects, apps & experiments</title>
   <link rel="stylesheet" href="./styles.css" />
+  <script>document.documentElement.classList.add('js');</script>
 </head>
 <body>
-  <main class="shell">
-    <header class="topbar">
-      <a class="brand-link" href="./">
-        <div>
-          <div class="eyebrow">LIVE LOCAL RIDES</div>
-          <h1>SCOOTERCAST</h1>
+  <div class="page-noise" aria-hidden="true"></div>
+  <div class="ambient" aria-hidden="true">
+    <span class="blob blob-a"></span>
+    <span class="blob blob-b"></span>
+    <span class="blob blob-c"></span>
+    <span class="blob blob-d"></span>
+    <span class="floaty floaty-a">✦</span>
+    <span class="floaty floaty-b">●</span>
+    <span class="floaty floaty-c">✿</span>
+  </div>
+
+  <header class="site-header shell">
+    <a class="brand" href="#top" aria-label="WhatMod home">
+      <span class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+      <span class="brand-copy">
+        <strong>whatmod</strong><em>.com</em>
+      </span>
+    </a>
+
+    <nav class="header-actions" aria-label="Primary navigation">
+      <a href="#projects" class="nav-link">Projects</a>
+      <button class="icon-button" id="surpriseButton" type="button" aria-label="Open a random project" title="Surprise me">
+        <span aria-hidden="true">✦</span>
+      </button>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy reveal">
+        <div class="eyebrow"><span class="pulse-dot"></span> The WhatMod playground</div>
+        <h1>Useful things.<br><span>Fun things.</span><br>Whatever’s next.</h1>
+        <p class="hero-lede">A growing little universe of apps, experiments, tools, games, and ideas built because they sounded useful — or just too fun not to try.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#projects">Explore the projects <span>↓</span></a>
+          <button class="button button-secondary" id="heroSurpriseButton" type="button">Surprise me <span>✦</span></button>
         </div>
-      </a>
-      <div class="top-actions">
-        <span id="explorerCount" class="count-pill hidden">0 RIDERS</span>
-        <div id="liveBadge" class="badge offline">EXPLORER</div>
-      </div>
-    </header>
-
-    <section id="errorPanel" class="error-panel hidden"></section>
-
-    <section id="explorerView" class="explorer-view hidden">
-      <div class="ride-tabs">
-        <button id="liveTab" class="ride-tab active">Live</button>
-        <button id="replayTab" class="ride-tab">Replays</button>
-      </div>
-
-      <div id="liveExplorerPanel">
-      <div class="explorer-hero">
-        <div>
-          <div class="eyebrow">LIVE EXPLORER</div>
-          <h2>See who’s riding now.</h2>
-          <p>Only riders who enable <strong>Show in Live Explorer</strong> appear here.</p>
+        <div class="mini-proof" aria-label="Site highlights">
+          <span><b id="projectCount">4</b> live projects</span>
+          <i></i>
+          <span>Built for web + beyond</span>
+          <i></i>
+          <span>Always tinkering</span>
         </div>
-        <button id="refreshExplorer" class="refresh-button">↻ Refresh</button>
-      </div>
-      <div id="riderGrid" class="rider-grid"></div>
-      <div id="emptyExplorer" class="empty-explorer hidden">
-        <div class="radar">◎</div>
-        <h3>No public rides right now</h3>
-        <p>When a rider goes live and enables Explorer visibility, they’ll appear here.</p>
-      </div>
       </div>
 
-      <div id="replayExplorerPanel" class="hidden">
-        <div class="explorer-hero">
-          <div>
-            <div class="eyebrow">RIDE ARCHIVE</div>
-            <h2>Past rides.</h2>
-            <p>Replay the route, telemetry, reactions, and saved moments.</p>
+      <div class="hero-playground reveal" aria-hidden="true">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <div class="hero-bubble bubble-main">
+          <div class="bubble-face">
+            <span class="eye"></span><span class="eye"></span>
+            <span class="smile"></span>
           </div>
-          <button id="refreshReplays" class="refresh-button">↻ Refresh</button>
         </div>
-        <div id="replayGrid" class="rider-grid"></div>
-        <div id="emptyReplays" class="empty-explorer hidden">
-          <div class="radar">↺</div>
-          <h3>No completed rides yet</h3>
-          <p>Ended rides will appear here automatically.</p>
-        </div>
+        <div class="hero-bubble bubble-small bubble-trivia">?</div>
+        <div class="hero-bubble bubble-small bubble-track">✈</div>
+        <div class="hero-bubble bubble-small bubble-ride">↗</div>
+        <div class="hero-bubble bubble-small bubble-code">&lt;/&gt;</div>
+        <div class="spark spark-1">✦</div>
+        <div class="spark spark-2">✦</div>
+        <div class="spark spark-3">•</div>
       </div>
     </section>
 
-    <section id="replayView" class="hidden">
-      <div class="replay-header">
-        <div>
-          <div class="eyebrow">RIDE REPLAY</div>
-          <h2 id="replayTitle">Scooter Ride</h2>
-          <p id="replaySummary">Loading replay…</p>
-        </div>
-        <a class="refresh-button" href="./">← Ride Archive</a>
+    <section class="ticker" aria-label="WhatMod categories">
+      <div class="ticker-track">
+        <span>APPS</span><b>✦</b><span>TOOLS</span><b>●</b><span>GAMES</span><b>✿</b><span>EXPERIMENTS</span><b>✦</b><span>TRAVEL</span><b>●</b><span>LIVE</span><b>✿</b><span>APPS</span><b>✦</b><span>TOOLS</span><b>●</b><span>GAMES</span><b>✿</b><span>EXPERIMENTS</span><b>✦</b><span>TRAVEL</span><b>●</b><span>LIVE</span><b>✿</b>
       </div>
-
-      <section class="replay-media-grid">
-        <div id="replayVideoCard" class="video-card replay-video-card">
-          <video id="replayVideo" controls playsinline preload="metadata"></video>
-          <div class="video-overlay top-left">RECORDED RIDE</div>
-          <div id="noReplayVideo" class="placeholder hidden">
-            <div>
-              <h2>No video recording</h2>
-              <p>This ride still has its full telemetry and map replay.</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="map-card replay-map-card">
-          <div id="replayMap"></div>
-          <div class="map-label">ROUTE REPLAY</div>
-        </div>
-      </section>
-
-      <section class="replay-stats-panel replay-stats-wide">
-          <article class="metric primary"><span>SPEED</span><strong id="replaySpeed">0.0</strong><small>MPH</small></article>
-          <article class="metric"><span>DISTANCE</span><strong id="replayDistance">0.00</strong><small>MI</small></article>
-          <article class="metric"><span>AVG SPEED</span><strong id="replayAverageSpeed">0.0</strong><small>MPH</small></article>
-          <article class="metric"><span>MAX SPEED</span><strong id="replayMaxSpeed">0.0</strong><small>MPH</small></article>
-          <article class="metric"><span>ALTITUDE</span><strong id="replayAltitude">0</strong><small>FT</small></article>
-          <article class="metric"><span>BATTERY</span><strong id="replayBattery">—</strong><small>%</small></article>
-          <article class="metric"><span>GPS</span><strong id="replayGPS">—</strong></article>
-          <article class="metric"><span>MOVING</span><strong id="replayMoving">00:00</strong></article>
-      </section>
-
-      <section class="replay-controls cardlike">
-        <div class="replay-time-row">
-          <strong id="replayElapsed">00:00</strong>
-          <span id="replayDuration">00:00</span>
-        </div>
-        <input id="replaySlider" type="range" min="0" max="0" value="0" step="1">
-        <div id="replayMarkers" class="replay-markers"></div>
-        <div class="replay-buttons">
-          <button id="replayPlayPause">▶ Play</button>
-          <button id="replayRestart">↺ Restart</button>
-        </div>
-      </section>
-
-      <section class="replay-events">
-        <div class="eyebrow">MOMENTS & REACTIONS</div>
-        <div id="replayEventsList" class="replay-events-list"></div>
-      </section>
     </section>
 
-    <section id="viewerView" class="hidden">
-      <div class="viewer-toolbar">
-        <div class="view-modes" role="group" aria-label="Viewer layout">
-          <button data-view-mode="split" class="view-mode active">Split</button>
-          <button data-view-mode="video" class="view-mode">Video</button>
-          <button data-view-mode="map" class="view-mode">Map</button>
+    <section class="projects-section shell" id="projects">
+      <div class="section-heading reveal">
+        <div>
+          <div class="eyebrow">Pick a rabbit hole</div>
+          <h2>Things living on WhatMod</h2>
         </div>
-        <div id="streamHealth" class="stream-health">CONNECTING</div>
+        <p>Every card is its own little world. Open one, poke around, and see what it does.</p>
       </div>
 
-      <section id="heroGrid" class="hero-grid">
-        <div class="video-card">
-          <video id="video" autoplay playsinline></video>
-          <audio id="audio" autoplay></audio>
-          <div class="video-overlay top-left"><span id="rideTitle">Scooter Ride</span></div>
-          <div class="video-overlay bottom-left"><span id="networkLabel">Connecting…</span></div>
-          <div id="videoPlaceholder" class="placeholder">
-            <div class="pulse-dot"></div>
-            <h2>Waiting for rider video</h2>
-            <p id="videoMessage">Telemetry can continue even if video temporarily drops.</p>
-          </div>
+      <div class="filter-row reveal" id="filterRow" aria-label="Filter projects"></div>
+      <div class="project-grid" id="projectGrid" aria-live="polite"></div>
+      <div class="empty-state" id="emptyState" hidden>
+        <span>☁</span>
+        <h3>Nothing in that bubble yet.</h3>
+        <p>Try another filter.</p>
+      </div>
+    </section>
+
+    <section class="add-project shell reveal">
+      <div class="add-card">
+        <div class="add-icon" aria-hidden="true">＋</div>
+        <div>
+          <span class="eyebrow">Built to keep growing</span>
+          <h2>New project? One tiny edit.</h2>
+          <p>The whole showcase is powered by <code>projects.js</code>. Add one object and the card, tags, filters, colors, count, and random-project button all update automatically.</p>
         </div>
-
-        <div class="map-card">
-          <div id="map"></div>
-          <div class="map-label">LIVE POSITION</div>
-        </div>
-      </section>
-
-      <section class="metrics">
-        <article class="metric primary"><span>SPEED</span><strong id="speed">0.0</strong><small>MPH</small></article>
-        <article class="metric"><span>DISTANCE</span><strong id="distance">0.00</strong><small>MI</small></article>
-        <article class="metric"><span>HEADING</span><strong id="heading">—</strong></article>
-        <article class="metric"><span>ALTITUDE</span><strong id="altitude">0</strong><small>FT</small></article>
-        <article class="metric"><span>PHONE</span><strong id="battery">—</strong><small>%</small></article>
-        <article class="metric"><span>RIDE TIME</span><strong id="elapsed">00:00</strong></article>
-        <article class="metric"><span>AVG SPEED</span><strong id="averageSpeed">0.0</strong><small>MPH</small></article>
-        <article class="metric"><span>MAX SPEED</span><strong id="maxSpeed">0.0</strong><small>MPH</small></article>
-        <article class="metric"><span>MOVING</span><strong id="movingTime">00:00</strong></article>
-        <article class="metric"><span>GPS QUALITY</span><strong id="gpsQuality">—</strong></article>
-      </section>
-
-      <section class="viewer-interactions">
-        <button class="reaction-button" data-emoji="👋" data-label="Viewer waved">👋 <span>Wave</span></button>
-        <button class="reaction-button" data-emoji="❤️" data-label="Viewer loved this">❤️ <span>Love it</span></button>
-        <button class="reaction-button" data-emoji="🔥" data-label="Viewer says this is awesome">🔥 <span>Awesome</span></button>
-        <button id="saveMoment" class="reaction-button moment-button">📸 <span>Save Moment</span></button>
-        <span id="reactionStatus" class="reaction-status"></span>
-      </section>
-
-      <section class="statusbar">
-        <span id="gpsStatus">GPS —</span>
-        <span id="lastUpdate">No telemetry yet</span>
-        <a href="./">← Live Explorer</a>
-      </section>
+        <a class="button button-dark" href="./projects.js">View project data <span>↗</span></a>
+      </div>
     </section>
   </main>
 
-  <script src="./config.js"></script>
-  <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
-  <script type="module" src="./app.js"></script>
+  <footer class="site-footer shell">
+    <div class="footer-brand">
+      <span class="brand-mark small" aria-hidden="true"><span></span><span></span><span></span></span>
+      <div><strong>whatmod.com</strong><p>A place for whatever gets built next.</p></div>
+    </div>
+    <p class="footer-note">Made with curiosity, caffeine, and an unreasonable number of tabs. <span id="year"></span></p>
+  </footer>
+
+  <script src="./projects.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
