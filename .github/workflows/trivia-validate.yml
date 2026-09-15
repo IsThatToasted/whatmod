@@ -37,6 +37,7 @@ jobs:
             "trivia/supabase/migrations/008_hydrator_upsert_fix.sql"
             "trivia/supabase/migrations/009_release_ui_theme.sql"
             "trivia/supabase/migrations/010_local_media_pipeline.sql"
+            "trivia/supabase/migrations/011_question_governance.sql"
             "triviaadmin/index.html"
             "triviaadmin/styles.css"
             "triviaadmin/js/admin.js"
@@ -176,7 +177,7 @@ jobs:
 
           echo "Media resolver provider checks passed."
 
-      - name: Validate V9 local media pipeline and release defaults
+      - name: Validate V10 local media pipeline, voting, and governance
         shell: bash
         run: |
           set -euo pipefail
@@ -188,7 +189,7 @@ jobs:
           grep -q 'renderCommunityHistogram' trivia/js/charts.js
           grep -q 'adaptive log view' trivia/js/charts.js
           grep -q 'data-ui-theme="v2"' trivia/styles.css
-          grep -q 'whatmod-trivia-v9' trivia/sw.js
+          grep -q 'whatmod-trivia-v10' trivia/sw.js
           grep -q 'default .v1' trivia/supabase/migrations/010_local_media_pipeline.sql
           if grep -q 'node trivia/tools/media-resolver.mjs' .github/workflows/trivia-question-sync.yml; then
             echo "::error::Question Bank Sync should not auto-run the paid media resolver in V9."
@@ -198,7 +199,15 @@ jobs:
             echo "::error::GitHub media resolver must remain manual-only in V9."
             exit 1
           fi
-          echo "V9 local media pipeline checks passed."
+          grep -q 'question_votes' trivia/supabase/migrations/011_question_governance.sql
+          grep -q 'question_audit_log' trivia/supabase/migrations/011_question_governance.sql
+          grep -q 'admin_delete_question_v10' trivia/supabase/migrations/011_question_governance.sql
+          grep -q 'admin_list_questions_v10' trivia/supabase/migrations/011_question_governance.sql
+          grep -q 'question-title-frame' trivia/styles.css
+          grep -q 'data-question-vote' trivia/js/app.js
+          grep -q 'QUESTION EXPLORER' triviaadmin/js/admin.js
+          grep -q 'AUDIT HISTORY' triviaadmin/js/admin.js
+          echo "V10 governance and UI checks passed."
 
       - name: Validate workflow secret references
         shell: bash
