@@ -34,6 +34,7 @@ jobs:
             "trivia/js/app.js"
             "trivia/tools/wikidata-question-sync.mjs"
             "trivia/tools/media-resolver.mjs"
+            "trivia/supabase/migrations/008_hydrator_upsert_fix.sql"
             "triviaadmin/index.html"
             "triviaadmin/styles.css"
             "triviaadmin/js/admin.js"
@@ -150,6 +151,17 @@ jobs:
             echo "Checking $f"
             node --check "$f"
           done
+
+      - name: Validate hydrator conflict target
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "create unique index questions_canonical_key_unique" trivia/supabase/migrations/008_hydrator_upsert_fix.sql
+          if grep -A2 -n "questions_canonical_key_unique" trivia/supabase/migrations/006_library_community_media.sql | grep -q "where canonical_key is not null"; then
+            echo "::error::canonical_key unique index is still partial; PostgREST on_conflict cannot use it."
+            exit 1
+          fi
+          echo "Hydrator canonical_key conflict target is compatible with PostgREST upsert."
 
       - name: Validate media resolver providers
         shell: bash
