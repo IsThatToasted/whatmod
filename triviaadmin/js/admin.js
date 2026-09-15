@@ -21,6 +21,54 @@ async function overview(){return await rpc('admin_media_overview')}
 async function listQuestions(){return await rpc('admin_list_media_questions',{p_search:filters.search||null,p_media_filter:filters.media_filter,p_provider:filters.provider||null,p_category:filters.category||null,p_limit:filters.limit,p_offset:filters.offset})}
 async function checkAdmin(){return await rpc('is_trivia_admin')}
 
+function downloadJson(filename,data){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function exportLocalMediaJob(){
+  const scope=$('#local-export-scope')?.value||'missing';
+  const limit=Math.max(1,Math.min(5000,Number($('#local-export-limit')?.value||1000)));
+  const btn=$('#export-local-job');
+  try{
+    if(btn){btn.disabled=true;btn.textContent='Preparing…'}
+    const job=await rpc('admin_export_media_job',{p_scope:scope,p_limit:limit});
+    const count=Number(job?.question_count||0);
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    downloadJson(`whatmod-trivia-media-job-${count}-${stamp}.json`,job);
+    toast(count?`Exported ${count} question${count===1?'':'s'} for local resolving.`:'No matching questions to export.',count?'good':'');
+  }catch(e){console.error(e);toast(e.message,'bad')}
+  finally{if(btn){btn.disabled=false;btn.textContent='Export media job'}}
+}
+async function importLocalMediaResults(file){
+  if(!file)return;
+  let payload;
+  try{payload=JSON.parse(await file.text())}catch{toast('That file is not valid JSON.','bad');return}
+  if(payload?.format!=='whatmod-trivia-media-results'||Number(payload?.version)!==1||!Array.isArray(payload?.questions)){
+    toast('This is not a WhatMod Trivia media results file.','bad');return;
+  }
+  const questions=payload.questions;
+  if(!questions.length){toast('The results file contains no questions.');return}
+  const status=$('#local-pipeline-status');
+  const input=$('#import-local-results');
+  if(input)input.disabled=true;
+  let totals={imported_questions:0,imported_candidates:0,published_questions:0,skipped_locked:0,skipped_missing:0};
+  try{
+    for(let i=0;i<questions.length;i+=25){
+      const chunk=questions.slice(i,i+25);
+      if(status)status.textContent=`Importing ${Math.min(i+chunk.length,questions.length)} / ${questions.length}…`;
+      const out=await rpc('admin_import_media_results',{p_results:chunk,p_auto_publish:true,p_skip_locked:true});
+      for(const k of Object.keys(totals))totals[k]+=Number(out?.[k]||0);
+    }
+    if(status)status.textContent=`Imported ${totals.imported_questions} questions · ${totals.imported_candidates} candidates · ${totals.published_questions} images published`;
+    toast(`Imported local media: ${totals.published_questions} images published.`, 'good');
+    await renderDashboard();
+  }catch(e){console.error(e);if(status)status.textContent='Import failed.';toast(e.message,'bad')}
+  finally{if(input){input.disabled=false;input.value=''}}
+}
+
 async function renderDashboard(){
   try{
     const [stats,list]=await Promise.all([overview(),listQuestions()]);
@@ -28,7 +76,7 @@ async function renderDashboard(){
     $('#admin-app').innerHTML=`
       <header class="top"><div class="brand"><i>?</i><span>Trivia Admin</span><small>MEDIA</small></div><div class="top-actions"><a class="btn tiny" href="../trivia/">Open Trivia</a><button class="btn tiny" id="refresh">Refresh</button><button class="btn tiny danger" id="logout">Sign out</button></div></header>
       <main class="shell">
-        <section class="hero"><div><small>MEDIA RESOLVER V2</small><h1>Question imagery.</h1><p>Images auto-publish when the resolver finds a working, reusable candidate. Use this dashboard to approve and lock good choices, swap them, reject them, or search for better alternatives.</p></div><div><span class="tag auto">AUTO = LIVE, NOT YET LOCKED</span></div></section>
+        <section class="hero"><div><small>MEDIA CONTROL ROOM</small><h1>Question imagery.</h1><p>Images can be resolved locally on your Windows PC, imported in bulk, and published immediately when they are reuse-safe. Use this dashboard to approve and lock good choices, swap them, reject them, or search for better alternatives.</p></div><div><span class="tag auto">AUTO = LIVE, NOT YET LOCKED</span></div></section>
         <section class="stats">
           <div class="stat"><span>QUESTIONS</span><b>${fmt(stats.total_questions)}</b></div>
           <div class="stat"><span>WITH IMAGE</span><b>${fmt(stats.with_image)}</b></div>
@@ -36,6 +84,22 @@ async function renderDashboard(){
           <div class="stat"><span>AUTO LIVE</span><b>${fmt(stats.auto)}</b></div>
           <div class="stat"><span>APPROVED</span><b>${fmt(stats.approved)}</b></div>
           <div class="stat"><span>CANDIDATES</span><b>${fmt(stats.candidates)}</b></div>
+        </section>
+        <section class="local-pipeline panel">
+          <div class="pipeline-copy">
+            <span class="eyebrow">LOCAL MEDIA PIPELINE</span>
+            <h2>Resolve images on your Windows PC.</h2>
+            <p>Export unresolved questions, run the free local resolver on your own machine, then import the result file here. No Supabase secret is placed on the PC and no GitHub Actions minutes are used for image resolution.</p>
+          </div>
+          <div class="pipeline-controls">
+            <label><span>Export</span><select id="local-export-scope"><option value="missing">Missing images only</option><option value="needs_review">Missing + auto/unapproved</option><option value="auto">Auto-selected images</option><option value="all_unlocked">All unlocked questions</option></select></label>
+            <label><span>Maximum questions</span><select id="local-export-limit"><option>100</option><option>250</option><option selected>1000</option><option>2500</option><option>5000</option></select></label>
+            <a class="btn" href="./downloads/WhatMod-Trivia-Media-Resolver-Windows.zip" download>Download Windows resolver</a>
+            <button class="btn primary" id="export-local-job" type="button">Export media job</button>
+            <label class="btn good import-button">Import resolver results<input id="import-local-results" type="file" accept=".json,application/json" hidden></label>
+          </div>
+          <div class="pipeline-flow"><b>1</b><span>Export JSON</span><i>→</i><b>2</b><span>Resolve locally</span><i>→</i><b>3</b><span>Import JSON</span></div>
+          <div id="local-pipeline-status" class="pipeline-status">Local imports publish the resolver's best reuse-safe image immediately. Existing locked/approved images are skipped.</div>
         </section>
         <form class="toolbar" id="filters">
           <input class="search" name="search" placeholder="Search question or media subject" value="${esc(filters.search)}">
@@ -53,6 +117,8 @@ async function renderDashboard(){
     $('#prev').onclick=()=>{filters.offset=Math.max(0,filters.offset-filters.limit);renderDashboard()};
     $('#next').onclick=()=>{filters.offset+=filters.limit;renderDashboard()};
     $('#refresh').onclick=()=>renderDashboard();$('#logout').onclick=()=>signOut();
+    $('#export-local-job').onclick=exportLocalMediaJob;
+    $('#import-local-results').onchange=e=>importLocalMediaResults(e.target.files?.[0]);
   }catch(e){console.error(e);if(/admin only/i.test(e.message))renderAuth('This Google account is signed in, but it is not marked as a Trivia admin.');else toast(e.message,'bad')}
 }
 

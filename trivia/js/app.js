@@ -98,9 +98,9 @@ let demo = null;
 const inFlight = new Set();
 
 const UI_THEME_KEY = "whatmod_trivia_ui_theme";
-function normalizeUiTheme(value) { return value === "v1" ? "v1" : "v2"; }
+function normalizeUiTheme(value) { return value === "v2" ? "v2" : "v1"; }
 function storedUiTheme() {
-  try { return normalizeUiTheme(localStorage.getItem(UI_THEME_KEY) || "v2"); } catch { return "v2"; }
+  try { return normalizeUiTheme(localStorage.getItem(UI_THEME_KEY) || "v1"); } catch { return "v1"; }
 }
 function currentUiTheme() { return normalizeUiTheme(state.profile?.ui_theme || storedUiTheme()); }
 function applyUiTheme(value, persistLocal=true) {
@@ -116,7 +116,7 @@ async function chooseUiTheme(value) {
   try {
     if(isConfigured() && state.session) await updateUiTheme(theme);
     else if(demo?.profile) demo.profile.ui_theme=theme;
-    toast(theme === "v2" ? "Arena V2 enabled" : "Classic V1 enabled");
+    toast(theme === "v2" ? "Experimental V2 enabled" : "Classic V1 enabled");
     await navigate("profile");
   } catch(error) {
     console.error(error);
@@ -688,10 +688,10 @@ function profileView() {
     </section>
     <form id="profile-form" class="hud-panel profile-form game-profile-form"><div><small>DISPLAY NAME</small><h3>How should the arena know you?</h3><p>We start with your Google name. Changing this only changes your trivia display name.</p></div><label><span>PLAYER NAME</span><input name="username" maxlength="24" value="${esc(p.username)}"></label><button class="btn primary" type="submit">Save name</button></form>
     <section class="hud-panel player-settings-panel">
-      <div class="settings-copy"><small>PLAYER SETTINGS</small><h2>Interface theme</h2><p>Switch anytime. V1 keeps the original launch look; V2 is the new release-ready Arena interface. Your gameplay and progress never change.</p></div>
+      <div class="settings-copy"><small>PLAYER SETTINGS</small><h2>Interface theme</h2><p>Switch anytime. V1 keeps the original launch look; V2 is the alternate experimental interface. V1 is the current release theme. Your gameplay and progress never change.</p></div>
       <div class="theme-choice-grid">
         <button type="button" class="theme-choice ${currentUiTheme()==="v1"?"selected":""}" data-theme-choice="v1"><span class="theme-preview preview-v1"><i></i><i></i><i></i></span><b>V1 Classic</b><small>Original dark game HUD</small><em>${currentUiTheme()==="v1"?"ACTIVE":"SELECT"}</em></button>
-        <button type="button" class="theme-choice ${currentUiTheme()==="v2"?"selected":""}" data-theme-choice="v2"><span class="theme-preview preview-v2"><i></i><i></i><i></i></span><b>V2 Arena</b><small>Polished neon release UI</small><em>${currentUiTheme()==="v2"?"ACTIVE":"SELECT"}</em></button>
+        <button type="button" class="theme-choice ${currentUiTheme()==="v2"?"selected":""}" data-theme-choice="v2"><span class="theme-preview preview-v2"><i></i><i></i><i></i></span><b>V2 Experimental</b><small>Alternate UI concept</small><em>${currentUiTheme()==="v2"?"ACTIVE":"SELECT"}</em></button>
       </div>
     </section>
     <div class="row-actions profile-actions">${p.is_admin?`<a class="btn" href="/triviaadmin/"><span>⚙</span> Admin dashboard</a>`:""}${state.session?`<button class="btn danger-soft" data-action="logout">Sign out</button>`:`<button class="btn primary" data-action="login">Connect Google to save this player</button>`}</div>

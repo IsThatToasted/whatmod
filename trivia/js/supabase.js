@@ -81,7 +81,7 @@ export async function loadProfile() {
       .select("user_id,username,username_customized,avatar_url,xp,wins,games_played,daily_streak,is_admin,created_at")
       .eq("user_id", state.session.user.id)
       .single();
-    data = legacy.data ? { ...legacy.data, ui_theme: "v2" } : null;
+    data = legacy.data ? { ...legacy.data, ui_theme: "v1" } : null;
     error = legacy.error;
   }
   if (error) throw error;
@@ -107,7 +107,7 @@ export async function updateProfile(username) {
 }
 
 export async function updateUiTheme(theme) {
-  const normalized = theme === "v1" ? "v1" : "v2";
+  const normalized = theme === "v2" ? "v2" : "v1";
   const data = await rpc("update_my_ui_theme", { p_theme: normalized });
   await loadProfile();
   return data;
