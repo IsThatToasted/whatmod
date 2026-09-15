@@ -16,8 +16,7 @@ alter table public.questions add column if not exists source_entity_id text;
 alter table public.questions add column if not exists canonical_key text;
 
 create unique index if not exists questions_canonical_key_unique
-  on public.questions(canonical_key)
-  where canonical_key is not null;
+  on public.questions(canonical_key);
 create index if not exists questions_source_entity_idx
   on public.questions(source_type,source_entity_id)
   where source_entity_id is not null;

@@ -22,7 +22,7 @@ const PER_TEMPLATE = Math.max(5, Math.min(250, Number(process.env.QUESTION_SYNC_
 const OFFSET_RAW = String(process.env.QUESTION_SYNC_OFFSET || "auto").trim().toLowerCase();
 const AUTO_WINDOW = 10000;
 const AUTO_OFFSET = (Math.floor(Date.now() / (7*86400000)) * PER_TEMPLATE) % AUTO_WINDOW;
-const OFFSET = OFFSET_RAW === "auto" ? AUTO_OFFSET : Math.max(0, Number(OFFSET_RAW) || 0);
+let OFFSET = OFFSET_RAW === "auto" ? AUTO_OFFSET : Math.max(0, Number(OFFSET_RAW) || 0);
 const WDQS = "https://query.wikidata.org/sparql";
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const USER_AGENT = "WhatModTriviaQuestionSync/1.0 (https://whatmod.com/trivia/)";
@@ -50,6 +50,23 @@ function supabaseHeaders(extra = {}) {
     headers.Authorization = `Bearer ${SERVICE_KEY}`;
   }
   return headers;
+}
+
+async function chooseInitialOffset() {
+  if (OFFSET_RAW !== "auto") return OFFSET;
+
+  const url = `${SUPABASE_URL}/rest/v1/questions?select=id&canonical_key=not.is.null&limit=1`;
+  const r = await fetch(url, { headers: supabaseHeaders() });
+  if (!r.ok) {
+    console.warn(`Could not inspect existing hydrated bank (${r.status}); using rotating offset ${OFFSET}.`);
+    return OFFSET;
+  }
+  const rows = await r.json();
+  if (!Array.isArray(rows) || rows.length === 0) {
+    console.log("No hydrated questions found yet; forcing first sync offset to 0.");
+    return 0;
+  }
+  return OFFSET;
 }
 
 const templates = [
@@ -260,7 +277,15 @@ async function upsertQuestions(rows) {
     }),
     body:JSON.stringify(payload)
   });
-  if (!r.ok) throw new Error(`Supabase upsert failed: ${r.status} ${await r.text()}`);
+  if (!r.ok) {
+    const detail = await r.text();
+    if (r.status === 400 && detail.includes('"42P10"')) {
+      throw new Error(
+        `Supabase upsert schema mismatch (42P10). The questions.canonical_key conflict target is not backed by a full UNIQUE index. Run migration 008_hydrator_upsert_fix.sql, then retry. ${detail}`
+      );
+    }
+    throw new Error(`Supabase upsert failed: ${r.status} ${detail}`);
+  }
 }
 
 async function prunePractice() {
@@ -272,6 +297,8 @@ async function prunePractice() {
   if (!r.ok) { console.warn(`Practice prune skipped: ${r.status} ${await r.text().then(x=>x.slice(0,160))}`); return; }
   console.log(`Pruned completed ephemeral practice rows: ${await r.text()}`);
 }
+
+OFFSET = await chooseInitialOffset();
 
 let imported = 0;
 for (const template of templates) {
