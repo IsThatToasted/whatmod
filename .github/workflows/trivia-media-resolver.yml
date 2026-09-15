@@ -29,6 +29,7 @@ jobs:
       - name: Resolve license-safe question media
         env:
           TRIVIA_SUPABASE_URL: ${{ secrets.TRIVIA_SUPABASE_URL }}
+          TRIVIA_SUPABASE_SECRET_KEY: ${{ secrets.TRIVIA_SUPABASE_SECRET_KEY }}
           TRIVIA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TRIVIA_SUPABASE_SERVICE_ROLE_KEY }}
           MEDIA_RESOLVE_LIMIT: ${{ github.event.inputs.limit || '100' }}
         run: node trivia/tools/media-resolver.mjs

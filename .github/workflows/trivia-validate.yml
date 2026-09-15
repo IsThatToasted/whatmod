@@ -167,11 +167,11 @@ jobs:
           set -euo pipefail
 
           grep -q 'secrets.TRIVIA_SUPABASE_URL' .github/workflows/trivia-question-sync.yml
-          grep -q 'secrets.TRIVIA_SUPABASE_SERVICE_ROLE_KEY' .github/workflows/trivia-question-sync.yml
+          grep -q 'secrets.TRIVIA_SUPABASE_SECRET_KEY' .github/workflows/trivia-question-sync.yml
           grep -q 'secrets.TRIVIA_SUPABASE_URL' .github/workflows/trivia-media-resolver.yml
-          grep -q 'secrets.TRIVIA_SUPABASE_SERVICE_ROLE_KEY' .github/workflows/trivia-media-resolver.yml
+          grep -q 'secrets.TRIVIA_SUPABASE_SECRET_KEY' .github/workflows/trivia-media-resolver.yml
 
-          echo "GitHub Actions secret references are configured."
+          echo "GitHub Actions modern Supabase secret references are configured."
 
       - name: Validation complete
         run: echo "Trivia production validation passed."

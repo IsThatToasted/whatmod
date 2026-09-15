@@ -37,6 +37,7 @@ jobs:
       - name: Hydrate open-knowledge question cache
         env:
           TRIVIA_SUPABASE_URL: ${{ secrets.TRIVIA_SUPABASE_URL }}
+          TRIVIA_SUPABASE_SECRET_KEY: ${{ secrets.TRIVIA_SUPABASE_SECRET_KEY }}
           TRIVIA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TRIVIA_SUPABASE_SERVICE_ROLE_KEY }}
           QUESTION_SYNC_OFFSET: ${{ github.event.inputs.offset || 'auto' }}
           QUESTION_SYNC_PER_TEMPLATE: ${{ github.event.inputs.per_template || '80' }}
@@ -44,6 +45,7 @@ jobs:
       - name: Resolve media for the newest/unresolved questions
         env:
           TRIVIA_SUPABASE_URL: ${{ secrets.TRIVIA_SUPABASE_URL }}
+          TRIVIA_SUPABASE_SECRET_KEY: ${{ secrets.TRIVIA_SUPABASE_SECRET_KEY }}
           TRIVIA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TRIVIA_SUPABASE_SERVICE_ROLE_KEY }}
           MEDIA_RESOLVE_LIMIT: ${{ github.event.inputs.resolve_limit || '80' }}
         run: node trivia/tools/media-resolver.mjs
