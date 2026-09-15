@@ -1,4 +1,4 @@
-# WhatMod Trivia V4 — Production Hardened Game UI
+# WhatMod Trivia V6.1 — Game UI + Practice Analytics + Replay Library
 
 A GitHub-Pages-friendly daily estimation trivia + realtime multiplayer app designed for `https://whatmod.com/trivia/`.
 
@@ -202,3 +202,8 @@ V6 adds:
 - retention cleanup for old completed Practice internals while replay snapshots remain available.
 
 For the question sync workflow, add `TRIVIA_SUPABASE_URL` and `TRIVIA_SUPABASE_SERVICE_ROLE_KEY` as **GitHub repository secrets**. The service-role key must never be placed in browser-side `config.js`.
+
+
+## V6.1: Practice mobile flow + resilient media
+
+No database migration is required for V6.1. The Practice result screen now places **Next Question / Finish Practice immediately below the answer result**, before closeness/community graphs, so mobile players can continue without scrolling through analytics. Question and Library images now normalize insecure HTTP URLs, retry failed Wikimedia thumbnails through a stable Commons file redirect derived from attribution metadata, and fall back to a clean source-aware placeholder rather than a broken image icon.

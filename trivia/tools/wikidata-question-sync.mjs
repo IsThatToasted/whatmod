@@ -188,9 +188,13 @@ async function commonsMetadata(titles) {
       const info = page.imageinfo?.[0];
       if (!info) continue;
       const m = info.extmetadata || {};
+      const normalizeHttps = value => {
+        if (!value) return null;
+        try { const u=new URL(value); if(u.protocol==="http:") u.protocol="https:"; return u.href; } catch { return value; }
+      };
       out.set(page.title, {
-        image_url: info.thumburl || info.url || null,
-        image_source_url: info.descriptionurl || null,
+        image_url: normalizeHttps(info.thumburl || info.url || null),
+        image_source_url: normalizeHttps(info.descriptionurl || null),
         image_attribution: extValue(m,"Artist") || extValue(m,"Credit") || "Wikimedia Commons contributor",
         image_license: extValue(m,"LicenseShortName") || null,
         image_license_url: m?.LicenseUrl?.value || null

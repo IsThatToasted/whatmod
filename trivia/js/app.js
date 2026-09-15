@@ -18,13 +18,66 @@ const firstName = value => String(value || "Player").trim().split(/\s+/)[0] || "
 const initials = value => String(value || "?").trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||"").join("") || "?";
 const categoryGlyph = value => ({Science:"⚗",Technology:"⌁",History:"⌛",Geography:"⌖",Animals:"◌",Space:"✦",Sports:"◆",Entertainment:"★",Business:"▰",Any:"✦"}[value] || "✦");
 const safeUrl = value => {
-  try { const u = new URL(String(value || ""), location.origin); return ["http:","https:"].includes(u.protocol) ? u.href : ""; } catch { return ""; }
+  try {
+    const u = new URL(String(value || ""), location.origin);
+    if (!["http:","https:"].includes(u.protocol)) return "";
+    // The app itself is HTTPS in production; upgrade old cached HTTP media URLs
+    // so browsers do not reject them as mixed content.
+    if (u.protocol === "http:") u.protocol = "https:";
+    return u.href;
+  } catch { return ""; }
 };
+function commonsRedirectFromSource(value, width=1200) {
+  const source=safeUrl(value);
+  if (!source) return "";
+  try {
+    const u=new URL(source);
+    if (!/(^|\.)commons\.wikimedia\.org$/i.test(u.hostname)) return "";
+    const decoded=decodeURIComponent(u.pathname);
+    const marker="/wiki/File:";
+    const i=decoded.indexOf(marker);
+    if(i<0) return "";
+    const filename=decoded.slice(i+marker.length).trim();
+    if(!filename) return "";
+    return `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(filename)}?width=${Math.max(320,Math.min(1600,Number(width)||1200))}`;
+  } catch { return ""; }
+}
+function mediaImageTag({src,source,alt="Question image",lazy=false,cls=""}={}) {
+  const primary=safeUrl(src);
+  const fallback=commonsRedirectFromSource(source);
+  const first=primary || fallback;
+  if(!first) return "";
+  const fallbackAttr=fallback && fallback!==first ? ` data-fallback-src="${esc(fallback)}"` : "";
+  return `<img class="${esc(cls)}" src="${esc(first)}"${fallbackAttr} data-media-image="1" alt="${esc(alt)}" loading="${lazy?"lazy":"eager"}" decoding="async" referrerpolicy="no-referrer">`;
+}
 function questionMedia(q, compact=false) {
-  const src=safeUrl(q?.image_url); if(!src) return "";
   const source=safeUrl(q?.image_source_url), license=safeUrl(q?.image_license_url);
+  const image=mediaImageTag({src:q?.image_url,source:q?.image_source_url,alt:q?.image_alt || q?.prompt || "Question image"});
+  if(!image) return "";
   const credit=[q?.image_attribution,q?.image_license].filter(Boolean).join(" · ");
-  return `<figure class="question-media ${compact?"compact":""}"><img src="${esc(src)}" alt="${esc(q?.image_alt || q?.prompt || "Question image")}" loading="lazy"><figcaption>${credit?`<span>${esc(credit)}</span>`:""}${source?`<a href="${esc(source)}" target="_blank" rel="noopener">Source</a>`:""}${license?`<a href="${esc(license)}" target="_blank" rel="noopener">License</a>`:""}</figcaption></figure>`;
+  return `<figure class="question-media ${compact?"compact":""}"><div class="question-media-frame">${image}<div class="media-fallback-card" hidden><span>▧</span><b>Image unavailable</b>${source?`<a href="${esc(source)}" target="_blank" rel="noopener">Open source image</a>`:""}</div></div><figcaption>${credit?`<span>${esc(credit)}</span>`:""}${source?`<a href="${esc(source)}" target="_blank" rel="noopener">Source</a>`:""}${license?`<a href="${esc(license)}" target="_blank" rel="noopener">License</a>`:""}</figcaption></figure>`;
+}
+function wireMediaFallbacks() {
+  $$('img[data-media-image="1"]').forEach(img=>{
+    if(img.dataset.mediaBound==="1") return;
+    img.dataset.mediaBound="1";
+    const recover=()=>{
+      const fallback=safeUrl(img.dataset.fallbackSrc);
+      if(fallback && img.dataset.fallbackTried!=="1" && img.src!==fallback){
+        img.dataset.fallbackTried="1";
+        img.src=fallback;
+        return;
+      }
+      img.hidden=true;
+      const shell=img.closest(".question-media-frame,.library-cover");
+      shell?.classList.add("media-failed");
+      const card=shell?.querySelector(".media-fallback-card");
+      if(card) card.hidden=false;
+    };
+    img.addEventListener("error",recover);
+    // Cached failures can complete before listeners are attached after a render.
+    if(img.complete && img.naturalWidth===0) queueMicrotask(recover);
+  });
 }
 
 let answerStartedAt = 0;
@@ -472,10 +525,12 @@ function practiceView() {
             <p>${esc(result.explanation||q.explanation||"")}</p>
           </div>
         </section>
+        <div class="practice-result-actions">
+          <button class="btn practice-btn practice-next-btn" data-action="practice-next"><span>${Number(pr.current_index||0)+1>=pr.question_count?"Finish practice":"Next question"}</span><b>→</b></button>
+          <div class="practice-no-xp-note"><b>0 XP earned</b><span>Practice scores exist only inside this run.</span></div>
+        </div>
         ${q.question_type==="numeric"?`<section class="hud-panel practice-distance-panel"><div class="panel-title"><span>◎</span><div><small>YOUR DISTANCE</small><b>${esc(closenessText(correct,your))}</b></div><strong>${Number(result.score||0)} / 1000</strong></div><div class="practice-distance-chart"><canvas id="practice-closeness-chart"></canvas></div></section>
         <details class="hud-panel community-details" ${Number(pr.community?.total_answers||0)>1?"open":""}><summary><span>⌁</span><div><small>COMMUNITY ANSWERS</small><b>See how everyone else guessed</b></div><strong>${Number(pr.community?.total_answers||0).toLocaleString()} answers</strong></summary><div class="community-chart-wrap"><canvas id="practice-community-chart"></canvas><p>Answers are stored as anonymous aggregate buckets, so this crowd view becomes richer over time without keeping a second analytics record for every player.</p></div></details>`:""}
-        <div class="practice-no-xp-note"><b>0 XP earned</b><span>Practice scores exist only inside this run.</span></div>
-        <button class="btn practice-btn practice-next-btn" data-action="practice-next">${Number(pr.current_index||0)+1>=pr.question_count?"Finish practice":"Next question"} <b>→</b></button>
       </section>`);
   }
 
@@ -523,7 +578,7 @@ async function libraryView() {
         const cover=safeUrl(item.cover_image_url),source=safeUrl(item.cover_image_source_url);
         const cats=(item.categories||[]).slice(0,3);
         return `<article class="library-card">
-          <div class="library-cover ${cover?"has-image":""}">${cover?`<img src="${esc(cover)}" alt="${esc(item.cover_image_alt||item.title)}" loading="lazy">`:`<div class="library-cover-glyph">${categoryGlyph(cats[0]||"Any")}</div>`}<span class="library-source">${item.source_kind==="party"?"PARTY REPLAY":"PRACTICE REPLAY"}</span></div>
+          <div class="library-cover ${cover?"has-image":""}">${cover?`${mediaImageTag({src:cover,source:item.cover_image_source_url,alt:item.cover_image_alt||item.title,lazy:true})}<div class="media-fallback-card" hidden><span>${categoryGlyph(cats[0]||"Any")}</span><b>Preview unavailable</b></div>`:`<div class="library-cover-glyph">${categoryGlyph(cats[0]||"Any")}</div>`}<span class="library-source">${item.source_kind==="party"?"PARTY REPLAY":"PRACTICE REPLAY"}</span></div>
           <div class="library-card-body"><div class="library-tags">${cats.map(c=>`<span>${categoryGlyph(c)} ${esc(c)}</span>`).join("")}<span>${esc(item.difficulty||"any")}</span></div><h2>${esc(item.title)}</h2><p>${esc(item.description||"Replay this exact question set in Practice Mode.")}</p>
             <div class="library-meta"><span><b>${item.question_count}</b> questions</span><span><b>${Number(item.play_count||0).toLocaleString()}</b> replays</span><span><b>${Number(item.times_generated||1).toLocaleString()}</b> discoveries</span></div>
             <button class="btn practice-btn library-play" data-action="library-play" data-library-id="${esc(item.id)}"><span>REPLAY SESSION</span><b>→</b></button>
@@ -688,6 +743,7 @@ function bind() {
 }
 
 function postRender() {
+  wireMediaFallbacks();
   if (state.view === "daily" && state.daily?.result) {
     requestAnimationFrame(()=>{
       const answer=state.daily.result.answer_numeric ?? state.daily.question?.answer_numeric;
