@@ -65,6 +65,9 @@ jobs:
           grep -q "start_library_practice" trivia/supabase/migrations/006_library_community_media.sql
           grep -q "canonical_key" trivia/tools/wikidata-question-sync.mjs
           grep -q "imageinfo" trivia/tools/wikidata-question-sync.mjs
+          grep -q "commonsRedirectFromSource" trivia/js/app.js
+          grep -q "practice-result-actions" trivia/js/app.js
+          grep -q "whatmod-trivia-v6.1" trivia/sw.js
           if grep -R -n -E "TRIVIA_SUPABASE_SERVICE_ROLE_KEY.{0,20}(=|:)['\"]?[A-Za-z0-9_-]{20,}" trivia --exclude='*.md'; then
             echo "A service-role credential appears to be hard-coded under trivia/."
             exit 1
