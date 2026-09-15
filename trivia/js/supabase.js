@@ -68,11 +68,22 @@ export async function syncMyGoogleProfile() {
 export async function loadProfile() {
   if (!state.session?.user || !state.supabase) return null;
   await syncMyGoogleProfile();
-  const { data, error } = await state.supabase
+  let { data, error } = await state.supabase
     .from("profiles")
-    .select("user_id,username,username_customized,avatar_url,xp,wins,games_played,daily_streak,is_admin,created_at")
+    .select("user_id,username,username_customized,avatar_url,xp,wins,games_played,daily_streak,is_admin,ui_theme,created_at")
     .eq("user_id", state.session.user.id)
     .single();
+  // Keep the app playable during a rolling deploy if the V8 theme migration
+  // has not reached Supabase yet. Theme sync simply remains local until 009 runs.
+  if (error && /ui_theme/i.test(String(error.message || error.details || ""))) {
+    const legacy = await state.supabase
+      .from("profiles")
+      .select("user_id,username,username_customized,avatar_url,xp,wins,games_played,daily_streak,is_admin,created_at")
+      .eq("user_id", state.session.user.id)
+      .single();
+    data = legacy.data ? { ...legacy.data, ui_theme: "v2" } : null;
+    error = legacy.error;
+  }
   if (error) throw error;
   setState({ profile: data });
   return data;
@@ -91,6 +102,13 @@ export async function loadLeaderboard() {
 
 export async function updateProfile(username) {
   const data = await rpc("update_my_profile", { p_username: username });
+  await loadProfile();
+  return data;
+}
+
+export async function updateUiTheme(theme) {
+  const normalized = theme === "v1" ? "v1" : "v2";
+  const data = await rpc("update_my_ui_theme", { p_theme: normalized });
   await loadProfile();
   return data;
 }

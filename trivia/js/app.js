@@ -4,7 +4,7 @@ import {
   createLobby, joinLobby, getLobby, getLobbyPlayers, startLobby, getCurrentQuestion,
   submitGameAnswer, revealRound, nextRound, getRoundResults, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
-  getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby
+  getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
 import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
@@ -96,6 +96,35 @@ let lobbyRefreshBusy = false;
 let lobbyRefreshQueued = false;
 let demo = null;
 const inFlight = new Set();
+
+const UI_THEME_KEY = "whatmod_trivia_ui_theme";
+function normalizeUiTheme(value) { return value === "v1" ? "v1" : "v2"; }
+function storedUiTheme() {
+  try { return normalizeUiTheme(localStorage.getItem(UI_THEME_KEY) || "v2"); } catch { return "v2"; }
+}
+function currentUiTheme() { return normalizeUiTheme(state.profile?.ui_theme || storedUiTheme()); }
+function applyUiTheme(value, persistLocal=true) {
+  const theme=normalizeUiTheme(value);
+  document.documentElement.dataset.uiTheme=theme;
+  document.documentElement.style.colorScheme="dark";
+  if(persistLocal){ try { localStorage.setItem(UI_THEME_KEY,theme); } catch {} }
+  return theme;
+}
+async function chooseUiTheme(value) {
+  const theme=applyUiTheme(value);
+  if(state.profile) state.profile={...state.profile,ui_theme:theme};
+  try {
+    if(isConfigured() && state.session) await updateUiTheme(theme);
+    else if(demo?.profile) demo.profile.ui_theme=theme;
+    toast(theme === "v2" ? "Arena V2 enabled" : "Classic V1 enabled");
+    await navigate("profile");
+  } catch(error) {
+    console.error(error);
+    toast("Theme changed on this device. Run the V8 theme migration to sync it to your account.");
+    await navigate("profile");
+  }
+}
+applyUiTheme(storedUiTheme(), false);
 
 function beginAction(key) {
   if (inFlight.has(key)) return false;
@@ -196,7 +225,7 @@ function appShell(content) {
   const avatar = p?.avatar_url || state.session?.user?.user_metadata?.avatar_url || state.session?.user?.user_metadata?.picture || "";
   const name = p?.username || state.session?.user?.user_metadata?.full_name || state.session?.user?.user_metadata?.name || "Player";
   return `
-  <div class="game-bg" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="game-bg" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><b></b><b></b></div>
   <header class="topbar game-hud">
     <button class="brand plain" data-nav="home"><span class="brand-mark"><b>?</b></span><span class="brand-copy"><strong>${esc(state.config.appName || "WhatMod Trivia")}</strong><small>PLAY • GUESS • CLIMB</small></span></button>
     <nav class="desktop-nav hud-nav">
@@ -658,7 +687,14 @@ function profileView() {
       <div class="stats-grid game-stats"><div><span>♛</span><small>WINS</small><strong>${p.wins||0}</strong></div><div><span>▶</span><small>MATCHES</small><strong>${p.games_played||0}</strong></div><div><span>🔥</span><small>STREAK</small><strong>${p.daily_streak||0}</strong></div><div><span>⚡</span><small>LEVEL</small><strong>${l.level}</strong></div></div>
     </section>
     <form id="profile-form" class="hud-panel profile-form game-profile-form"><div><small>DISPLAY NAME</small><h3>How should the arena know you?</h3><p>We start with your Google name. Changing this only changes your trivia display name.</p></div><label><span>PLAYER NAME</span><input name="username" maxlength="24" value="${esc(p.username)}"></label><button class="btn primary" type="submit">Save name</button></form>
-    <div class="row-actions">${p.is_admin?`<a class="btn" href="/triviaadmin/"><span>⚙</span> Admin dashboard</a>`:""}${state.session?`<button class="btn danger-soft" data-action="logout">Sign out</button>`:`<button class="btn primary" data-action="login">Connect Google to save this player</button>`}</div>
+    <section class="hud-panel player-settings-panel">
+      <div class="settings-copy"><small>PLAYER SETTINGS</small><h2>Interface theme</h2><p>Switch anytime. V1 keeps the original launch look; V2 is the new release-ready Arena interface. Your gameplay and progress never change.</p></div>
+      <div class="theme-choice-grid">
+        <button type="button" class="theme-choice ${currentUiTheme()==="v1"?"selected":""}" data-theme-choice="v1"><span class="theme-preview preview-v1"><i></i><i></i><i></i></span><b>V1 Classic</b><small>Original dark game HUD</small><em>${currentUiTheme()==="v1"?"ACTIVE":"SELECT"}</em></button>
+        <button type="button" class="theme-choice ${currentUiTheme()==="v2"?"selected":""}" data-theme-choice="v2"><span class="theme-preview preview-v2"><i></i><i></i><i></i></span><b>V2 Arena</b><small>Polished neon release UI</small><em>${currentUiTheme()==="v2"?"ACTIVE":"SELECT"}</em></button>
+      </div>
+    </section>
+    <div class="row-actions profile-actions">${p.is_admin?`<a class="btn" href="/triviaadmin/"><span>⚙</span> Admin dashboard</a>`:""}${state.session?`<button class="btn danger-soft" data-action="logout">Sign out</button>`:`<button class="btn primary" data-action="login">Connect Google to save this player</button>`}</div>
   `);
 }
 
@@ -690,7 +726,7 @@ function overlayView(code) {
 
 function demoInit() {
   demo = {
-    profile: { user_id:"demo", username:"Demo Player", avatar_url:"", xp:0, wins:0, games_played:0, daily_streak:0, username_customized:false },
+    profile: { user_id:"demo", username:"Demo Player", avatar_url:"", xp:0, wins:0, games_played:0, daily_streak:0, username_customized:false, ui_theme:storedUiTheme() },
     lobby: null
   };
   if (!isConfigured()) state.profile = demo.profile;
@@ -741,6 +777,7 @@ function bind() {
   $("#library-filter-form")?.addEventListener("submit", librarySearch);
   $("#answer-form")?.addEventListener("submit", gameSubmit);
   $("#profile-form")?.addEventListener("submit", profileSubmit);
+  $$('[data-theme-choice]').forEach(b => b.onclick = () => chooseUiTheme(b.dataset.themeChoice));
   $$(".choice").forEach(b => b.onclick = () => {
     $$(".choice").forEach(x=>x.classList.remove("selected")); b.classList.add("selected");
     const form = b.closest("form"); form.dataset.choice = b.dataset.answer;
@@ -1156,8 +1193,8 @@ async function boot() {
   demoInit();
   await initSupabase();
   if(state.session){
-    try{await loadProfile();}catch(e){console.warn(e)}
-  }
+    try{await loadProfile();applyUiTheme(state.profile?.ui_theme || storedUiTheme());}catch(e){console.warn(e)}
+  } else { applyUiTheme(storedUiTheme(), false); }
   await initTwitch();
 
   const params=new URLSearchParams(location.search);
