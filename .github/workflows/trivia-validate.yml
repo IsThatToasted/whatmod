@@ -35,9 +35,12 @@ jobs:
             "trivia/tools/wikidata-question-sync.mjs"
             "trivia/tools/media-resolver.mjs"
             "trivia/supabase/migrations/008_hydrator_upsert_fix.sql"
+            "trivia/supabase/migrations/009_release_ui_theme.sql"
+            "trivia/supabase/migrations/010_local_media_pipeline.sql"
             "triviaadmin/index.html"
             "triviaadmin/styles.css"
             "triviaadmin/js/admin.js"
+            "triviaadmin/downloads/WhatMod-Trivia-Media-Resolver-Windows.zip"
             ".github/workflows/trivia-question-sync.yml"
             ".github/workflows/trivia-media-resolver.yml"
           )
@@ -172,6 +175,30 @@ jobs:
           grep -q "commons.wikimedia.org" trivia/tools/media-resolver.mjs
 
           echo "Media resolver provider checks passed."
+
+      - name: Validate V9 local media pipeline and release defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'update_my_ui_theme' trivia/supabase/migrations/009_release_ui_theme.sql
+          grep -q 'admin_export_media_job' trivia/supabase/migrations/010_local_media_pipeline.sql
+          grep -q 'admin_import_media_results' trivia/supabase/migrations/010_local_media_pipeline.sql
+          grep -q 'Export media job' triviaadmin/js/admin.js
+          grep -q 'Import resolver results' triviaadmin/js/admin.js
+          grep -q 'renderCommunityHistogram' trivia/js/charts.js
+          grep -q 'adaptive log view' trivia/js/charts.js
+          grep -q 'data-ui-theme="v2"' trivia/styles.css
+          grep -q 'whatmod-trivia-v9' trivia/sw.js
+          grep -q 'default .v1' trivia/supabase/migrations/010_local_media_pipeline.sql
+          if grep -q 'node trivia/tools/media-resolver.mjs' .github/workflows/trivia-question-sync.yml; then
+            echo "::error::Question Bank Sync should not auto-run the paid media resolver in V9."
+            exit 1
+          fi
+          if grep -q 'schedule:' .github/workflows/trivia-media-resolver.yml; then
+            echo "::error::GitHub media resolver must remain manual-only in V9."
+            exit 1
+          fi
+          echo "V9 local media pipeline checks passed."
 
       - name: Validate workflow secret references
         shell: bash

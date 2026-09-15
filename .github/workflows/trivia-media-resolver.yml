@@ -1,14 +1,12 @@
-name: Trivia Media Resolver
+name: Trivia Media Resolver (Manual Fallback)
 
 on:
   workflow_dispatch:
     inputs:
       limit:
-        description: Number of unlocked questions to resolve (1-250)
+        description: Number of unlocked questions to resolve (1-250). Prefer the local Windows resolver for bulk work.
         required: false
-        default: '100'
-  schedule:
-    - cron: '41 8 * * *'
+        default: '25'
 
 permissions:
   contents: read
@@ -31,5 +29,5 @@ jobs:
           TRIVIA_SUPABASE_URL: ${{ secrets.TRIVIA_SUPABASE_URL }}
           TRIVIA_SUPABASE_SECRET_KEY: ${{ secrets.TRIVIA_SUPABASE_SECRET_KEY }}
           TRIVIA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TRIVIA_SUPABASE_SERVICE_ROLE_KEY }}
-          MEDIA_RESOLVE_LIMIT: ${{ github.event.inputs.limit || '100' }}
+          MEDIA_RESOLVE_LIMIT: ${{ github.event.inputs.limit || '25' }}
         run: node trivia/tools/media-resolver.mjs

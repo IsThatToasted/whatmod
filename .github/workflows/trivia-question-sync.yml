@@ -11,10 +11,6 @@ on:
         description: Questions requested from each template (5-250)
         required: false
         default: '80'
-      resolve_limit:
-        description: Questions to run through the media resolver after import
-        required: false
-        default: '80'
   schedule:
     - cron: '17 9 * * 2'
 
@@ -28,7 +24,7 @@ concurrency:
 jobs:
   hydrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
@@ -42,10 +38,3 @@ jobs:
           QUESTION_SYNC_OFFSET: ${{ github.event.inputs.offset || 'auto' }}
           QUESTION_SYNC_PER_TEMPLATE: ${{ github.event.inputs.per_template || '80' }}
         run: node trivia/tools/wikidata-question-sync.mjs
-      - name: Resolve media for the newest/unresolved questions
-        env:
-          TRIVIA_SUPABASE_URL: ${{ secrets.TRIVIA_SUPABASE_URL }}
-          TRIVIA_SUPABASE_SECRET_KEY: ${{ secrets.TRIVIA_SUPABASE_SECRET_KEY }}
-          TRIVIA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TRIVIA_SUPABASE_SERVICE_ROLE_KEY }}
-          MEDIA_RESOLVE_LIMIT: ${{ github.event.inputs.resolve_limit || '80' }}
-        run: node trivia/tools/media-resolver.mjs
