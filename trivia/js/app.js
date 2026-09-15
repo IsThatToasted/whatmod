@@ -2,7 +2,7 @@ import { state, setState, subscribe, levelFromXp, xpToNextLevel, cleanupRealtime
 import {
   initSupabase, isConfigured, signInGoogle, signOut, loadProfile, loadLeaderboard, updateProfile,
   createLobby, joinLobby, getLobby, getLobbyPlayers, startLobby, getCurrentQuestion,
-  submitGameAnswer, revealRound, nextRound, getRoundResults, getDailyState, submitDailyAnswer,
+  submitGameAnswer, revealRound, nextRound, getRoundResults, syncGameClock, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
   getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme,
   getQuestionVoteSummary, voteQuestion, adminDeleteQuestion
@@ -109,6 +109,9 @@ let lobbyRealtimeStatus = "CONNECTING";
 let lobbyLastSyncAt = 0;
 let lobbyRefreshBusy = false;
 let lobbyRefreshQueued = false;
+let phaseRaf = null;
+let phaseTimeout = null;
+let phaseAutoKey = null;
 let demo = null;
 const inFlight = new Set();
 
@@ -401,7 +404,7 @@ function lobbyView() {
           <div class="rule-row"><span>${categoryGlyph(g.category)} Category</span><b>${esc(g.category)}</b></div>
           <div class="rule-row"><span>⚡ Difficulty</span><b>${esc(g.difficulty)}</b></div>
           <div class="rule-row"><span>◫ Rounds</span><b>${g.question_count}</b></div>
-          <div class="rule-row"><span>◷ Timer</span><b>${g.seconds_per_question}s</b></div>
+          <div class="rule-row"><span>◷ Timer</span><b id="timer-value">${g.seconds_per_question}s</b></div>
           <div class="rule-row"><span>◈ Network</span><b>${g.game_mode==="event"?"Event":"Standard"}</b></div>
         </section>
         ${meHost?`<section class="host-launch"><small>HOST CONTROL</small><h3>Everyone here?</h3><p>Starting locks the game rules and launches Round 1.</p><button class="btn primary launch-btn" data-action="start-game" ${players.length<1?"disabled":""}><span>START MATCH</span><b>▶</b></button></section>`:`<section class="host-launch waiting-card"><span class="waiting-pulse"></span><small>WAITING FOR HOST</small><h3>You're in.</h3><p>The first question will appear automatically.</p></section>`}
@@ -424,6 +427,7 @@ function gameView() {
   if (g.status === "finished") return finalView();
   if (!q) return appShell(`<section class="center-stage loading-stage"><div class="spinner"></div><h2>Loading the arena…</h2><p>Syncing the next question with the party.</p></section>`);
   const host = g.demoHost || g.host_id === state.session?.user?.id;
+  const finalRound = Number(g.current_question_index||0)+1 >= Number(g.question_count||0);
 
   if (g.status === "results") {
     const rows = state.roundResults || [];
@@ -434,16 +438,19 @@ function gameView() {
         <section class="correct-answer-card"><div><small>CORRECT ANSWER</small><strong>${formatAnswer(q.answer_numeric ?? q.answer_text ?? q.answer_display)} <em>${esc(q.unit||"")}</em></strong><p>${esc(q.explanation||"")}</p></div><span>✓</span></section>
         <div class="result-grid">
           <section class="hud-panel chart-card game-chart"><div class="panel-title"><span>⌁</span><div><small>THE CROWD</small><b>Guess distribution</b></div></div><canvas id="guess-chart"></canvas></section>
-          <section class="hud-panel scoreboard"><div class="panel-title"><span>♛</span><div><small>LIVE RANKS</small><b>Round leaderboard</b></div><strong>${rows.length} answers</strong></div>${rows.slice(0,20).map((r,i)=>`<div class="score-row ${r.is_me?"me":""}"><span class="score-place">${i+1}</span><b>${esc(r.username)}</b><span>+${r.score}</span><strong>${r.total_score}</strong></div>`).join("") || `<div class="empty">No answers this round.</div>`}</section>
+          <section class="hud-panel scoreboard"><div class="panel-title"><span>♛</span><div><small>LIVE RANKS</small><b>Round leaderboard</b></div><strong>${rows.filter(r=>r.answer_value!=null).length}/${rows.length} answered</strong></div>${rows.slice(0,20).map((r,i)=>`<div class="score-row ${r.is_me?"me":""}"><span class="score-place">${i+1}</span><b>${esc(r.username)}</b><span>+${r.score}</span><strong>${r.total_score}</strong></div>`).join("") || `<div class="empty">No answers this round.</div>`}</section>
         </div>
-        ${host?`<button class="btn primary next-round-btn" data-action="next-round"><span>${g.current_question_index+1>=g.question_count?"FINISH MATCH":"NEXT ROUND"}</span><b>→</b></button>`:`<div class="waiting-banner"><span></span> Waiting for the host to launch the next round…</div>`}
+        <div class="round-auto-controls">
+          <div class="auto-advance-banner"><span>${finalRound?"MATCH ENDS":"NEXT ROUND"} IN <b id="result-countdown">5</b>s</span><small>Automatic</small></div>
+          ${host?`<button class="btn primary next-round-btn" data-action="next-round"><span>${finalRound?"FINISH NOW":"NEXT NOW"}</span><b>→</b></button>`:`<div class="waiting-banner"><span></span> Results are locked in. Continuing automatically…</div>`}
+        </div>
       </section>`);
   }
 
   return appShell(`
     <section class="arena-head"><div><span class="round-chip">ROUND ${g.current_question_index+1} / ${g.question_count}</span><span class="mode-badge live"><i></i> LIVE</span></div><div class="arena-category">${categoryGlyph(q.category)} ${esc(q.category)} · ${esc(q.difficulty)}</div></section>
     <section class="question-arena">
-      <div class="arena-timer"><span>THINK FAST</span><div class="timer-line"><i id="timer-bar"></i></div><b>${g.seconds_per_question}s</b></div>
+      <div class="arena-timer"><span>THINK FAST</span><div class="timer-line"><i id="timer-bar"></i></div><b id="timer-value">${g.seconds_per_question}s</b></div>
       <div class="question-number">Q${String(g.current_question_index+1).padStart(2,"0")}</div>
       ${questionTitleFrame(q)}
       ${questionFeedback(q,{allowDelete:true})}
@@ -459,11 +466,12 @@ function gameView() {
 
 function finalView() {
   const rows = state.roundResults || [];
+  const me = rows.find(r=>r.is_me);
   return appShell(`
     <section class="finish game-finish">
-      <div class="victory-burst"><span>♛</span></div><div class="mode-badge hot">MATCH COMPLETE</div><h1>GG, party.</h1><p>${esc(state.lobby?.title || "Trivia Night")}</p>
-      <div class="podium">${rows.slice(0,3).map((r,i)=>`<div class="podium-card p${i+1}"><span class="medal">${i===0?"♛":i===1?"◆":"▲"}</span><small>#${i+1}</small><b>${esc(r.username)}</b><strong>${r.total_score.toLocaleString()}</strong><em>points</em></div>`).join("")}</div>
-      <div class="scoreboard hud-panel">${rows.slice(3,50).map((r,i)=>`<div class="score-row"><span class="score-place">${i+4}</span><b>${esc(r.username)}</b><span>${r.total_score.toLocaleString()} pts</span></div>`).join("")}</div>
+      <div class="victory-burst"><span>♛</span></div><div class="mode-badge hot">MATCH COMPLETE</div><h1>GG, party.</h1><p>${esc(state.lobby?.title || "Trivia Night")}${me?` · <b>+${Number(me.xp_awarded||0).toLocaleString()} XP</b>`:""}</p>
+      <div class="podium">${rows.slice(0,3).map((r,i)=>`<div class="podium-card p${i+1}"><span class="medal">${i===0?"♛":i===1?"◆":"▲"}</span><small>#${i+1}</small><b>${esc(r.username)}</b><strong>${Number(r.total_score||0).toLocaleString()}</strong><em>points · +${Number(r.xp_awarded||0).toLocaleString()} XP</em></div>`).join("")}</div>
+      <div class="scoreboard hud-panel">${rows.slice(3,50).map((r,i)=>`<div class="score-row"><span class="score-place">${i+4}</span><b>${esc(r.username)}</b><span>${Number(r.total_score||0).toLocaleString()} pts · +${Number(r.xp_awarded||0).toLocaleString()} XP</span></div>`).join("")}</div>
       <button class="btn primary launch-btn finish-btn" data-nav="home"><span>BACK TO PLAY HUB</span><b>→</b></button>
     </section>`);
 }
@@ -748,6 +756,7 @@ function demoInit() {
 }
 
 async function navigate(view, opts={}) {
+  stopPhaseTimers();
   const leavingLobby = state.view === "lobby" && view !== "lobby";
   if (leavingLobby) { stopLobbySync(); cleanupRealtime(); }
   state.view = view;
@@ -829,6 +838,7 @@ function postRender() {
     });
   }
   if (state.view === "lobby" && state.lobby?.status === "question") startTimer();
+  if (state.view === "lobby" && state.lobby?.status === "results") startResultsTimer();
 }
 
 async function hydrateQuestionVoteWidgets() {
@@ -1163,6 +1173,9 @@ async function performLobbyRefresh(code) {
     state.lobby=g; state.lobbyPlayers=players;
     if(g.status==="question"||g.status==="results"){state.currentQuestion=await getCurrentQuestion(g.id);}
     if(g.status==="results"||g.status==="finished") state.roundResults=await getRoundResults(g.id);
+    if(g.status==="finished" && previousGame?.status!=="finished") {
+      try { await loadProfile(); } catch(profileError) { console.warn("Profile XP refresh failed",profileError); }
+    }
     lobbyLastSyncAt = Date.now();
     if(state.view==="lobby" && (phaseChanged || rosterChanged)) await navigate("lobby");
     updateLobbySyncBadge();
@@ -1221,7 +1234,7 @@ async function hostReveal() {
       ].sort((a,b)=>b.total_score-a.total_score);
       return navigate("lobby");
     }
-    await revealRound(state.lobby.id); await refreshLobby(state.lobby.code);
+    await revealRound(state.lobby.id,state.lobby.current_question_index); await performLobbyRefresh(state.lobby.code);
   }catch(e){reportError(e)}
   finally { endAction("host-transition"); }
 }
@@ -1237,17 +1250,103 @@ async function hostNext() {
       state.currentQuestion={...SAMPLE[state.lobby.current_question_index%SAMPLE.length]}; state.roundResults=null; state._demoAnswer=null; answerStartedAt=performance.now();
       return navigate("lobby");
     }
-    await nextRound(state.lobby.id); await refreshLobby(state.lobby.code);
+    await nextRound(state.lobby.id,state.lobby.current_question_index); await performLobbyRefresh(state.lobby.code);
   }catch(e){reportError(e)}
   finally { endAction("host-transition"); }
 }
 
+function stopPhaseTimers() {
+  if (phaseRaf) cancelAnimationFrame(phaseRaf);
+  if (phaseTimeout) clearTimeout(phaseTimeout);
+  phaseRaf = null;
+  phaseTimeout = null;
+  phaseAutoKey = null;
+}
+
+async function syncClockAndRefresh(reason="clock") {
+  if (!state.lobby?.id || state.view!=="lobby") return;
+  const key=`game-clock:${state.lobby.id}`;
+  if (!beginAction(key)) return;
+  try {
+    if (state.lobby.demoHost) {
+      if (state.lobby.status==="question") await hostReveal();
+      else if (state.lobby.status==="results") await hostNext();
+      return;
+    }
+    await syncGameClock(state.lobby.id);
+    await performLobbyRefresh(state.lobby.code);
+  } catch (error) {
+    console.warn(`Game clock sync failed (${reason})`, error);
+  } finally {
+    endAction(key);
+  }
+}
+
+function expireLocalAnswer() {
+  const form=$("#answer-form");
+  if(!form || form.dataset.submitted==="1" || form.dataset.timedOut==="1") return;
+  form.dataset.timedOut="1";
+  form.querySelectorAll("input,button").forEach(x=>x.disabled=true);
+  const status=$("#answer-status");
+  if(status) status.innerHTML=`<b>⌛ Time's up</b> — +0 this round`;
+}
+
 function startTimer() {
-  const bar=$("#timer-bar"); if(!bar)return; answerStartedAt=performance.now();
-  const total=(state.lobby.seconds_per_question||20)*1000;
-  const start=Date.now();
-  const tick=()=>{ if(!$("#timer-bar"))return; const left=Math.max(0,1-(Date.now()-start)/total); bar.style.transform=`scaleX(${left})`; if(left>0)requestAnimationFrame(tick); };
-  requestAnimationFrame(tick);
+  const bar=$("#timer-bar");
+  if(!bar || !state.lobby) return;
+  stopPhaseTimers();
+
+  const total=Math.max(1,Number(state.lobby.seconds_per_question||20))*1000;
+  const serverStart=Date.parse(state.lobby.question_started_at||"");
+  const start=Number.isFinite(serverStart)?serverStart:Date.now();
+  const end=start+total;
+  const elapsed=Math.max(0,Date.now()-start);
+  answerStartedAt=performance.now()-elapsed;
+  const timerValue=$("#timer-value");
+  const clockKey=`q:${state.lobby.id}:${state.lobby.current_question_index}:${start}`;
+
+  const tick=()=>{
+    if(state.view!=="lobby" || state.lobby?.status!=="question" || !$("#timer-bar")) return;
+    const remaining=Math.max(0,end-Date.now());
+    const left=Math.max(0,Math.min(1,remaining/total));
+    bar.style.transform=`scaleX(${left})`;
+    if(timerValue) timerValue.textContent=`${Math.ceil(remaining/1000)}s`;
+    if(remaining<=0){
+      expireLocalAnswer();
+      if(phaseAutoKey!==clockKey){
+        phaseAutoKey=clockKey;
+        syncClockAndRefresh("question-expired");
+      }
+      return;
+    }
+    phaseRaf=requestAnimationFrame(tick);
+  };
+  phaseRaf=requestAnimationFrame(tick);
+}
+
+function startResultsTimer() {
+  if(!state.lobby || state.lobby.status!=="results") return;
+  stopPhaseTimers();
+  const shownAt=Date.parse(state.lobby.results_started_at||"");
+  const start=Number.isFinite(shownAt)?shownAt:Date.now();
+  const end=start+5000;
+  const key=`r:${state.lobby.id}:${state.lobby.current_question_index}:${start}`;
+
+  const tick=()=>{
+    if(state.view!=="lobby" || state.lobby?.status!=="results") return;
+    const remaining=Math.max(0,end-Date.now());
+    const node=$("#result-countdown");
+    if(node) node.textContent=String(Math.max(0,Math.ceil(remaining/1000)));
+    if(remaining<=0){
+      if(phaseAutoKey!==key){
+        phaseAutoKey=key;
+        syncClockAndRefresh("results-expired");
+      }
+      return;
+    }
+    phaseRaf=requestAnimationFrame(tick);
+  };
+  phaseRaf=requestAnimationFrame(tick);
 }
 
 async function profileSubmit(e){

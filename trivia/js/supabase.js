@@ -132,7 +132,7 @@ export async function joinLobby(code) {
 }
 
 export async function getLobby(code) {
-  const rows = await rpc("get_lobby", { p_code: code.trim().toUpperCase() });
+  const rows = await rpc("get_lobby_v11", { p_code: code.trim().toUpperCase() });
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
@@ -158,17 +158,22 @@ export async function submitGameAnswer(gameId, value, responseMs) {
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
-export async function revealRound(gameId) {
-  return await rpc("reveal_round", { p_game_id: gameId });
+export async function revealRound(gameId, expectedIndex) {
+  return await rpc("reveal_round_v11", { p_game_id: gameId, p_expected_index: Number(expectedIndex) });
 }
 
-export async function nextRound(gameId) {
-  return await rpc("next_round", { p_game_id: gameId });
+export async function nextRound(gameId, expectedIndex) {
+  return await rpc("advance_round_v11", { p_game_id: gameId, p_expected_index: Number(expectedIndex) });
 }
 
 export async function getRoundResults(gameId) {
-  const rows = await rpc("get_round_results", { p_game_id: gameId });
+  const rows = await rpc("get_round_results_v11", { p_game_id: gameId });
   return rows || [];
+}
+
+export async function syncGameClock(gameId) {
+  const rows = await rpc("sync_game_clock_v11", { p_game_id: gameId });
+  return Array.isArray(rows) ? rows[0] : rows;
 }
 
 export async function getDailyState() {

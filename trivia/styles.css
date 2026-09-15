@@ -298,3 +298,11 @@ html[data-ui-theme="v2"] .mobile-nav button.active{color:#75f1df}html[data-ui-th
   .admin-question-delete{margin-left:auto}
   .daily-quest-main .question-community-tools,.question-arena .question-community-tools,.practice-arena>.question-community-tools{justify-content:flex-start}
 }
+/* V11 multiplayer auto-flow */
+.round-auto-controls{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+.auto-advance-banner{display:flex;align-items:center;gap:9px;padding:11px 14px;border:1px solid rgba(53,231,208,.2);background:rgba(53,231,208,.055);border-radius:13px;color:#dffbf7;font-size:10px;font-weight:900;letter-spacing:.07em}
+.auto-advance-banner b{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 5px;border-radius:7px;background:rgba(53,231,208,.13);color:var(--aqua);font-size:12px}
+.auto-advance-banner small{color:var(--muted);font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+.round-auto-controls .next-round-btn{margin:0;min-width:190px}
+.round-auto-controls .waiting-banner{margin:0}
+@media(max-width:700px){.round-auto-controls{display:grid;grid-template-columns:1fr}.auto-advance-banner{justify-content:center}.round-auto-controls .next-round-btn{width:100%;min-width:0}.round-auto-controls .waiting-banner{padding:8px 0}.arena-timer>span{display:none}.arena-timer{grid-template-columns:1fr auto}}

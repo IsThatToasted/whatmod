@@ -12,3 +12,9 @@ Remember to allow `https://whatmod.com/triviaadmin/` as a Supabase Auth redirect
 ## Local Media Pipeline
 
 V9 adds export/import controls that pair with `WhatMod-Trivia-Media-Resolver-Windows.zip`. The local app uses no Supabase secret and writes nothing directly to the database.
+
+## V12 Local Content Studio
+
+Normal content acquisition no longer needs GitHub Actions. Download `downloads/WhatMod-Trivia-Content-Studio-Windows.zip`, acquire questions and resolve media locally, export one `whatmod-trivia-content-package` JSON, then upload it from the Questions tab.
+
+The admin importer batches the single uploaded file internally, deduplicates by `canonical_key`, preserves admin-edited `content_locked` questions, and preserves media that has been explicitly locked/approved.
