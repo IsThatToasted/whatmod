@@ -68,10 +68,17 @@ function wireMediaFallbacks() {
         img.src=fallback;
         return;
       }
-      img.hidden=true;
       const shell=img.closest(".question-media-frame,.library-cover");
-      shell?.classList.add("media-failed");
-      const card=shell?.querySelector(".media-fallback-card");
+      if (!shell || shell.dataset.mediaFailed === "1") {
+        img.remove();
+        return;
+      }
+      shell.dataset.mediaFailed = "1";
+      shell.classList.add("media-failed");
+      const card=shell.querySelector(".media-fallback-card");
+      // Remove the failed element entirely. Safari can keep painting the
+      // native broken-image glyph when author CSS overrides [hidden].
+      img.remove();
       if(card) card.hidden=false;
     };
     img.addEventListener("error",recover);
@@ -651,7 +658,7 @@ function profileView() {
       <div class="stats-grid game-stats"><div><span>♛</span><small>WINS</small><strong>${p.wins||0}</strong></div><div><span>▶</span><small>MATCHES</small><strong>${p.games_played||0}</strong></div><div><span>🔥</span><small>STREAK</small><strong>${p.daily_streak||0}</strong></div><div><span>⚡</span><small>LEVEL</small><strong>${l.level}</strong></div></div>
     </section>
     <form id="profile-form" class="hud-panel profile-form game-profile-form"><div><small>DISPLAY NAME</small><h3>How should the arena know you?</h3><p>We start with your Google name. Changing this only changes your trivia display name.</p></div><label><span>PLAYER NAME</span><input name="username" maxlength="24" value="${esc(p.username)}"></label><button class="btn primary" type="submit">Save name</button></form>
-    ${state.session?`<button class="btn danger-soft" data-action="logout">Sign out</button>`:`<button class="btn primary" data-action="login">Connect Google to save this player</button>`}
+    <div class="row-actions">${p.is_admin?`<a class="btn" href="/triviaadmin/"><span>⚙</span> Admin dashboard</a>`:""}${state.session?`<button class="btn danger-soft" data-action="logout">Sign out</button>`:`<button class="btn primary" data-action="login">Connect Google to save this player</button>`}</div>
   `);
 }
 

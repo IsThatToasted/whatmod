@@ -207,6 +207,30 @@ async function commonsMetadata(titles) {
 
 async function upsertQuestions(rows) {
   if (!rows.length) return;
+
+  // Preserve media decisions already made by Media Resolver/Admin. Question sync
+  // owns factual question data, but must never overwrite an approved/locked image.
+  const keys=rows.map(r=>r.canonical_key).filter(Boolean);
+  const existing=new Map();
+  if(keys.length){
+    const encoded=keys.map(k=>`"${String(k).replace(/"/g,'\\"')}"`).join(",");
+    const url=`${SUPABASE_URL}/rest/v1/questions?select=canonical_key,image_url,media_locked,media_review_status&canonical_key=in.(${encodeURIComponent(encoded)})`;
+    const er=await fetch(url,{headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`}});
+    if(er.ok){ for(const row of await er.json()) existing.set(row.canonical_key,row); }
+  }
+
+  const payload=rows.map(row=>{
+    const copy={...row};
+    const prev=existing.get(row.canonical_key);
+    if(prev){
+      // Existing image selection is now owned by the resolver/admin pipeline.
+      for(const key of ["image_url","image_alt","image_source_url","image_attribution","image_license","image_license_url","media_provider","media_review_status","media_locked"]){
+        delete copy[key];
+      }
+    }
+    return copy;
+  });
+
   const r = await fetch(`${SUPABASE_URL}/rest/v1/questions?on_conflict=canonical_key`, {
     method:"POST",
     headers:{
@@ -214,7 +238,7 @@ async function upsertQuestions(rows) {
       "Content-Type":"application/json",
       Prefer:"resolution=merge-duplicates,return=minimal"
     },
-    body:JSON.stringify(rows)
+    body:JSON.stringify(payload)
   });
   if (!r.ok) throw new Error(`Supabase upsert failed: ${r.status} ${await r.text()}`);
 }
@@ -256,6 +280,7 @@ for (const template of templates) {
         image_url:img.image_url || null,image_alt:x.fileTitle ? x.label : null,
         image_source_url:img.image_source_url || null,image_attribution:img.image_attribution || null,
         image_license:img.image_license || null,image_license_url:img.image_license_url || null,
+        media_query:x.label,media_provider:img.image_url ? "wikimedia" : null,
         source_type:"wikidata",source_entity_id:x.qid,canonical_key:`wikidata:${template.id}:${x.qid}`
       };
     });

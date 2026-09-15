@@ -127,3 +127,10 @@ button,input,select{font:inherit}button,a{touch-action:manipulation}.plain{borde
   .practice-distance-panel{margin-top:18px}
   .question-media-frame{min-height:100px}
 }
+
+
+/* V6.2 — never paint a native broken-image glyph beside our fallback */
+.question-media-frame>img[hidden],.library-cover>img[hidden]{display:none!important}
+.question-media-frame.media-failed>img,.library-cover.media-failed>img{display:none!important}
+.library-cover.media-failed:after{display:none!important}
+.question-media-frame.media-failed{min-height:150px}

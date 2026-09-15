@@ -207,3 +207,11 @@ For the question sync workflow, add `TRIVIA_SUPABASE_URL` and `TRIVIA_SUPABASE_S
 ## V6.1: Practice mobile flow + resilient media
 
 No database migration is required for V6.1. The Practice result screen now places **Next Question / Finish Practice immediately below the answer result**, before closeness/community graphs, so mobile players can continue without scrolling through analytics. Question and Library images now normalize insecure HTTP URLs, retry failed Wikimedia thumbnails through a stable Commons file redirect derived from attribution metadata, and fall back to a clean source-aware placeholder rather than a broken image icon.
+
+## V7 media resolver and admin
+
+V7 adds a rolling Media Resolver that searches reusable image sources, verifies candidate URLs, and auto-publishes the best eligible image without requiring manual approval. Admin-approved images are locked against automated replacement.
+
+The separate `/triviaadmin/` dashboard lets Trivia admins review the live image, inspect resolver candidates, search Wikimedia Commons/Openverse, approve/lock or reject media, edit the media search subject, and enter manual overrides.
+
+Run `supabase/migrations/007_media_resolver_admin.sql` and add `https://whatmod.com/triviaadmin/` to Supabase Auth Redirect URLs before using the dashboard.

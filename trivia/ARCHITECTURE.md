@@ -32,3 +32,12 @@ A Library replay creates a normal zero-XP Practice session from that manifest. C
 ## V6 open-knowledge hydration
 
 A GitHub Actions job runs the server-only `trivia/tools/wikidata-question-sync.mjs` importer. It reads public Wikidata data, enriches optional images with Wikimedia Commons attribution/license metadata, and upserts only selected/local-cache questions into Supabase by `canonical_key`. Images remain external URLs; no image blobs are stored in Supabase.
+
+## V7 media resolver
+
+Question media is now two-tiered:
+
+1. `questions.image_*` contains the single image currently shown to players.
+2. `question_media_candidates` stores compact alternate-provider metadata and moderation state.
+
+A GitHub Actions resolver uses the server-only Supabase service role to search Wikimedia Commons/Openverse and update unlocked question media. `/triviaadmin/` uses browser-safe Supabase Auth plus admin-only RPCs; the service-role credential is never exposed to the browser.
