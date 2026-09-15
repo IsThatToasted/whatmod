@@ -23,10 +23,49 @@ jobs:
           test -f trivia/styles.css
           test -f trivia/js/app.js
           test -f trivia/supabase/migrations/001_trivia.sql
+          test -f trivia/supabase/migrations/005_realtime_lobby_sync.sql
+          test -f trivia/supabase/migrations/006_library_community_media.sql
+          test -f trivia/tools/wikidata-question-sync.mjs
           echo "Trivia static package structure looks good."
       - name: Check for accidentally committed Supabase secret keys
         run: |
           if grep -R -E "sb_secret_|service_role" trivia/config.js; then
             echo "Do not commit a Supabase secret/service-role key to GitHub Pages."
+            exit 1
+          fi
+
+      - name: Reject known ambiguous SQL patterns
+        run: |
+          if grep -R -n -E 'set[[:space:]]+current_index[[:space:]]*=[[:space:]]*current_index[[:space:]]*\+' trivia/supabase/migrations; then
+            echo "Ambiguous current_index update found."
+            exit 1
+          fi
+          if grep -R -n -E 'set[[:space:]]+total_score[[:space:]]*=[[:space:]]*total_score[[:space:]]*\+' trivia/supabase/migrations; then
+            echo "Ambiguous total_score update found."
+            exit 1
+          fi
+      - name: Syntax check JavaScript
+        run: |
+          for f in trivia/js/*.js trivia/tools/*.mjs; do node --check "$f"; done
+
+      - name: Validate realtime lobby hardening
+        run: |
+          grep -q "is_game_participant" trivia/supabase/migrations/005_realtime_lobby_sync.sql
+          grep -q "supabase_realtime" trivia/supabase/migrations/005_realtime_lobby_sync.sql
+          if grep -n 'exists(select 1 from public.game_players me where me.game_id=game_players.game_id' trivia/supabase/migrations/005_realtime_lobby_sync.sql; then
+            echo "Recursive game_players RLS pattern reintroduced."
+            exit 1
+          fi
+
+      - name: Validate V6 library/community architecture
+        run: |
+          grep -q "question_answer_stats" trivia/supabase/migrations/006_library_community_media.sql
+          grep -q "library_sessions" trivia/supabase/migrations/006_library_community_media.sql
+          grep -q "get_question_community_stats" trivia/supabase/migrations/006_library_community_media.sql
+          grep -q "start_library_practice" trivia/supabase/migrations/006_library_community_media.sql
+          grep -q "canonical_key" trivia/tools/wikidata-question-sync.mjs
+          grep -q "imageinfo" trivia/tools/wikidata-question-sync.mjs
+          if grep -R -n -E "TRIVIA_SUPABASE_SERVICE_ROLE_KEY.{0,20}(=|:)['\"]?[A-Za-z0-9_-]{20,}" trivia --exclude='*.md'; then
+            echo "A service-role credential appears to be hard-coded under trivia/."
             exit 1
           fi

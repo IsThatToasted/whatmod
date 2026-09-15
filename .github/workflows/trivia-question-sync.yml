@@ -1,0 +1,39 @@
+name: Trivia Question Bank Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      offset:
+        description: Wikidata page offset per template
+        required: false
+        default: 'auto'
+      per_template:
+        description: Questions requested from each template (5-250)
+        required: false
+        default: '80'
+  schedule:
+    - cron: '17 9 * * 2'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trivia-question-sync
+  cancel-in-progress: false
+
+jobs:
+  hydrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Hydrate open-knowledge question cache
+        env:
+          TRIVIA_SUPABASE_URL: ${{ secrets.TRIVIA_SUPABASE_URL }}
+          TRIVIA_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TRIVIA_SUPABASE_SERVICE_ROLE_KEY }}
+          QUESTION_SYNC_OFFSET: ${{ github.event.inputs.offset || 'auto' }}
+          QUESTION_SYNC_PER_TEMPLATE: ${{ github.event.inputs.per_template || '80' }}
+        run: node trivia/tools/wikidata-question-sync.mjs
