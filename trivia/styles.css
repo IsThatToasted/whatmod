@@ -247,3 +247,54 @@ html[data-ui-theme="v2"] .mobile-nav button.active{color:#75f1df}html[data-ui-th
 }
 
 @media(prefers-reduced-motion:reduce){.game-bg i,.mode-badge.live i,.mode-badge.sync-ok i,.mode-badge.sync-warn i,.mode-badge.sync-wait i{animation:none!important}.btn,.theme-choice{transition:none!important}}
+
+/* --------------------------------------------------------------------------
+   V10 question presentation + community moderation
+   -------------------------------------------------------------------------- */
+.question-title-frame{display:grid;grid-template-columns:minmax(0,1fr) 168px;gap:20px;align-items:start;max-width:980px;margin:0 auto 10px;text-align:left}
+.question-title-frame .question-title-copy{min-width:0;align-self:center}
+.question-title-frame .question-title-copy h1,.question-title-frame .question-title-copy h2{margin:0!important}
+.question-title-frame .question-media.compact{width:168px;max-width:168px;margin:0!important;border-radius:14px;box-shadow:0 12px 32px rgba(0,0,0,.28);background:#0b1020}
+.question-title-frame .question-media-frame{min-height:0;height:112px;border-radius:13px}
+.question-title-frame .question-media-frame>img{width:100%;height:100%;min-height:0;max-height:none;object-fit:cover}
+.question-title-frame .question-media figcaption{padding:5px 6px;font-size:6px;line-height:1.25;gap:5px;white-space:nowrap;overflow:hidden}
+.question-title-frame .question-media figcaption span{display:none}
+.question-title-frame .question-media figcaption a{overflow:hidden;text-overflow:ellipsis}
+.question-title-frame .media-fallback-card{min-height:112px;font-size:9px}
+.result-question .question-title-frame,.daily-answer-panel .question-title-frame,.practice-reveal-copy .question-title-frame{grid-template-columns:minmax(0,1fr) 138px;gap:16px}
+.result-question .question-title-frame .question-media.compact,.daily-answer-panel .question-title-frame .question-media.compact,.practice-reveal-copy .question-title-frame .question-media.compact{width:138px;max-width:138px}
+.result-question .question-title-frame .question-media-frame,.daily-answer-panel .question-title-frame .question-media-frame,.practice-reveal-copy .question-title-frame .question-media-frame{height:92px}
+.result-question .question-title-frame{max-width:850px}
+.result-question .question-title-copy{text-align:left}
+.daily-answer-panel .question-title-frame h2{font-size:25px;line-height:1.08}
+.practice-reveal-copy .question-title-frame h1{font-size:clamp(28px,4vw,45px);line-height:1.05}
+.question-community-tools{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;margin:12px auto 4px;color:var(--muted);font-size:9px;max-width:720px}
+.question-feedback-label{font-weight:850;letter-spacing:.06em;text-transform:uppercase;margin-right:2px}
+.question-vote{border:1px solid var(--line2);background:#101629;color:#c7cfe8;border-radius:999px;padding:6px 10px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-weight:850;font-size:11px;transition:.15s ease}
+.question-vote:hover{border-color:#526384;transform:translateY(-1px)}
+.question-vote.selected{border-color:rgba(53,231,208,.45);background:rgba(53,231,208,.1);box-shadow:0 0 0 2px rgba(53,231,208,.05)}
+.question-vote[data-question-vote="-1"].selected{border-color:rgba(255,100,124,.45);background:rgba(255,100,124,.09)}
+.question-vote b{font-size:9px;color:var(--muted)}
+.question-tools-divider{width:1px;height:20px;background:var(--line);margin:0 2px}
+.admin-question-delete{border:0;background:transparent;color:#ff8da0;font-size:9px;font-weight:900;letter-spacing:.03em;cursor:pointer;padding:6px 7px;border-radius:8px}
+.admin-question-delete:hover{background:rgba(255,100,124,.09);color:#ffc0cb}
+.question-admin-inline{text-align:center;margin:8px auto}
+.daily-quest-main .question-community-tools,.question-arena .question-community-tools,.practice-arena>.question-community-tools{justify-content:flex-start;max-width:980px}
+.question-arena .question-title-frame,.practice-arena>.question-title-frame{max-width:900px}
+
+@media(max-width:700px){
+  .question-title-frame{grid-template-columns:minmax(0,1fr) 102px;gap:11px;align-items:start}
+  .question-title-frame .question-media.compact{width:102px;max-width:102px;border-radius:11px}
+  .question-title-frame .question-media-frame{height:76px;border-radius:10px}
+  .question-title-frame .question-media figcaption{display:none}
+  .question-title-frame .media-fallback-card{min-height:76px;padding:5px;font-size:7px}
+  .result-question .question-title-frame,.daily-answer-panel .question-title-frame,.practice-reveal-copy .question-title-frame{grid-template-columns:minmax(0,1fr) 92px;gap:10px}
+  .result-question .question-title-frame .question-media.compact,.daily-answer-panel .question-title-frame .question-media.compact,.practice-reveal-copy .question-title-frame .question-media.compact{width:92px;max-width:92px}
+  .result-question .question-title-frame .question-media-frame,.daily-answer-panel .question-title-frame .question-media-frame,.practice-reveal-copy .question-title-frame .question-media-frame{height:69px}
+  .question-community-tools{justify-content:flex-start;margin-top:10px;gap:5px}
+  .question-feedback-label{flex-basis:100%;font-size:8px}
+  .question-vote{padding:6px 9px}
+  .question-tools-divider{display:none}
+  .admin-question-delete{margin-left:auto}
+  .daily-quest-main .question-community-tools,.question-arena .question-community-tools,.practice-arena>.question-community-tools{justify-content:flex-start}
+}

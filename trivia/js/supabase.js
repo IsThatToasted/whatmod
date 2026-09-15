@@ -218,6 +218,20 @@ export async function getQuestionCommunityStats(questionId) {
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
+export async function getQuestionVoteSummary(questionId) {
+  const rows = await rpc("get_question_vote_summary", { p_question_id: questionId });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function voteQuestion(questionId, vote) {
+  const rows = await rpc("vote_question", { p_question_id: questionId, p_vote: Number(vote) });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function adminDeleteQuestion(questionId, reason = null, practiceSessionId = null) {
+  return await rpc("admin_delete_question_v10", { p_question_id: questionId, p_reason: reason, p_practice_session_id: practiceSessionId });
+}
+
 export async function getLibrarySessions({ search = null, category = null, difficulty = "any", sort = "new", limit = 30, offset = 0 } = {}) {
   const rows = await rpc("get_library_sessions", {
     p_search: search || null,

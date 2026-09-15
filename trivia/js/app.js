@@ -4,7 +4,8 @@ import {
   createLobby, joinLobby, getLobby, getLobbyPlayers, startLobby, getCurrentQuestion,
   submitGameAnswer, revealRound, nextRound, getRoundResults, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
-  getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme
+  getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme,
+  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
 import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
@@ -56,6 +57,20 @@ function questionMedia(q, compact=false) {
   if(!image) return "";
   const credit=[q?.image_attribution,q?.image_license].filter(Boolean).join(" · ");
   return `<figure class="question-media ${compact?"compact":""}"><div class="question-media-frame">${image}<div class="media-fallback-card" hidden><span>▧</span><b>Image unavailable</b>${source?`<a href="${esc(source)}" target="_blank" rel="noopener">Open source image</a>`:""}</div></div><figcaption>${credit?`<span>${esc(credit)}</span>`:""}${source?`<a href="${esc(source)}" target="_blank" rel="noopener">Source</a>`:""}${license?`<a href="${esc(license)}" target="_blank" rel="noopener">License</a>`:""}</figcaption></figure>`;
+}
+
+function questionTitleFrame(q,{tag="h1",className=""}={}) {
+  const safeTag=tag==="h2"?"h2":"h1";
+  return `<div class="question-title-frame"><div class="question-title-copy"><${safeTag}${className?` class="${esc(className)}"`:""}>${esc(q?.prompt||"")}</${safeTag}></div>${questionMedia(q,true)}</div>`;
+}
+function questionFeedback(q,{allowDelete=false}={}) {
+  if(!q?.id || !state.session || !isConfigured()) return state.profile?.is_admin&&allowDelete&&q?.id?`<div class="question-admin-inline"><button class="admin-question-delete" data-action="admin-delete-question" data-question-id="${esc(q.id)}">✕ Delete bad question</button></div>`:"";
+  return `<div class="question-community-tools" data-question-feedback="${esc(q.id)}">
+    <span class="question-feedback-label">Rate this question</span>
+    <button class="question-vote" data-question-vote="1" data-question-id="${esc(q.id)}" aria-label="Thumbs up">👍 <b data-vote-up>—</b></button>
+    <button class="question-vote" data-question-vote="-1" data-question-id="${esc(q.id)}" aria-label="Thumbs down">👎 <b data-vote-down>—</b></button>
+    ${state.profile?.is_admin&&allowDelete?`<span class="question-tools-divider"></span><button class="admin-question-delete" data-action="admin-delete-question" data-question-id="${esc(q.id)}">✕ Delete question</button>`:""}
+  </div>`;
 }
 function wireMediaFallbacks() {
   $$('img[data-media-image="1"]').forEach(img=>{
@@ -415,7 +430,7 @@ function gameView() {
     return appShell(`
       <section class="arena-head"><div><span class="round-chip">ROUND ${g.current_question_index+1} / ${g.question_count}</span><span class="mode-badge success">RESULTS</span></div><div class="arena-category">${categoryGlyph(q.category)} ${esc(q.category)} · ${esc(q.difficulty)}</div></section>
       <section class="results-arena">
-        <div class="result-question"><small>THE QUESTION</small><h1>${esc(q.prompt)}</h1>${questionMedia(q,true)}</div>
+        <div class="result-question"><small>THE QUESTION</small>${questionTitleFrame(q)}${questionFeedback(q,{allowDelete:true})}</div>
         <section class="correct-answer-card"><div><small>CORRECT ANSWER</small><strong>${formatAnswer(q.answer_numeric ?? q.answer_text ?? q.answer_display)} <em>${esc(q.unit||"")}</em></strong><p>${esc(q.explanation||"")}</p></div><span>✓</span></section>
         <div class="result-grid">
           <section class="hud-panel chart-card game-chart"><div class="panel-title"><span>⌁</span><div><small>THE CROWD</small><b>Guess distribution</b></div></div><canvas id="guess-chart"></canvas></section>
@@ -430,8 +445,8 @@ function gameView() {
     <section class="question-arena">
       <div class="arena-timer"><span>THINK FAST</span><div class="timer-line"><i id="timer-bar"></i></div><b>${g.seconds_per_question}s</b></div>
       <div class="question-number">Q${String(g.current_question_index+1).padStart(2,"0")}</div>
-      <h1>${esc(q.prompt)}</h1>
-      ${questionMedia(q)}
+      ${questionTitleFrame(q)}
+      ${questionFeedback(q,{allowDelete:true})}
       ${q.context ? `<p class="question-context">${esc(q.context)}</p>`:""}
       <form id="answer-form" class="answer-form game-answer-form">
         ${questionInput(q)}
@@ -463,7 +478,7 @@ function dailyView() {
       <section class="daily-results-head"><span class="mode-badge success">QUEST COMPLETE</span><h1>${rankText}</h1><p>You banked <b>+${result.xp_awarded} XP</b> today.</p></section>
       <section class="daily-result-grid">
         <article class="score-burst game-score-burst"><span>PRECISION</span><strong>${result.score}</strong><small>/ 1,000</small><i>+${result.xp_awarded} XP</i></article>
-        <article class="hud-panel daily-answer-panel"><small>TODAY'S QUESTION</small><h2>${esc(q.prompt)}</h2>${questionMedia(q,true)}<div class="versus-answers"><span><small>YOU GUESSED</small><b>${formatAnswer(result.your_answer)} ${esc(q.unit||"")}</b></span><i>VS</i><span><small>ANSWER</small><b>${formatAnswer(result.answer_numeric ?? q.answer_numeric)} ${esc(q.unit||"")}</b></span></div><p>${esc(result.explanation||q.explanation||"")}</p></article>
+        <article class="hud-panel daily-answer-panel"><small>TODAY'S QUESTION</small>${questionTitleFrame(q,{tag:"h2"})}${questionFeedback(q)}<div class="versus-answers"><span><small>YOU GUESSED</small><b>${formatAnswer(result.your_answer)} ${esc(q.unit||"")}</b></span><i>VS</i><span><small>ANSWER</small><b>${formatAnswer(result.answer_numeric ?? q.answer_numeric)} ${esc(q.unit||"")}</b></span></div><p>${esc(result.explanation||q.explanation||"")}</p></article>
       </section>
       <section class="hud-panel chart-card daily-chart-card"><div class="panel-title"><span>⌁</span><div><small>GLOBAL READ</small><b>Where everyone landed</b></div></div><canvas id="daily-chart"></canvas></section>
       <div class="row-actions center"><button class="btn primary" data-nav="home">Claim & return</button><button class="btn" data-copy="${esc(location.href)}">Share challenge</button></div>
@@ -475,8 +490,8 @@ function dailyView() {
       <div class="daily-quest-main">
         <div class="daily-kicker"><span>DAILY #${esc(q.daily_number||"—")}</span><span>${categoryGlyph(q.category)} ${esc(q.category)} • ${esc(q.difficulty)}</span></div>
         <div class="quest-reward-chip">+ Precision XP <i>•</i> Keep your streak alive</div>
-        <h1>${esc(q.prompt)}</h1>
-        ${questionMedia(q)}
+        ${questionTitleFrame(q)}
+        ${questionFeedback(q)}
         ${q.context?`<p class="question-context">${esc(q.context)}</p>`:""}
         <form id="daily-form" class="answer-form game-answer-form">${questionInput(q,"daily")}<button class="btn primary lock-btn" type="submit"><span>SUBMIT FINAL GUESS</span><b>✓</b></button></form>
         <p class="one-shot"><span>◎</span> One shot per day. Accuracy determines XP.</p>
@@ -556,7 +571,7 @@ function practiceView() {
         <div class="practice-round-track"><i style="width:${Math.round(((Number(pr.current_index||0)+1)/Math.max(1,pr.question_count))*100)}%"></i></div>
         <section class="hud-panel practice-reveal-card">
           <div class="practice-score-orb"><small>PRECISION</small><strong>${Number(result.score||0)}</strong><span>/ 1000</span></div>
-          <div class="practice-reveal-copy"><small>${categoryGlyph(q.category)} ${esc(q.category)} • ${esc(q.difficulty)}</small><h1>${esc(q.prompt)}</h1>${questionMedia(q,true)}
+          <div class="practice-reveal-copy"><small>${categoryGlyph(q.category)} ${esc(q.category)} • ${esc(q.difficulty)}</small>${questionTitleFrame(q)}${questionFeedback(q,{allowDelete:true})}
             <div class="practice-answer-compare"><span><small>YOUR GUESS</small><b>${esc(your)} ${esc(q.unit||"")}</b></span><i>→</i><span><small>CORRECT ANSWER</small><b>${esc(correct)} ${esc(q.unit||"")}</b></span></div>
             <p>${esc(result.explanation||q.explanation||"")}</p>
           </div>
@@ -575,8 +590,8 @@ function practiceView() {
       <div class="practice-progress-head"><span class="mode-badge practice-badge">PRACTICE</span><b>QUESTION ${Number(pr.current_index||0)+1} / ${pr.question_count}</b><strong>${Number(pr.total_score||0).toLocaleString()} PTS</strong></div>
       <div class="practice-round-track"><i style="width:${Math.round((Number(pr.current_index||0)/Math.max(1,pr.question_count))*100)}%"></i></div>
       <div class="practice-question-meta"><span>${categoryGlyph(q.category)} ${esc(q.category)}</span><span>${esc(q.difficulty)}</span><span>NO TIMER</span></div>
-      <h1 class="practice-question-title">${esc(q.prompt)}</h1>
-      ${questionMedia(q)}
+      ${questionTitleFrame(q,{className:"practice-question-title"})}
+      ${questionFeedback(q,{allowDelete:true})}
       ${q.context?`<p class="question-context">${esc(q.context)}</p>`:""}
       <form id="practice-answer-form" class="answer-form game-answer-form">
         ${questionInput(q,"practice")}
@@ -769,6 +784,7 @@ function bind() {
     if (a==="twitch-disconnect") el.onclick = ()=>{disconnectTwitch();navigate("lobby")};
     if (a==="twitch-announce") el.onclick = async()=>{try{await announceLobby(state.lobby.code);toast("Lobby posted to Twitch chat")}catch(e){reportError(e)}};
     if (a==="twitch-listen") el.onclick = async()=>{try{await listenToTwitchChat(()=>navigate("lobby"));toast("Listening for !trivia and !join")}catch(e){reportError(e)}};
+    if (a==="admin-delete-question") el.onclick = ()=> adminDeleteCurrentQuestion(el.dataset.questionId);
   });
   $("#create-form")?.addEventListener("submit", createSubmit);
   $("#daily-form")?.addEventListener("submit", dailySubmit);
@@ -784,10 +800,12 @@ function bind() {
     if (form.id==="answer-form") gameSubmit(new Event("submit"));
     if (form.id==="practice-answer-form") practiceSubmit(new Event("submit"));
   });
+  $$('[data-question-vote]').forEach(b=>b.onclick=()=>castQuestionVote(b.dataset.questionId,Number(b.dataset.questionVote)));
 }
 
 function postRender() {
   wireMediaFallbacks();
+  hydrateQuestionVoteWidgets();
   if (state.view === "daily" && state.daily?.result) {
     requestAnimationFrame(()=>{
       const answer=state.daily.result.answer_numeric ?? state.daily.question?.answer_numeric;
@@ -811,6 +829,65 @@ function postRender() {
     });
   }
   if (state.view === "lobby" && state.lobby?.status === "question") startTimer();
+}
+
+async function hydrateQuestionVoteWidgets() {
+  if(!state.session || !isConfigured()) return;
+  const widgets=$$('[data-question-feedback]');
+  await Promise.all(widgets.map(async widget=>{
+    const questionId=widget.dataset.questionFeedback;
+    try{
+      const summary=await getQuestionVoteSummary(questionId);
+      paintQuestionVoteWidget(widget,summary);
+    }catch(error){ console.warn("Question vote summary unavailable",error); }
+  }));
+}
+
+function paintQuestionVoteWidget(widget,summary={}) {
+  if(!widget)return;
+  const up=widget.querySelector('[data-vote-up]'),down=widget.querySelector('[data-vote-down]');
+  if(up)up.textContent=Number(summary?.upvotes||0).toLocaleString();
+  if(down)down.textContent=Number(summary?.downvotes||0).toLocaleString();
+  widget.querySelectorAll('[data-question-vote]').forEach(btn=>{
+    btn.classList.toggle('selected',Number(btn.dataset.questionVote)===Number(summary?.my_vote||0));
+  });
+}
+
+async function castQuestionVote(questionId,vote) {
+  if(!questionId || !state.session)return;
+  const key=`vote:${questionId}`;
+  if(!beginAction(key))return;
+  const widgets=$$(`[data-question-feedback="${CSS.escape(questionId)}"]`);
+  widgets.forEach(w=>w.querySelectorAll('[data-question-vote]').forEach(b=>b.disabled=true));
+  try{
+    const summary=await voteQuestion(questionId,vote);
+    widgets.forEach(w=>paintQuestionVoteWidget(w,summary));
+  }catch(error){ reportError(error,"Your vote could not be saved."); }
+  finally{widgets.forEach(w=>w.querySelectorAll('[data-question-vote]').forEach(b=>b.disabled=false));endAction(key)}
+}
+
+async function adminDeleteCurrentQuestion(questionId) {
+  if(!state.profile?.is_admin || !questionId)return;
+  if(!confirm("Delete this question from the active bank? Any live Party or Practice session using it will immediately skip it. The record is retained only as an audit tombstone."))return;
+  const key=`admin-delete:${questionId}`;
+  if(!beginAction(key))return;
+  try{
+    const result=await adminDeleteQuestion(questionId,"Removed during live gameplay",state.view==="practice"?state.practice?.session_id:null);
+    toast(`Question removed • ${Number(result?.games_touched||0)} live game(s) and ${Number(result?.practices_touched||0)} practice session(s) updated.`);
+    if(state.view==="lobby" && state.lobby?.code){ await refreshLobby(state.lobby.code,0); return; }
+    if(state.view==="practice" && state.practice?.session_id){
+      const pr=state.practice;
+      const q=await getPracticeQuestion(pr.session_id);
+      if(q){
+        pr.current_index=q.ordinal;pr.question_count=q.question_count;pr.total_score=q.total_score;pr.status=q.status;pr.question=q;pr.result=q.answered?q:null;
+        pr.community=(q.answered&&q.question_type==="numeric")?await getQuestionCommunityStats(q.id):null;
+      }else{
+        pr.status="completed";pr.question_count=Math.max(0,Number(pr.question_count||1)-1);pr.summary=await getPracticeSummary(pr.session_id);
+      }
+      await navigate("practice");
+    }
+  }catch(error){reportError(error,"The question could not be removed.");}
+  finally{endAction(key)}
 }
 
 async function requireAuthOrDemo() {
@@ -1049,7 +1126,7 @@ async function enterLobby(code) {
   stopLobbySync();
   const g=await getLobby(code); if(!g) throw new Error("Lobby not found.");
   state.lobby=g; state.lobbyPlayers=await getLobbyPlayers(g.id);
-  if(g.status!=="lobby"){ state.currentQuestion=await getCurrentQuestion(g.id); if(g.status==="results") state.roundResults=await getRoundResults(g.id); }
+  if(g.status==="question"||g.status==="results"){ state.currentQuestion=await getCurrentQuestion(g.id); if(g.status==="results") state.roundResults=await getRoundResults(g.id); } else if(g.status==="finished"){ state.roundResults=await getRoundResults(g.id); }
   lobbyRealtimeStatus = "CONNECTING";
   lobbyLastSyncAt = Date.now();
   subscribeLobby(
@@ -1081,7 +1158,7 @@ async function performLobbyRefresh(code) {
     const g=await getLobby(code); if(!g)return;
     const players=await getLobbyPlayers(g.id);
     const nextRoster = players.map(p=>`${p.user_id}:${p.username || ""}:${p.avatar_url || ""}`).sort().join("|");
-    const phaseChanged = !previousGame || previousGame.status !== g.status || previousGame.current_question_index !== g.current_question_index;
+    const phaseChanged = !previousGame || previousGame.status !== g.status || previousGame.current_question_index !== g.current_question_index || previousGame.question_count !== g.question_count || previousGame.question_started_at !== g.question_started_at;
     const rosterChanged = previousRoster !== nextRoster;
     state.lobby=g; state.lobbyPlayers=players;
     if(g.status==="question"||g.status==="results"){state.currentQuestion=await getCurrentQuestion(g.id);}
