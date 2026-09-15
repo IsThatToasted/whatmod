@@ -48,7 +48,7 @@ export async function signOut() {
   if (state.supabase) await state.supabase.auth.signOut();
   setState({
     session: null, profile: null, lobby: null, lobbyPlayers: [],
-    currentQuestion: null, roundResults: null, daily: null, practice: null
+    currentQuestion: null, roundResults: null, daily: null, practice: null, libraryItems: []
   });
 }
 
@@ -127,7 +127,7 @@ export async function startLobby(gameId) {
 }
 
 export async function getCurrentQuestion(gameId) {
-  const rows = await rpc("get_current_question", { p_game_id: gameId });
+  const rows = await rpc("get_current_question_v6", { p_game_id: gameId });
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
@@ -154,7 +154,7 @@ export async function getRoundResults(gameId) {
 }
 
 export async function getDailyState() {
-  const rows = await rpc("get_daily_state");
+  const rows = await rpc("get_daily_state_v6");
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
@@ -173,7 +173,7 @@ export async function startPractice({ categories = [], difficulty = "any", quest
 }
 
 export async function getPracticeQuestion(sessionId) {
-  const rows = await rpc("get_practice_question", { p_session_id: sessionId });
+  const rows = await rpc("get_practice_question_v6", { p_session_id: sessionId });
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
@@ -195,12 +195,36 @@ export async function getPracticeSummary(sessionId) {
   return await rpc("get_practice_summary", { p_session_id: sessionId });
 }
 
-export function subscribeLobby(gameId, onChange) {
+export async function getQuestionCommunityStats(questionId) {
+  const rows = await rpc("get_question_community_stats", { p_question_id: questionId });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function getLibrarySessions({ search = null, category = null, difficulty = "any", sort = "new", limit = 30, offset = 0 } = {}) {
+  const rows = await rpc("get_library_sessions", {
+    p_search: search || null,
+    p_category: category || null,
+    p_difficulty: difficulty || "any",
+    p_sort: sort || "new",
+    p_limit: limit,
+    p_offset: offset
+  });
+  return rows || [];
+}
+
+export async function startLibraryPractice(librarySessionId) {
+  const rows = await rpc("start_library_practice", { p_library_session_id: librarySessionId });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export function subscribeLobby(gameId, onChange, onStatus) {
   if (!state.supabase) return null;
-  const channel = state.supabase.channel(`game:${gameId}`)
-    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${gameId}` }, onChange)
-    .on("postgres_changes", { event: "*", schema: "public", table: "game_players", filter: `game_id=eq.${gameId}` }, onChange)
-    .subscribe();
+  const suffix = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const channel = state.supabase.channel(`game:${gameId}:${suffix}`)
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${gameId}` }, payload => onChange?.(payload))
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "game_players", filter: `game_id=eq.${gameId}` }, payload => onChange?.(payload))
+    .on("postgres_changes", { event: "DELETE", schema: "public", table: "game_players", filter: `game_id=eq.${gameId}` }, payload => onChange?.(payload))
+    .subscribe(status => onStatus?.(status));
   state.subscriptions.push(channel);
   return channel;
 }

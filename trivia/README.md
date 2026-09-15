@@ -180,3 +180,25 @@ Practice mode is deliberately progression-neutral:
 ## V4 production hardening
 
 Existing V3 projects should run `supabase/migrations/004_production_hardening.sql` once. It fixes the Practice `current_index` ambiguity, proactively fixes the same output-column collision class in multiplayer scoring, qualifies mutable round/session columns, and narrows RPC execute privileges. The V4 client also suppresses duplicate in-flight button actions and hides raw database internals from player-facing toasts.
+
+## V5 realtime lobby behavior
+
+Lobby rosters use Supabase Postgres Changes for immediate joins/leaves. V5 replaces the old self-referencing `game_players` RLS rule with a non-recursive membership helper because Realtime evaluates table SELECT policies before delivering a row change. The browser also performs a periodic health refresh so a temporarily interrupted websocket cannot leave a roster permanently stale.
+
+For an existing V4 project, run `supabase/migrations/005_realtime_lobby_sync.sql` after deploying the V5 files.
+
+## V6: Practice graphs + Replay Library + open question pool
+
+Existing V5 projects should run `supabase/migrations/006_library_community_media.sql` after deploying the V6 files.
+
+V6 adds:
+- a You-vs-Answer closeness graph to numeric Practice results;
+- an expandable, storage-efficient Community Answers histogram;
+- automatic compact snapshots of completed Practice and Party question sets;
+- a public Replay Library whose replays run as zero-XP Practice sessions;
+- optional question images with visible source/license attribution;
+- a scheduled/manual Wikidata + Wikimedia Commons question hydration workflow;
+- deduplication via stable canonical source keys;
+- retention cleanup for old completed Practice internals while replay snapshots remain available.
+
+For the question sync workflow, add `TRIVIA_SUPABASE_URL` and `TRIVIA_SUPABASE_SERVICE_ROLE_KEY` as **GitHub repository secrets**. The service-role key must never be placed in browser-side `config.js`.

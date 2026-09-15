@@ -4,10 +4,10 @@ import {
   createLobby, joinLobby, getLobby, getLobbyPlayers, startLobby, getCurrentQuestion,
   submitGameAnswer, revealRound, nextRound, getRoundResults, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
-  subscribeLobby
+  getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
-import { renderGuessHistogram } from "./charts.js";
+import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
 import { initTwitch, connectTwitch, disconnectTwitch, announceLobby, listenToTwitchChat } from "./twitch.js";
 
 const $ = (s, el=document) => el.querySelector(s);
@@ -17,8 +17,23 @@ const uid = () => Math.random().toString(36).slice(2);
 const firstName = value => String(value || "Player").trim().split(/\s+/)[0] || "Player";
 const initials = value => String(value || "?").trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||"").join("") || "?";
 const categoryGlyph = value => ({Science:"⚗",Technology:"⌁",History:"⌛",Geography:"⌖",Animals:"◌",Space:"✦",Sports:"◆",Entertainment:"★",Business:"▰",Any:"✦"}[value] || "✦");
+const safeUrl = value => {
+  try { const u = new URL(String(value || ""), location.origin); return ["http:","https:"].includes(u.protocol) ? u.href : ""; } catch { return ""; }
+};
+function questionMedia(q, compact=false) {
+  const src=safeUrl(q?.image_url); if(!src) return "";
+  const source=safeUrl(q?.image_source_url), license=safeUrl(q?.image_license_url);
+  const credit=[q?.image_attribution,q?.image_license].filter(Boolean).join(" · ");
+  return `<figure class="question-media ${compact?"compact":""}"><img src="${esc(src)}" alt="${esc(q?.image_alt || q?.prompt || "Question image")}" loading="lazy"><figcaption>${credit?`<span>${esc(credit)}</span>`:""}${source?`<a href="${esc(source)}" target="_blank" rel="noopener">Source</a>`:""}${license?`<a href="${esc(license)}" target="_blank" rel="noopener">License</a>`:""}</figcaption></figure>`;
+}
+
 let answerStartedAt = 0;
 let refreshTimer = null;
+let lobbySyncTimer = null;
+let lobbyRealtimeStatus = "CONNECTING";
+let lobbyLastSyncAt = 0;
+let lobbyRefreshBusy = false;
+let lobbyRefreshQueued = false;
 let demo = null;
 const inFlight = new Set();
 
@@ -48,6 +63,41 @@ function reportError(error, fallback) {
   toast(friendlyErrorMessage(error, fallback), "bad");
 }
 
+function lobbySyncDisplay() {
+  if (lobbyRealtimeStatus === "SUBSCRIBED") return { text: "LIVE SYNC", cls: "live sync-ok" };
+  if (["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(lobbyRealtimeStatus)) return { text: "BACKUP SYNC", cls: "sync-warn" };
+  return { text: "CONNECTING", cls: "sync-wait" };
+}
+
+function updateLobbySyncBadge() {
+  const badge = $("#lobby-sync-status");
+  if (!badge) return;
+  const info = lobbySyncDisplay();
+  badge.className = `mode-badge ${info.cls}`;
+  badge.innerHTML = `<i></i> ${info.text}`;
+  badge.title = lobbyRealtimeStatus === "SUBSCRIBED"
+    ? "Supabase Realtime is connected."
+    : "Realtime is reconnecting. The lobby is using automatic backup refreshes.";
+}
+
+function stopLobbySync() {
+  clearInterval(lobbySyncTimer);
+  lobbySyncTimer = null;
+  lobbyRealtimeStatus = "CONNECTING";
+  lobbyLastSyncAt = 0;
+}
+
+function startLobbySyncFallback(code) {
+  stopLobbySync();
+  lobbyLastSyncAt = Date.now();
+  lobbySyncTimer = setInterval(() => {
+    if (state.view !== "lobby" || state.lobby?.code !== code) return;
+    const healthy = lobbyRealtimeStatus === "SUBSCRIBED";
+    const maxAge = healthy ? 12000 : 2200;
+    if (Date.now() - lobbyLastSyncAt >= maxAge) refreshLobby(code, 0);
+  }, 1100);
+}
+
 const SAMPLE = [
   { id:"d1", category:"Science", difficulty:"medium", question_type:"numeric", prompt:"About how many kilometers is the average distance from Earth to the Moon?", unit:"km", answer_numeric:384400, explanation:"The Moon's average orbital distance is about 384,400 km." },
   { id:"d2", category:"Technology", difficulty:"easy", question_type:"numeric", prompt:"In what year was the original iPhone released?", unit:"year", answer_numeric:2007, explanation:"Apple released the first iPhone in 2007." },
@@ -62,6 +112,16 @@ const SAMPLE = [
   { id:"d11", category:"Science", difficulty:"medium", question_type:"numeric", prompt:"Approximately how fast is the speed of sound in dry air at 20 °C?", unit:"m/s", answer_numeric:343, explanation:"At 20 °C the speed of sound is about 343 m/s." },
   { id:"d12", category:"Technology", difficulty:"medium", question_type:"numeric", prompt:"In what year was the World Wide Web first made publicly available by CERN?", unit:"year", answer_numeric:1991, explanation:"The first web software became publicly available in 1991." }
 ];
+
+function demoCommunityStats(answer,count=180){
+  const hist=new Array(41).fill(0),a=Number(answer);
+  for(let i=0;i<count;i++){
+    const logErr=(Math.random()+Math.random()+Math.random()-1.5)*0.85;
+    const idx=Math.max(0,Math.min(40,Math.round((Math.max(-4,Math.min(4,logErr))+4)/0.2)));
+    hist[idx]++;
+  }
+  return {total_answers:count,histogram:hist,bucket_min:-4,bucket_max:4,bucket_step:.2,first_answered_at:null,last_answered_at:null};
+}
 
 function toast(message, tone="") {
   const node = document.createElement("div");
@@ -81,6 +141,7 @@ function appShell(content) {
     <button class="brand plain" data-nav="home"><span class="brand-mark"><b>?</b></span><span class="brand-copy"><strong>${esc(state.config.appName || "WhatMod Trivia")}</strong><small>PLAY • GUESS • CLIMB</small></span></button>
     <nav class="desktop-nav hud-nav">
       <button class="nav-pill ${state.view==="home"?"active":""}" data-nav="home"><span>▶</span> Play</button>
+      <button class="nav-pill ${state.view==="library"?"active":""}" data-nav="library"><span>▦</span> Library</button>
       <button class="nav-pill ${state.view==="leaderboard"?"active":""}" data-nav="leaderboard"><span>♛</span> Ranks</button>
       <button class="nav-pill ${state.view==="how"?"active":""}" data-nav="how"><span>?</span> Rules</button>
     </nav>
@@ -93,6 +154,7 @@ function appShell(content) {
   <main class="page">${content}</main>
   <nav class="mobile-nav">
     <button data-nav="home" class="${state.view==="home"?"active":""}"><span>▶</span>Play</button>
+    <button data-nav="library" class="${state.view==="library"?"active":""}"><span>▦</span>Library</button>
     <button data-nav="leaderboard" class="${state.view==="leaderboard"?"active":""}"><span>♛</span>Ranks</button>
     <button data-nav="profile" class="${state.view==="profile"?"active":""}"><span>☺</span>Player</button>
   </nav>`;
@@ -163,9 +225,8 @@ function homeView() {
         <div class="quest-xp"><i style="width:${Math.round(lvl.progress*100)}%"></i></div>
         <div class="quest-stats"><span><b>${Number(p?.wins||0)}</b> wins</span><span><b>${Number(p?.games_played||0)}</b> games</span><span><b>${Number(p?.daily_streak||0)}</b> day streak</span></div>
       </article>
-      <article class="hud-panel streamer-panel">
-        <span class="stream-icon">◈</span><div><small>CREATOR MODE</small><b>Going live?</b><p>Make a Twitch-sized room with an OBS join overlay.</p></div><button class="btn tiny" data-nav="create" data-mode="event">Launch</button>
-      </article>
+      <article class="hud-panel library-panel"><span class="stream-icon">▦</span><div><small>REPLAY LIBRARY</small><b>Never run out of rounds.</b><p>Replay public Practice and Party question sets saved by the community.</p></div><button class="btn tiny" data-nav="library">Browse</button></article>
+      <article class="hud-panel streamer-panel"><span class="stream-icon">◈</span><div><small>CREATOR MODE</small><b>Going live?</b><p>Make a Twitch-sized room with an OBS join overlay.</p></div><button class="btn tiny" data-nav="create" data-mode="event">Launch</button></article>
     </section>
 
     <section class="category-rail"><span>PLAY YOUR WAY</span>${["Science","Technology","History","Geography","Animals","Space"].map(c=>`<i>${categoryGlyph(c)} ${c}</i>`).join("")}</section>
@@ -216,7 +277,7 @@ function lobbyView() {
 
   return appShell(`
     <section class="party-room-head">
-      <div><span class="mode-badge live"><i></i> LOBBY LIVE</span><h1>${esc(g.title || "Trivia Party")}</h1><p>Invite the squad. The host starts when everyone is ready.</p></div>
+      <div><span class="mode-badge ${lobbySyncDisplay().cls}" id="lobby-sync-status"><i></i> ${lobbySyncDisplay().text}</span><h1>${esc(g.title || "Trivia Party")}</h1><p>Invite the squad. The roster updates automatically as players join.</p></div>
       <div class="party-code"><small>PARTY CODE</small><strong>${esc(g.code)}</strong><button data-copy="${esc(g.code)}">COPY</button></div>
     </section>
 
@@ -265,7 +326,7 @@ function gameView() {
     return appShell(`
       <section class="arena-head"><div><span class="round-chip">ROUND ${g.current_question_index+1} / ${g.question_count}</span><span class="mode-badge success">RESULTS</span></div><div class="arena-category">${categoryGlyph(q.category)} ${esc(q.category)} · ${esc(q.difficulty)}</div></section>
       <section class="results-arena">
-        <div class="result-question"><small>THE QUESTION</small><h1>${esc(q.prompt)}</h1></div>
+        <div class="result-question"><small>THE QUESTION</small><h1>${esc(q.prompt)}</h1>${questionMedia(q,true)}</div>
         <section class="correct-answer-card"><div><small>CORRECT ANSWER</small><strong>${formatAnswer(q.answer_numeric ?? q.answer_text ?? q.answer_display)} <em>${esc(q.unit||"")}</em></strong><p>${esc(q.explanation||"")}</p></div><span>✓</span></section>
         <div class="result-grid">
           <section class="hud-panel chart-card game-chart"><div class="panel-title"><span>⌁</span><div><small>THE CROWD</small><b>Guess distribution</b></div></div><canvas id="guess-chart"></canvas></section>
@@ -281,6 +342,7 @@ function gameView() {
       <div class="arena-timer"><span>THINK FAST</span><div class="timer-line"><i id="timer-bar"></i></div><b>${g.seconds_per_question}s</b></div>
       <div class="question-number">Q${String(g.current_question_index+1).padStart(2,"0")}</div>
       <h1>${esc(q.prompt)}</h1>
+      ${questionMedia(q)}
       ${q.context ? `<p class="question-context">${esc(q.context)}</p>`:""}
       <form id="answer-form" class="answer-form game-answer-form">
         ${questionInput(q)}
@@ -312,7 +374,7 @@ function dailyView() {
       <section class="daily-results-head"><span class="mode-badge success">QUEST COMPLETE</span><h1>${rankText}</h1><p>You banked <b>+${result.xp_awarded} XP</b> today.</p></section>
       <section class="daily-result-grid">
         <article class="score-burst game-score-burst"><span>PRECISION</span><strong>${result.score}</strong><small>/ 1,000</small><i>+${result.xp_awarded} XP</i></article>
-        <article class="hud-panel daily-answer-panel"><small>TODAY'S QUESTION</small><h2>${esc(q.prompt)}</h2><div class="versus-answers"><span><small>YOU GUESSED</small><b>${formatAnswer(result.your_answer)} ${esc(q.unit||"")}</b></span><i>VS</i><span><small>ANSWER</small><b>${formatAnswer(result.answer_numeric ?? q.answer_numeric)} ${esc(q.unit||"")}</b></span></div><p>${esc(result.explanation||q.explanation||"")}</p></article>
+        <article class="hud-panel daily-answer-panel"><small>TODAY'S QUESTION</small><h2>${esc(q.prompt)}</h2>${questionMedia(q,true)}<div class="versus-answers"><span><small>YOU GUESSED</small><b>${formatAnswer(result.your_answer)} ${esc(q.unit||"")}</b></span><i>VS</i><span><small>ANSWER</small><b>${formatAnswer(result.answer_numeric ?? q.answer_numeric)} ${esc(q.unit||"")}</b></span></div><p>${esc(result.explanation||q.explanation||"")}</p></article>
       </section>
       <section class="hud-panel chart-card daily-chart-card"><div class="panel-title"><span>⌁</span><div><small>GLOBAL READ</small><b>Where everyone landed</b></div></div><canvas id="daily-chart"></canvas></section>
       <div class="row-actions center"><button class="btn primary" data-nav="home">Claim & return</button><button class="btn" data-copy="${esc(location.href)}">Share challenge</button></div>
@@ -325,6 +387,7 @@ function dailyView() {
         <div class="daily-kicker"><span>DAILY #${esc(q.daily_number||"—")}</span><span>${categoryGlyph(q.category)} ${esc(q.category)} • ${esc(q.difficulty)}</span></div>
         <div class="quest-reward-chip">+ Precision XP <i>•</i> Keep your streak alive</div>
         <h1>${esc(q.prompt)}</h1>
+        ${questionMedia(q)}
         ${q.context?`<p class="question-context">${esc(q.context)}</p>`:""}
         <form id="daily-form" class="answer-form game-answer-form">${questionInput(q,"daily")}<button class="btn primary lock-btn" type="submit"><span>SUBMIT FINAL GUESS</span><b>✓</b></button></form>
         <p class="one-shot"><span>◎</span> One shot per day. Accuracy determines XP.</p>
@@ -404,11 +467,13 @@ function practiceView() {
         <div class="practice-round-track"><i style="width:${Math.round(((Number(pr.current_index||0)+1)/Math.max(1,pr.question_count))*100)}%"></i></div>
         <section class="hud-panel practice-reveal-card">
           <div class="practice-score-orb"><small>PRECISION</small><strong>${Number(result.score||0)}</strong><span>/ 1000</span></div>
-          <div class="practice-reveal-copy"><small>${categoryGlyph(q.category)} ${esc(q.category)} • ${esc(q.difficulty)}</small><h1>${esc(q.prompt)}</h1>
+          <div class="practice-reveal-copy"><small>${categoryGlyph(q.category)} ${esc(q.category)} • ${esc(q.difficulty)}</small><h1>${esc(q.prompt)}</h1>${questionMedia(q,true)}
             <div class="practice-answer-compare"><span><small>YOUR GUESS</small><b>${esc(your)} ${esc(q.unit||"")}</b></span><i>→</i><span><small>CORRECT ANSWER</small><b>${esc(correct)} ${esc(q.unit||"")}</b></span></div>
             <p>${esc(result.explanation||q.explanation||"")}</p>
           </div>
         </section>
+        ${q.question_type==="numeric"?`<section class="hud-panel practice-distance-panel"><div class="panel-title"><span>◎</span><div><small>YOUR DISTANCE</small><b>${esc(closenessText(correct,your))}</b></div><strong>${Number(result.score||0)} / 1000</strong></div><div class="practice-distance-chart"><canvas id="practice-closeness-chart"></canvas></div></section>
+        <details class="hud-panel community-details" ${Number(pr.community?.total_answers||0)>1?"open":""}><summary><span>⌁</span><div><small>COMMUNITY ANSWERS</small><b>See how everyone else guessed</b></div><strong>${Number(pr.community?.total_answers||0).toLocaleString()} answers</strong></summary><div class="community-chart-wrap"><canvas id="practice-community-chart"></canvas><p>Answers are stored as anonymous aggregate buckets, so this crowd view becomes richer over time without keeping a second analytics record for every player.</p></div></details>`:""}
         <div class="practice-no-xp-note"><b>0 XP earned</b><span>Practice scores exist only inside this run.</span></div>
         <button class="btn practice-btn practice-next-btn" data-action="practice-next">${Number(pr.current_index||0)+1>=pr.question_count?"Finish practice":"Next question"} <b>→</b></button>
       </section>`);
@@ -420,6 +485,7 @@ function practiceView() {
       <div class="practice-round-track"><i style="width:${Math.round((Number(pr.current_index||0)/Math.max(1,pr.question_count))*100)}%"></i></div>
       <div class="practice-question-meta"><span>${categoryGlyph(q.category)} ${esc(q.category)}</span><span>${esc(q.difficulty)}</span><span>NO TIMER</span></div>
       <h1 class="practice-question-title">${esc(q.prompt)}</h1>
+      ${questionMedia(q)}
       ${q.context?`<p class="question-context">${esc(q.context)}</p>`:""}
       <form id="practice-answer-form" class="answer-form game-answer-form">
         ${questionInput(q,"practice")}
@@ -427,6 +493,75 @@ function practiceView() {
       </form>
       <div class="practice-no-xp-note"><b>PRACTICE MODE</b><span>Unlimited plays • No XP • No streak changes</span></div>
     </section>`);
+}
+
+
+async function libraryView() {
+  const f=state.libraryFilters || {search:"",category:"",difficulty:"any",sort:"new"};
+  let rows=[];
+  if(isConfigured()) {
+    try { rows=await getLibrarySessions(f); }
+    catch(e){ console.error(e); }
+  }
+  state.libraryItems=rows;
+  const total=Number(rows[0]?.total_count || rows.length || 0);
+  const catOptions=["","Science","Technology","History","Geography","Animals","Space","Sports","Entertainment","Business"];
+  return appShell(`
+    <section class="library-head">
+      <div><span class="mode-badge cool">REPLAY LIBRARY</span><h1>Play it again.</h1><p>Completed Practice and Party question sets become compact public replays. Pick a pack and run the exact questions yourself — Practice rules, zero XP.</p></div>
+      <div class="library-count"><strong>${total.toLocaleString()}</strong><span>public replays</span></div>
+    </section>
+    <form id="library-filter-form" class="hud-panel library-filter">
+      <label class="library-search"><span>⌕</span><input name="search" value="${esc(f.search||"")}" placeholder="Search replay library"></label>
+      <select name="category">${catOptions.map(c=>`<option value="${esc(c)}" ${c===(f.category||"")?"selected":""}>${c||"All categories"}</option>`).join("")}</select>
+      <select name="difficulty"><option value="any" ${f.difficulty==="any"?"selected":""}>Any difficulty</option><option value="easy" ${f.difficulty==="easy"?"selected":""}>Easy</option><option value="medium" ${f.difficulty==="medium"?"selected":""}>Medium</option><option value="hard" ${f.difficulty==="hard"?"selected":""}>Hard</option></select>
+      <select name="sort"><option value="new" ${f.sort==="new"?"selected":""}>Newest</option><option value="popular" ${f.sort==="popular"?"selected":""}>Most played</option></select>
+      <button class="btn" type="submit">Filter</button>
+    </form>
+    ${!isConfigured()?`<div class="hud-panel empty-library"><span>▦</span><h2>Connect Supabase to unlock public replays.</h2><p>The live Replay Library is database-backed and intentionally unavailable in local demo mode.</p></div>`:
+      rows.length?`<section class="library-grid">${rows.map(item=>{
+        const cover=safeUrl(item.cover_image_url),source=safeUrl(item.cover_image_source_url);
+        const cats=(item.categories||[]).slice(0,3);
+        return `<article class="library-card">
+          <div class="library-cover ${cover?"has-image":""}">${cover?`<img src="${esc(cover)}" alt="${esc(item.cover_image_alt||item.title)}" loading="lazy">`:`<div class="library-cover-glyph">${categoryGlyph(cats[0]||"Any")}</div>`}<span class="library-source">${item.source_kind==="party"?"PARTY REPLAY":"PRACTICE REPLAY"}</span></div>
+          <div class="library-card-body"><div class="library-tags">${cats.map(c=>`<span>${categoryGlyph(c)} ${esc(c)}</span>`).join("")}<span>${esc(item.difficulty||"any")}</span></div><h2>${esc(item.title)}</h2><p>${esc(item.description||"Replay this exact question set in Practice Mode.")}</p>
+            <div class="library-meta"><span><b>${item.question_count}</b> questions</span><span><b>${Number(item.play_count||0).toLocaleString()}</b> replays</span><span><b>${Number(item.times_generated||1).toLocaleString()}</b> discoveries</span></div>
+            <button class="btn practice-btn library-play" data-action="library-play" data-library-id="${esc(item.id)}"><span>REPLAY SESSION</span><b>→</b></button>
+            ${source?`<a class="library-credit" href="${esc(source)}" target="_blank" rel="noopener">${esc(item.cover_image_attribution||"Image source")}${item.cover_image_license?` · ${esc(item.cover_image_license)}`:""}</a>`:""}
+          </div>
+        </article>`;
+      }).join("")}</section>`:`<div class="hud-panel empty-library"><span>⌕</span><h2>No replay packs match that filter.</h2><p>Complete a Practice or Party session and it will automatically become a reusable public pack.</p><button class="btn practice-btn" data-nav="practice-setup">Create one in Practice</button></div>`}
+  `);
+}
+
+async function librarySearch(e){
+  e.preventDefault();
+  const data=new FormData(e.currentTarget);
+  state.libraryFilters={search:String(data.get("search")||"").trim(),category:String(data.get("category")||""),difficulty:String(data.get("difficulty")||"any"),sort:String(data.get("sort")||"new")};
+  await navigate("library");
+}
+
+async function libraryPlay(id){
+  if(!id) return;
+  if(!isConfigured()){toast("Connect Supabase to replay public sessions.","bad");return;}
+  if(!state.session){
+    sessionStorage.setItem("pending_library",id);
+    toast("Sign in with Google to start this replay.");
+    try{await signInGoogle();}catch(e){reportError(e)}
+    return;
+  }
+  if(!beginAction("library-play")) return;
+  try{
+    const session=await startLibraryPractice(id);
+    if(!session) throw new Error("Replay could not be started.");
+    const q=await getPracticeQuestion(session.session_id);
+    if(!q) throw new Error("Replay question could not be loaded.");
+    state.practice={...session,session_id:session.session_id,question:q,result:q?.answered?q:null,summary:[],from_library:id,community:null};
+    if(q?.answered && q.question_type==="numeric") state.practice.community=await getQuestionCommunityStats(q.id);
+    answerStartedAt=performance.now();
+    await navigate("practice");
+  }catch(e){reportError(e,"That replay couldn't be started. Please try another session.");}
+  finally{endAction("library-play");}
 }
 
 async function leaderboardView() {
@@ -500,6 +635,8 @@ function demoInit() {
 }
 
 async function navigate(view, opts={}) {
+  const leavingLobby = state.view === "lobby" && view !== "lobby";
+  if (leavingLobby) { stopLobbySync(); cleanupRealtime(); }
   state.view = view;
   if (view === "home") $("#app").innerHTML = homeView();
   else if (view === "create") $("#app").innerHTML = createView(opts.event);
@@ -507,6 +644,7 @@ async function navigate(view, opts={}) {
   else if (view === "daily") $("#app").innerHTML = dailyView();
   else if (view === "practice-setup") $("#app").innerHTML = practiceSetupView();
   else if (view === "practice") $("#app").innerHTML = practiceView();
+  else if (view === "library") $("#app").innerHTML = await libraryView();
   else if (view === "leaderboard") $("#app").innerHTML = await leaderboardView();
   else if (view === "profile") $("#app").innerHTML = profileView();
   else if (view === "how") $("#app").innerHTML = howView();
@@ -520,10 +658,11 @@ function bind() {
   $$("[data-action]").forEach(el => {
     const a = el.dataset.action;
     if (a==="login") el.onclick = async()=>{ try{ await signInGoogle(); }catch(e){reportError(e)} };
-    if (a==="logout") el.onclick = async()=>{ await signOut(); navigate("home"); };
+    if (a==="logout") el.onclick = async()=>{ stopLobbySync(); await signOut(); navigate("home"); };
     if (a==="daily") el.onclick = openDaily;
     if (a==="practice-next") el.onclick = practiceNext;
     if (a==="practice-restart") el.onclick = ()=>{ state.practice=null; navigate("practice-setup"); };
+    if (a==="library-play") el.onclick = ()=> libraryPlay(el.dataset.libraryId);
     if (a==="quick-join") el.onclick = ()=> quickJoin($("#quick-code")?.value);
     if (a==="start-game") el.onclick = hostStart;
     if (a==="reveal-round") el.onclick = hostReveal;
@@ -537,6 +676,7 @@ function bind() {
   $("#daily-form")?.addEventListener("submit", dailySubmit);
   $("#practice-setup-form")?.addEventListener("submit", practiceStart);
   $("#practice-answer-form")?.addEventListener("submit", practiceSubmit);
+  $("#library-filter-form")?.addEventListener("submit", librarySearch);
   $("#answer-form")?.addEventListener("submit", gameSubmit);
   $("#profile-form")?.addEventListener("submit", profileSubmit);
   $$(".choice").forEach(b => b.onclick = () => {
@@ -549,7 +689,20 @@ function bind() {
 
 function postRender() {
   if (state.view === "daily" && state.daily?.result) {
-    requestAnimationFrame(()=>renderGuessHistogram($("#daily-chart"), state.daily.result.guesses||[], state.daily.result.answer_numeric, state.daily.result.your_answer));
+    requestAnimationFrame(()=>{
+      const answer=state.daily.result.answer_numeric ?? state.daily.question?.answer_numeric;
+      const guess=state.daily.result.your_answer;
+      if(state.daily.community) renderCommunityHistogram($("#daily-chart"),state.daily.community,answer,guess);
+      else renderGuessHistogram($("#daily-chart"),state.daily.result.guesses||[],answer,guess);
+    });
+  }
+  if (state.view === "practice" && state.practice?.result && state.practice?.question?.question_type === "numeric") {
+    requestAnimationFrame(()=>{
+      const pr=state.practice,q=pr.question,r=pr.result;
+      const answer=Number(r.answer_numeric ?? q.answer_numeric),guess=Number(r.your_answer ?? r.answer_value);
+      renderClosenessScale($("#practice-closeness-chart"),answer,guess);
+      renderCommunityHistogram($("#practice-community-chart"),pr.community || {total_answers:0,histogram:new Array(41).fill(0),bucket_min:-4,bucket_max:4,bucket_step:.2},answer,guess,true);
+    });
   }
   if (state.view === "lobby" && state.lobby?.status === "results") {
     requestAnimationFrame(()=>{
@@ -576,7 +729,7 @@ async function openDaily() {
       const savedRaw = localStorage.getItem(`trivia_demo_daily_${dayKey}`);
       if (savedRaw) {
         const saved = JSON.parse(savedRaw);
-        state.daily={question:q,result:saved};
+        state.daily={question:q,result:saved,community:saved.community||demoCommunityStats(q.answer_numeric)};
       } else {
         state.daily={question:q};
       }
@@ -587,15 +740,18 @@ async function openDaily() {
       if (!d) throw new Error("No daily question configured.");
       const q={
         id:d.id,daily_number:d.daily_number,category:d.category,difficulty:d.difficulty,
-        question_type:d.question_type,prompt:d.prompt,context:d.context,unit:d.unit,options:d.options
+        question_type:d.question_type,prompt:d.prompt,context:d.context,unit:d.unit,options:d.options,
+        image_url:d.image_url,image_alt:d.image_alt,image_source_url:d.image_source_url,image_attribution:d.image_attribution,
+        image_license:d.image_license,image_license_url:d.image_license_url
       };
-      state.daily={question:q};
+      state.daily={question:q,community:null};
       if (d.already_played) {
         state.daily.result={
           score:d.score,xp_awarded:d.xp_awarded,your_answer:d.your_answer,
           answer_numeric:d.answer_numeric,answer_text:d.answer_text,answer_display:d.answer_display,
-          explanation:d.explanation,guesses:d.guesses||[],already_played:true
+          explanation:d.explanation,already_played:true
         };
+        if(q.question_type==="numeric") state.daily.community=await getQuestionCommunityStats(q.id);
       }
       answerStartedAt=performance.now(); await navigate("daily");
     }
@@ -616,12 +772,13 @@ async function dailySubmit(e) {
       const score=numericScore(value,q.answer_numeric), xp=xpForScore(score,{daily:true});
       demo.profile.xp+=xp; demo.profile.daily_streak++;
       const spread=Array.from({length:68},()=>q.answer_numeric*Math.pow(10,(Math.random()-.5)*1.4));
-      const result={score,xp_awarded:xp,your_answer:Number(value),answer_numeric:q.answer_numeric,explanation:q.explanation,guesses:spread,already_played:true};
+      const community=demoCommunityStats(q.answer_numeric);
+      const result={score,xp_awarded:xp,your_answer:Number(value),answer_numeric:q.answer_numeric,explanation:q.explanation,guesses:spread,community,already_played:true};
       localStorage.setItem(`trivia_demo_daily_${dayKey}`, JSON.stringify(result));
-      state.daily.result=result;
+      state.daily.result=result; state.daily.community=community;
       state.profile=demo.profile; await navigate("daily");
     } else {
-      const r=await submitDailyAnswer(value); state.daily.result=r; await loadProfile(); await navigate("daily");
+      const r=await submitDailyAnswer(value); state.daily.result=r; if(q.question_type==="numeric") state.daily.community=await getQuestionCommunityStats(q.id); await loadProfile(); await navigate("daily");
     }
   } catch(err){ reportError(err, "Your Daily answer couldn't be saved. Please try again."); }
   finally { endAction("daily-submit"); }
@@ -652,7 +809,7 @@ async function practiceStart(e) {
       const shuffled=[...pool].sort(()=>Math.random()-.5);
       const questions=[];
       while (questions.length<questionCount) questions.push({...shuffled[questions.length%shuffled.length],id:`${shuffled[questions.length%shuffled.length].id}-${questions.length}`});
-      state.practice={demo:true,questions,question_count:questionCount,current_index:0,total_score:0,status:"active",result:null,summary:[]};
+      state.practice={demo:true,questions,question_count:questionCount,current_index:0,total_score:0,status:"active",result:null,summary:[],community:null};
       state.practice.question=demoPracticeQuestion(state.practice);
       answerStartedAt=performance.now();
       await navigate("practice");
@@ -663,7 +820,8 @@ async function practiceStart(e) {
     if (!session) throw new Error("Practice session could not be created.");
     const q=await getPracticeQuestion(session.session_id);
     if (!q) throw new Error("Practice question could not be loaded.");
-    state.practice={...session,session_id:session.session_id,question:q,result:q?.answered?q:null,summary:[]};
+    state.practice={...session,session_id:session.session_id,question:q,result:q?.answered?q:null,summary:[],community:null};
+    if(q?.answered && q.question_type==="numeric") state.practice.community=await getQuestionCommunityStats(q.id);
     answerStartedAt=performance.now();
     await navigate("practice");
   } catch(err){ reportError(err, "Practice couldn't start. Please try again."); }
@@ -688,7 +846,7 @@ async function practiceSubmit(e) {
       else if(q.question_type==="multiple_choice"){score=String(value)===String(q.correct_option)?1000:0;correct=q.options?.[q.correct_option];your=q.options?.[Number(value)]??value;}
       else {score=String(value).trim().toLowerCase()===String(q.answer_text).trim().toLowerCase()?1000:0;correct=q.answer_text;}
       const result={score,your_answer:your,answer_numeric:q.answer_numeric,answer_text:q.answer_text,answer_display:correct,explanation:q.explanation};
-      pr.total_score+=score; pr.result=result;
+      pr.total_score+=score; pr.result=result; pr.community=q.question_type==="numeric"?demoCommunityStats(q.answer_numeric):null;
       pr.summary.push({prompt:q.prompt,category:q.category,score,your_answer:String(your),correct_answer:String(correct??"—")});
       await navigate("practice");
       return;
@@ -697,6 +855,7 @@ async function practiceSubmit(e) {
     if (!result) throw new Error("Practice answer was not saved.");
     pr.result=result;
     pr.total_score=result.total_score;
+    pr.community=q.question_type==="numeric"?await getQuestionCommunityStats(q.id):null;
     await navigate("practice");
   } catch(err){ reportError(err, "Your practice answer couldn't be saved. Please try again."); }
   finally {
@@ -718,14 +877,14 @@ async function practiceNext() {
       if(pr.current_index+1>=pr.question_count){
         pr.status="completed"; await navigate("practice"); return;
       }
-      pr.current_index++; pr.question=demoPracticeQuestion(pr); pr.result=null; answerStartedAt=performance.now();
+      pr.current_index++; pr.question=demoPracticeQuestion(pr); pr.result=null; pr.community=null; answerStartedAt=performance.now();
       await navigate("practice");
       return;
     }
 
     const s=await nextPracticeQuestion(pr.session_id);
     if(!s) throw new Error("Practice state could not be advanced.");
-    pr.current_index=s.current_index; pr.question_count=s.question_count; pr.total_score=s.total_score; pr.status=s.status; pr.result=null;
+    pr.current_index=s.current_index; pr.question_count=s.question_count; pr.total_score=s.total_score; pr.status=s.status; pr.result=null; pr.community=null;
     if(s.status==="completed"){
       pr.summary=await getPracticeSummary(pr.session_id);
       await navigate("practice");
@@ -734,6 +893,7 @@ async function practiceNext() {
     pr.question=await getPracticeQuestion(pr.session_id);
     if(!pr.question) throw new Error("The next practice question could not be loaded.");
     pr.result=pr.question?.answered?pr.question:null;
+    if(pr.result && pr.question.question_type==="numeric") pr.community=await getQuestionCommunityStats(pr.question.id);
     answerStartedAt=performance.now();
     await navigate("practice");
   }catch(err){
@@ -742,7 +902,7 @@ async function practiceNext() {
     if(pr && !pr.demo && pr.session_id){
       try {
         const q=await getPracticeQuestion(pr.session_id);
-        if(q){ pr.current_index=q.ordinal; pr.question_count=q.question_count; pr.total_score=q.total_score; pr.status=q.status; pr.question=q; pr.result=q.answered?q:null; }
+        if(q){ pr.current_index=q.ordinal; pr.question_count=q.question_count; pr.total_score=q.total_score; pr.status=q.status; pr.question=q; pr.result=q.answered?q:null; pr.community=(q.answered&&q.question_type==="numeric")?await getQuestionCommunityStats(q.id):null; }
       } catch(syncError) { console.warn("Practice re-sync failed",syncError); }
     }
   } finally {
@@ -786,23 +946,63 @@ async function quickJoin(code) {
 
 async function enterLobby(code) {
   cleanupRealtime();
+  stopLobbySync();
   const g=await getLobby(code); if(!g) throw new Error("Lobby not found.");
   state.lobby=g; state.lobbyPlayers=await getLobbyPlayers(g.id);
   if(g.status!=="lobby"){ state.currentQuestion=await getCurrentQuestion(g.id); if(g.status==="results") state.roundResults=await getRoundResults(g.id); }
-  subscribeLobby(g.id, ()=>refreshLobby(code));
+  lobbyRealtimeStatus = "CONNECTING";
+  lobbyLastSyncAt = Date.now();
+  subscribeLobby(
+    g.id,
+    () => {
+      lobbyLastSyncAt = Date.now();
+      refreshLobby(code, 35);
+    },
+    status => {
+      lobbyRealtimeStatus = status;
+      updateLobbySyncBadge();
+      if (status === "SUBSCRIBED") {
+        lobbyLastSyncAt = Date.now();
+        refreshLobby(code, 0);
+      }
+    }
+  );
+  startLobbySyncFallback(code);
   await navigate("lobby");
+  updateLobbySyncBadge();
 }
 
-async function refreshLobby(code) {
-  clearTimeout(refreshTimer); refreshTimer=setTimeout(async()=>{
-    try{
-      const g=await getLobby(code); if(!g)return;
-      state.lobby=g; state.lobbyPlayers=await getLobbyPlayers(g.id);
-      if(g.status==="question"||g.status==="results"){state.currentQuestion=await getCurrentQuestion(g.id);}
-      if(g.status==="results"||g.status==="finished") state.roundResults=await getRoundResults(g.id);
-      if(state.view==="lobby") await navigate("lobby");
-    }catch(e){console.warn(e)}
-  },120);
+async function performLobbyRefresh(code) {
+  if (lobbyRefreshBusy) { lobbyRefreshQueued = true; return; }
+  lobbyRefreshBusy = true;
+  try{
+    const previousGame = state.lobby;
+    const previousRoster = (state.lobbyPlayers || []).map(p=>`${p.user_id}:${p.username || ""}:${p.avatar_url || ""}`).sort().join("|");
+    const g=await getLobby(code); if(!g)return;
+    const players=await getLobbyPlayers(g.id);
+    const nextRoster = players.map(p=>`${p.user_id}:${p.username || ""}:${p.avatar_url || ""}`).sort().join("|");
+    const phaseChanged = !previousGame || previousGame.status !== g.status || previousGame.current_question_index !== g.current_question_index;
+    const rosterChanged = previousRoster !== nextRoster;
+    state.lobby=g; state.lobbyPlayers=players;
+    if(g.status==="question"||g.status==="results"){state.currentQuestion=await getCurrentQuestion(g.id);}
+    if(g.status==="results"||g.status==="finished") state.roundResults=await getRoundResults(g.id);
+    lobbyLastSyncAt = Date.now();
+    if(state.view==="lobby" && (phaseChanged || rosterChanged)) await navigate("lobby");
+    updateLobbySyncBadge();
+  }catch(e){
+    console.warn("Lobby sync refresh failed", e);
+  } finally {
+    lobbyRefreshBusy = false;
+    if (lobbyRefreshQueued) {
+      lobbyRefreshQueued = false;
+      refreshLobby(code, 20);
+    }
+  }
+}
+
+function refreshLobby(code, delay=120) {
+  clearTimeout(refreshTimer);
+  refreshTimer=setTimeout(()=>performLobbyRefresh(code),Math.max(0,delay));
 }
 
 async function hostStart() {
@@ -911,6 +1111,8 @@ async function boot() {
   }
   const pending=sessionStorage.getItem("pending_join");
   if(pending&&state.session){sessionStorage.removeItem("pending_join");try{await joinLobby(pending);await enterLobby(pending);return}catch(e){reportError(e)}}
+  const pendingLibrary=sessionStorage.getItem("pending_library");
+  if(pendingLibrary&&state.session){sessionStorage.removeItem("pending_library");await libraryPlay(pendingLibrary);return;}
   navigate("home");
 }
 boot();

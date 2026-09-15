@@ -10,6 +10,8 @@ export const state = {
   roundResults: null,
   daily: null,
   practice: null,
+  libraryItems: [],
+  libraryFilters: { search: "", category: "", difficulty: "any", sort: "new" },
   subscriptions: [],
   twitch: { token: null, user: null, socket: null, chatters: [] },
 };

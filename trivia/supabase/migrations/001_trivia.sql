@@ -1397,3 +1397,48 @@ grant execute on function public.sync_my_google_profile() to authenticated;
 grant execute on function public.admin_add_question(text,text,text,text,text,text,jsonb,numeric,text,int,text,text) to authenticated;
 grant execute on function public.get_daily_question() to authenticated;
 
+
+-- ============================================================
+-- V5 Realtime lobby roster sync (included for fresh installs)
+-- ============================================================
+create or replace function public.is_game_participant(p_game_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select (select auth.uid()) is not null
+     and (
+       exists (select 1 from public.games g where g.id = p_game_id and g.host_id = (select auth.uid()))
+       or exists (select 1 from public.game_players gp where gp.game_id = p_game_id and gp.user_id = (select auth.uid()))
+     );
+$$;
+revoke all on function public.is_game_participant(uuid) from public, anon;
+grant execute on function public.is_game_participant(uuid) to authenticated;
+
+drop policy if exists "games participant read" on public.games;
+create policy "games participant read" on public.games for select to authenticated
+using (public.is_game_participant(id));
+
+drop policy if exists "players participant read" on public.game_players;
+create policy "players participant read" on public.game_players for select to authenticated
+using (public.is_game_participant(game_id));
+
+revoke insert, update, delete on table public.games from anon, authenticated;
+revoke insert, update, delete on table public.game_players from anon, authenticated;
+grant select on table public.games, public.game_players to authenticated;
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='games') then
+    alter publication supabase_realtime add table public.games;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='game_players') then
+    alter publication supabase_realtime add table public.game_players;
+  end if;
+end $$;
+
+alter table public.games replica identity full;
+alter table public.game_players replica identity full;
+create index if not exists game_players_user_game_idx on public.game_players(user_id, game_id);
