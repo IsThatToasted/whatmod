@@ -3,11 +3,11 @@ window.TRIVIA_CONFIG = {
   publicUrl: "https://whatmod.com/trivia/",
   supabaseUrl: "https://YOUR_PROJECT.supabase.co",
   // Use the new Supabase publishable key here, not a secret/service-role key.
-  supabasePublishableKey: "sb_publishable_REPLACE_ME",
+  supabasePublishableKey: "https://cldxppbuoeukolnmiaxx.supabase.co",
 
   // Optional Twitch integration. Create an app at dev.twitch.tv.
   twitchClientId: "",
-  twitchRedirectUri: "https://whatmod.com/trivia/",
+  twitchRedirectUri: "sb_publishable_Ind3-Frn9iJwk9PvvbHVDA_OY9XZ1Ep",
 
   // Demo mode lets the UI run before Supabase is configured.
   // Set false for production.
