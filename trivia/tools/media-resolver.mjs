@@ -8,7 +8,8 @@
 
   Required environment variables:
     TRIVIA_SUPABASE_URL
-    TRIVIA_SUPABASE_SERVICE_ROLE_KEY
+    TRIVIA_SUPABASE_SECRET_KEY        (preferred, sb_secret_...)
+    TRIVIA_SUPABASE_SERVICE_ROLE_KEY  (legacy fallback only)
 
   Optional:
     MEDIA_RESOLVE_LIMIT=80     number of questions per run (1-250)
@@ -25,7 +26,7 @@
 */
 
 const SUPABASE_URL = String(process.env.TRIVIA_SUPABASE_URL || "").replace(/\/$/, "");
-const SERVICE_KEY = String(process.env.TRIVIA_SUPABASE_SERVICE_ROLE_KEY || "");
+const SERVICE_KEY = String(process.env.TRIVIA_SUPABASE_SECRET_KEY || process.env.TRIVIA_SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const LIMIT = Math.max(1, Math.min(250, Number(process.env.MEDIA_RESOLVE_LIMIT || 80) || 80));
 const PER_SOURCE = Math.max(2, Math.min(12, Number(process.env.MEDIA_CANDIDATES_PER_SOURCE || 6) || 6));
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
@@ -35,8 +36,28 @@ const OPENVERSE_API = "https://api.openverse.org/v1/images/";
 const USER_AGENT = "WhatModTriviaMediaResolver/2.0 (https://whatmod.com/trivia/)";
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error("Missing TRIVIA_SUPABASE_URL or TRIVIA_SUPABASE_SERVICE_ROLE_KEY.");
+  console.error("Missing TRIVIA_SUPABASE_URL or Supabase server key. Set TRIVIA_SUPABASE_SECRET_KEY (preferred) or legacy TRIVIA_SUPABASE_SERVICE_ROLE_KEY.");
   process.exit(2);
+}
+
+function validateServerKey() {
+  if (SERVICE_KEY.startsWith("sb_publishable_")) {
+    throw new Error("Wrong Supabase key type: a publishable key cannot run backend sync jobs. Create/use an sb_secret_... key.");
+  }
+  if (SERVICE_KEY.startsWith("sb_secret_")) return "modern-secret";
+  if (SERVICE_KEY.startsWith("eyJ")) return "legacy-service-role";
+  return "unknown";
+}
+
+const SERVER_KEY_TYPE = validateServerKey();
+console.log(`Supabase auth mode: ${SERVER_KEY_TYPE}; project: ${new URL(SUPABASE_URL).hostname}`);
+
+function supabaseHeaders(extra = {}) {
+  const headers = { apikey: SERVICE_KEY, ...extra };
+  if (!SERVICE_KEY.startsWith("sb_secret_")) {
+    headers.Authorization = `Bearer ${SERVICE_KEY}`;
+  }
+  return headers;
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -101,10 +122,9 @@ async function fetchJson(url, options = {}, attempts = 3) {
 async function rest(path, {method="GET", body, prefer, headers={}}={}) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method,
-    headers:{
-      apikey:SERVICE_KEY, Authorization:`Bearer ${SERVICE_KEY}`,
+    headers: supabaseHeaders({
       "Content-Type":"application/json", ...(prefer?{Prefer:prefer}:{}), ...headers
-    },
+    }),
     body: body === undefined ? undefined : JSON.stringify(body)
   });
   const text = await r.text();

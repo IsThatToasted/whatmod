@@ -4,7 +4,8 @@
 
   Required GitHub/runner environment variables:
     TRIVIA_SUPABASE_URL
-    TRIVIA_SUPABASE_SERVICE_ROLE_KEY   (server-side secret only; NEVER config.js)
+    TRIVIA_SUPABASE_SECRET_KEY        (preferred, sb_secret_...)
+    TRIVIA_SUPABASE_SERVICE_ROLE_KEY  (legacy fallback only)   (server-side secret only; NEVER config.js)
 
   Optional:
     QUESTION_SYNC_OFFSET=auto
@@ -16,7 +17,7 @@
 */
 
 const SUPABASE_URL = String(process.env.TRIVIA_SUPABASE_URL || "").replace(/\/$/, "");
-const SERVICE_KEY = String(process.env.TRIVIA_SUPABASE_SERVICE_ROLE_KEY || "");
+const SERVICE_KEY = String(process.env.TRIVIA_SUPABASE_SECRET_KEY || process.env.TRIVIA_SUPABASE_SERVICE_ROLE_KEY || "").trim();
 const PER_TEMPLATE = Math.max(5, Math.min(250, Number(process.env.QUESTION_SYNC_PER_TEMPLATE || 80) || 80));
 const OFFSET_RAW = String(process.env.QUESTION_SYNC_OFFSET || "auto").trim().toLowerCase();
 const AUTO_WINDOW = 10000;
@@ -27,8 +28,28 @@ const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const USER_AGENT = "WhatModTriviaQuestionSync/1.0 (https://whatmod.com/trivia/)";
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  console.error("Missing TRIVIA_SUPABASE_URL or TRIVIA_SUPABASE_SERVICE_ROLE_KEY.");
+  console.error("Missing TRIVIA_SUPABASE_URL or Supabase server key. Set TRIVIA_SUPABASE_SECRET_KEY (preferred) or legacy TRIVIA_SUPABASE_SERVICE_ROLE_KEY.");
   process.exit(2);
+}
+
+function validateServerKey() {
+  if (SERVICE_KEY.startsWith("sb_publishable_")) {
+    throw new Error("Wrong Supabase key type: a publishable key cannot run backend sync jobs. Create/use an sb_secret_... key.");
+  }
+  if (SERVICE_KEY.startsWith("sb_secret_")) return "modern-secret";
+  if (SERVICE_KEY.startsWith("eyJ")) return "legacy-service-role";
+  return "unknown";
+}
+
+const SERVER_KEY_TYPE = validateServerKey();
+console.log(`Supabase auth mode: ${SERVER_KEY_TYPE}; project: ${new URL(SUPABASE_URL).hostname}`);
+
+function supabaseHeaders(extra = {}) {
+  const headers = { apikey: SERVICE_KEY, ...extra };
+  if (!SERVICE_KEY.startsWith("sb_secret_")) {
+    headers.Authorization = `Bearer ${SERVICE_KEY}`;
+  }
+  return headers;
 }
 
 const templates = [
@@ -215,7 +236,7 @@ async function upsertQuestions(rows) {
   if(keys.length){
     const encoded=keys.map(k=>`"${String(k).replace(/"/g,'\\"')}"`).join(",");
     const url=`${SUPABASE_URL}/rest/v1/questions?select=canonical_key,image_url,media_locked,media_review_status&canonical_key=in.(${encodeURIComponent(encoded)})`;
-    const er=await fetch(url,{headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`}});
+    const er=await fetch(url,{headers:supabaseHeaders()});
     if(er.ok){ for(const row of await er.json()) existing.set(row.canonical_key,row); }
   }
 
@@ -233,11 +254,10 @@ async function upsertQuestions(rows) {
 
   const r = await fetch(`${SUPABASE_URL}/rest/v1/questions?on_conflict=canonical_key`, {
     method:"POST",
-    headers:{
-      apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,
+    headers:supabaseHeaders({
       "Content-Type":"application/json",
       Prefer:"resolution=merge-duplicates,return=minimal"
-    },
+    }),
     body:JSON.stringify(payload)
   });
   if (!r.ok) throw new Error(`Supabase upsert failed: ${r.status} ${await r.text()}`);
@@ -246,7 +266,7 @@ async function upsertQuestions(rows) {
 async function prunePractice() {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/prune_ephemeral_practice`, {
     method:"POST",
-    headers:{apikey:SERVICE_KEY,Authorization:`Bearer ${SERVICE_KEY}`,"Content-Type":"application/json"},
+    headers:supabaseHeaders({"Content-Type":"application/json"}),
     body:JSON.stringify({p_days:30})
   });
   if (!r.ok) { console.warn(`Practice prune skipped: ${r.status} ${await r.text().then(x=>x.slice(0,160))}`); return; }
