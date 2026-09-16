@@ -112,6 +112,17 @@ export async function loadProfile() {
   return data;
 }
 
+export async function getAvailableCategories() {
+  if (!state.supabase) return [];
+  try {
+    const rows = await rpc("get_available_categories_v16");
+    return Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    if (!/get_available_categories_v16|does not exist|schema cache/i.test(String(error?.message || ""))) console.warn("Category discovery unavailable:", error.message);
+    return [];
+  }
+}
+
 export async function loadLeaderboard() {
   if (!state.supabase) return [];
   const { data, error } = await state.supabase

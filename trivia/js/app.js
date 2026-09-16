@@ -5,7 +5,7 @@ import {
   submitGameAnswer, revealRound, nextRound, getRoundResults, syncGameClock, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
   getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme,
-  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby, touchTriviaPresence
+  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby, touchTriviaPresence, getAvailableCategories
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
 import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
@@ -21,7 +21,11 @@ sessionStorage.setItem("trivia_presence_client", presenceClientId);
 let presenceHeartbeatTimer = null;
 const firstName = value => String(value || "Player").trim().split(/\s+/)[0] || "Player";
 const initials = value => String(value || "?").trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||"").join("") || "?";
-const categoryGlyph = value => ({Science:"⚗",Technology:"⌁",History:"⌛",Geography:"⌖",Animals:"◌",Space:"✦",Sports:"◆",Entertainment:"★",Business:"▰",Any:"✦"}[value] || "✦");
+const BASE_CATEGORIES=["Brainrot","General Gaming Knowledge","Internet Culture","Pop Culture","Movies & TV","Music","Food & Brands","General Knowledge","Science","Technology","History","Geography","Animals","Space","Sports","Entertainment","Business"];
+const categoryGlyph = value => ({Brainrot:"🌀","General Gaming Knowledge":"🎮","Internet Culture":"@","Pop Culture":"✹","Movies & TV":"▣",Music:"♫","Food & Brands":"◆","General Knowledge":"◇",Science:"⚗",Technology:"⌁",History:"⌛",Geography:"⌖",Animals:"◌",Space:"✦",Sports:"◆",Entertainment:"★",Business:"▰",Any:"✦"}[value] || "✦");
+function availableCategories(){const live=(state.categories||[]).map(x=>typeof x==="string"?x:x.category).filter(Boolean);return [...new Set([...BASE_CATEGORIES,...live])];}
+function categoryCount(name){const row=(state.categories||[]).find(x=>typeof x!=="string"&&x.category===name);return row?Number(row.question_count||0):null;}
+function categoryOption(name){const count=categoryCount(name),disabled=(state.categories||[]).length&&count===null;return `<option value="${esc(name)}" ${disabled?"disabled":""}>${categoryGlyph(name)} ${esc(name)}${count!==null?` · ${count.toLocaleString()}`:disabled?" · no active questions":""}</option>`;}
 const safeUrl = value => {
   try {
     const u = new URL(String(value || ""), location.origin);
@@ -416,7 +420,7 @@ function homeView() {
       <article class="hud-panel streamer-panel"><span class="stream-icon">◈</span><div><small>CREATOR MODE</small><b>Going live?</b><p>Make a Twitch-sized room with an OBS join overlay.</p></div><button class="btn tiny" data-nav="create" data-mode="event">Launch</button></article>
     </section>
 
-    <section class="category-rail"><span>PLAY YOUR WAY</span>${["Science","Technology","History","Geography","Animals","Space"].map(c=>`<i>${categoryGlyph(c)} ${c}</i>`).join("")}</section>
+    <section class="category-rail"><span>PLAY YOUR WAY</span>${["General Knowledge","General Gaming Knowledge","Brainrot","Internet Culture","Pop Culture","Science"].map(c=>`<i>${categoryGlyph(c)} ${c}</i>`).join("")}</section>
   `);
 }
 
@@ -430,7 +434,7 @@ function createView(presetEvent=false) {
 
         <div class="setup-title"><span>⌁</span><div><small>QUESTION PACK</small><h3>Choose the challenge</h3></div></div>
         <div class="form-grid game-fields">
-          <label class="game-field"><span>CATEGORY</span><select name="category"><option value="Any">✦ Anything goes</option><option>Science</option><option>Technology</option><option>History</option><option>Geography</option><option>Animals</option><option>Space</option><option>Sports</option><option>Entertainment</option><option>Business</option></select></label>
+          <label class="game-field"><span>CATEGORY</span><select name="category"><option value="Any">✦ Anything goes</option>${availableCategories().map(categoryOption).join("")}</select></label>
           <label class="game-field"><span>DIFFICULTY</span><select name="difficulty"><option value="any">⚡ Mixed</option><option>easy</option><option>medium</option><option>hard</option></select></label>
           <label class="game-field"><span>ROUNDS</span><select name="questionCount"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></label>
           <label class="game-field"><span>ROUND TIMER</span><select name="secondsPerQuestion"><option>10</option><option selected>20</option><option>30</option><option>45</option><option>60</option></select></label>
@@ -599,7 +603,7 @@ function dailyView() {
 }
 
 
-const PRACTICE_CATEGORIES = ["Science","Technology","History","Geography","Animals","Space","Sports","Entertainment","Business"];
+const practiceCategories = () => availableCategories();
 
 function practiceSetupView() {
   return appShell(`
@@ -613,7 +617,7 @@ function practiceSetupView() {
 
         <div class="setup-title practice-section-title"><span>⌁</span><div><small>CATEGORY LOADOUT</small><h3>Choose one or mix several</h3></div></div>
         <div class="practice-categories">
-          ${PRACTICE_CATEGORIES.map(c=>`<label><input type="checkbox" name="categories" value="${c}" checked><span><i>${categoryGlyph(c)}</i><b>${c}</b></span></label>`).join("")}
+          ${practiceCategories().map(c=>{const count=categoryCount(c),disabled=(state.categories||[]).length&&count===null;return `<label class="${disabled?"disabled":""}"><input type="checkbox" name="categories" value="${esc(c)}" ${disabled?"disabled":"checked"}><span><i>${categoryGlyph(c)}</i><b>${esc(c)}</b>${count!==null?`<small>${count.toLocaleString()} questions</small>`:""}</span></label>`}).join("")}
         </div>
 
         <div class="practice-options-row">
@@ -710,7 +714,7 @@ async function libraryView() {
   }
   state.libraryItems=rows;
   const total=Number(rows[0]?.total_count || rows.length || 0);
-  const catOptions=["","Science","Technology","History","Geography","Animals","Space","Sports","Entertainment","Business"];
+  const catOptions=["",...availableCategories()];
   return appShell(`
     <section class="library-head">
       <div><span class="mode-badge cool">REPLAY LIBRARY</span><h1>Play it again.</h1><p>Completed Practice and Party question sets become compact public replays. Pick a pack and run the exact questions yourself — Practice rules, zero XP.</p></div>
@@ -1556,6 +1560,7 @@ async function boot() {
     try{await loadProfile();applyUiTheme(state.profile?.ui_theme || storedUiTheme());}catch(e){console.warn(e)}
     startPresenceHeartbeat();
   } else { applyUiTheme(storedUiTheme(), false); }
+  if(isConfigured()){ try{setState({categories:await getAvailableCategories()});}catch(e){console.warn(e)} }
   await initTwitch();
 
   const params=new URLSearchParams(location.search);

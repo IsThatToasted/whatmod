@@ -18,3 +18,6 @@ V9 adds export/import controls that pair with `WhatMod-Trivia-Media-Resolver-Win
 Normal content acquisition no longer needs GitHub Actions. Download `downloads/WhatMod-Trivia-Content-Studio-Windows.zip`, acquire questions and resolve media locally, export one `whatmod-trivia-content-package` JSON, then upload it from the Questions tab.
 
 The admin importer batches the single uploaded file internally, deduplicates by `canonical_key`, preserves admin-edited `content_locked` questions, and preserves media that has been explicitly locked/approved.
+
+## V16 dynamic categories
+Categories imported by the Local Content Studio are now discovered dynamically by the Trivia frontend. The upgraded Content Studio includes mainstream filtering, starter packs such as Brainrot and General Gaming Knowledge, and Topic Discovery for custom sourced categories.

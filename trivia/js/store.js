@@ -11,6 +11,7 @@ export const state = {
   daily: null,
   practice: null,
   libraryItems: [],
+  categories: [],
   libraryFilters: { search: "", category: "", difficulty: "any", sort: "new" },
   subscriptions: [],
   twitch: { token: null, user: null, socket: null, chatters: [] },
