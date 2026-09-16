@@ -189,7 +189,9 @@ jobs:
           grep -q 'renderCommunityHistogram' trivia/js/charts.js
           grep -q 'adaptive log view' trivia/js/charts.js
           grep -q 'data-ui-theme="v2"' trivia/styles.css
-          grep -q 'whatmod-trivia-v10' trivia/sw.js
+          grep -q 'whatmod-trivia-v13' trivia/sw.js
+          grep -q 'experience.js' trivia/sw.js
+          grep -q 'Nova Arena' trivia/js/app.js
           grep -q 'default .v1' trivia/supabase/migrations/010_local_media_pipeline.sql
           if grep -q 'node trivia/tools/media-resolver.mjs' .github/workflows/trivia-question-sync.yml; then
             echo "::error::Question Bank Sync should not auto-run the paid media resolver in V9."
