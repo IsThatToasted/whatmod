@@ -5,7 +5,7 @@ import {
   submitGameAnswer, revealRound, nextRound, getRoundResults, syncGameClock, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
   getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme,
-  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby
+  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby, touchTriviaPresence
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
 import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
@@ -16,6 +16,9 @@ const $ = (s, el=document) => el.querySelector(s);
 const $$ = (s, el=document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const uid = () => Math.random().toString(36).slice(2);
+const presenceClientId = sessionStorage.getItem("trivia_presence_client") || crypto.randomUUID();
+sessionStorage.setItem("trivia_presence_client", presenceClientId);
+let presenceHeartbeatTimer = null;
 const firstName = value => String(value || "Player").trim().split(/\s+/)[0] || "Player";
 const initials = value => String(value || "?").trim().split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase()||"").join("") || "?";
 const categoryGlyph = value => ({Science:"⚗",Technology:"⌁",History:"⌛",Geography:"⌖",Animals:"◌",Space:"✦",Sports:"◆",Entertainment:"★",Business:"▰",Any:"✦"}[value] || "✦");
@@ -850,6 +853,19 @@ function overlayView(code) {
   }
 }
 
+async function sendPresenceHeartbeat() {
+  if (!state.session?.user || !isConfigured()) return;
+  const gameId = state.view === "lobby" ? (state.lobby?.id || null) : null;
+  await touchTriviaPresence(state.view || "home", gameId, presenceClientId);
+}
+function startPresenceHeartbeat() {
+  clearInterval(presenceHeartbeatTimer);
+  if (!state.session?.user || !isConfigured()) return;
+  sendPresenceHeartbeat().catch(()=>{});
+  presenceHeartbeatTimer = setInterval(()=>sendPresenceHeartbeat().catch(()=>{}), 25000);
+}
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState === "visible") sendPresenceHeartbeat().catch(()=>{}); });
+
 function demoInit() {
   demo = {
     profile: { user_id:"demo", username:"Demo Player", avatar_url:"", xp:0, wins:0, games_played:0, daily_streak:0, username_customized:false, ui_theme:storedUiTheme() },
@@ -875,6 +891,7 @@ async function navigate(view, opts={}) {
   else if (view === "how") $("#app").innerHTML = howView();
   bind();
   postRender();
+  sendPresenceHeartbeat().catch(()=>{});
 }
 
 function bind() {
@@ -883,7 +900,7 @@ function bind() {
   $$("[data-action]").forEach(el => {
     const a = el.dataset.action;
     if (a==="login") el.onclick = async()=>{ try{ await signInGoogle(); }catch(e){reportError(e)} };
-    if (a==="logout") el.onclick = async()=>{ stopLobbySync(); await signOut(); navigate("home"); };
+    if (a==="logout") el.onclick = async()=>{ stopLobbySync(); clearInterval(presenceHeartbeatTimer); await signOut(); navigate("home"); };
     if (a==="daily") el.onclick = openDaily;
     if (a==="practice-next") el.onclick = practiceNext;
     if (a==="practice-restart") el.onclick = ()=>{ state.practice=null; navigate("practice-setup"); };
@@ -1537,6 +1554,7 @@ async function boot() {
   await initSupabase();
   if(state.session){
     try{await loadProfile();applyUiTheme(state.profile?.ui_theme || storedUiTheme());}catch(e){console.warn(e)}
+    startPresenceHeartbeat();
   } else { applyUiTheme(storedUiTheme(), false); }
   await initTwitch();
 

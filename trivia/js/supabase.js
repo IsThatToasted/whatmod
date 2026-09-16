@@ -45,6 +45,7 @@ export async function signInGoogle() {
 
 export async function signOut() {
   cleanupRealtime();
+  try { await clearTriviaPresence(); } catch {}
   if (state.supabase) await state.supabase.auth.signOut();
   setState({
     session: null, profile: null, lobby: null, lobbyPlayers: [],
@@ -57,6 +58,28 @@ export async function rpc(name, args = {}) {
   const { data, error } = await state.supabase.rpc(name, args);
   if (error) throw error;
   return data;
+}
+
+export async function touchTriviaPresence(page = "home", gameId = null, clientId = null) {
+  if (!state.session?.user || !state.supabase) return null;
+  try {
+    return await rpc("touch_trivia_presence_v15", {
+      p_page: String(page || "home").slice(0, 80),
+      p_game_id: gameId || null,
+      p_client_id: clientId || null
+    });
+  } catch (error) {
+    // Presence is observability only; never make gameplay depend on it during a
+    // rolling deploy where migration 015 may not have landed yet.
+    if (!/touch_trivia_presence_v15|does not exist|schema cache/i.test(String(error?.message || ""))) console.warn("Presence heartbeat skipped:", error.message);
+    return null;
+  }
+}
+
+export async function clearTriviaPresence() {
+  if (!state.session?.user || !state.supabase) return null;
+  try { return await rpc("clear_trivia_presence_v15"); }
+  catch { return null; }
 }
 
 export async function syncMyGoogleProfile() {

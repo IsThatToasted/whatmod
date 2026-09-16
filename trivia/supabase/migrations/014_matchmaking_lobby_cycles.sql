@@ -1,4 +1,14 @@
--- WhatMod Trivia V14 - public/invite lobbies, matchmaking, spectators, bots, persistent lobby cycles
+-- WhatMod Trivia V14.2 - matchmaking + complete-query hotfix
+
+-- V14.1 prerequisite repair: make matchmaking migration safe even when older
+-- multiplayer/library migrations were skipped or only partially applied.
+alter table public.games
+  add column if not exists results_started_at timestamptz,
+  add column if not exists rewards_awarded_at timestamptz,
+  add column if not exists library_session_id uuid;
+
+alter table public.game_players
+  add column if not exists xp_awarded integer not null default 0;
 
 alter table public.games
   add column if not exists visibility text not null default 'invite_only' check (visibility in ('public','invite_only')),
@@ -239,7 +249,7 @@ language sql security definer set search_path=public as $$
   select 'bot:'||gb.bot_id::text,gb.username,null::text,ba.answer_numeric,ba.answer_value,coalesce(ba.score,0),gb.total_score,0,false,true,'active'
   from public.games g join public.game_bots gb on gb.game_id=g.id left join public.game_bot_answers ba on ba.game_id=g.id and ba.ordinal=g.current_question_index and ba.bot_id=gb.bot_id
   where g.id=p_game_id and g.status in('results','finished')
-  order by total_score desc,score desc,username;
+  order by 7 desc,6 desc,2;
 $$;
 revoke all on function public.get_round_results_v14(uuid) from public,anon;
 grant execute on function public.get_round_results_v14(uuid) to authenticated;

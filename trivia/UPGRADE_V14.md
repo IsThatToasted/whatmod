@@ -13,3 +13,6 @@ Run `supabase/migrations/014_matchmaking_lobby_cycles.sql` once after deploying 
 - Final results return the whole party to the same room/code after 8 seconds (or host/manual return).
 - Bots never earn profile XP or leaderboard records.
 - Active human match points still convert 1:1 to profile XP.
+
+## V14.1 hotfix
+The matchmaking migration now self-repairs missing V11/V6 prerequisite columns (`results_started_at`, `rewards_awarded_at`, `xp_awarded`, and `library_session_id`) with `ADD COLUMN IF NOT EXISTS` before installing V14 functions. It is safe to rerun after a failed V14 attempt.
