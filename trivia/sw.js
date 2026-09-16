@@ -1,4 +1,4 @@
-const CACHE = "whatmod-trivia-v13";
+const CACHE = "whatmod-trivia-v14";
 const CORE = ["./", "./index.html", "./styles.css", "./config.js", "./js/app.js", "./js/store.js",
   "./js/supabase.js", "./js/scoring.js", "./js/charts.js", "./js/twitch.js", "./js/experience.js", "./assets/icon.svg"];
 self.addEventListener("install", e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(()=>self.skipWaiting())));

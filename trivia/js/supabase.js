@@ -114,34 +114,36 @@ export async function updateUiTheme(theme) {
 }
 
 export async function createLobby(settings) {
-  const rows = await rpc("create_lobby", {
+  const rows = await rpc("create_lobby_v14", {
     p_category: settings.category,
     p_difficulty: settings.difficulty,
     p_question_count: settings.questionCount,
     p_max_players: settings.maxPlayers,
     p_game_mode: settings.gameMode,
     p_seconds_per_question: settings.secondsPerQuestion,
-    p_title: settings.title || null
+    p_title: settings.title || null,
+    p_visibility: settings.visibility || "invite_only",
+    p_allow_matchmaking: !!settings.allowMatchmaking
   });
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
 export async function joinLobby(code) {
-  const rows = await rpc("join_lobby", { p_code: code.trim().toUpperCase() });
+  const rows = await rpc("join_lobby_v14", { p_code: code.trim().toUpperCase() });
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
 export async function getLobby(code) {
-  const rows = await rpc("get_lobby_v11", { p_code: code.trim().toUpperCase() });
+  const rows = await rpc("get_lobby_v14", { p_code: code.trim().toUpperCase() });
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
 export async function getLobbyPlayers(gameId) {
-  return await rpc("get_lobby_players", { p_game_id: gameId });
+  return await rpc("get_lobby_players_v14", { p_game_id: gameId });
 }
 
 export async function startLobby(gameId) {
-  return await rpc("start_lobby", { p_game_id: gameId });
+  return await rpc("start_lobby_v14", { p_game_id: gameId });
 }
 
 export async function getCurrentQuestion(gameId) {
@@ -159,21 +161,31 @@ export async function submitGameAnswer(gameId, value, responseMs) {
 }
 
 export async function revealRound(gameId, expectedIndex) {
-  return await rpc("reveal_round_v11", { p_game_id: gameId, p_expected_index: Number(expectedIndex) });
+  return await rpc("reveal_round_v14", { p_game_id: gameId, p_expected_index: Number(expectedIndex) });
 }
 
 export async function nextRound(gameId, expectedIndex) {
-  return await rpc("advance_round_v11", { p_game_id: gameId, p_expected_index: Number(expectedIndex) });
+  return await rpc("advance_round_v14", { p_game_id: gameId, p_expected_index: Number(expectedIndex) });
 }
 
 export async function getRoundResults(gameId) {
-  const rows = await rpc("get_round_results_v11", { p_game_id: gameId });
+  const rows = await rpc("get_round_results_v14", { p_game_id: gameId });
   return rows || [];
 }
 
 export async function syncGameClock(gameId) {
-  const rows = await rpc("sync_game_clock_v11", { p_game_id: gameId });
+  const rows = await rpc("sync_game_clock_v14", { p_game_id: gameId });
   return Array.isArray(rows) ? rows[0] : rows;
+}
+
+
+export async function matchmake() {
+  const rows = await rpc("matchmake_v14");
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function returnToLobby(gameId) {
+  return await rpc("return_to_lobby_v14", { p_game_id: gameId });
 }
 
 export async function getDailyState() {

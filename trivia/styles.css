@@ -387,3 +387,29 @@ html[data-ui-theme="v2"] .champ-card{border-radius:0!important;clip-path:polygon
 
 /* user accessibility choice beats theme animation */
 html[data-motion="reduced"] .nova-stars,html[data-motion="reduced"] .nova-nebula,html[data-motion="reduced"] .nova-scan,html[data-motion="reduced"] .nova-logo i,html[data-motion="reduced"] .nova-reactor:before,html[data-motion="reduced"] .nova-reactor:after,html[data-motion="reduced"] .nova-reactor i,html[data-motion="reduced"] .nova-view-enter,html[data-motion="reduced"] .v2-celebration{animation:none!important}html[data-motion="reduced"] .v2-tilt,html[data-motion="reduced"] .v2-mode-card,html[data-motion="reduced"] .champ-card{transform:none!important}
+
+/* V14 matchmaking + release polish */
+html[data-ui-theme="v2"] .nova-side-stack{grid-template-rows:auto auto auto auto;gap:9px}
+html[data-ui-theme="v2"] .nova-mode-card.compact-mode{padding:14px 18px;min-height:84px}
+html[data-ui-theme="v2"] .nova-mode-card.matchmaking{border-color:rgba(57,243,220,.28);background:linear-gradient(135deg,rgba(5,36,42,.96),rgba(5,15,28,.96));box-shadow:inset 0 0 34px rgba(57,243,220,.045)}
+html[data-ui-theme="v2"] .nova-mode-card.matchmaking .nova-mode-icon{color:#39f3dc;border-color:rgba(57,243,220,.32);background:rgba(57,243,220,.075)}
+html[data-ui-theme="v2"] .nova-mode-card.matchmaking h3{color:#dffffb}
+html[data-ui-theme="v2"] .nova-side-stack .nova-join-card{padding:14px 18px}
+
+/* Library CTAs should read as actionable game buttons, not disabled bars. */
+html[data-ui-theme="v2"] .library-card .library-play,
+html[data-ui-theme="v2"] .empty-library .btn,
+html[data-ui-theme="v2"] .library-filter .btn{
+  color:#001915!important;background:linear-gradient(115deg,#39f3dc,#76f7e6)!important;border-color:#39f3dc!important;
+  box-shadow:0 0 22px rgba(57,243,220,.18),inset 0 1px rgba(255,255,255,.35)!important;font-weight:950!important;
+}
+html[data-ui-theme="v2"] .library-card .library-play:hover,
+html[data-ui-theme="v2"] .library-filter .btn:hover{filter:brightness(1.1);box-shadow:0 0 30px rgba(57,243,220,.32)!important}
+html[data-ui-theme="v2"] .library-card .library-play b{color:#001915!important}
+
+.visibility-picker{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px}.visibility-picker>small{grid-column:1/-1;color:var(--muted);font-size:10px;letter-spacing:.13em;font-weight:900}.visibility-picker label{display:block;position:relative}.visibility-picker input{position:absolute;opacity:0;pointer-events:none}.visibility-picker label>span{display:block;padding:12px;border:1px solid var(--line);background:rgba(4,11,20,.7);border-radius:12px;cursor:pointer}.visibility-picker b,.visibility-picker em{display:block}.visibility-picker b{font-size:12px}.visibility-picker em{font-size:10px;color:var(--muted);font-style:normal;margin-top:3px}.visibility-picker input:checked+span{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 0 20px rgba(61,217,197,.08);background:rgba(61,217,197,.06)}.visibility-picker .matchmaking-toggle{grid-column:1/-1}.visibility-picker .matchmaking-toggle>span{padding-left:14px}
+.roster-player.bot{border-color:rgba(57,243,220,.18);background:linear-gradient(135deg,rgba(57,243,220,.035),rgba(8,18,31,.8))}.roster-player.bot>i{font-size:8px;color:#39f3dc}.roster-player.spectator{opacity:.78;border-style:dashed}.roster-player.spectator>i{color:#ffcf70}.bot-chip{display:inline-flex;vertical-align:middle;padding:2px 5px;margin-left:4px;border:1px solid rgba(57,243,220,.32);color:#39f3dc;font-size:7px;letter-spacing:.1em;font-style:normal;border-radius:4px}
+.spectator-banner{display:flex;align-items:center;gap:14px;margin:28px auto 12px;max-width:720px;padding:18px;border:1px solid rgba(255,202,82,.28);background:linear-gradient(135deg,rgba(255,202,82,.07),rgba(10,16,28,.88));border-radius:16px;text-align:left}.spectator-banner>span{width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:rgba(255,202,82,.12);color:#ffd468}.spectator-banner b,.spectator-banner small{display:block}.spectator-banner small{color:var(--muted);margin-top:3px;line-height:1.4}
+.return-lobby-card{max-width:780px;margin:24px auto 0;padding:20px;border:1px solid rgba(57,243,220,.22);background:linear-gradient(135deg,rgba(57,243,220,.055),rgba(8,16,28,.94));display:flex;justify-content:space-between;align-items:center;gap:18px;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}.return-lobby-card small,.return-lobby-card b,.return-lobby-card p{display:block}.return-lobby-card small{color:#39f3dc;font-size:9px;letter-spacing:.14em}.return-lobby-card b{font-size:20px;margin:4px 0}.return-lobby-card p{margin:0;color:var(--muted);font-size:11px}
+@media(max-width:1050px){html[data-ui-theme="v2"] .nova-side-stack{grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto}.nova-join-card{grid-column:1/-1}}
+@media(max-width:700px){html[data-ui-theme="v2"] .nova-side-stack{grid-template-columns:1fr;grid-template-rows:auto}.visibility-picker{grid-template-columns:1fr}.visibility-picker>small,.visibility-picker .matchmaking-toggle{grid-column:auto}.return-lobby-card{display:block}.return-lobby-card .btn{width:100%;margin-top:14px}}

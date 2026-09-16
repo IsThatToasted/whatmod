@@ -5,7 +5,7 @@ import {
   submitGameAnswer, revealRound, nextRound, getRoundResults, syncGameClock, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
   getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme,
-  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion
+  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
 import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
@@ -120,7 +120,7 @@ const inFlight = new Set();
 const UI_THEME_KEY = "whatmod_trivia_ui_theme";
 function normalizeUiTheme(value) { return value === "v2" ? "v2" : "v1"; }
 function storedUiTheme() {
-  try { return normalizeUiTheme(localStorage.getItem(UI_THEME_KEY) || "v1"); } catch { return "v1"; }
+  try { return normalizeUiTheme(localStorage.getItem(UI_THEME_KEY) || "v2"); } catch { return "v2"; }
 }
 function currentUiTheme() { return normalizeUiTheme(state.profile?.ui_theme || storedUiTheme()); }
 function applyUiTheme(value, persistLocal=true) {
@@ -296,8 +296,9 @@ function homeViewV2(){
           <div class="nova-mission-copy"><small>PRIMARY MISSION</small><h2>THE DAILY<br>ESTIMATE</h2><p>One shot. One global question. Precision turns into permanent XP.</p><div class="nova-rewards"><span>+ PRECISION XP</span><span>+ STREAK</span></div><button class="nova-launch primary" data-action="daily"><span>DEPLOY</span><b>→</b></button></div>
         </article>
         <aside class="nova-side-stack">
-          <article class="nova-mode-card v2-tilt practice" data-nav="practice-setup"><span class="nova-mode-icon">◎</span><div><small>TRAINING SIM</small><h3>Practice</h3><p>Custom categories · zero XP</p></div><b>→</b></article>
-          <article class="nova-mode-card v2-tilt party" data-nav="create"><span class="nova-mode-icon">♟</span><div><small>MULTIPLAYER</small><h3>Host Party</h3><p>2–20K players · live scoring</p></div><b>＋</b></article>
+          <article class="nova-mode-card v2-tilt practice compact-mode" data-nav="practice-setup"><span class="nova-mode-icon">◎</span><div><small>TRAINING SIM</small><h3>Practice</h3><p>Custom categories · zero XP</p></div><b>→</b></article>
+          <article class="nova-mode-card v2-tilt matchmaking" data-action="matchmake"><span class="nova-mode-icon">⚔</span><div><small>QUICK PLAY</small><h3>Matchmaking</h3><p>Instant 10-player match · bots fill empty seats</p></div><b>▶</b></article>
+          <article class="nova-mode-card v2-tilt party compact-mode" data-nav="create"><span class="nova-mode-icon">♟</span><div><small>MULTIPLAYER</small><h3>Host Party</h3><p>Public or invite-only custom room</p></div><b>＋</b></article>
           <article class="nova-join-card v2-tilt"><div><small>JOIN A LIVE ROOM</small><h3>Party code</h3></div><div class="nova-code-entry"><input id="quick-code" maxlength="6" autocomplete="off" placeholder="ABC123"><button data-action="quick-join">ENTER</button></div></article>
         </aside>
       </section>
@@ -441,6 +442,12 @@ function createView(presetEvent=false) {
             <label><input type="radio" name="gameMode" value="standard" ${presetEvent?"":"checked"}><span><b>⚡ Standard</b><small>Fast realtime party play</small><em>Best for 2–100</em></span></label>
             <label><input type="radio" name="gameMode" value="event" ${presetEvent?"checked":""}><span><b>◈ Event / Twitch</b><small>Reduced fan-out large room</small><em>Built for crowds</em></span></label>
           </div>
+          <div class="visibility-picker">
+            <small>ROOM ACCESS</small>
+            <label><input type="radio" name="visibility" value="public" checked><span><b>🌐 Public</b><em>Can receive Quick Play players</em></span></label>
+            <label><input type="radio" name="visibility" value="invite_only"><span><b>🔒 Invite only</b><em>Code/link required</em></span></label>
+            <label class="matchmaking-toggle"><input type="checkbox" name="allowMatchmaking" checked><span><b>Allow matchmaking fill</b><em>Queued players may join open slots</em></span></label>
+          </div>
         </section>
         <section class="loadout-card"><span>YOUR LOADOUT</span><b>Precision scoring</b><p>Numeric guesses earn partial credit from 0–1,000 based on how close they land.</p></section>
         <button class="btn primary launch-btn" type="submit"><span>Create game</span><b>GENERATE CODE →</b></button>
@@ -455,6 +462,8 @@ function lobbyView() {
   const meHost = !g.host_id || g.host_id === state.session?.user?.id || g.demoHost;
   const joinUrl = `${state.config.publicUrl || new URL("./",location.href).href}?join=${g.code}`;
   const players = state.lobbyPlayers || [];
+  const spectators = players.filter(p=>p.participation_status==="spectator");
+  const playing = players.filter(p=>p.participation_status!=="spectator");
   const phase = g.status || "lobby";
   if (phase === "question" || phase === "results" || phase === "finished") return gameView();
 
@@ -470,8 +479,8 @@ function lobbyView() {
           <div><small>INVITE LINK</small><b>${esc(joinUrl)}</b></div><button class="btn tiny" data-copy="${esc(joinUrl)}">Copy link</button><a class="btn tiny ghost" target="_blank" rel="noopener" href="?overlay=${encodeURIComponent(g.code)}">OBS overlay</a>
         </section>
         <section class="hud-panel roster-card">
-          <div class="panel-title"><span>♟</span><div><small>PARTY ROSTER</small><b>${players.length} / ${g.max_players} joined</b></div><strong class="ready-chip">READY</strong></div>
-          <div class="roster-grid">${players.map((p,i)=>`<article class="roster-player ${p.user_id===g.host_id?"host":""}"><span class="roster-avatar">${p.avatar_url?`<img src="${esc(p.avatar_url)}">`:`${esc(initials(p.username))}`}</span><div><b>${esc(p.username||"Player")}</b><small>${p.user_id===g.host_id?"HOST":"PLAYER " + String(i+1).padStart(2,"0")}</small></div>${p.user_id===g.host_id?`<i>♛</i>`:`<i>✓</i>`}</article>`).join("") || `<div class="empty">Your party is waiting for its first player…</div>`}</div>
+          <div class="panel-title"><span>♟</span><div><small>PARTY ROSTER</small><b>${playing.length} playing${spectators.length?` · ${spectators.length} spectating`:""}</b></div><strong class="ready-chip">${g.lobby_kind==="matchmaking"?"QUEUE":"READY"}</strong></div>
+          <div class="roster-grid">${players.map((p,i)=>`<article class="roster-player ${p.user_id===String(g.host_id)?"host":""} ${p.is_bot?"bot":""} ${p.participation_status==="spectator"?"spectator":""}"><span class="roster-avatar">${p.avatar_url?`<img src="${esc(p.avatar_url)}">`:`${esc(initials(p.username))}`}</span><div><b>${esc(p.username||"Player")}</b><small>${p.is_bot?"BOT CHALLENGER":p.participation_status==="spectator"?"SPECTATOR · NEXT MATCH":p.user_id===String(g.host_id)?"HOST":"PLAYER " + String(i+1).padStart(2,"0")}</small></div>${p.is_bot?`<i>AI</i>`:p.participation_status==="spectator"?`<i>◉</i>`:p.user_id===String(g.host_id)?`<i>♛</i>`:`<i>✓</i>`}</article>`).join("") || `<div class="empty">Your party is waiting for its first player…</div>`}</div>
         </section>
       </div>
 
@@ -482,6 +491,8 @@ function lobbyView() {
           <div class="rule-row"><span>◫ Rounds</span><b>${g.question_count}</b></div>
           <div class="rule-row"><span>◷ Timer</span><b id="timer-value">${g.seconds_per_question}s</b></div>
           <div class="rule-row"><span>◈ Network</span><b>${g.game_mode==="event"?"Event":"Standard"}</b></div>
+          <div class="rule-row"><span>${g.visibility==="public"?"🌐":"🔒"} Access</span><b>${g.visibility==="public"?"Public":"Invite only"}</b></div>
+          ${g.lobby_kind==="matchmaking"?`<div class="rule-row"><span>⚔ Queue</span><b>Quick Match</b></div>`:""}
         </section>
         ${meHost?`<section class="host-launch"><small>HOST CONTROL</small><h3>Everyone here?</h3><p>Starting locks the game rules and launches Round 1.</p><button class="btn primary launch-btn" data-action="start-game" ${players.length<1?"disabled":""}><span>START MATCH</span><b>▶</b></button></section>`:`<section class="host-launch waiting-card"><span class="waiting-pulse"></span><small>WAITING FOR HOST</small><h3>You're in.</h3><p>The first question will appear automatically.</p></section>`}
       </aside>
@@ -514,7 +525,7 @@ function gameView() {
         <section class="correct-answer-card"><div><small>CORRECT ANSWER</small><strong>${formatAnswer(q.answer_numeric ?? q.answer_text ?? q.answer_display)} <em>${esc(q.unit||"")}</em></strong><p>${esc(q.explanation||"")}</p></div><span>✓</span></section>
         <div class="result-grid">
           <section class="hud-panel chart-card game-chart"><div class="panel-title"><span>⌁</span><div><small>THE CROWD</small><b>Guess distribution</b></div></div><canvas id="guess-chart"></canvas></section>
-          <section class="hud-panel scoreboard"><div class="panel-title"><span>♛</span><div><small>LIVE RANKS</small><b>Round leaderboard</b></div><strong>${rows.filter(r=>r.answer_value!=null).length}/${rows.length} answered</strong></div>${rows.slice(0,20).map((r,i)=>`<div class="score-row ${r.is_me?"me":""}"><span class="score-place">${i+1}</span><b>${esc(r.username)}</b><span>+${r.score}</span><strong>${r.total_score}</strong></div>`).join("") || `<div class="empty">No answers this round.</div>`}</section>
+          <section class="hud-panel scoreboard"><div class="panel-title"><span>♛</span><div><small>LIVE RANKS</small><b>Round leaderboard</b></div><strong>${rows.filter(r=>r.answer_value!=null).length}/${rows.length} answered</strong></div>${rows.slice(0,20).map((r,i)=>`<div class="score-row ${r.is_me?"me":""}"><span class="score-place">${i+1}</span><b>${esc(r.username)} ${r.is_bot?`<em class="bot-chip">BOT</em>`:""}</b><span>+${r.score}</span><strong>${r.total_score}</strong></div>`).join("") || `<div class="empty">No answers this round.</div>`}</section>
         </div>
         <div class="round-auto-controls">
           <div class="auto-advance-banner"><span>${finalRound?"MATCH ENDS":"NEXT ROUND"} IN <b id="result-countdown">5</b>s</span><small>Automatic</small></div>
@@ -531,11 +542,11 @@ function gameView() {
       ${questionTitleFrame(q)}
       ${questionFeedback(q,{allowDelete:true})}
       ${q.context ? `<p class="question-context">${esc(q.context)}</p>`:""}
-      <form id="answer-form" class="answer-form game-answer-form">
+      ${g.my_participation_status==="spectator"?`<div class="spectator-banner"><span>◉</span><div><b>SPECTATOR MODE</b><small>This match is already underway. Watch live — you'll become an active player when the lobby restarts.</small></div></div>`:`<form id="answer-form" class="answer-form game-answer-form">
         ${questionInput(q)}
         ${q.question_type!=="multiple_choice"?`<button class="btn primary lock-btn" type="submit"><span>LOCK IT IN</span><b>✓</b></button>`:""}
       </form>
-      <div id="answer-status" class="answer-status"><span>◎</span> One answer. No take-backs.</div>
+      <div id="answer-status" class="answer-status"><span>◎</span> One answer. No take-backs.</div>`}
       ${host?`<button class="btn ghost host-reveal" data-action="reveal-round">Host: reveal results</button>`:""}
     </section>`);
 }
@@ -543,12 +554,13 @@ function gameView() {
 function finalView() {
   const rows = state.roundResults || [];
   const me = rows.find(r=>r.is_me);
+  const spectator=state.lobby?.my_participation_status==="spectator";
   return appShell(`
     <section class="finish game-finish">
-      <div class="victory-burst"><span>♛</span></div><div class="mode-badge hot">MATCH COMPLETE</div><h1>GG, party.</h1><p>${esc(state.lobby?.title || "Trivia Night")}${me?` · <b>+${Number(me.xp_awarded||0).toLocaleString()} XP</b>`:""}</p>
-      <div class="podium">${rows.slice(0,3).map((r,i)=>`<div class="podium-card p${i+1}"><span class="medal">${i===0?"♛":i===1?"◆":"▲"}</span><small>#${i+1}</small><b>${esc(r.username)}</b><strong>${Number(r.total_score||0).toLocaleString()}</strong><em>points · +${Number(r.xp_awarded||0).toLocaleString()} XP</em></div>`).join("")}</div>
-      <div class="scoreboard hud-panel">${rows.slice(3,50).map((r,i)=>`<div class="score-row"><span class="score-place">${i+4}</span><b>${esc(r.username)}</b><span>${Number(r.total_score||0).toLocaleString()} pts · +${Number(r.xp_awarded||0).toLocaleString()} XP</span></div>`).join("")}</div>
-      <button class="btn primary launch-btn finish-btn" data-nav="home"><span>BACK TO PLAY HUB</span><b>→</b></button>
+      <div class="victory-burst"><span>♛</span></div><div class="mode-badge hot">MATCH COMPLETE</div><h1>GG, party.</h1><p>${esc(state.lobby?.title || "Trivia Night")}${me&&!spectator?` · <b>+${Number(me.xp_awarded||0).toLocaleString()} XP</b>`:spectator?` · <b>You join the next run</b>`:""}</p>
+      <div class="podium">${rows.slice(0,3).map((r,i)=>`<div class="podium-card p${i+1}"><span class="medal">${i===0?"♛":i===1?"◆":"▲"}</span><small>#${i+1}</small><b>${esc(r.username)}${r.is_bot?` <em class="bot-chip">BOT</em>`:""}</b><strong>${Number(r.total_score||0).toLocaleString()}</strong><em>points${r.is_bot?"":` · +${Number(r.xp_awarded||0).toLocaleString()} XP`}</em></div>`).join("")}</div>
+      <div class="scoreboard hud-panel">${rows.slice(3,50).map((r,i)=>`<div class="score-row"><span class="score-place">${i+4}</span><b>${esc(r.username)} ${r.is_bot?`<em class="bot-chip">BOT</em>`:""}</b><span>${Number(r.total_score||0).toLocaleString()} pts${r.is_bot?"":` · +${Number(r.xp_awarded||0).toLocaleString()} XP`}</span></div>`).join("")}</div>
+      <div class="return-lobby-card"><div><small>SAME PARTY · SAME CODE ${esc(state.lobby?.code||"")}</small><b>Returning to lobby in <span id="lobby-return-countdown">8</span>s</b><p>Late spectators become active players. Matchmaking bots are recalculated when the host launches again.</p></div><button class="btn primary launch-btn" data-action="return-lobby"><span>RETURN NOW</span><b>→</b></button></div>
     </section>`);
 }
 
@@ -877,6 +889,8 @@ function bind() {
     if (a==="practice-restart") el.onclick = ()=>{ state.practice=null; navigate("practice-setup"); };
     if (a==="library-play") el.onclick = ()=> libraryPlay(el.dataset.libraryId);
     if (a==="quick-join") el.onclick = ()=> quickJoin($("#quick-code")?.value);
+    if (a==="matchmake") el.onclick = startMatchmaking;
+    if (a==="return-lobby") el.onclick = returnMatchToLobby;
     if (a==="start-game") el.onclick = hostStart;
     if (a==="reveal-round") el.onclick = hostReveal;
     if (a==="next-round") el.onclick = hostNext;
@@ -951,6 +965,7 @@ function postRender() {
   }
   if (state.view === "lobby" && state.lobby?.status === "question") startTimer();
   if (state.view === "lobby" && state.lobby?.status === "results") startResultsTimer();
+  if (state.view === "lobby" && state.lobby?.status === "finished") startFinishedTimer();
 }
 
 async function hydrateQuestionVoteWidgets() {
@@ -1216,7 +1231,7 @@ async function createSubmit(e) {
   if (!(await requireAuthOrDemo())) { endAction("create-lobby"); return; }
   const f=new FormData(e.currentTarget);
   const settings={title:f.get("title"),category:f.get("category"),difficulty:f.get("difficulty"),questionCount:+f.get("questionCount"),
-    maxPlayers:+f.get("maxPlayers"),gameMode:f.get("gameMode"),secondsPerQuestion:+f.get("secondsPerQuestion")};
+    maxPlayers:+f.get("maxPlayers"),gameMode:f.get("gameMode"),secondsPerQuestion:+f.get("secondsPerQuestion"),visibility:String(f.get("visibility")||"invite_only"),allowMatchmaking:f.get("allowMatchmaking")==="on"};
   if(settings.gameMode==="standard"&&settings.maxPlayers>250) toast("For rooms above 250, Event mode is strongly recommended.");
   try {
     if (!isConfigured()) {
@@ -1230,6 +1245,29 @@ async function createSubmit(e) {
     }
   } catch(err){reportError(err, "The lobby couldn't be created. Please try again.");}
   finally { endAction("create-lobby"); }
+}
+
+async function startMatchmaking(){
+  if(!beginAction("matchmaking")) return;
+  try{
+    if(!(await requireAuthOrDemo())) return;
+    if(!isConfigured()){ toast("Matchmaking requires the live Supabase backend.","bad"); return; }
+    toast("Searching for an open arena…");
+    const result=await matchmake();
+    if(!result?.code) throw new Error("Matchmaking did not return a lobby.");
+    await enterLobby(result.code);
+    if(result.join_mode==="spectator") toast("Match found — spectating this run. You are locked in for the next match.");
+    else if(result.created_new) toast("No open match found — launching with bot challengers.");
+    else toast("Match found!");
+  }catch(e){ reportError(e,"Matchmaking couldn't find a game. Try again."); }
+  finally{ endAction("matchmaking"); }
+}
+
+async function returnMatchToLobby(){
+  if(!state.lobby?.id||!beginAction("return-lobby")) return;
+  try{ await returnToLobby(state.lobby.id); await performLobbyRefresh(state.lobby.code); }
+  catch(e){ reportError(e,"Couldn't return to the lobby yet."); }
+  finally{ endAction("return-lobby"); }
 }
 
 async function quickJoin(code) {
@@ -1280,7 +1318,7 @@ async function performLobbyRefresh(code) {
     const g=await getLobby(code); if(!g)return;
     const players=await getLobbyPlayers(g.id);
     const nextRoster = players.map(p=>`${p.user_id}:${p.username || ""}:${p.avatar_url || ""}`).sort().join("|");
-    const phaseChanged = !previousGame || previousGame.status !== g.status || previousGame.current_question_index !== g.current_question_index || previousGame.question_count !== g.question_count || previousGame.question_started_at !== g.question_started_at;
+    const phaseChanged = !previousGame || previousGame.status !== g.status || previousGame.current_question_index !== g.current_question_index || previousGame.question_count !== g.question_count || previousGame.question_started_at !== g.question_started_at || previousGame.cycle_no !== g.cycle_no || previousGame.my_participation_status !== g.my_participation_status;
     const rosterChanged = previousRoster !== nextRoster;
     state.lobby=g; state.lobbyPlayers=players;
     if(g.status==="question"||g.status==="results"){state.currentQuestion=await getCurrentQuestion(g.id);}
@@ -1456,6 +1494,21 @@ function startResultsTimer() {
       }
       return;
     }
+    phaseRaf=requestAnimationFrame(tick);
+  };
+  phaseRaf=requestAnimationFrame(tick);
+}
+
+function startFinishedTimer(){
+  if(!state.lobby||state.lobby.status!=="finished") return;
+  stopPhaseTimers();
+  const ended=Date.parse(state.lobby.finished_at||"")||Date.now();
+  const end=ended+8000;
+  const tick=()=>{
+    if(state.view!=="lobby"||state.lobby?.status!=="finished") return;
+    const remaining=Math.max(0,end-Date.now());
+    const node=$("#lobby-return-countdown"); if(node) node.textContent=String(Math.ceil(remaining/1000));
+    if(remaining<=0){ returnMatchToLobby(); return; }
     phaseRaf=requestAnimationFrame(tick);
   };
   phaseRaf=requestAnimationFrame(tick);
