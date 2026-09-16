@@ -10,6 +10,7 @@ import {
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
 import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
 import { initTwitch, connectTwitch, disconnectTwitch, announceLobby, listenToTwitchChat } from "./twitch.js";
+import { getExperiencePrefs, setExperiencePrefs, applyExperiencePrefs, playSfx, bindGameFeel, enhanceV2, celebrate } from "./experience.js";
 
 const $ = (s, el=document) => el.querySelector(s);
 const $$ = (s, el=document) => [...el.querySelectorAll(s)];
@@ -61,6 +62,7 @@ function questionMedia(q, compact=false) {
 
 function questionTitleFrame(q,{tag="h1",className=""}={}) {
   const safeTag=tag==="h2"?"h2":"h1";
+  if(currentUiTheme()==="v2") return `<div class="question-title-frame nova-question-frame"><div class="question-title-copy"><span class="nova-question-label">QUESTION // LIVE DATA</span><${safeTag}${className?` class="${esc(className)}"`:""}>${esc(q?.prompt||"")}</${safeTag}></div>${questionMedia(q,true)}</div>`;
   return `<div class="question-title-frame"><div class="question-title-copy"><${safeTag}${className?` class="${esc(className)}"`:""}>${esc(q?.prompt||"")}</${safeTag}></div>${questionMedia(q,true)}</div>`;
 }
 function questionFeedback(q,{allowDelete=false}={}) {
@@ -134,7 +136,8 @@ async function chooseUiTheme(value) {
   try {
     if(isConfigured() && state.session) await updateUiTheme(theme);
     else if(demo?.profile) demo.profile.ui_theme=theme;
-    toast(theme === "v2" ? "Experimental V2 enabled" : "Classic V1 enabled");
+    playSfx("select");
+    toast(theme === "v2" ? "V2 Nova Arena enabled" : "V1 Classic enabled");
     await navigate("profile");
   } catch(error) {
     console.error(error);
@@ -167,6 +170,7 @@ function friendlyErrorMessage(error, fallback = "Something went wrong. Please tr
 }
 function reportError(error, fallback) {
   console.error(error);
+  playSfx("error");
   toast(friendlyErrorMessage(error, fallback), "bad");
 }
 
@@ -237,7 +241,78 @@ function toast(message, tone="") {
   setTimeout(() => node.remove(), 3600);
 }
 
+
+function v2NavIcon(view){
+  return ({home:"⌂",library:"▦",leaderboard:"♛",how:"?",profile:"◉"}[view]||"•");
+}
+function appShellV2(content){
+  const p=state.profile, xp=xpToNextLevel(p?.xp||0);
+  const avatar=p?.avatar_url||state.session?.user?.user_metadata?.avatar_url||state.session?.user?.user_metadata?.picture||"";
+  const name=p?.username||state.session?.user?.user_metadata?.full_name||state.session?.user?.user_metadata?.name||"Player";
+  const nav=[["home","PLAY"],["library","ARCHIVE"],["leaderboard","RANKS"],["how","CODEX"]];
+  return `
+  <div class="nova-space" aria-hidden="true"><div class="nova-nebula n1"></div><div class="nova-nebula n2"></div><div class="nova-stars"></div><div class="nova-scan"></div></div>
+  <div class="nova-shell">
+    <aside class="nova-rail">
+      <button class="nova-logo" data-nav="home" aria-label="Home"><span>?</span><i></i></button>
+      <nav class="nova-rail-nav">${nav.map(([v,label])=>`<button data-nav="${v}" class="${state.view===v?"active":""}" title="${label}"><span>${v2NavIcon(v)}</span><small>${label}</small></button>`).join("")}</nav>
+      <div class="nova-rail-bottom">
+        ${p?`<button class="nova-mini-profile ${state.view==="profile"?"active":""}" data-nav="profile">${avatar?`<img src="${esc(avatar)}" alt="">`:`<b>${esc(initials(name))}</b>`}<i>LV ${xp.level}</i></button>`:`<button class="nova-mini-profile" data-action="login"><b>G</b><i>SIGN IN</i></button>`}
+      </div>
+    </aside>
+    <section class="nova-command">
+      <header class="nova-topline">
+        <div class="nova-breadcrumb"><span>WHATMOD // TRIVIA</span><b>${String(state.view||"home").replace(/-/g," ").toUpperCase()}</b></div>
+        <div class="nova-statusbar">
+          <span class="nova-online"><i></i> ONLINE</span>
+          ${p?`<span><small>XP</small><b>${Number(p.xp||0).toLocaleString()}</b></span><span><small>STREAK</small><b>${Number(p.daily_streak||0)}</b></span>`:""}
+          <button class="nova-sound" data-exp-sound title="Sound effects">${getExperiencePrefs().sfx?"◖":"×"}</button>
+        </div>
+      </header>
+      <main class="page nova-page"><div class="nova-view-enter">${content}</div></main>
+    </section>
+  </div>
+  <nav class="nova-mobile-dock">${[["home","PLAY"],["library","LIBRARY"],["leaderboard","RANKS"],["profile","PLAYER"]].map(([v,l])=>`<button data-nav="${v}" class="${state.view===v?"active":""}"><span>${v2NavIcon(v)}</span><small>${l}</small></button>`).join("")}</nav>`;
+}
+
+function homeViewV2(){
+  const p=state.profile, lvl=xpToNextLevel(p?.xp||0);
+  const displayName=p?.username||state.session?.user?.user_metadata?.full_name||state.session?.user?.user_metadata?.name||"Player";
+  return appShellV2(`
+    <section class="nova-home">
+      <header class="nova-home-head">
+        <div><span class="nova-kicker"><i></i> ARENA NETWORK // SEASON 01</span><h1>WELCOME BACK,<br><em>${esc(firstName(displayName).toUpperCase())}</em></h1><p>Estimate the impossible. Read the room. Climb the global ladder.</p></div>
+        <div class="nova-player-core v2-tilt">
+          <div class="nova-core-ring" style="--progress:${Math.round(lvl.progress*100)}"><span>${lvl.level}</span><i></i><b></b></div>
+          <div><small>PLAYER LEVEL</small><strong>${Number(p?.xp||0).toLocaleString()} XP</strong><span>${lvl.needed.toLocaleString()} TO NEXT RANK</span></div>
+        </div>
+      </header>
+      ${guestBanner()}
+
+      <section class="nova-mission-grid">
+        <article class="nova-daily-mission v2-tilt">
+          <div class="nova-card-grid"></div><span class="nova-live-tag"><i></i> DAILY SIGNAL</span>
+          <div class="nova-reactor"><i></i><i></i><i></i><b>∞</b></div>
+          <div class="nova-mission-copy"><small>PRIMARY MISSION</small><h2>THE DAILY<br>ESTIMATE</h2><p>One shot. One global question. Precision turns into permanent XP.</p><div class="nova-rewards"><span>+ PRECISION XP</span><span>+ STREAK</span></div><button class="nova-launch primary" data-action="daily"><span>DEPLOY</span><b>→</b></button></div>
+        </article>
+        <aside class="nova-side-stack">
+          <article class="nova-mode-card v2-tilt practice" data-nav="practice-setup"><span class="nova-mode-icon">◎</span><div><small>TRAINING SIM</small><h3>Practice</h3><p>Custom categories · zero XP</p></div><b>→</b></article>
+          <article class="nova-mode-card v2-tilt party" data-nav="create"><span class="nova-mode-icon">♟</span><div><small>MULTIPLAYER</small><h3>Host Party</h3><p>2–20K players · live scoring</p></div><b>＋</b></article>
+          <article class="nova-join-card v2-tilt"><div><small>JOIN A LIVE ROOM</small><h3>Party code</h3></div><div class="nova-code-entry"><input id="quick-code" maxlength="6" autocomplete="off" placeholder="ABC123"><button data-action="quick-join">ENTER</button></div></article>
+        </aside>
+      </section>
+
+      <section class="nova-intel-row">
+        <article><small>WIN RATE</small><b>${p?.games_played?Math.round((Number(p.wins||0)/Math.max(1,Number(p.games_played||0)))*100):0}%</b><span>${Number(p?.wins||0)} victories</span></article>
+        <article><small>MATCHES</small><b>${Number(p?.games_played||0)}</b><span>Lifetime runs</span></article>
+        <article><small>DAILY CHAIN</small><b>${Number(p?.daily_streak||0)}</b><span>Current streak</span></article>
+        <article class="nova-archive-link" data-nav="library"><small>PUBLIC ARCHIVE</small><b>▦</b><span>Replay community sessions →</span></article>
+      </section>
+    </section>`);
+}
+
 function appShell(content) {
+  if(currentUiTheme()==="v2") return appShellV2(content);
   const p = state.profile;
   const xp = xpToNextLevel(p?.xp || 0);
   const avatar = p?.avatar_url || state.session?.user?.user_metadata?.avatar_url || state.session?.user?.user_metadata?.picture || "";
@@ -273,6 +348,7 @@ function guestBanner() {
 }
 
 function homeView() {
+  if(currentUiTheme()==="v2") return homeViewV2();
   const p = state.profile;
   const lvl = xpToNextLevel(p?.xp || 0);
   const displayName = p?.username || state.session?.user?.user_metadata?.full_name || state.session?.user?.user_metadata?.name || "Player";
@@ -697,6 +773,20 @@ async function leaderboardView() {
     </section>`);
 }
 
+
+function experienceSettingsMarkup(){
+  const e=getExperiencePrefs();
+  return `<section class="hud-panel player-settings-panel experience-settings">
+    <div class="settings-copy"><small>GAME FEEL</small><h2>Sound & motion</h2><p>V2 Nova Arena uses synthesized UI audio, haptics, particles and motion. Tune it without affecting gameplay.</p></div>
+    <div class="experience-controls">
+      <label class="experience-toggle"><input id="exp-sfx" type="checkbox" ${e.sfx?"checked":""}><span></span><b>Sound FX</b><small>UI, lock-in, reveal and victory cues</small></label>
+      <label class="experience-toggle"><input id="exp-motion" type="checkbox" ${e.motion?"checked":""}><span></span><b>Motion FX</b><small>Card depth, particles and transitions</small></label>
+      <label class="experience-toggle"><input id="exp-haptics" type="checkbox" ${e.haptics?"checked":""}><span></span><b>Haptics</b><small>Supported phones only</small></label>
+      <label class="experience-volume"><span>FX VOLUME</span><input id="exp-volume" type="range" min="0" max="100" value="${Math.round(e.volume*100)}"><b id="exp-volume-label">${Math.round(e.volume*100)}%</b></label>
+    </div>
+  </section>`;
+}
+
 function profileView() {
   if (!state.session && isConfigured()) return appShell(`<section class="auth-gate player-gate"><div class="victory-burst"><span>☺</span></div><div class="mode-badge">PLAYER PROFILE</div><h1>Keep your progress.</h1><p>Google sign-in creates your player card from your Google name and avatar. You can change the display name anytime.</p><button class="btn primary launch-btn" data-action="login"><span>SIGN IN WITH GOOGLE</span><b>G</b></button></section>`);
   const p = state.profile || demo?.profile || {username:"Demo Player",xp:0,wins:0,games_played:0,daily_streak:0};
@@ -711,12 +801,13 @@ function profileView() {
     </section>
     <form id="profile-form" class="hud-panel profile-form game-profile-form"><div><small>DISPLAY NAME</small><h3>How should the arena know you?</h3><p>We start with your Google name. Changing this only changes your trivia display name.</p></div><label><span>PLAYER NAME</span><input name="username" maxlength="24" value="${esc(p.username)}"></label><button class="btn primary" type="submit">Save name</button></form>
     <section class="hud-panel player-settings-panel">
-      <div class="settings-copy"><small>PLAYER SETTINGS</small><h2>Interface theme</h2><p>Switch anytime. V1 keeps the original launch look; V2 is the alternate experimental interface. V1 is the current release theme. Your gameplay and progress never change.</p></div>
+      <div class="settings-copy"><small>PLAYER SETTINGS</small><h2>Interface theme</h2><p>Switch anytime. V1 preserves the original card-based launch UI; V2 Nova Arena is a completely different full-screen game command experience. Gameplay and progress never change.</p></div>
       <div class="theme-choice-grid">
         <button type="button" class="theme-choice ${currentUiTheme()==="v1"?"selected":""}" data-theme-choice="v1"><span class="theme-preview preview-v1"><i></i><i></i><i></i></span><b>V1 Classic</b><small>Original dark game HUD</small><em>${currentUiTheme()==="v1"?"ACTIVE":"SELECT"}</em></button>
-        <button type="button" class="theme-choice ${currentUiTheme()==="v2"?"selected":""}" data-theme-choice="v2"><span class="theme-preview preview-v2"><i></i><i></i><i></i></span><b>V2 Experimental</b><small>Alternate UI concept</small><em>${currentUiTheme()==="v2"?"ACTIVE":"SELECT"}</em></button>
+        <button type="button" class="theme-choice ${currentUiTheme()==="v2"?"selected":""}" data-theme-choice="v2"><span class="theme-preview preview-v2"><i></i><i></i><i></i></span><b>V2 Nova Arena</b><small>Full-screen game command interface</small><em>${currentUiTheme()==="v2"?"ACTIVE":"SELECT"}</em></button>
       </div>
     </section>
+    ${experienceSettingsMarkup()}
     <div class="row-actions profile-actions">${p.is_admin?`<a class="btn" href="/triviaadmin/"><span>⚙</span> Admin dashboard</a>`:""}${state.session?`<button class="btn danger-soft" data-action="logout">Sign out</button>`:`<button class="btn primary" data-action="login">Connect Google to save this player</button>`}</div>
   `);
 }
@@ -803,6 +894,13 @@ function bind() {
   $("#answer-form")?.addEventListener("submit", gameSubmit);
   $("#profile-form")?.addEventListener("submit", profileSubmit);
   $$('[data-theme-choice]').forEach(b => b.onclick = () => chooseUiTheme(b.dataset.themeChoice));
+  const sfxToggle=$("#exp-sfx"),motionToggle=$("#exp-motion"),hapticToggle=$("#exp-haptics"),volume=$("#exp-volume");
+  if(sfxToggle) sfxToggle.onchange=()=>{setExperiencePrefs({sfx:sfxToggle.checked});if(sfxToggle.checked)playSfx("success")};
+  if(motionToggle) motionToggle.onchange=()=>{setExperiencePrefs({motion:motionToggle.checked});navigate("profile")};
+  if(hapticToggle) hapticToggle.onchange=()=>setExperiencePrefs({haptics:hapticToggle.checked});
+  if(volume) volume.oninput=()=>{const v=Number(volume.value)/100;setExperiencePrefs({volume:v});const l=$("#exp-volume-label");if(l)l.textContent=`${volume.value}%`};
+  $$('[data-exp-sound]').forEach(b=>b.onclick=()=>{const e=getExperiencePrefs();setExperiencePrefs({sfx:!e.sfx});toast(!e.sfx?"Sound FX enabled":"Sound FX muted");if(!e.sfx)playSfx("select")});
+  bindGameFeel();
   $$(".choice").forEach(b => b.onclick = () => {
     $$(".choice").forEach(x=>x.classList.remove("selected")); b.classList.add("selected");
     const form = b.closest("form"); form.dataset.choice = b.dataset.answer;
@@ -812,9 +910,23 @@ function bind() {
   $$('[data-question-vote]').forEach(b=>b.onclick=()=>castQuestionVote(b.dataset.questionId,Number(b.dataset.questionVote)));
 }
 
+
+let lastExperienceCue="";
+function runExperienceCue(){
+  let key="",sound="";
+  if(state.view==="daily"&&state.daily?.result){key=`daily:${state.daily.question?.id}:${state.daily.result.score}`;sound=Number(state.daily.result.score||0)>=800?"success":"reveal";if(Number(state.daily.result.score||0)>=900)celebrate(key,1.2)}
+  else if(state.view==="practice"&&state.practice?.result){key=`practice:${state.practice.session_id||"demo"}:${state.practice.current_index}:result`;sound="reveal"}
+  else if(state.view==="lobby"&&state.lobby?.status==="results"){key=`lobby:${state.lobby.id}:${state.lobby.current_question_index}:results`;sound="reveal"}
+  else if(state.view==="lobby"&&state.lobby?.status==="finished"){key=`lobby:${state.lobby.id}:finished`;sound="win";celebrate(key,1.8)}
+  if(key&&key!==lastExperienceCue){lastExperienceCue=key;setTimeout(()=>playSfx(sound),90)}
+}
+
 function postRender() {
   wireMediaFallbacks();
   hydrateQuestionVoteWidgets();
+  applyExperiencePrefs();
+  enhanceV2(document);
+  runExperienceCue();
   if (state.view === "daily" && state.daily?.result) {
     requestAnimationFrame(()=>{
       const answer=state.daily.result.answer_numeric ?? state.daily.question?.answer_numeric;
@@ -1365,6 +1477,8 @@ document.addEventListener("keydown", e=>{
 subscribe(()=>{});
 
 async function boot() {
+  applyExperiencePrefs();
+  bindGameFeel();
   if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
   demoInit();
   await initSupabase();
