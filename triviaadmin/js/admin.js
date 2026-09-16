@@ -84,6 +84,26 @@ async function importLocalMediaResults(file){
 }
 
 
+async function importMediaOnlyContentPackage(payload,fileInput=null){
+  const rows=(payload?.questions||[]).map(q=>q?.media||q).filter(q=>q&&q.id);
+  if(!rows.length){toast('The media-only package contains no resolved question records.','bad');return}
+  const status=$('#content-import-status')||$('#local-pipeline-status');
+  if(fileInput)fileInput.disabled=true;
+  let totals={imported_questions:0,imported_candidates:0,published_questions:0,skipped_locked:0,skipped_missing:0};
+  try{
+    for(let i=0;i<rows.length;i+=25){
+      const chunk=rows.slice(i,i+25);
+      if(status)status.textContent=`Importing media ${Math.min(i+chunk.length,rows.length).toLocaleString()} / ${rows.length.toLocaleString()}…`;
+      const out=await rpc('admin_import_media_results',{p_results:chunk,p_auto_publish:true,p_skip_locked:true});
+      for(const k of Object.keys(totals))totals[k]+=Number(out?.[k]||0);
+    }
+    if(status)status.textContent=`Media-only package complete · ${totals.imported_candidates.toLocaleString()} candidates · ${totals.published_questions.toLocaleString()} images published`;
+    toast(`Media-only package imported: ${totals.published_questions} images published.`,'good');
+    if(adminSection==='questions')await renderQuestionExplorer();else await renderDashboard();
+  }catch(e){console.error(e);if(status)status.textContent='Media-only import failed.';toast(e.message,'bad')}
+  finally{if(fileInput){fileInput.disabled=false;fileInput.value=''}}
+}
+
 async function importLocalContentPackage(file){
   if(!file)return;
   let payload;
@@ -93,6 +113,7 @@ async function importLocalContentPackage(file){
   }
   const questions=payload.questions,packageId=String(payload.package_id||'');
   if(!questions.length){toast('The content package contains no questions.');return}
+  if(payload.package_kind==='media_only'){return importMediaOnlyContentPackage(payload,$('#import-content-package'))}
   const status=$('#content-import-status'),input=$('#import-content-package');
   if(input)input.disabled=true;
   const totals={created:0,updated:0,unchanged:0,content_locked:0,retired:0,media_locked:0,imported_candidates:0,published_media:0,invalid:0};
