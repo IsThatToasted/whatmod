@@ -25,7 +25,7 @@ const BASE_CATEGORIES=["Brainrot","General Gaming Knowledge","Internet Culture",
 const categoryGlyph = value => ({Brainrot:"🌀","General Gaming Knowledge":"🎮","Internet Culture":"@","Pop Culture":"✹","Movies & TV":"▣",Music:"♫","Food & Brands":"◆","General Knowledge":"◇",Science:"⚗",Technology:"⌁",History:"⌛",Geography:"⌖",Animals:"◌",Space:"✦",Sports:"◆",Entertainment:"★",Business:"▰",Any:"✦"}[value] || "✦");
 function availableCategories(){const live=(state.categories||[]).map(x=>typeof x==="string"?x:x.category).filter(Boolean);return [...new Set([...BASE_CATEGORIES,...live])];}
 function categoryCount(name){const row=(state.categories||[]).find(x=>typeof x!=="string"&&x.category===name);return row?Number(row.question_count||0):null;}
-function categoryOption(name){const count=categoryCount(name),disabled=(state.categories||[]).length&&count===null;return `<option value="${esc(name)}" ${disabled?"disabled":""}>${categoryGlyph(name)} ${esc(name)}${count!==null?` · ${count.toLocaleString()}`:disabled?" · no active questions":""}</option>`;}
+function categoryOption(name){const count=categoryCount(name),known=(state.categories||[]).length>0,disabled=known&&(count===null||count<=0);return `<option value="${esc(name)}" ${disabled?"disabled":""}>${categoryGlyph(name)} ${esc(name)}${count!==null?` · ${count.toLocaleString()}${count<=0?" · unavailable":""}`:disabled?" · no active questions":""}</option>`;}
 const safeUrl = value => {
   try {
     const u = new URL(String(value || ""), location.origin);
@@ -617,7 +617,7 @@ function practiceSetupView() {
 
         <div class="setup-title practice-section-title"><span>⌁</span><div><small>CATEGORY LOADOUT</small><h3>Choose one or mix several</h3></div></div>
         <div class="practice-categories">
-          ${practiceCategories().map(c=>{const count=categoryCount(c),disabled=(state.categories||[]).length&&count===null;return `<label class="${disabled?"disabled":""}"><input type="checkbox" name="categories" value="${esc(c)}" ${disabled?"disabled":"checked"}><span><i>${categoryGlyph(c)}</i><b>${esc(c)}</b>${count!==null?`<small>${count.toLocaleString()} questions</small>`:""}</span></label>`}).join("")}
+          ${practiceCategories().map(c=>{const count=categoryCount(c),disabled=(state.categories||[]).length&&(count===null||count<=0);return `<label class="${disabled?"disabled":""}"><input type="checkbox" name="categories" value="${esc(c)}" ${disabled?"disabled":"checked"}><span><i>${categoryGlyph(c)}</i><b>${esc(c)}</b>${count!==null?`<small>${count.toLocaleString()} questions</small>`:""}</span></label>`}).join("")}
         </div>
 
         <div class="practice-options-row">

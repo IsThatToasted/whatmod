@@ -36,24 +36,39 @@ async function overview(){return await rpc('admin_media_overview')}
 async function listQuestions(){return await rpc('admin_list_media_questions',{p_search:filters.search||null,p_media_filter:filters.media_filter,p_provider:filters.provider||null,p_category:filters.category||null,p_limit:filters.limit,p_offset:filters.offset})}
 async function checkAdmin(){return await rpc('is_trivia_admin')}
 
+function zeroCategoryRow(category){return {category,total_count:0,active_count:0,easy_count:0,medium_count:0,hard_count:0,valid_photo_count:0,missing_photo_count:0,retired_count:0,upvotes:0,downvotes:0}}
+function normalizeCategoryPopulation(rows=[]){
+  const map=new Map(ADMIN_CATEGORIES.map(c=>[c,zeroCategoryRow(c)]));
+  for(const row of (rows||[])){const name=String(row?.category||'').trim();if(!name)continue;map.set(name,{...zeroCategoryRow(name),...(map.get(name)||{}),...row,category:name})}
+  return [...map.values()].sort((a,b)=>{const ai=ADMIN_CATEGORIES.indexOf(a.category),bi=ADMIN_CATEGORIES.indexOf(b.category);if(ai>=0||bi>=0){if(ai<0)return 1;if(bi<0)return-1;return ai-bi}return a.category.localeCompare(b.category)});
+}
 async function loadCategoryPopulation(){
-  try{categoryPopulation=await rpc('admin_category_population_v19');return categoryPopulation||[]}
-  catch(e){console.warn('Category population V19 unavailable',e);categoryPopulation=[];return []}
+  try{categoryPopulation=normalizeCategoryPopulation(await rpc('admin_category_population_v19'));return categoryPopulation}
+  catch(e){console.warn('Category population V19 unavailable',e);categoryPopulation=normalizeCategoryPopulation([]);return categoryPopulation}
 }
 function categoryTerms(name){
   const map={
-    'Brainrot':['Italian brainrot','brainrot meme','TikTok meme','viral meme','internet meme'],
-    'General Gaming Knowledge':['Minecraft','Fortnite','Roblox','Grand Theft Auto','Call of Duty','Pokémon','Mario','Nintendo','PlayStation','Xbox'],
-    'Internet Culture':['YouTube','TikTok','Twitch','Discord','Reddit','internet meme','viral video','social media'],
-    'Pop Culture':['Marvel','Star Wars','Disney','celebrity','superhero','streaming television'],
-    'Movies & TV':['blockbuster film','television series','animated film','sitcom','movie franchise'],
-    'Music':['pop music','hip hop','rock band','singer','album'],
-    'Food & Brands':["McDonald's",'Coca-Cola','Pepsi','Starbucks','Oreo','Doritos','restaurant chain','food brand'],
-    'General Knowledge':['famous landmark','major city','world record','famous person','popular animal','country']
+    'Brainrot':['Italian brainrot','Tralalero Tralala','Bombardiro Crocodilo','Ballerina Cappuccina','Tung Tung Tung Sahur','brainrot meme','TikTok meme','viral meme','internet meme'],
+    'General Gaming Knowledge':['Minecraft','Fortnite','Roblox','Grand Theft Auto','Call of Duty','Pokémon','Mario','The Legend of Zelda','Sonic the Hedgehog','Nintendo','PlayStation','Xbox'],
+    'Internet Culture':['YouTube','TikTok','Twitch','Discord','Reddit','internet meme','viral video','social media','online creator'],
+    'Pop Culture':['Marvel','Star Wars','Disney','celebrity','superhero','streaming television','award show','famous actor'],
+    'Movies & TV':['blockbuster film','television series','animated film','sitcom','movie franchise','streaming series'],
+    'Music':['pop music','hip hop','rock band','singer','album','Billboard chart','music artist'],
+    'Food & Brands':["McDonald's",'Coca-Cola','Pepsi','Starbucks','Oreo','Doritos','restaurant chain','food brand','consumer brand'],
+    'General Knowledge':['famous landmark','major city','world record','famous person','popular animal','country','museum','university'],
+    'Science':['chemistry','physics','biology','chemical element','scientist','scientific discovery'],
+    'Technology':['software','operating system','programming language','computer','smartphone','aircraft','technology company'],
+    'History':['historical event','battle','world leader','ancient civilization','historical figure','war'],
+    'Geography':['country','capital city','river','mountain','island','lake','skyscraper','bridge'],
+    'Animals':['mammal','bird','reptile','marine animal','wild animal','animal species'],
+    'Space':['planet','moon','space mission','astronaut','exoplanet','solar system'],
+    'Sports':['football club','basketball team','stadium','athlete','Olympics','sports league'],
+    'Entertainment':['book','author','comic','theme park','board game','entertainment franchise'],
+    'Business':['company','brand','founder','employee count','retail company','restaurant company']
   };
   return map[name]||[name];
 }
-function categoryHealth(row){const n=Number(row.active_count||0);if(n>=500)return['STRONG','good'];if(n>=200)return['HEALTHY','good'];if(n>=75)return['GROWING','warn'];return['LOW','bad']}
+function categoryHealth(row){const n=Number(row.active_count||0);if(n<=0)return['EMPTY','empty'];if(n>=500)return['STRONG','good'];if(n>=200)return['HEALTHY','good'];if(n>=75)return['GROWING','warn'];return['LOW','bad']}
 function categoryJobPayload(row,requested=100,audience='mainstream',difficulty='smart'){
   return {format:'whatmod-trivia-category-acquisition-job',version:1,generated_at:new Date().toISOString(),category:row.category,requested:Number(requested),audience,difficulty_focus:difficulty,auto_resolve:true,current:{total_count:Number(row.total_count||0),active_count:Number(row.active_count||0),easy_count:Number(row.easy_count||0),medium_count:Number(row.medium_count||0),hard_count:Number(row.hard_count||0),valid_photo_count:Number(row.valid_photo_count||0),missing_photo_count:Number(row.missing_photo_count||0),retired_count:Number(row.retired_count||0)},terms:categoryTerms(row.category),media:{concurrency:4,probe_count:4}};
 }
@@ -74,8 +89,9 @@ function openCategoryAddModal(name){
   node.querySelector('#category-download-job').onclick=()=>{const job=categoryJobPayload(row,node.querySelector('#category-add-count').value,node.querySelector('#category-add-audience').value,node.querySelector('#category-add-difficulty').value);downloadJson(`whatmod-trivia-add-${row.category.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${job.requested}.json`,job);toast(`${row.category} Studio job exported.`,'good');node.remove()};
 }
 function renderCategoryCommandCenter(rows){
-  const total=rows.reduce((s,r)=>s+Number(r.active_count||0),0),missing=rows.reduce((s,r)=>s+Number(r.missing_photo_count||0),0);
-  return `<section class="panel category-command-center"><div class="category-command-head"><div><span class="eyebrow">CATEGORY COMMAND CENTER</span><h2>Balance the question bank.</h2><p>See exactly where the bank is thin, then hand one category to the local Content Studio for acquisition + media resolution.</p></div><div class="category-command-actions"><span><b>${fmt(total)}</b> active questions</span><span><b>${fmt(missing)}</b> missing photos</span><button class="btn" id="export-category-dashboard">Export Studio Snapshot</button></div></div><div class="category-pop-grid">${rows.length?rows.map(r=>{const [health,cls]=categoryHealth(r),active=Number(r.active_count||0),photos=Number(r.valid_photo_count||0),pct=active?Math.round(photos/active*100):0;return `<article class="category-pop-card ${cls}" data-category-card="${esc(r.category)}"><div class="category-pop-title"><div><span class="category-health ${cls}">${health}</span><h3>${esc(r.category)}</h3></div><strong>${fmt(active)}</strong></div><div class="category-diff"><span><b>${fmt(r.easy_count)}</b>EASY</span><span><b>${fmt(r.medium_count)}</b>MED</span><span><b>${fmt(r.hard_count)}</b>HARD</span></div><div class="category-photo"><div><i style="width:${pct}%"></i></div><span>${pct}% photo coverage · ${fmt(r.missing_photo_count)} missing</span></div><button class="btn primary category-add-btn" data-add-category="${esc(r.category)}">＋ Add questions</button></article>`}).join(''):'<div class="empty">No category population data yet.</div>'}</div></section>`;
+  rows=normalizeCategoryPopulation(rows);
+  const total=rows.reduce((s,r)=>s+Number(r.active_count||0),0),missing=rows.reduce((s,r)=>s+Number(r.missing_photo_count||0),0),empty=rows.filter(r=>Number(r.active_count||0)===0).length;
+  return `<section class="panel category-command-center"><div class="category-command-head"><div><span class="eyebrow">CATEGORY COMMAND CENTER</span><h2>Every playable category, in one place.</h2><p>Built-in and custom categories stay listed even at zero questions. Empty categories are disabled for players until you hydrate them here.</p></div><div class="category-command-actions"><span><b>${fmt(total)}</b> active questions</span><span><b>${fmt(empty)}</b> empty categories</span><span><b>${fmt(missing)}</b> missing photos</span><button class="btn" id="export-category-dashboard">Export Studio Snapshot</button></div></div><div class="category-pop-grid">${rows.map(r=>{const [health,cls]=categoryHealth(r),active=Number(r.active_count||0),photos=Number(r.valid_photo_count||0),pct=active?Math.round(photos/active*100):0,targetPct=Math.min(100,Math.round(active/200*100));return `<article class="category-pop-card ${cls}" data-category-card="${esc(r.category)}"><div class="category-pop-title"><div><span class="category-health ${cls}">${health}</span><h3>${esc(r.category)}</h3></div><strong>${fmt(active)}</strong></div><div class="category-diff"><span><b>${fmt(r.easy_count)}</b>EASY</span><span><b>${fmt(r.medium_count)}</b>MED</span><span><b>${fmt(r.hard_count)}</b>HARD</span></div>${active?`<div class="category-photo"><div><i style="width:${pct}%"></i></div><span>${pct}% photo coverage · ${fmt(r.missing_photo_count)} missing</span></div>`:`<div class="category-empty-note"><b>No playable questions yet.</b><span>Hydrate this category before players can select it.</span></div>`}<div class="category-target"><span>Bank target</span><div><i style="width:${targetPct}%"></i></div><small>${fmt(active)} / 200 starter target</small></div><button class="btn primary category-add-btn ${active?'':'urgent'}" data-add-category="${esc(r.category)}">${active?'＋ Add questions':'⚡ Hydrate category'}</button></article>`}).join('')}</div></section>`;
 }
 
 function downloadJson(filename,data){
@@ -108,7 +124,7 @@ async function importLocalMediaResults(file){
   }
   const questions=payload.questions;
   if(!questions.length){toast('The results file contains no questions.');return}
-  const status=$('#local-pipeline-status');
+  const status=$('#universal-import-status')||$('#local-pipeline-status');
   const input=$('#import-local-results');
   if(input)input.disabled=true;
   let totals={imported_questions:0,imported_candidates:0,published_questions:0,skipped_locked:0,skipped_missing:0};
@@ -130,7 +146,7 @@ async function importLocalMediaResults(file){
 async function importMediaOnlyContentPackage(payload,fileInput=null){
   const rows=(payload?.questions||[]).map(q=>q?.media||q).filter(q=>q&&q.id);
   if(!rows.length){toast('The media-only package contains no resolved question records.','bad');return}
-  const status=$('#content-import-status')||$('#local-pipeline-status');
+  const status=$('#universal-import-status')||$('#content-import-status')||$('#local-pipeline-status');
   if(fileInput)fileInput.disabled=true;
   let totals={imported_questions:0,imported_candidates:0,published_questions:0,skipped_locked:0,skipped_missing:0};
   try{
@@ -157,7 +173,7 @@ async function importLocalContentPackage(file){
   const questions=payload.questions,packageId=String(payload.package_id||'');
   if(!questions.length){toast('The content package contains no questions.');return}
   if(payload.package_kind==='media_only'){return importMediaOnlyContentPackage(payload,$('#import-content-package'))}
-  const status=$('#content-import-status'),input=$('#import-content-package');
+  const status=$('#universal-import-status')||$('#content-import-status'),input=$('#import-content-package');
   if(input)input.disabled=true;
   const totals={created:0,updated:0,unchanged:0,content_locked:0,retired:0,media_locked:0,imported_candidates:0,published_media:0,invalid:0};
   try{
@@ -172,6 +188,27 @@ async function importLocalContentPackage(file){
     await renderQuestionExplorer();
   }catch(e){console.error(e);if(status)status.textContent='Import failed.';toast(e.message,'bad')}
   finally{if(input){input.disabled=false;input.value=''}}
+}
+
+function universalImportMarkup(){return `<section class="panel universal-import-panel" id="universal-import-zone" tabindex="0"><input id="universal-import-file" type="file" accept=".json,application/json" hidden><div class="universal-import-icon">⇧</div><div><span class="eyebrow">SMART JSON IMPORT</span><h3>Drop any Trivia Admin import here.</h3><p>Content Package · Media Results · Media-only Package · Question Edit Pack</p><small id="universal-import-status">Drop a JSON file anywhere on this box, or click to browse. The admin detects the file type automatically.</small></div><button class="btn good" type="button" id="universal-import-browse">Choose JSON</button></section>`}
+async function handleUniversalAdminFile(file){
+  if(!file)return;let payload;
+  const status=$('#universal-import-status');if(status)status.textContent=`Reading ${file.name}…`;
+  try{payload=JSON.parse(await file.text())}catch{if(status)status.textContent='Invalid JSON file.';return toast('That file is not valid JSON.','bad')}
+  const format=String(payload?.format||'');
+  if(status)status.textContent=`Detected ${format||'unknown file'}…`;
+  if(format==='whatmod-trivia-media-results')return importLocalMediaResults(file);
+  if(format==='whatmod-trivia-content-package')return importLocalContentPackage(file);
+  if(format==='whatmod-trivia-question-edit-pack')return importQuestionEditPack(file);
+  toast(`Unsupported Trivia JSON: ${format||'format not found'}.`,'bad');if(status)status.textContent='Unsupported file. Use a Content Package, Media Results, or Question Edit Pack.';
+}
+function bindUniversalImportZone(){
+  const zone=$('#universal-import-zone'),input=$('#universal-import-file'),browse=$('#universal-import-browse');if(!zone||!input)return;
+  const open=()=>input.click();browse?.addEventListener('click',e=>{e.stopPropagation();open()});zone.addEventListener('click',e=>{if(e.target!==browse)open()});
+  input.onchange=e=>{const f=e.target.files?.[0];if(f)handleUniversalAdminFile(f);input.value=''};
+  ['dragenter','dragover'].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();e.stopPropagation();zone.classList.add('over')}));
+  ['dragleave','drop'].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();e.stopPropagation();zone.classList.remove('over')}));
+  zone.addEventListener('drop',e=>{const f=e.dataTransfer?.files?.[0];if(f)handleUniversalAdminFile(f)});
 }
 
 async function renderDashboard(){
@@ -202,11 +239,11 @@ async function renderDashboard(){
             <label><span>Maximum questions</span><select id="local-export-limit"><option>100</option><option>250</option><option selected>1000</option><option>2500</option><option>5000</option></select></label>
             <a class="btn" href="./downloads/WhatMod-Trivia-Content-Studio-Windows.zip" download>Download Windows Content Studio</a>
             <button class="btn primary" id="export-local-job" type="button">Export media job</button>
-            <label class="btn good import-button">Import resolver results<input id="import-local-results" type="file" accept=".json,application/json" hidden></label>
           </div>
-          <div class="pipeline-flow"><b>1</b><span>Export JSON</span><i>→</i><b>2</b><span>Resolve locally</span><i>→</i><b>3</b><span>Import JSON</span></div>
+          <div class="pipeline-flow"><b>1</b><span>Export JSON</span><i>→</i><b>2</b><span>Resolve locally</span><i>→</i><b>3</b><span>Drop result below</span></div>
           <div id="local-pipeline-status" class="pipeline-status">Local imports publish the resolver's best reuse-safe image immediately. Existing locked/approved images are skipped.</div>
         </section>
+        ${universalImportMarkup()}
         <form class="toolbar" id="filters">
           <input class="search" name="search" placeholder="Search question or media subject" value="${esc(filters.search)}">
           <select name="media_filter"><option value="all">All media</option><option value="missing">Missing image</option><option value="auto">Auto live</option><option value="approved">Approved</option><option value="unreviewed">Needs review</option><option value="locked">Locked</option><option value="rejected">Rejected/no image</option></select>
@@ -224,7 +261,7 @@ async function renderDashboard(){
     $('#next').onclick=()=>{filters.offset+=filters.limit;renderDashboard()};
     bindAdminChrome(()=>renderDashboard());
     $('#export-local-job').onclick=exportLocalMediaJob;
-    $('#import-local-results').onchange=e=>importLocalMediaResults(e.target.files?.[0]);
+    bindUniversalImportZone();
   }catch(e){console.error(e);if(/admin only/i.test(e.message))renderAuth('This Google account is signed in, but it is not marked as a Trivia admin.');else toast(e.message,'bad')}
 }
 
@@ -253,7 +290,7 @@ async function importQuestionEditPack(file){
   if(payload?.format!=='whatmod-trivia-question-edit-pack'||Number(payload?.version)!==1||!Array.isArray(payload?.questions)){toast('This is not a WhatMod Trivia Question Edit Pack.','bad');return}
   const rows=payload.questions;if(!rows.length){toast('The edit pack contains no questions.');return}
   if(!confirm(`Import edits for ${rows.length.toLocaleString()} questions? Only changed records are updated and every change is audited.`))return;
-  const input=$('#import-question-edit-pack'),status=$('#question-edit-pack-status');if(input)input.disabled=true;
+  const input=$('#import-question-edit-pack'),status=$('#universal-import-status')||$('#question-edit-pack-status');if(input)input.disabled=true;
   const totals={updated:0,unchanged:0,missing:0,failed:0};const batchId=crypto.randomUUID();let firstErrors=[];
   try{
     for(let i=0;i<rows.length;i+=50){
@@ -282,12 +319,13 @@ async function renderQuestionExplorer(){
     const items=list?.items||[],total=Number(list?.total||0);
     const statusLabel=q=>q.photo_disabled?'PHOTO DISABLED':q.is_active?'ACTIVE':'RETIRED';
     $('#admin-app').innerHTML=`${adminHeader('questions')}<main class="shell">
-      <section class="hero"><div><small>QUESTION EXPLORER</small><h1>The question bank.</h1><p>Search every question, inspect community feedback, edit every field, bulk-export the bank for editorial rewrites, or retire bad content instantly.</p></div><div class="hero-actions"><button class="btn" id="export-question-edit-pack">⇩ Export for Edit</button><label class="btn good import-button">⇧ Import Edited Pack<input id="import-question-edit-pack" type="file" accept=".json,application/json" hidden></label><button class="btn primary" id="add-question">＋ Add question</button></div></section>
+      <section class="hero"><div><small>QUESTION EXPLORER</small><h1>The question bank.</h1><p>Search every question, inspect community feedback, edit every field, bulk-export the bank for editorial rewrites, or retire bad content instantly.</p></div><div class="hero-actions"><button class="btn" id="export-question-edit-pack">⇩ Export for Edit</button><button class="btn primary" id="add-question">＋ Add question</button></div></section>
       <div id="question-edit-pack-status" class="edit-pack-status">Export uses the current Question Explorer filters. Imported edits are content-locked and audited.</div><section class="local-pipeline content-pipeline panel">
         <div class="pipeline-copy"><span class="eyebrow">LOCAL CONTENT STUDIO</span><h2>Questions + media in one upload.</h2><p>Acquire new questions and resolve their media locally, then import one content package here. Canonical keys deduplicate reimports and admin edits remain protected.</p></div>
-        <div class="pipeline-controls"><a class="btn" href="./downloads/WhatMod-Trivia-Content-Studio-Windows.zip" download>Download Content Studio</a><label class="btn good import-button">Import Content Package<input id="import-content-package" type="file" accept=".json,application/json" hidden></label></div>
+        <div class="pipeline-controls"><a class="btn" href="./downloads/WhatMod-Trivia-Content-Studio-Windows.zip" download>Download Content Studio</a></div>
         <div id="content-import-status" class="pipeline-status">No package imported yet.</div>
       </section>
+      ${universalImportMarkup()}
       ${renderCategoryCommandCenter(categories)}
       <section class="stats question-stats">
         <div class="stat"><span>ACTIVE</span><b>${fmt(stats.active)}</b></div>
@@ -302,7 +340,7 @@ async function renderQuestionExplorer(){
         <div class="photo-health-stats"><span><b>${fmt(photo.active_with_valid_photo)}</b> active with valid photo</span><span class="bad"><b>${fmt(photo.active_without_valid_photo)}</b> active without valid photo</span><span><b>${fmt(photo.photo_disabled)}</b> photo-disabled</span></div>
         <div class="photo-health-actions"><button class="btn danger" id="disable-invalid-photo" ${Number(photo.active_without_valid_photo||0)<=0?'disabled':''}>Disable ${fmt(photo.active_without_valid_photo)} without valid photos</button><button class="btn good" id="restore-photo-disabled" ${Number(photo.photo_disabled||0)<=0?'disabled':''}>Undo · restore ${fmt(photo.photo_disabled)}</button></div>
       </section>
-      <form class="toolbar question-toolbar" id="question-filters"><input class="search" name="search" placeholder="Search prompt, canonical key or media subject" value="${esc(questionFilters.search)}"><select name="status"><option value="active">Active</option><option value="missing_photo">Active · invalid/missing photo</option><option value="photo_disabled">Photo-disabled</option><option value="retired">Deleted / retired</option><option value="all">All</option></select><select name="difficulty"><option value="any">Any difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select name="category"><option value="">All categories</option>${ADMIN_CATEGORIES.map(x=>`<option>${x}</option>`).join('')}</select><button class="btn primary">Apply</button></form>
+      <form class="toolbar question-toolbar" id="question-filters"><input class="search" name="search" placeholder="Search prompt, canonical key or media subject" value="${esc(questionFilters.search)}"><select name="status"><option value="active">Active</option><option value="missing_photo">Active · invalid/missing photo</option><option value="photo_disabled">Photo-disabled</option><option value="retired">Deleted / retired</option><option value="all">All</option></select><select name="difficulty"><option value="any">Any difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select name="category"><option value="">All categories</option>${normalizeCategoryPopulation(categories).map(x=>`<option>${esc(x.category)}</option>`).join('')}</select><button class="btn primary">Apply</button></form>
       <section class="question-explorer-list">${items.length?items.map(q=>`<article class="explorer-row ${q.is_active?'':'retired'} ${q.photo_disabled?'photo-disabled':''}" data-edit-qid="${esc(q.id)}"><div class="explorer-status"><span class="status-dot ${q.is_active?'live':q.photo_disabled?'photo-off':'off'}"></span><small>${statusLabel(q)}</small></div><div class="explorer-main"><h3>${esc(q.prompt)}</h3><div class="tags"><span class="tag">${esc(q.category)}</span><span class="tag">${esc(q.difficulty)}</span><span class="tag">${esc(q.question_type)}</span><span class="tag">${esc(q.source_type||'manual')}</span><span class="tag ${q.has_valid_photo?'approved':'missing'}">${q.has_valid_photo?'PHOTO OK':'PHOTO INVALID'}</span></div></div><div class="community-score"><span class="vote-up">👍 ${fmt(q.upvotes)}</span><span class="vote-down">👎 ${fmt(q.downvotes)}</span><b>${Number(q.upvotes||0)-Number(q.downvotes||0)>=0?'+':''}${fmt(Number(q.upvotes||0)-Number(q.downvotes||0))}</b></div><div class="explorer-date"><small>UPDATED</small><span>${esc(formatWhen(q.updated_at||q.created_at))}</span></div></article>`).join(''):`<div class="empty">No questions match these filters.</div>`}</section>
       <div class="pager"><button class="btn" id="q-prev" ${questionFilters.offset<=0?'disabled':''}>← Previous</button><span class="btn">${fmt(Math.min(questionFilters.offset+1,total))}–${fmt(Math.min(questionFilters.offset+questionFilters.limit,total))} of ${fmt(total)}</span><button class="btn" id="q-next" ${questionFilters.offset+questionFilters.limit>=total?'disabled':''}>Next →</button></div>
     </main>`;
@@ -312,8 +350,7 @@ async function renderQuestionExplorer(){
     $$('[data-vote-review]').forEach(b=>b.onclick=()=>{voteFilters.direction=Number(b.dataset.voteReview);voteFilters.offset=0;adminSection='votes';renderVoteReview()});
     $('#add-question').onclick=()=>openQuestionEditor(null);
     $('#export-question-edit-pack').onclick=exportQuestionEditPack;
-    const editPackInput=$('#import-question-edit-pack');if(editPackInput)editPackInput.onchange=e=>importQuestionEditPack(e.target.files?.[0]);
-    const contentInput=$('#import-content-package');if(contentInput)contentInput.onchange=e=>importLocalContentPackage(e.target.files?.[0]);
+    bindUniversalImportZone();
     const catExport=$('#export-category-dashboard');if(catExport)catExport.onclick=exportCategoryDashboard;
     $$('[data-add-category]').forEach(b=>b.onclick=e=>{e.stopPropagation();openCategoryAddModal(b.dataset.addCategory)});
     $('#disable-invalid-photo').onclick=disableInvalidPhotoQuestions;
