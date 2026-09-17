@@ -418,3 +418,92 @@ html[data-ui-theme="v2"] .library-card .library-play b{color:#001915!important}
 .matchmaking-setup-shell{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr);gap:18px;align-items:start}.matchmaking-builder,.matchmaking-sidecard{padding:24px}.matchmaking-difficulty{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}.matchmaking-difficulty input{display:none}.matchmaking-difficulty span{display:grid;gap:4px;min-height:92px;padding:16px;border:1px solid var(--line);border-radius:15px;background:#0c1221;cursor:pointer;transition:.18s transform,.18s border-color,.18s background}.matchmaking-difficulty b{font-size:18px}.matchmaking-difficulty small{color:var(--muted);line-height:1.35}.matchmaking-difficulty input:checked+span{border-color:var(--primary);background:rgba(124,92,255,.13);box-shadow:inset 0 0 0 1px var(--primary),0 10px 30px rgba(124,92,255,.12);transform:translateY(-2px)}.matchmaking-rule-note{display:flex;align-items:flex-start;gap:12px;padding:15px;border:1px solid rgba(61,217,197,.22);border-radius:14px;background:rgba(61,217,197,.06)}.matchmaking-rule-note>span{font-size:24px;color:var(--accent)}.matchmaking-rule-note b{display:block}.matchmaking-rule-note small{display:block;margin-top:3px;color:var(--muted);line-height:1.45}.matchmaking-sidecard{text-align:left;position:sticky;top:95px}.matchmaking-crosshair{width:68px;height:68px;border-radius:20px;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,rgba(124,92,255,.22),rgba(61,217,197,.14));border:1px solid rgba(124,92,255,.35);margin-bottom:18px}.matchmaking-sidecard>small{color:var(--accent);font-weight:900;letter-spacing:.14em}.matchmaking-sidecard h2{font-size:30px;line-height:1.04;margin:8px 0 12px}.matchmaking-sidecard ul{list-style:none;padding:0;margin:18px 0 24px;display:grid;gap:10px;color:var(--muted)}.matchmaking-sidecard li::first-letter{color:var(--accent)}
 @media(max-width:820px){.matchmaking-setup-shell{grid-template-columns:1fr}.matchmaking-sidecard{position:static}.matchmaking-difficulty{grid-template-columns:1fr}.matchmaking-difficulty span{min-height:0}.matchmaking-builder,.matchmaking-sidecard{padding:18px}}
 .matchmaking-count-hint{margin:8px 0 14px;color:var(--muted);font-size:12px}.matchmaking-difficulty label.disabled{opacity:.38;filter:grayscale(.35)}.matchmaking-difficulty label.disabled span{cursor:not-allowed}.matchmaking-difficulty small em{display:inline;font-style:normal;color:var(--accent)}
+
+/* V22.2 — iOS/mobile dock polish
+   Keep the Nova dock visually attached to the viewport bottom, reserve space in
+   the page instead of the body, and remove Safari's sticky tap-highlight look. */
+@media (max-width:700px){
+  html[data-ui-theme="v2"] body{
+    padding-bottom:0!important;
+    min-height:100dvh;
+  }
+  html[data-ui-theme="v2"] .nova-shell,
+  html[data-ui-theme="v2"] .nova-command{
+    min-height:100dvh;
+  }
+  html[data-ui-theme="v2"] .nova-page{
+    padding-bottom:calc(74px + env(safe-area-inset-bottom))!important;
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock{
+    left:10px;
+    right:10px;
+    bottom:0!important;
+    min-height:60px;
+    padding:5px 7px max(5px, env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,rgba(3,9,16,.94),rgba(2,7,13,.985));
+    border:1px solid rgba(88,180,218,.16);
+    border-bottom-color:rgba(88,180,218,.08);
+    border-radius:17px 17px 0 0;
+    clip-path:none;
+    box-shadow:0 -12px 36px rgba(0,0,0,.34),0 0 0 1px rgba(255,255,255,.012) inset;
+    -webkit-backdrop-filter:blur(24px) saturate(1.15);
+    backdrop-filter:blur(24px) saturate(1.15);
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button{
+    position:relative;
+    height:46px;
+    min-width:0;
+    padding:3px 2px 5px;
+    border-radius:12px;
+    background:transparent!important;
+    color:#62778a;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none;
+    user-select:none;
+    outline:none;
+    transition:color .16s ease,transform .12s ease;
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button span{
+    line-height:1;
+    transition:transform .16s ease,filter .16s ease;
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button small{
+    line-height:1.15;
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button.active{
+    color:var(--nova-cyan)!important;
+    background:transparent!important;
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button.active::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    bottom:1px;
+    width:18px;
+    height:2px;
+    border-radius:999px;
+    background:var(--nova-cyan);
+    box-shadow:0 0 10px rgba(57,243,220,.42);
+    transform:translateX(-50%);
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button.active span{
+    filter:drop-shadow(0 0 5px rgba(45,226,197,.28));
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button:active{
+    transform:scale(.96);
+    background:transparent!important;
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button:focus{
+    background:transparent!important;
+  }
+  html[data-ui-theme="v2"] .nova-mobile-dock button:focus-visible{
+    box-shadow:inset 0 0 0 1px rgba(57,243,220,.32);
+  }
+
+  /* Classic mobile nav gets the same Safari tap treatment. */
+  .mobile-nav button{
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+}
