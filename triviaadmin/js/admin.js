@@ -177,7 +177,7 @@ async function importLocalContentPackage(file){
 async function renderDashboard(){
   clearTimeout(liveOpsTimer);adminSection='media';
   try{
-    const [stats,list]=await Promise.all([overview(),listQuestions()]);
+    const [stats,list,categories]=await Promise.all([overview(),listQuestions(),loadCategoryPopulation()]);
     const items=list?.items||[],total=Number(list?.total||0);
     $('#admin-app').innerHTML=`
       ${adminHeader("media")}
