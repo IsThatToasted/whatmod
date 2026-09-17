@@ -5,7 +5,7 @@ import {
   submitGameAnswer, revealRound, nextRound, getRoundResults, syncGameClock, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
   getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme,
-  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby, touchTriviaPresence, getAvailableCategories
+  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby, touchTriviaPresence, getAvailableCategories, getMatchmakingOptions
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
 import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
@@ -304,7 +304,7 @@ function homeViewV2(){
         </article>
         <aside class="nova-side-stack">
           <article class="nova-mode-card v2-tilt practice compact-mode" data-nav="practice-setup"><span class="nova-mode-icon">◎</span><div><small>TRAINING SIM</small><h3>Practice</h3><p>Custom categories · zero XP</p></div><b>→</b></article>
-          <article class="nova-mode-card v2-tilt matchmaking" data-action="matchmake"><span class="nova-mode-icon">⚔</span><div><small>QUICK PLAY</small><h3>Matchmaking</h3><p>Instant 10-player match · bots fill empty seats</p></div><b>▶</b></article>
+          <article class="nova-mode-card v2-tilt matchmaking" data-nav="matchmaking-setup"><span class="nova-mode-icon">⚔</span><div><small>QUICK PLAY</small><h3>Matchmaking</h3><p>Pick a category + difficulty, then queue</p></div><b>▶</b></article>
           <article class="nova-mode-card v2-tilt party compact-mode" data-nav="create"><span class="nova-mode-icon">♟</span><div><small>MULTIPLAYER</small><h3>Host Party</h3><p>Public or invite-only custom room</p></div><b>＋</b></article>
           <article class="nova-join-card v2-tilt"><div><small>JOIN A LIVE ROOM</small><h3>Party code</h3></div><div class="nova-code-entry"><input id="quick-code" maxlength="6" autocomplete="off" placeholder="ABC123"><button data-action="quick-join">ENTER</button></div></article>
         </aside>
@@ -634,6 +634,42 @@ function practiceSetupView() {
   `);
 }
 
+function matchmakingSetupView() {
+  const options=state.matchmakingOptions||[];
+  const rowFor=c=>options.find(x=>x.category===c)||null;
+  const cats=availableCategories().filter(c=>c!=="Any");
+  const playable=cats.filter(c=>{const r=rowFor(c);return !options.length||r&&Math.max(Number(r.easy_count||0),Number(r.medium_count||0),Number(r.hard_count||0))>=10});
+  const optionMarkup=playable.map(c=>{const r=rowFor(c);const suffix=r?` · E ${Number(r.easy_count||0)} / M ${Number(r.medium_count||0)} / H ${Number(r.hard_count||0)}`:"";return `<option value="${esc(c)}">${categoryGlyph(c)} ${esc(c)}${suffix}</option>`}).join("");
+  return appShell(`
+    <section class="game-screen-head"><button class="back game-back" data-nav="home">←</button><div><div class="mode-badge hot">MATCHMAKING</div><h1>Choose your arena.</h1><p>Your category and difficulty define the entire match. We only place you into rooms with the exact same loadout; otherwise a fresh 10-player room launches with bot challengers.</p></div><div class="screen-number">⚔</div></section>
+    <form id="matchmaking-setup-form" class="matchmaking-setup-shell">
+      <section class="hud-panel matchmaking-builder">
+        <div class="setup-title"><span>⌁</span><div><small>CATEGORY</small><h3>What do you want to play?</h3></div></div>
+        <label class="game-field big-field"><span>MATCH CATEGORY</span><select name="category" required>${optionMarkup}</select></label>
+        <div class="matchmaking-count-hint" id="matchmaking-count-hint">At least 10 active questions are required at the selected difficulty.</div>
+        <div class="setup-title practice-section-title"><span>⚡</span><div><small>DIFFICULTY</small><h3>Pick your challenge level</h3></div></div>
+        <div class="matchmaking-difficulty">
+          ${[["easy","Easy","Relaxed knowledge + wider clues"],["medium","Medium","Balanced competitive play"],["hard","Hard","Deep cuts + tougher facts"]].map(([v,t,d],i)=>`<label data-mm-difficulty="${v}"><input type="radio" name="difficulty" value="${v}" ${i===1?"checked":""}><span><b>${t}</b><small>${d}<em data-mm-count="${v}"></em></small></span></label>`).join("")}
+        </div>
+        <div class="matchmaking-rule-note"><span>◎</span><div><b>Exact-match queue</b><small>Only rooms using this category and difficulty are considered. Mid-match joins spectate until the next run. Empty seats are filled by bots.</small></div></div>
+      </section>
+      <aside class="hud-panel matchmaking-sidecard">
+        <div class="matchmaking-crosshair">⚔</div><small>QUICK PLAY</small><h2>Find a room or create one instantly.</h2><ul><li>✓ 10 total competitors</li><li>✓ Human-first matchmaking</li><li>✓ Bots fill empty slots</li><li>✓ Same category all match</li><li>✓ Same lobby persists after the match</li></ul>
+        <button class="btn primary launch-btn" id="matchmaking-play" type="submit" ${playable.length?"":"disabled"}><span>${playable.length?"PLAY":"NO ELIGIBLE CATEGORIES"}</span><b>▶</b></button>
+      </aside>
+    </form>
+  `);
+}
+
+function updateMatchmakingDifficultyAvailability(){
+  const form=$("#matchmaking-setup-form");if(!form)return;const category=form.category?.value;const row=(state.matchmakingOptions||[]).find(x=>x.category===category);
+  let firstEligible=null;
+  ["easy","medium","hard"].forEach(d=>{const label=form.querySelector(`[data-mm-difficulty="${d}"]`),input=label?.querySelector('input'),count=row?Number(row[`${d}_count`]||0):99;const ok=count>=10;label?.classList.toggle('disabled',!ok);if(input)input.disabled=!ok;const c=label?.querySelector(`[data-mm-count="${d}"]`);if(c)c.textContent=row?` · ${count.toLocaleString()} available`:'';if(ok&&!firstEligible)firstEligible=input;});
+  const checked=form.querySelector('input[name="difficulty"]:checked');if((!checked||checked.disabled)&&firstEligible)firstEligible.checked=true;
+  const play=$("#matchmaking-play");if(play)play.disabled=!form.querySelector('input[name="difficulty"]:checked:not(:disabled)');
+}
+
+
 function practiceView() {
   const pr = state.practice;
   if (!pr) return practiceSetupView();
@@ -888,6 +924,7 @@ async function navigate(view, opts={}) {
   else if (view === "lobby") $("#app").innerHTML = lobbyView();
   else if (view === "daily") $("#app").innerHTML = dailyView();
   else if (view === "practice-setup") $("#app").innerHTML = practiceSetupView();
+  else if (view === "matchmaking-setup") $("#app").innerHTML = matchmakingSetupView();
   else if (view === "practice") $("#app").innerHTML = practiceView();
   else if (view === "library") $("#app").innerHTML = await libraryView();
   else if (view === "leaderboard") $("#app").innerHTML = await leaderboardView();
@@ -910,7 +947,7 @@ function bind() {
     if (a==="practice-restart") el.onclick = ()=>{ state.practice=null; navigate("practice-setup"); };
     if (a==="library-play") el.onclick = ()=> libraryPlay(el.dataset.libraryId);
     if (a==="quick-join") el.onclick = ()=> quickJoin($("#quick-code")?.value);
-    if (a==="matchmake") el.onclick = startMatchmaking;
+    if (a==="matchmake") el.onclick = ()=>navigate("matchmaking-setup");
     if (a==="return-lobby") el.onclick = returnMatchToLobby;
     if (a==="start-game") el.onclick = hostStart;
     if (a==="reveal-round") el.onclick = hostReveal;
@@ -924,6 +961,8 @@ function bind() {
   $("#create-form")?.addEventListener("submit", createSubmit);
   $("#daily-form")?.addEventListener("submit", dailySubmit);
   $("#practice-setup-form")?.addEventListener("submit", practiceStart);
+  $("#matchmaking-setup-form")?.addEventListener("submit", startMatchmaking);
+  if($("#matchmaking-setup-form")){ $("#matchmaking-setup-form").category?.addEventListener("change",updateMatchmakingDifficultyAvailability); updateMatchmakingDifficultyAvailability(); }
   $("#practice-answer-form")?.addEventListener("submit", practiceSubmit);
   $("#library-filter-form")?.addEventListener("submit", librarySearch);
   $("#answer-form")?.addEventListener("submit", gameSubmit);
@@ -1268,19 +1307,25 @@ async function createSubmit(e) {
   finally { endAction("create-lobby"); }
 }
 
-async function startMatchmaking(){
+async function startMatchmaking(e){
+  e?.preventDefault?.();
   if(!beginAction("matchmaking")) return;
   try{
     if(!(await requireAuthOrDemo())) return;
     if(!isConfigured()){ toast("Matchmaking requires the live Supabase backend.","bad"); return; }
-    toast("Searching for an open arena…");
-    const result=await matchmake();
+    const form=e?.currentTarget||$("#matchmaking-setup-form");
+    const fd=form?new FormData(form):new FormData();
+    const category=String(fd.get("category")||"").trim();
+    const difficulty=String(fd.get("difficulty")||"medium").trim().toLowerCase();
+    if(!category){toast("Choose a matchmaking category.","bad");return;}
+    toast(`Searching ${category} · ${difficulty}…`);
+    const result=await matchmake({category,difficulty});
     if(!result?.code) throw new Error("Matchmaking did not return a lobby.");
     await enterLobby(result.code);
     if(result.join_mode==="spectator") toast("Match found — spectating this run. You are locked in for the next match.");
-    else if(result.created_new) toast("No open match found — launching with bot challengers.");
+    else if(result.created_new) toast("No matching room found — launching with bot challengers.");
     else toast("Match found!");
-  }catch(e){ reportError(e,"Matchmaking couldn't find a game. Try again."); }
+  }catch(e){ reportError(e,"Matchmaking couldn't find a game with that loadout. Try another category or difficulty."); }
   finally{ endAction("matchmaking"); }
 }
 
@@ -1560,7 +1605,7 @@ async function boot() {
     try{await loadProfile();applyUiTheme(state.profile?.ui_theme || storedUiTheme());}catch(e){console.warn(e)}
     startPresenceHeartbeat();
   } else { applyUiTheme(storedUiTheme(), false); }
-  if(isConfigured()){ try{setState({categories:await getAvailableCategories()});}catch(e){console.warn(e)} }
+  if(isConfigured()){ try{const [categories,matchmakingOptions]=await Promise.all([getAvailableCategories(),getMatchmakingOptions()]);setState({categories,matchmakingOptions});}catch(e){console.warn(e)} }
   await initTwitch();
 
   const params=new URLSearchParams(location.search);

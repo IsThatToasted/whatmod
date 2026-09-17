@@ -13,6 +13,7 @@ let questionFilters={search:'',category:'',difficulty:'any',status:'active',sour
 let auditFilters={search:'',action:'all',offset:0,limit:100};
 let voteFilters={direction:-1,search:'',status:'all',offset:0,limit:75};
 let liveOpsTimer=null;
+let categoryPopulation=[];
 
 function toast(msg,tone=''){const n=document.createElement('div');n.className=`toast ${tone}`;n.textContent=msg;$('#toast-root').appendChild(n);setTimeout(()=>n.remove(),3200)}
 async function loadClient(){const {createClient}=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');supabase=createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data}=await supabase.auth.getSession();session=data.session;supabase.auth.onAuthStateChange((_e,s)=>{session=s;if(!s)renderAuth()});}
@@ -34,6 +35,48 @@ function formatWhen(v){try{return new Intl.DateTimeFormat(undefined,{dateStyle:'
 async function overview(){return await rpc('admin_media_overview')}
 async function listQuestions(){return await rpc('admin_list_media_questions',{p_search:filters.search||null,p_media_filter:filters.media_filter,p_provider:filters.provider||null,p_category:filters.category||null,p_limit:filters.limit,p_offset:filters.offset})}
 async function checkAdmin(){return await rpc('is_trivia_admin')}
+
+async function loadCategoryPopulation(){
+  try{categoryPopulation=await rpc('admin_category_population_v19');return categoryPopulation||[]}
+  catch(e){console.warn('Category population V19 unavailable',e);categoryPopulation=[];return []}
+}
+function categoryTerms(name){
+  const map={
+    'Brainrot':['Italian brainrot','brainrot meme','TikTok meme','viral meme','internet meme'],
+    'General Gaming Knowledge':['Minecraft','Fortnite','Roblox','Grand Theft Auto','Call of Duty','Pokémon','Mario','Nintendo','PlayStation','Xbox'],
+    'Internet Culture':['YouTube','TikTok','Twitch','Discord','Reddit','internet meme','viral video','social media'],
+    'Pop Culture':['Marvel','Star Wars','Disney','celebrity','superhero','streaming television'],
+    'Movies & TV':['blockbuster film','television series','animated film','sitcom','movie franchise'],
+    'Music':['pop music','hip hop','rock band','singer','album'],
+    'Food & Brands':["McDonald's",'Coca-Cola','Pepsi','Starbucks','Oreo','Doritos','restaurant chain','food brand'],
+    'General Knowledge':['famous landmark','major city','world record','famous person','popular animal','country']
+  };
+  return map[name]||[name];
+}
+function categoryHealth(row){const n=Number(row.active_count||0);if(n>=500)return['STRONG','good'];if(n>=200)return['HEALTHY','good'];if(n>=75)return['GROWING','warn'];return['LOW','bad']}
+function categoryJobPayload(row,requested=100,audience='mainstream',difficulty='smart'){
+  return {format:'whatmod-trivia-category-acquisition-job',version:1,generated_at:new Date().toISOString(),category:row.category,requested:Number(requested),audience,difficulty_focus:difficulty,auto_resolve:true,current:{total_count:Number(row.total_count||0),active_count:Number(row.active_count||0),easy_count:Number(row.easy_count||0),medium_count:Number(row.medium_count||0),hard_count:Number(row.hard_count||0),valid_photo_count:Number(row.valid_photo_count||0),missing_photo_count:Number(row.missing_photo_count||0),retired_count:Number(row.retired_count||0)},terms:categoryTerms(row.category),media:{concurrency:4,probe_count:4}};
+}
+function exportCategoryDashboard(){
+  if(!categoryPopulation.length)return toast('Category population is not available yet.','bad');
+  downloadJson(`whatmod-trivia-category-dashboard-${new Date().toISOString().slice(0,10)}.json`,{format:'whatmod-trivia-category-dashboard',version:1,generated_at:new Date().toISOString(),categories:categoryPopulation.map(r=>({...r,terms:categoryTerms(r.category)}))});
+  toast('Category dashboard exported for Content Studio.','good');
+}
+function openCategoryAddModal(name){
+  const row=categoryPopulation.find(x=>x.category===name);if(!row)return;
+  document.querySelector('#category-add-modal')?.remove();
+  const [health]=categoryHealth(row);
+  const node=document.createElement('div');node.id='category-add-modal';node.className='category-modal-shell';
+  node.innerHTML=`<div class="category-modal-backdrop" data-close-category></div><section class="category-add-modal panel"><header><div><span class="eyebrow">CATEGORY REFILL</span><h2>${esc(row.category)}</h2><p>${fmt(row.active_count)} active · ${fmt(row.easy_count)} easy · ${fmt(row.medium_count)} medium · ${fmt(row.hard_count)} hard · ${health}</p></div><button class="modal-x" data-close-category>×</button></header><div class="category-modal-grid"><label><span>QUESTIONS TO ADD</span><select id="category-add-count"><option>25</option><option>50</option><option selected>100</option><option>250</option><option>500</option></select></label><label><span>AUDIENCE</span><select id="category-add-audience"><option value="mainstream" selected>Mainstream</option><option value="balanced">Balanced</option><option value="deep">Deep cuts</option></select></label><label class="wide"><span>DIFFICULTY PRIORITY</span><select id="category-add-difficulty"><option value="smart" selected>Smart · refill the thinnest difficulty</option><option value="balanced">Balanced mix</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label></div><div class="category-job-note">This creates a tiny Studio job. Open it in the Windows Content Studio, press <b>Acquire + Resolve</b>, then import the resulting Content Package here.</div><div class="category-modal-actions"><button class="btn" id="category-open-studio">Open Content Studio</button><button class="btn primary" id="category-download-job">Download Studio Job</button></div></section>`;
+  document.body.appendChild(node);
+  node.querySelectorAll('[data-close-category]').forEach(x=>x.onclick=()=>node.remove());
+  node.querySelector('#category-open-studio').onclick=()=>window.open('http://127.0.0.1:8767/','_blank','noopener');
+  node.querySelector('#category-download-job').onclick=()=>{const job=categoryJobPayload(row,node.querySelector('#category-add-count').value,node.querySelector('#category-add-audience').value,node.querySelector('#category-add-difficulty').value);downloadJson(`whatmod-trivia-add-${row.category.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${job.requested}.json`,job);toast(`${row.category} Studio job exported.`,'good');node.remove()};
+}
+function renderCategoryCommandCenter(rows){
+  const total=rows.reduce((s,r)=>s+Number(r.active_count||0),0),missing=rows.reduce((s,r)=>s+Number(r.missing_photo_count||0),0);
+  return `<section class="panel category-command-center"><div class="category-command-head"><div><span class="eyebrow">CATEGORY COMMAND CENTER</span><h2>Balance the question bank.</h2><p>See exactly where the bank is thin, then hand one category to the local Content Studio for acquisition + media resolution.</p></div><div class="category-command-actions"><span><b>${fmt(total)}</b> active questions</span><span><b>${fmt(missing)}</b> missing photos</span><button class="btn" id="export-category-dashboard">Export Studio Snapshot</button></div></div><div class="category-pop-grid">${rows.length?rows.map(r=>{const [health,cls]=categoryHealth(r),active=Number(r.active_count||0),photos=Number(r.valid_photo_count||0),pct=active?Math.round(photos/active*100):0;return `<article class="category-pop-card ${cls}" data-category-card="${esc(r.category)}"><div class="category-pop-title"><div><span class="category-health ${cls}">${health}</span><h3>${esc(r.category)}</h3></div><strong>${fmt(active)}</strong></div><div class="category-diff"><span><b>${fmt(r.easy_count)}</b>EASY</span><span><b>${fmt(r.medium_count)}</b>MED</span><span><b>${fmt(r.hard_count)}</b>HARD</span></div><div class="category-photo"><div><i style="width:${pct}%"></i></div><span>${pct}% photo coverage · ${fmt(r.missing_photo_count)} missing</span></div><button class="btn primary category-add-btn" data-add-category="${esc(r.category)}">＋ Add questions</button></article>`}).join(''):'<div class="empty">No category population data yet.</div>'}</div></section>`;
+}
 
 function downloadJson(filename,data){
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
@@ -168,7 +211,7 @@ async function renderDashboard(){
           <input class="search" name="search" placeholder="Search question or media subject" value="${esc(filters.search)}">
           <select name="media_filter"><option value="all">All media</option><option value="missing">Missing image</option><option value="auto">Auto live</option><option value="approved">Approved</option><option value="unreviewed">Needs review</option><option value="locked">Locked</option><option value="rejected">Rejected/no image</option></select>
           <select name="provider"><option value="">All providers</option><option value="wikimedia">Wikimedia</option><option value="wikipedia">Wikipedia lead (Commons-verified)</option><option value="openverse">Openverse</option><option value="manual">Manual</option><option value="legacy">Legacy</option></select>
-          <select name="category"><option value="">All categories</option>${ADMIN_CATEGORIES.map(x=>`<option>${x}</option>`).join('')}</select>
+          <select name="category"><option value="">All categories</option>${[...new Set([...ADMIN_CATEGORIES,...categories.map(x=>x.category)])].sort().map(x=>`<option>${esc(x)}</option>`).join('')}</select>
           <button class="btn primary">Apply</button>
         </form>
         <section class="question-list">${items.length?items.map(q=>`<article class="qrow" data-qid="${esc(q.id)}"><div class="qthumb">${imgTag(q.image_url,q.prompt)||'▧'}</div><div class="qcopy"><h3>${esc(q.prompt)}</h3><div class="tags"><span class="tag">${esc(q.category)}</span><span class="tag">${esc(q.difficulty)}</span>${statusTag(q)}${q.media_provider?`<span class="tag">${esc(q.media_provider)}</span>`:''}</div></div><div class="rowmeta"><b>${fmt(q.candidate_count)}</b> candidates<br>${q.media_query?esc(q.media_query):'No media query'}</div></article>`).join(''):`<div class="empty">No questions match these filters.</div>`}</section>
@@ -185,23 +228,67 @@ async function renderDashboard(){
   }catch(e){console.error(e);if(/admin only/i.test(e.message))renderAuth('This Google account is signed in, but it is not marked as a Trivia admin.');else toast(e.message,'bad')}
 }
 
+async function exportQuestionEditPack(){
+  const btn=$('#export-question-edit-pack');
+  if(btn){btn.disabled=true;btn.textContent='Exporting…'}
+  try{
+    const all=[];let offset=0,total=0;
+    do{
+      const page=await rpc('admin_export_questions_for_edit_v18',{p_search:questionFilters.search||null,p_category:questionFilters.category||null,p_difficulty:questionFilters.difficulty,p_status:questionFilters.status,p_source:questionFilters.source||null,p_limit:500,p_offset:offset});
+      const items=page?.items||[];total=Number(page?.total||items.length);all.push(...items);offset+=items.length;
+      if(btn)btn.textContent=`Exporting ${all.length.toLocaleString()} / ${total.toLocaleString()}…`;
+      if(!items.length)break;
+    }while(offset<total);
+    const payload={format:'whatmod-trivia-question-edit-pack',version:1,exported_at:new Date().toISOString(),question_count:all.length,filters:{search:questionFilters.search||'',category:questionFilters.category||'',difficulty:questionFilters.difficulty,status:questionFilters.status,source:questionFilters.source||''},instructions:{purpose:'Bulk editorial rewrite. Keep id/canonical_key unchanged so the importer can match records.',editable_fields:['prompt','category','difficulty','question_type','context','unit','answer_numeric','answer_text','options','correct_option','explanation','source_url','media_query'],note:'Answers and answer types are factual fields. Only change them when intentionally correcting the underlying question.'},questions:all};
+    const stamp=new Date().toISOString().slice(0,10);
+    downloadJson(`whatmod-trivia-edit-pack-${all.length}-${stamp}.json`,payload);
+    toast(`Exported ${all.length.toLocaleString()} questions for bulk editing.`,'good');
+  }catch(e){console.error(e);toast(e.message,'bad')}
+  finally{if(btn){btn.disabled=false;btn.textContent='Export for Edit'}}
+}
+
+async function importQuestionEditPack(file){
+  if(!file)return;let payload;
+  try{payload=JSON.parse(await file.text())}catch{toast('That edit pack is not valid JSON.','bad');return}
+  if(payload?.format!=='whatmod-trivia-question-edit-pack'||Number(payload?.version)!==1||!Array.isArray(payload?.questions)){toast('This is not a WhatMod Trivia Question Edit Pack.','bad');return}
+  const rows=payload.questions;if(!rows.length){toast('The edit pack contains no questions.');return}
+  if(!confirm(`Import edits for ${rows.length.toLocaleString()} questions? Only changed records are updated and every change is audited.`))return;
+  const input=$('#import-question-edit-pack'),status=$('#question-edit-pack-status');if(input)input.disabled=true;
+  const totals={updated:0,unchanged:0,missing:0,failed:0};const batchId=crypto.randomUUID();let firstErrors=[];
+  try{
+    for(let i=0;i<rows.length;i+=50){
+      const chunk=rows.slice(i,i+50);if(status)status.textContent=`Importing ${Math.min(i+chunk.length,rows.length).toLocaleString()} / ${rows.length.toLocaleString()}…`;
+      const out=await rpc('admin_import_question_edit_pack_v18',{p_questions:chunk,p_batch_id:batchId});
+      for(const k of Object.keys(totals))totals[k]+=Number(out?.[k]||0);
+      if(firstErrors.length<10&&Array.isArray(out?.errors))firstErrors.push(...out.errors.slice(0,10-firstErrors.length));
+    }
+    if(status)status.textContent=`Edit pack complete · ${totals.updated.toLocaleString()} updated · ${totals.unchanged.toLocaleString()} unchanged · ${totals.failed.toLocaleString()} failed`;
+    toast(`Question edits imported: ${totals.updated.toLocaleString()} updated${totals.failed?` · ${totals.failed} failed`:''}.`,totals.failed?'':'good');
+    if(firstErrors.length)console.warn('Question edit import errors',firstErrors);
+    await renderQuestionExplorer();
+  }catch(e){console.error(e);if(status)status.textContent='Edit pack import failed.';toast(e.message,'bad')}
+  finally{if(input){input.disabled=false;input.value=''}}
+}
+
 async function renderQuestionExplorer(){
   adminSection='questions';clearTimeout(liveOpsTimer);
   try{
-    const [stats,list,photo]=await Promise.all([
+    const [stats,list,photo,categories]=await Promise.all([
       rpc('admin_question_overview_v15'),
       rpc('admin_list_questions_v15',{p_search:questionFilters.search||null,p_category:questionFilters.category||null,p_difficulty:questionFilters.difficulty,p_status:questionFilters.status,p_source:questionFilters.source||null,p_limit:questionFilters.limit,p_offset:questionFilters.offset}),
-      rpc('admin_photo_health_v15')
+      rpc('admin_photo_health_v15'),
+      loadCategoryPopulation()
     ]);
     const items=list?.items||[],total=Number(list?.total||0);
     const statusLabel=q=>q.photo_disabled?'PHOTO DISABLED':q.is_active?'ACTIVE':'RETIRED';
     $('#admin-app').innerHTML=`${adminHeader('questions')}<main class="shell">
-      <section class="hero"><div><small>QUESTION EXPLORER</small><h1>The question bank.</h1><p>Search every question, inspect community feedback, edit every field, add manual questions, bulk-gate questions with invalid media, or retire bad content instantly.</p></div><button class="btn primary" id="add-question">＋ Add question</button></section>
-      <section class="local-pipeline content-pipeline panel">
+      <section class="hero"><div><small>QUESTION EXPLORER</small><h1>The question bank.</h1><p>Search every question, inspect community feedback, edit every field, bulk-export the bank for editorial rewrites, or retire bad content instantly.</p></div><div class="hero-actions"><button class="btn" id="export-question-edit-pack">⇩ Export for Edit</button><label class="btn good import-button">⇧ Import Edited Pack<input id="import-question-edit-pack" type="file" accept=".json,application/json" hidden></label><button class="btn primary" id="add-question">＋ Add question</button></div></section>
+      <div id="question-edit-pack-status" class="edit-pack-status">Export uses the current Question Explorer filters. Imported edits are content-locked and audited.</div><section class="local-pipeline content-pipeline panel">
         <div class="pipeline-copy"><span class="eyebrow">LOCAL CONTENT STUDIO</span><h2>Questions + media in one upload.</h2><p>Acquire new questions and resolve their media locally, then import one content package here. Canonical keys deduplicate reimports and admin edits remain protected.</p></div>
         <div class="pipeline-controls"><a class="btn" href="./downloads/WhatMod-Trivia-Content-Studio-Windows.zip" download>Download Content Studio</a><label class="btn good import-button">Import Content Package<input id="import-content-package" type="file" accept=".json,application/json" hidden></label></div>
         <div id="content-import-status" class="pipeline-status">No package imported yet.</div>
       </section>
+      ${renderCategoryCommandCenter(categories)}
       <section class="stats question-stats">
         <div class="stat"><span>ACTIVE</span><b>${fmt(stats.active)}</b></div>
         <div class="stat"><span>RETIRED</span><b>${fmt(stats.retired)}</b></div>
@@ -224,7 +311,11 @@ async function renderQuestionExplorer(){
     $$('[data-edit-qid]').forEach(row=>row.onclick=()=>openQuestionEditor(row.dataset.editQid));
     $$('[data-vote-review]').forEach(b=>b.onclick=()=>{voteFilters.direction=Number(b.dataset.voteReview);voteFilters.offset=0;adminSection='votes';renderVoteReview()});
     $('#add-question').onclick=()=>openQuestionEditor(null);
+    $('#export-question-edit-pack').onclick=exportQuestionEditPack;
+    const editPackInput=$('#import-question-edit-pack');if(editPackInput)editPackInput.onchange=e=>importQuestionEditPack(e.target.files?.[0]);
     const contentInput=$('#import-content-package');if(contentInput)contentInput.onchange=e=>importLocalContentPackage(e.target.files?.[0]);
+    const catExport=$('#export-category-dashboard');if(catExport)catExport.onclick=exportCategoryDashboard;
+    $$('[data-add-category]').forEach(b=>b.onclick=e=>{e.stopPropagation();openCategoryAddModal(b.dataset.addCategory)});
     $('#disable-invalid-photo').onclick=disableInvalidPhotoQuestions;
     $('#restore-photo-disabled').onclick=restorePhotoDisabledQuestions;
     $('#q-prev').onclick=()=>{questionFilters.offset=Math.max(0,questionFilters.offset-questionFilters.limit);renderQuestionExplorer()};
@@ -261,6 +352,18 @@ async function renderVoteReview(){
 }
 
 function playerPresenceCard(p){return `<article class="live-player ${p.online?'online':'offline'} ${p.is_bot?'bot':''}"><div class="live-avatar">${p.avatar_url?`<img src="${esc(safeUrl(p.avatar_url))}" alt="">`:`${p.is_bot?'AI':esc(String(p.username||'?')[0].toUpperCase())}`}</div><div><b>${esc(p.username||'Player')}</b><span>${p.is_bot?'BOT':esc(p.participation_status||'active').toUpperCase()}${p.online?' · ONLINE':' · OFFLINE'}</span></div><strong>${fmt(p.total_score||0)}</strong></article>`}
+function roomHealthBadge(h={}){const state=String(h.state||'unknown');const score=Number(h.score||0);return `<span class="room-health ${esc(state)}"><i></i>${esc(state.toUpperCase())} · ${score}%</span>`}
+async function adminRoomAction(gameId,action){
+  clearTimeout(liveOpsTimer);
+  const isShutdown=action==='shutdown';
+  if(!confirm(isShutdown?'Shut this room down now? All players and bots will be removed from the live room and the code will be closed.':'Reset/unstick this room? Current round answers, scores, bots and question order will be cleared, but human players and the room code will be preserved.')){if(adminSection==='live')liveOpsTimer=setTimeout(()=>renderLiveOps(),5000);return}
+  try{
+    const out=isShutdown?await rpc('admin_shutdown_room_v18',{p_game_id:gameId,p_reason:'Manual shutdown from Trivia Admin'}):await rpc('admin_reset_room_v18',{p_game_id:gameId});
+    toast(isShutdown?`Room ${out?.code||''} shut down · ${Number(out?.removed_humans||0)} player(s) removed.`:`Room ${out?.code||''} reset to lobby with ${Number(out?.player_count||0)} player(s) preserved.`,'good');
+    await renderLiveOps();
+  }catch(e){console.error(e);toast(e.message,'bad');if(adminSection==='live')liveOpsTimer=setTimeout(()=>renderLiveOps(),5000)}
+}
+
 async function renderLiveOps(){
   adminSection='live';clearTimeout(liveOpsTimer);
   try{
@@ -270,10 +373,11 @@ async function renderLiveOps(){
       <section class="stats live-stats"><div class="stat"><span>ONLINE USERS</span><b>${fmt(data?.online_count)}</b></div><div class="stat"><span>LIVE ROOMS</span><b>${fmt(data?.live_game_count)}</b></div><div class="stat"><span>PLAYING / LOBBY</span><b>${fmt(users.filter(x=>x.game_id).length)}</b></div><div class="stat"><span>BROWSING</span><b>${fmt(users.filter(x=>!x.game_id).length)}</b></div></section>
       <section class="panel lifecycle-panel"><div class="panel-title"><div><h3>Room lifecycle maintenance</h3><p>Automatic sweeps are throttled to once every 5 minutes and only close rooms with no recent human heartbeat after a conservative grace period.</p></div><button class="btn" id="run-room-sweep">Run stale-room sweep</button></div><div class="lifecycle-grid"><div><span>LAST SWEEP</span><b>${life.last_run_at?esc(formatWhen(life.last_run_at)):'Not run yet'}</b></div><div><span>LAST CLOSED</span><b>${fmt(last.rooms_closed||0)}</b></div><div><span>NO RECENT HUMANS</span><b>${fmt(life.rooms_with_no_recent_humans||0)}</b></div><div><span>STALE PRESENCE</span><b>${fmt(life.stale_presence_rows||0)}</b></div></div><p class="lifecycle-note">Safety windows: matchmaking lobby 30m · public lobby 90m · invite-only lobby 4h · abandoned active match 20–30m · finished room 20m. Any recent human heartbeat keeps the room alive.</p></section>
       <section class="panel live-users-panel"><div class="panel-title"><div><h3>Connected accounts</h3><p>Signed-in users with a recent heartbeat, including players outside a game.</p></div><span class="tag approved">AUTO REFRESH · 5S</span></div><div class="online-user-grid">${users.length?users.map(u=>`<article class="online-user"><span class="presence-dot"></span><div class="live-avatar">${u.avatar_url?`<img src="${esc(safeUrl(u.avatar_url))}" alt="">`:`${esc(String(u.username||'?')[0].toUpperCase())}`}</div><div><b>${esc(u.username||'Player')}</b><span>${u.game_code?`Room ${esc(u.game_code)} · ${esc(u.game_status||'')}`:`${esc(String(u.page||'home').replace(/-/g,' '))}`}</span></div><time>${esc(formatWhen(u.last_seen_at))}</time></article>`).join(''):'<div class="empty">No signed-in users have checked in during the last 90 seconds.</div>'}</div></section>
-      <section class="live-game-list"><div class="section-kicker"><span>ACTIVE ROOMS</span><b>${fmt(games.length)}</b></div>${games.length?games.map(g=>`<details class="live-game" open><summary><div><span class="game-status ${esc(g.status)}">${esc(String(g.status).toUpperCase())}</span><h3>${esc(g.title||'Trivia Party')}</h3><small>Code ${esc(g.code)} · ${esc(g.visibility)} · ${esc(g.lobby_kind)} · Cycle ${fmt(g.cycle_no)}</small></div><div class="live-game-metrics"><span><b>${fmt(g.online_human_count)}</b> online</span><span><b>${fmt(g.human_count)}</b> humans</span><span><b>${fmt(g.spectator_count)}</b> spectators</span><span><b>${fmt(g.bot_count)}</b> bots</span></div></summary><div class="live-game-body"><div class="live-game-question"><small>CURRENT QUESTION</small><b>${esc(g.current_question|| (g.status==='lobby'?'Waiting in lobby':'No question loaded'))}</b><span>${esc(g.category)} · ${esc(g.difficulty)} · Round ${Math.min(Number(g.current_question_index||0)+1,Number(g.question_count||0))}/${fmt(g.question_count)}</span><em>Last room activity: ${g.last_activity_at?esc(formatWhen(g.last_activity_at)):'—'}</em></div><div class="live-roster">${(g.players||[]).length?(g.players||[]).map(playerPresenceCard).join(''):'<div class="empty">No participants.</div>'}</div></div></details>`).join(''):'<div class="empty panel">There are no active games right now.</div>'}</section>
+      <section class="live-game-list"><div class="section-kicker"><span>ACTIVE ROOMS</span><b>${fmt(games.length)}</b></div>${games.length?games.map(g=>`<details class="live-game health-${esc(g.health?.state||'unknown')}" open><summary><div><div class="room-summary-badges"><span class="game-status ${esc(g.status)}">${esc(String(g.status).toUpperCase())}</span>${roomHealthBadge(g.health)}</div><h3>${esc(g.title||'Trivia Party')}</h3><small>Code ${esc(g.code)} · ${esc(g.visibility)} · ${esc(g.lobby_kind)} · Cycle ${fmt(g.cycle_no)}</small></div><div class="live-game-metrics"><span><b>${fmt(g.online_human_count)}</b> online</span><span><b>${fmt(g.human_count)}</b> humans</span><span><b>${fmt(g.spectator_count)}</b> spectators</span><span><b>${fmt(g.bot_count)}</b> bots</span></div></summary><div class="live-game-body"><div class="live-game-question"><small>CURRENT QUESTION</small><b>${esc(g.current_question|| (g.status==='lobby'?'Waiting in lobby':'No question loaded'))}</b><span>${esc(g.category)} · ${esc(g.difficulty)} · Round ${Math.min(Number(g.current_question_index||0)+1,Number(g.question_count||0))}/${fmt(g.question_count)}</span><em>Last room activity: ${g.last_activity_at?esc(formatWhen(g.last_activity_at)):'—'}</em><div class="health-detail"><b>Room health ${fmt(g.health?.score||0)}%</b><span>${(g.health?.reasons||[]).length?(g.health.reasons||[]).map(x=>`• ${esc(x)}`).join('<br>'):'No health warnings detected.'}</span></div><div class="room-admin-actions"><button class="btn good" data-room-action="reset" data-game-id="${esc(g.id)}">↻ Refresh / Unstuck</button><button class="btn danger" data-room-action="shutdown" data-game-id="${esc(g.id)}">■ Shutdown + Remove Players</button></div></div><div class="live-roster">${(g.players||[]).length?(g.players||[]).map(playerPresenceCard).join(''):'<div class="empty">No participants.</div>'}</div></div></details>`).join(''):'<div class="empty panel">There are no active games right now.</div>'}</section>
     </main>`;
     bindAdminChrome(()=>renderLiveOps());
     const sweep=$('#run-room-sweep');if(sweep)sweep.onclick=async()=>{sweep.disabled=true;sweep.textContent='Sweeping…';try{const r=await rpc('admin_run_room_lifecycle_sweep_v17');toast(`Sweep complete · ${Number(r?.rooms_closed||0)} stale room(s) closed · ${Number(r?.presence_rows_pruned||0)} old presence row(s) pruned.`,'good');await renderLiveOps()}catch(e){console.error(e);toast(e.message,'bad');sweep.disabled=false;sweep.textContent='Run stale-room sweep'}};
+    $$('[data-room-action]').forEach(b=>b.onclick=()=>adminRoomAction(b.dataset.gameId,b.dataset.roomAction));
     if(adminSection==='live')liveOpsTimer=setTimeout(()=>renderLiveOps(),5000);
   }catch(e){console.error(e);toast(e.message,'bad');if(adminSection==='live')liveOpsTimer=setTimeout(()=>renderLiveOps(),8000)}
 }

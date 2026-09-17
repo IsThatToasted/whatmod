@@ -112,6 +112,17 @@ export async function loadProfile() {
   return data;
 }
 
+export async function getMatchmakingOptions() {
+  if (!state.supabase) return [];
+  try {
+    const rows = await rpc("get_matchmaking_options_v18");
+    return Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    if (!/get_matchmaking_options_v18|does not exist|schema cache/i.test(String(error?.message || ""))) console.warn("Matchmaking options unavailable:", error.message);
+    return [];
+  }
+}
+
 export async function getAvailableCategories() {
   if (!state.supabase) return [];
   try {
@@ -213,8 +224,8 @@ export async function syncGameClock(gameId) {
 }
 
 
-export async function matchmake() {
-  const rows = await rpc("matchmake_v14");
+export async function matchmake({category,difficulty}={}) {
+  const rows = await rpc("matchmake_v18", { p_category: category, p_difficulty: difficulty });
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
