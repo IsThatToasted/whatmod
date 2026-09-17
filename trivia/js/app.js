@@ -902,7 +902,7 @@ function startPresenceHeartbeat() {
   clearInterval(presenceHeartbeatTimer);
   if (!state.session?.user || !isConfigured()) return;
   sendPresenceHeartbeat().catch(()=>{});
-  presenceHeartbeatTimer = setInterval(()=>sendPresenceHeartbeat().catch(()=>{}), 25000);
+  presenceHeartbeatTimer = setInterval(()=>{ if(document.visibilityState === 'visible') sendPresenceHeartbeat().catch(()=>{}); }, 50000);
 }
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState === "visible") sendPresenceHeartbeat().catch(()=>{}); });
 
