@@ -1,4 +1,4 @@
-const CACHE = 'justglance-shell-v3';
+const CACHE = 'justglance-shell-v4';
 const BASE = '/life/';
 const SHELL = [BASE, `${BASE}manifest.json`];
 
