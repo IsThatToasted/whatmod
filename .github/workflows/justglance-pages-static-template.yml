@@ -1,0 +1,56 @@
+# TEMPLATE ONLY: move this file to the repository root .github/workflows only if
+# whatmod.com is deployed as static files from the repository. If your existing
+# Pages workflow builds other apps, merge the marked JustGlance steps into it
+# rather than replacing that workflow.
+name: Deploy whatmod.com with JustGlance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build JustGlance
+        working-directory: life
+        run: npm install --no-audit --no-fund && npm test && npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.JUSTGLANCE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.JUSTGLANCE_SUPABASE_ANON_KEY }}
+      - name: Assemble full site without destroying sibling apps
+        run: |
+          mkdir _site
+          rsync -a ./ _site/ \
+            --exclude '.git/' --exclude '.github/' --exclude '_site/' \
+            --exclude 'life/node_modules/' --exclude 'life/src/' --exclude 'life/ios/' \
+            --exclude 'life/supabase/' --exclude 'life/.github/' --exclude 'life/dist/'
+          rm -rf _site/life
+          mkdir -p _site/life
+          cp -R life/dist/. _site/life/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
