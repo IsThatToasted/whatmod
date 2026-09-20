@@ -1,0 +1,33 @@
+name: Build JustGlance
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'life/**'
+      - '.github/workflows/justglance-build.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: life
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: life/package-lock.json
+      - run: npm install
+      - run: npm run build
+      - name: Upload compiled JustGlance artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: justglance-dist
+          path: life/dist
+          if-no-files-found: error
+# This workflow intentionally does NOT deploy GitHub Pages by itself.
+# Merge life/dist into your existing whatmod.com Pages deployment so unrelated apps are never overwritten.
