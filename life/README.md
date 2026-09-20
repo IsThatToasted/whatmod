@@ -33,7 +33,7 @@ Copy this complete directory into the existing `whatmod.com` repository as:
 
 The Vite base, manifest, service worker and auth callbacks are written for `https://whatmod.com/life/`.
 
-> This ZIP is a **repository-root drop-in**: it contains both `/life` and repository-root `.github/workflows` files. Extract/copy both into the whatmod.com repository. The web workflow compiles JustGlance and commits only the generated static files under `/life`; it does not replace the Pages deployment for sibling applications.
+> This ZIP is a **repository-root drop-in**: it contains `/life` plus repository-root `.github/workflows` files. Extract/copy both into the whatmod.com repository. The site-wide Pages workflow builds both Vite applications (`/app` and `/life`) and assembles one `_site` artifact while preserving static sibling applications such as WeTrack under `/track`.
 
 ## Requirements
 
@@ -59,7 +59,7 @@ Open the Vite URL shown in the terminal. Without valid Supabase environment vari
 VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
 VITE_DEMO_MODE=false
-VITE_APP_VERSION=1.0.0
+VITE_APP_VERSION=1.0.3
 ```
 
 Only the public Supabase anon key belongs in the frontend. **Never** put a Supabase service-role key in this repository or in any `VITE_` variable.
@@ -155,13 +155,18 @@ Provider interfaces live in `src/providers`. V1 does not require a paid weather 
 
 ### Web build and monorepo publishing
 
-The repository-root workflow `.github/workflows/justglance-web-build.yml` builds `life/dist`, verifies that the generated HTML references `/life/assets/...` rather than `/src/main.tsx`, then copies only JustGlance's generated public files into the repository's `/life` root and commits them.
+The repository-root `.github/workflows/web-pages.yml` is the **single owner of GitHub Pages deployment**. It follows the same model already proven by the existing Vite `/app` project:
 
-This solves a common GitHub Pages monorepo failure: a successful Vite build does **not** automatically mean Pages is serving `dist`. Serving the source `life/index.html` produces a white page because browsers cannot load `/src/main.tsx` from the deployed static site.
+1. build `/app` to `app/dist`
+2. build JustGlance to `life/dist`
+3. copy ordinary static repository content (including WeTrack `/track`) into `_site`
+4. overlay `app/dist/.` into `_site/app/`
+5. overlay `life/dist/.` into `_site/life/`
+6. deploy that one `_site` artifact with `actions/deploy-pages`
 
-The workflow does not deploy a new whole-site Pages artifact, so your existing whatmod.com deployment remains responsible for `/app`, `/track`, and other sibling projects. It changes only generated files under `/life`.
+This means the repository source file `life/index.html` is never served directly in production. GitHub Pages receives only the compiled Vite output for `/life`. There is no publishing placeholder, generated-file bot commit, or chained workflow dispatch.
 
-If branch protection blocks `github-actions[bot]` from pushing to `main`, merge the same build/copy steps into the existing repository Pages workflow instead. See `DEPLOYMENT_FIX.md`.
+`.github/workflows/justglance-web-build.yml` is intentionally validation-only; it does not deploy Pages. See `DEPLOYMENT_FIX.md` for the final deployment model.
 
 ### iOS unsigned IPA
 
@@ -215,7 +220,7 @@ Keep unavailable features hidden or clearly disabled rather than exposing dead p
 
 ## Important production follow-ups
 
-Before public launch, finish the provider-specific steps that cannot be safely embedded in source code: create the Supabase project, set auth redirect URLs, configure Google OAuth if desired, choose notification infrastructure before enabling push, publish Privacy Policy/Terms destinations, and merge the JustGlance build into the existing whatmod.com Pages assembly workflow.
+Before public launch, finish the provider-specific steps that cannot be safely embedded in source code: create the Supabase project, set auth redirect URLs, configure Google OAuth if desired, choose notification infrastructure before enabling push, and publish Privacy Policy/Terms destinations. The JustGlance build is already integrated into the site-wide whatmod.com Pages assembly workflow in this package.
 
 ## Architecture map
 
@@ -238,6 +243,6 @@ ios/                  SwiftUI/WKWebView native wrapper
 
 Every screen should answer: **Can someone understand what matters within one glance?** If not, simplify it.
 
-## Monorepo publishing note (v1.0.1)
+## Monorepo publishing note (v1.0.3)
 
-Do not serve the source Vite entry directly from `/life`. The production URL must receive the contents generated in `life/dist/`. This package includes a repository-root workflow at `.github/workflows/justglance-publish.yml` that publishes only the generated JustGlance files back into `/life`, allowing the existing whatmod.com deployment to continue serving all sibling projects normally. See `DEPLOYMENT_FIX.md`.
+JustGlance uses the same site-wide Pages artifact model as the rest of whatmod.com. Static apps such as WeTrack are copied directly from the repository, while Vite apps are compiled and overlaid from `dist`. `/life` is therefore always deployed from `life/dist`, never from the source tree.

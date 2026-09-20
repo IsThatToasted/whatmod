@@ -1,9 +1,5 @@
-# Build Fix — Supabase Realtime cleanup
+# Build fix history
 
-Fixed the strict TypeScript build error:
+The earlier Supabase nullability build error in `AppDataContext.tsx` is fixed.
 
-`src/contexts/AppDataContext.tsx(237,25): TS18047: 'supabase' is possibly 'null'`
-
-The Realtime effect now captures the already-null-checked Supabase client in a local `client` constant and uses that same non-null client for channel creation and cleanup.
-
-This is a compile-safety change only; Realtime behavior is unchanged.
+As of v1.0.3, web deployment is also corrected at the architecture level: the single repository Pages workflow builds JustGlance and deploys `life/dist` into `_site/life`, matching the existing compiled `/app` pattern while preserving static apps such as WeTrack.
