@@ -1,4 +1,4 @@
-/* JustGlance v1.0.4 recovery worker.
+/* JustGlance v1.0.5 recovery worker.
    This intentionally disables the older cache-first worker so a previously
    installed /life/ PWA cannot keep serving stale HTML or hashed bundles. */
 self.addEventListener('install', event => {

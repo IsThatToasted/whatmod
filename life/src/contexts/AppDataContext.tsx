@@ -56,6 +56,16 @@ const localKey = (uid: string) => `justglance:local:${uid}`
 const profileKey = (uid: string) => `justglance:profile:${uid}`
 const snapshotKey = (uid: string) => `justglance:snapshot:${uid}`
 
+function withTimeout<T>(promise: Promise<T>, milliseconds: number, label: string): Promise<T> {
+  let timer: number | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => reject(new Error(`${label} timed out after ${milliseconds}ms`)), milliseconds)
+  })
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer !== undefined) window.clearTimeout(timer)
+  })
+}
+
 function writeSnapshotPart(uid: string, patch: Record<string, unknown>) {
   try {
     const existing = JSON.parse(localStorage.getItem(snapshotKey(uid)) || '{}')
@@ -99,7 +109,7 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
     }
     setLoading(true)
     try {
-      const [p, pref, i, s, m, pl, e, n, a] = await Promise.all([
+      const [p, pref, i, s, m, pl, e, n, a] = await withTimeout(Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
         supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle(),
         supabase.from('items').select('*, places(name), shopping_items(quantity,unit,preferred_store,estimated_price,aisle_category)').is('deleted_at', null).order('created_at', { ascending: false }),
@@ -109,7 +119,7 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
         supabase.from('events').select('*').is('deleted_at', null).gte('event_date', new Date().toISOString().slice(0, 10)).order('event_date').order('start_time'),
         supabase.from('notes').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(100),
         supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(50),
-      ])
+      ]), 8000, 'Initial data load')
 
       if (p.data) {
         setProfile(p.data as Profile)
