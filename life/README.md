@@ -246,3 +246,21 @@ Every screen should answer: **Can someone understand what matters within one gla
 ## Monorepo publishing note (v1.0.4)
 
 JustGlance uses the same site-wide Pages artifact model as the rest of whatmod.com. Static apps such as WeTrack are copied directly from the repository, while Vite apps are compiled and overlaid from `dist`. `/life` is therefore always deployed from `life/dist`, never from the source tree.
+
+## v1.0.6 static publish layout
+
+The web release deliberately mirrors the proven WhatMod static applications (WeTrack and Trivia): the browser-facing `/life` directory uses deterministic relative files rather than hashed Vite asset URLs.
+
+Source lives under `life/src` and the Vite HTML template lives under `life/vite`. GitHub Actions compiles those sources, produces `dist/index.html`, `dist/app.js`, and `dist/styles.css`, deploys those files in the single site-wide Pages artifact, and also writes the compiled browser-ready files back into `/life` on `main` as a fallback for any repository-tree deployment.
+
+Public runtime shape:
+
+```text
+/life/index.html
+/life/app.js
+/life/styles.css
+/life/manifest.webmanifest
+/life/icons/...
+```
+
+All runtime references are relative (`./app.js`, `./styles.css`, `./manifest.webmanifest`), matching the deployment style used by the other working WhatMod subdirectory apps.

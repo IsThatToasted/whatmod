@@ -1,10 +1,7 @@
-/* JustGlance v1.0.5 recovery worker.
-   This intentionally disables the older cache-first worker so a previously
-   installed /life/ PWA cannot keep serving stale HTML or hashed bundles. */
-self.addEventListener('install', event => {
-  event.waitUntil(self.skipWaiting())
-})
-
+/* JustGlance recovery worker. Current web releases do not register a service worker.
+   If an older installation still checks this URL, activate once, clear old JustGlance
+   caches, unregister, and then get out of the way. */
+self.addEventListener('install', event => event.waitUntil(self.skipWaiting()))
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     try {
@@ -12,13 +9,5 @@ self.addEventListener('activate', event => {
       await Promise.all(keys.filter(key => key.startsWith('justglance-')).map(key => caches.delete(key)))
     } catch (_) {}
     try { await self.registration.unregister() } catch (_) {}
-    try {
-      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      for (const client of clients) {
-        if (client.url.includes('/life/')) client.navigate(client.url)
-      }
-    } catch (_) {}
   })())
 })
-
-/* No fetch handler on purpose: every request goes directly to the network. */
