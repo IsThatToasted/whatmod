@@ -1,33 +1,26 @@
-# JustGlance deployment architecture — v1.0.3
+# JustGlance web recovery — v1.0.4
 
-JustGlance now uses the same site-wide GitHub Pages model as the existing WhatMod applications.
+JustGlance now follows the same repository deployment model as the working projects on whatmod.com:
 
-- Static applications such as **WeTrack** remain ordinary repository folders (for example `/track`) and are copied directly into the Pages artifact.
-- Vite applications such as the existing `/app` are compiled during the single root Pages workflow and their `dist` output is copied into the matching public subdirectory.
-- JustGlance now follows that exact Vite model: `life/dist/.` is copied into `_site/life/` before Pages is deployed.
+- Static projects such as WeTrack stay as repository files and are copied into the Pages artifact unchanged.
+- Vite projects such as `/app` and `/life` are built inside the main Pages workflow.
+- `app/dist` is overlaid into `_site/app`.
+- `life/dist` is overlaid into `_site/life`.
+- One `_site` artifact is deployed with `actions/deploy-pages`.
 
-There is no temporary publishing page, bot commit, chained workflow dispatch, or source HTML exposed at `/life/`.
+There is no bot commit, placeholder publication page, chained Pages deployment, or source TypeScript served to browsers.
 
-## Required repository secrets
+## v1.0.4 recovery behavior
 
-- `JUSTGLANCE_SUPABASE_URL`
-- `JUSTGLANCE_SUPABASE_ANON_KEY`
+Earlier JustGlance builds registered a cache-first service worker under `/life/`. A registered worker survives repository deployments and can continue serving an older HTML shell or hashed bundle after the repository has been fixed.
 
-The existing `/app` continues to use its existing `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` variables/secrets.
+v1.0.4 therefore:
 
-## GitHub Pages setting
+1. does not register a new caching service worker;
+2. runs a pre-boot cleanup for `/life/` service-worker registrations and `justglance-*` caches;
+3. ships `/life/service-worker.js` as a self-unregistering kill switch for browsers that still check the old registration URL;
+4. uses a dependency-free boot module that dynamically imports the React application;
+5. displays startup failures on screen instead of leaving a blank white page;
+6. uses `manifest.webmanifest`, matching the proven `/app` deployment naming pattern.
 
-Repository **Settings → Pages → Build and deployment → Source** must be set to **GitHub Actions**.
-
-## Expected production output
-
-The deployed `/life/index.html` must reference a hashed bundle such as:
-
-`/life/assets/index-xxxxxxxx.js`
-
-and these URLs must return 200:
-
-- `/life/manifest.json`
-- `/life/service-worker.js`
-- `/life/build-info.json`
-- `/life/icons/icon-192.png`
+Once the live web baseline is confirmed stable, offline PWA shell caching can be reintroduced with a network-safe strategy.

@@ -31,10 +31,43 @@ export function AuthProvider({children}:{children:ReactNode}) {
   const [recoveryMode,setRecoveryMode] = useState(false)
   const demo = DEMO_MODE || !HAS_SUPABASE
   useEffect(()=>{
+    let active = true
     if (demo || !supabase) { setLoading(false); return }
-    supabase.auth.getSession().then(({data})=>{setUser(data.session?.user ?? null);if(data.session?.user)restoreReturnRoute();setLoading(false)})
-    const {data:{subscription}} = supabase.auth.onAuthStateChange((event,s)=>{setUser(s?.user ?? null);if(event==='PASSWORD_RECOVERY')setRecoveryMode(true);if(event==='SIGNED_OUT')setRecoveryMode(false);if(s?.user)restoreReturnRoute()})
-    return ()=>subscription.unsubscribe()
+    const client = supabase
+    const timeout = window.setTimeout(() => {
+      if (active) {
+        console.warn('[JustGlance] Session restore timed out; continuing signed out.')
+        setLoading(false)
+      }
+    }, 5000)
+    client.auth.getSession()
+      .then(({data})=>{
+        if (!active) return
+        setUser(data.session?.user ?? null)
+        if(data.session?.user) restoreReturnRoute()
+      })
+      .catch(error=>{
+        console.error('[JustGlance] Session restore failed', error)
+        if (active) setUser(null)
+      })
+      .finally(()=>{
+        if (active) {
+          window.clearTimeout(timeout)
+          setLoading(false)
+        }
+      })
+    const {data:{subscription}} = client.auth.onAuthStateChange((event,s)=>{
+      if (!active) return
+      setUser(s?.user ?? null)
+      if(event==='PASSWORD_RECOVERY')setRecoveryMode(true)
+      if(event==='SIGNED_OUT')setRecoveryMode(false)
+      if(s?.user)restoreReturnRoute()
+    })
+    return ()=>{
+      active = false
+      window.clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   },[demo])
   const value = useMemo<AuthContextValue>(()=>({
     user, userId: demo ? DEMO_USER_ID : user?.id ?? null, loading, demo, recoveryMode,

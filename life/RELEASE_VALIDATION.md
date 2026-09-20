@@ -1,4 +1,4 @@
-# JustGlance v1.0.3 validation
+# JustGlance v1.0.4 validation
 
 Deployment architecture is unified with the repository's existing GitHub Pages workflow.
 

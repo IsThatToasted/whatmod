@@ -9,13 +9,36 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Glance" />
-    <link rel="manifest" href="%BASE_URL%manifest.json" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <link rel="apple-touch-icon" href="%BASE_URL%icons/icon-192.png" />
     <link rel="icon" href="%BASE_URL%icons/icon-192.png" />
     <title>JustGlance</title>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
+    <script>
+      // Recovery from the cache-first service workers used by early JustGlance builds.
+      // This runs before the application module so stale PWA state cannot own the new boot.
+      (function () {
+        try {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+              registrations.forEach(function (registration) {
+                if (registration.scope.indexOf('/life/') !== -1) registration.unregister();
+              });
+            });
+          }
+          if ('caches' in window) {
+            caches.keys().then(function (keys) {
+              keys.filter(function (key) { return key.indexOf('justglance-') === 0; })
+                .forEach(function (key) { caches.delete(key); });
+            });
+          }
+        } catch (_) {}
+      })();
+    </script>
+    <div id="root">
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#1e211f;background:#f6f6f1">Starting JustGlance…</div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

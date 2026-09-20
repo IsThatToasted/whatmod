@@ -18,7 +18,7 @@ JustGlance is a production-oriented React/TypeScript personal daily operating sy
 - Offline shell, optimistic local state and mutation queue architecture
 - Light/dark/system theme support and reduced-motion handling
 - Full SQL migration with RLS, helper functions, hashed invite tokens and indexes
-- PWA manifest/service worker/icons
+- PWA manifest/icons; legacy service-worker recovery kill switch
 - Isolated demo mode that never writes demo records into production accounts
 - Development-only debug page (`/#/debug` in dev, or add `?debug=1`)
 - Native iOS SwiftUI/WKWebView wrapper and unsigned IPA GitHub Actions workflow
@@ -31,7 +31,7 @@ Copy this complete directory into the existing `whatmod.com` repository as:
 /life
 ```
 
-The Vite base, manifest, service worker and auth callbacks are written for `https://whatmod.com/life/`.
+The Vite base, manifest and auth callbacks are written for `https://whatmod.com/life/`. v1.0.4 temporarily disables active PWA caching while it removes legacy `/life/` workers from earlier broken deployments.
 
 > This ZIP is a **repository-root drop-in**: it contains `/life` plus repository-root `.github/workflows` files. Extract/copy both into the whatmod.com repository. The site-wide Pages workflow builds both Vite applications (`/app` and `/life`) and assembles one `_site` artifact while preserving static sibling applications such as WeTrack under `/track`.
 
@@ -108,7 +108,7 @@ The app uses `HashRouter`, so application routes render as `https://whatmod.com/
 
 ## PWA and offline model
 
-`public/service-worker.js` caches the application shell and same-origin static assets. The client keeps a local item snapshot plus a local mutation queue when Supabase is unavailable. The UI updates optimistically; queued changes are replayed when connectivity returns.
+`public/service-worker.js` is currently a recovery kill switch: it clears old JustGlance caches and unregisters itself. This deliberately removes service-worker caching from the recovery release so stale Pages bundles cannot control startup. The client-side offline snapshot and mutation queue still protect captured data; PWA caching can be re-enabled after the hosted baseline is confirmed stable.
 
 This is intentionally an **offline architecture**, not a claim of perfect multi-device conflict resolution. Before introducing complex collaborative editing, add explicit row versioning/merge policy rather than silently overwriting concurrent edits.
 
@@ -234,7 +234,7 @@ src/
   styles/            design system + responsive layout
 supabase/
   migrations/        schema, functions, triggers, RLS, realtime publication
-public/               PWA assets, manifest, service worker, 404 fallback
+public/               Manifest/icons, recovery service-worker kill switch, 404 fallback
 ios/                  SwiftUI/WKWebView native wrapper
 .github/workflows/    workflow templates to copy to repository root
 ```
@@ -243,6 +243,6 @@ ios/                  SwiftUI/WKWebView native wrapper
 
 Every screen should answer: **Can someone understand what matters within one glance?** If not, simplify it.
 
-## Monorepo publishing note (v1.0.3)
+## Monorepo publishing note (v1.0.4)
 
 JustGlance uses the same site-wide Pages artifact model as the rest of whatmod.com. Static apps such as WeTrack are copied directly from the repository, while Vite apps are compiled and overlaid from `dist`. `/life` is therefore always deployed from `life/dist`, never from the source tree.

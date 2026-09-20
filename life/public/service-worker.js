@@ -1,29 +1,24 @@
-const CACHE = 'justglance-shell-v5';
-const BASE = '/life/';
-const SHELL = [BASE, `${BASE}manifest.json`];
-
+/* JustGlance v1.0.4 recovery worker.
+   This intentionally disables the older cache-first worker so a previously
+   installed /life/ PWA cannot keep serving stale HTML or hashed bundles. */
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
-});
+  event.waitUntil(self.skipWaiting())
+})
 
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
-});
+  event.waitUntil((async () => {
+    try {
+      const keys = await caches.keys()
+      await Promise.all(keys.filter(key => key.startsWith('justglance-')).map(key => caches.delete(key)))
+    } catch (_) {}
+    try { await self.registration.unregister() } catch (_) {}
+    try {
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of clients) {
+        if (client.url.includes('/life/')) client.navigate(client.url)
+      }
+    } catch (_) {}
+  })())
+})
 
-self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
-  if (url.origin !== location.origin || !url.pathname.startsWith(BASE)) return;
-  if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE).then(cache => cache.put(BASE, copy));
-      return response;
-    }).catch(() => caches.match(BASE)));
-    return;
-  }
-  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-    if (response.ok) caches.open(CACHE).then(cache => cache.put(event.request, response.clone()));
-    return response;
-  })));
-});
+/* No fetch handler on purpose: every request goes directly to the network. */
