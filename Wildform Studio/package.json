@@ -1,0 +1,35 @@
+{
+  "name": "wildform-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wildform creature assembly, rigging and animation studio",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build:web": "vite build",
+    "build": "npm run build:web && electron-builder --win portable zip",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/three": "^0.180.0",
+    "concurrently": "^9.2.1",
+    "electron": "^38.1.2",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.whatmod.wildformstudio",
+    "productName": "Wildform Studio",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "electron/**/*", "package.json"],
+    "win": { "target": ["portable", "zip"], "artifactName": "WildformStudio-${version}-${arch}.${ext}" },
+    "portable": { "artifactName": "WildformStudio-${version}-${arch}.exe" }
+  }
+}
