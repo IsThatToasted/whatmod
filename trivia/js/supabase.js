@@ -49,7 +49,7 @@ export async function signOut() {
   if (state.supabase) await state.supabase.auth.signOut();
   setState({
     session: null, profile: null, lobby: null, lobbyPlayers: [],
-    currentQuestion: null, roundResults: null, daily: null, practice: null, libraryItems: []
+    currentQuestion: null, roundResults: null, boardGame: null, daily: null, practice: null, libraryItems: []
   });
 }
 
@@ -179,8 +179,15 @@ export async function joinLobby(code) {
 }
 
 export async function getLobby(code) {
-  const rows = await rpc("get_lobby_v14", { p_code: code.trim().toUpperCase() });
-  return Array.isArray(rows) ? rows[0] : rows;
+  try {
+    const rows = await rpc("get_lobby_v23", { p_code: code.trim().toUpperCase() });
+    return Array.isArray(rows) ? rows[0] : rows;
+  } catch (error) {
+    if (!/get_lobby_v23|does not exist|schema cache/i.test(String(error?.message || ""))) throw error;
+    const rows = await rpc("get_lobby_v14", { p_code: code.trim().toUpperCase() });
+    const g = Array.isArray(rows) ? rows[0] : rows;
+    return g ? { ...g, experience_mode: "estimate" } : g;
+  }
 }
 
 export async function getLobbyPlayers(gameId) {
@@ -322,3 +329,60 @@ export function subscribeLobby(gameId, onChange, onStatus) {
   state.subscriptions.push(channel);
   return channel;
 }
+
+// V23 Board Battle ---------------------------------------------------------
+export async function createBoardLobby({categories=[],maxPlayers=6,secondsPerQuestion=15,title=null,visibility="invite_only"}={}) {
+  const rows = await rpc("create_board_lobby_v23", {
+    p_categories: categories,
+    p_max_players: Number(maxPlayers)||6,
+    p_seconds_per_question: Number(secondsPerQuestion)||15,
+    p_title: title || null,
+    p_visibility: visibility || "invite_only"
+  });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+export async function startBoardGame(gameId) {
+  return await rpc("start_board_game_v23", { p_game_id: gameId });
+}
+
+export async function getBoardState(gameId) {
+  return await rpc("get_board_state_v23", { p_game_id: gameId });
+}
+
+export async function selectBoardCell(gameId, cellId) {
+  return await rpc("board_select_cell_v23", { p_game_id: gameId, p_cell_id: cellId });
+}
+
+export async function buzzBoard(gameId) {
+  return await rpc("board_buzz_v23", { p_game_id: gameId });
+}
+
+export async function submitBoardWager(gameId, wager) {
+  return await rpc("board_submit_wager_v23", { p_game_id: gameId, p_wager: Number(wager)||0 });
+}
+
+export async function submitBoardAnswer(gameId, answer) {
+  return await rpc("board_submit_answer_v23", { p_game_id: gameId, p_answer: String(answer ?? "") });
+}
+
+export async function closeBoardClue(gameId) {
+  return await rpc("board_close_clue_v23", { p_game_id: gameId });
+}
+
+export async function submitBoardFinalWager(gameId, wager) {
+  return await rpc("board_submit_final_wager_v23", { p_game_id: gameId, p_wager: Number(wager)||0 });
+}
+
+export async function submitBoardFinalAnswer(gameId, answer) {
+  return await rpc("board_submit_final_answer_v23", { p_game_id: gameId, p_answer: String(answer ?? "") });
+}
+
+export async function syncBoardClock(gameId) {
+  return await rpc("board_sync_v23", { p_game_id: gameId });
+}
+
+export async function resetBoardLobby(gameId) {
+  return await rpc("reset_board_lobby_v23", { p_game_id: gameId });
+}
+

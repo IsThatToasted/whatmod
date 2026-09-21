@@ -8,6 +8,7 @@ export const state = {
   lobbyPlayers: [],
   currentQuestion: null,
   roundResults: null,
+  boardGame: null,
   daily: null,
   practice: null,
   libraryItems: [],

@@ -1,4 +1,4 @@
-# WhatMod Trivia V6.1 — Game UI + Practice Analytics + Replay Library
+# WhatMod Trivia V23 — Estimation Arena + Board Battle
 
 A GitHub-Pages-friendly daily estimation trivia + realtime multiplayer app designed for `https://whatmod.com/trivia/`.
 
@@ -14,6 +14,7 @@ A GitHub-Pages-friendly daily estimation trivia + realtime multiplayer app desig
 - Realtime lobby/player updates for normal rooms.
 - Secure server-side scoring: correct answers are never exposed before reveal.
 - Round results, running scoreboards, final standings.
+- **Board Battle:** a separate 2–10 player board-show mode with six categories, 30 clues valued $400–$2,000, first-buzz control, score penalties, rebound buzzing, two hidden Double Down clues, and a simultaneous final wager.
 - OBS-friendly overlay route: `/trivia/?overlay=ABC123`.
 - Twitch OAuth, post-lobby-to-chat, and EventSub WebSocket listener for `!trivia` / `!join`.
 - Event/Twitch room option intended for reduced fan-out at large scale.
@@ -39,6 +40,8 @@ No frontend build step is required, so it does not disturb other pages already h
 The optional workflow in this package is a validation workflow only. It does not deploy or overwrite the rest of whatmod.com.
 
 ## Existing project upgrade
+
+For the current V22.2 → V23 upgrade, run **`supabase/migrations/022_board_battle_mode.sql`** once and deploy the V23 frontend files. See `UPGRADE_V23.md`.
 
 If V1 is already connected and working, run **`supabase/migrations/002_v2_existing_project_upgrade.sql`** once. It fixes the daily-question SQL, adds Google-name syncing, and preserves player-edited names.
 

@@ -5,7 +5,9 @@ import {
   submitGameAnswer, revealRound, nextRound, getRoundResults, syncGameClock, getDailyState, submitDailyAnswer,
   startPractice, getPracticeQuestion, submitPracticeAnswer, nextPracticeQuestion, getPracticeSummary,
   getQuestionCommunityStats, getLibrarySessions, startLibraryPractice, subscribeLobby, updateUiTheme,
-  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby, touchTriviaPresence, getAvailableCategories, getMatchmakingOptions
+  getQuestionVoteSummary, voteQuestion, adminDeleteQuestion, matchmake, returnToLobby, touchTriviaPresence, getAvailableCategories, getMatchmakingOptions,
+  createBoardLobby, startBoardGame, getBoardState, selectBoardCell, buzzBoard, submitBoardWager, submitBoardAnswer, closeBoardClue,
+  submitBoardFinalWager, submitBoardFinalAnswer, syncBoardClock, resetBoardLobby
 } from "./supabase.js";
 import { numericScore, xpForScore, formatAnswer } from "./scoring.js";
 import { renderGuessHistogram, renderClosenessScale, renderCommunityHistogram, closenessText } from "./charts.js";
@@ -305,6 +307,7 @@ function homeViewV2(){
         <aside class="nova-side-stack">
           <article class="nova-mode-card v2-tilt practice compact-mode" data-nav="practice-setup"><span class="nova-mode-icon">◎</span><div><small>TRAINING SIM</small><h3>Practice</h3><p>Custom categories · zero XP</p></div><b>→</b></article>
           <article class="nova-mode-card v2-tilt matchmaking" data-nav="matchmaking-setup"><span class="nova-mode-icon">⚔</span><div><small>QUICK PLAY</small><h3>Matchmaking</h3><p>Pick a category + difficulty, then queue</p></div><b>▶</b></article>
+          <article class="nova-mode-card v2-tilt board-battle" data-nav="board-setup"><span class="nova-mode-icon">▦</span><div><small>NEW MODE · 2–10</small><h3>Board Battle</h3><p>6 categories · $400–$2000 · buzz for control</p></div><b>▶</b></article>
           <article class="nova-mode-card v2-tilt party compact-mode" data-nav="create"><span class="nova-mode-icon">♟</span><div><small>MULTIPLAYER</small><h3>Host Party</h3><p>Public or invite-only custom room</p></div><b>＋</b></article>
           <article class="nova-join-card v2-tilt"><div><small>JOIN A LIVE ROOM</small><h3>Party code</h3></div><div class="nova-code-entry"><input id="quick-code" maxlength="6" autocomplete="off" placeholder="ABC123"><button data-action="quick-join">ENTER</button></div></article>
         </aside>
@@ -399,6 +402,14 @@ function homeView() {
         <button class="btn play-btn" data-nav="create"><span>Create lobby</span><b>＋</b></button>
       </article>
 
+      <article class="play-card board-battle-card">
+        <div class="card-top"><span class="mode-badge hot">BOARD BATTLE</span><span class="card-glyph">▦</span></div>
+        <div class="board-card-art"><b>$400</b><b>$800</b><b>$1200</b><b>$1600</b><b>$2000</b></div>
+        <div class="card-copy"><h2>Board Battle</h2><p>Six categories, thirty clues, buzzer battles, score swings and a final wager.</p></div>
+        <div class="mini-tags"><span>2–10 players</span><span>6 × 5 board</span><span>Final wager</span></div>
+        <button class="btn play-btn primary" data-nav="board-setup"><span>Build board</span><b>▶</b></button>
+      </article>
+
       <article class="play-card join-card">
         <div class="card-top"><span class="mode-badge cool">QUICK JOIN</span><span class="card-glyph">#</span></div>
         <div class="join-big">
@@ -463,6 +474,119 @@ function createView(presetEvent=false) {
   `);
 }
 
+function boardSetupView() {
+  const categoryDataKnown=(state.categories||[]).length>0;
+  const rows=availableCategories().map(name=>({name,count:categoryCount(name)}))
+    .filter(x=>!categoryDataKnown || Number(x.count||0)>=5)
+    .sort((a,b)=>(Number(b.count||0)-Number(a.count||0)) || a.name.localeCompare(b.name));
+  const defaults=new Set(rows.slice(0,6).map(x=>x.name));
+  return appShell(`
+    <section class="game-screen-head board-setup-head"><button class="back game-back" data-nav="home">←</button><div><div class="mode-badge hot">BOARD BATTLE</div><h1>Build the board.</h1><p>Pick exactly six categories. Thirty clues will be arranged from $400 to $2,000, then 2–10 players fight for board control.</p></div><div class="screen-number">▦</div></section>
+    ${!isConfigured()?`<section class="hud-panel board-live-required"><b>Live backend required</b><p>Board Battle is a synchronized multiplayer mode and requires Supabase.</p></section>`:""}
+    <form id="board-setup-form" class="board-setup-shell">
+      <section class="hud-panel board-builder-main">
+        <div class="setup-title"><span>01</span><div><small>BOARD CATEGORIES</small><h3>Choose six lanes</h3></div><button class="btn tiny ghost" type="button" data-action="board-auto-categories">Auto pick six</button></div>
+        <div class="board-category-counter"><b id="board-category-count">${defaults.size}</b><span>/ 6 selected</span></div>
+        <div class="board-category-picker">
+          ${rows.map((x,i)=>`<label class="board-category-option ${defaults.has(x.name)?"selected":""}"><input type="checkbox" name="categories" value="${esc(x.name)}" ${defaults.has(x.name)?"checked":""}><span>${categoryGlyph(x.name)}</span><div><b>${esc(x.name)}</b><small>${x.count===null?"Live count unavailable":`${Number(x.count).toLocaleString()} active questions`}</small></div><i>${defaults.has(x.name)?"✓":"+"}</i></label>`).join("") || `<div class="empty">No categories currently have enough active questions. Hydrate at least six categories to 5+ questions first.</div>`}
+        </div>
+      </section>
+      <aside class="board-builder-side">
+        <section class="hud-panel">
+          <div class="setup-title"><span>02</span><div><small>ROOM RULES</small><h3>Configure the match</h3></div></div>
+          <label class="game-field"><span>LOBBY NAME</span><input name="title" maxlength="60" placeholder="Friday Board Battle"></label>
+          <div class="form-grid game-fields board-fields">
+            <label class="game-field"><span>MAX PLAYERS</span><select name="maxPlayers"><option>2</option><option>3</option><option>4</option><option>5</option><option selected>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+            <label class="game-field"><span>ANSWER TIMER</span><select name="secondsPerQuestion"><option>10</option><option selected>15</option><option>20</option><option>25</option><option>30</option></select></label>
+          </div>
+          <div class="visibility-picker board-visibility"><small>ROOM ACCESS</small><label><input type="radio" name="visibility" value="invite_only" checked><span><b>🔒 Invite only</b><em>Best for a private group</em></span></label><label><input type="radio" name="visibility" value="public"><span><b>🌐 Public</b><em>Joinable by code; not in Quick Match yet</em></span></label></div>
+        </section>
+        <section class="board-rules-preview">
+          <small>FORMAT</small><h3>6 × 5</h3><div class="board-value-row"><b>$400</b><b>$800</b><b>$1200</b><b>$1600</b><b>$2000</b></div>
+          <ul><li>First buzz gets the clue</li><li>Wrong answers lose the clue value</li><li>Other players may rebound after a miss</li><li>Two hidden Double Down clues</li><li>Final wager after the board clears</li></ul>
+        </section>
+        <button class="btn primary launch-btn" id="board-create-button" type="submit" ${rows.length<6||!isConfigured()?"disabled":""}><span>CREATE BOARD LOBBY</span><b>▶</b></button>
+      </aside>
+    </form>`);
+}
+
+function boardPlayerName(id){ return (state.boardGame?.players||[]).find(p=>String(p.user_id)===String(id))?.username || "Player"; }
+function boardScore(value){ const n=Number(value||0); return `${n<0?"−":""}$${Math.abs(n).toLocaleString()}`; }
+function boardAnswerControl(q,{final=false}={}){
+  if(!q) return "";
+  if(q.question_type==="multiple_choice"){
+    const options=Array.isArray(q.options)?q.options:[];
+    return `<div class="board-choice-grid">${options.map((o,i)=>`<button type="button" class="board-choice" data-board-answer="${esc(i)}" data-board-final="${final?"1":"0"}">${esc(o)}</button>`).join("")}</div>`;
+  }
+  const type=q.question_type==="numeric"?"number":"text";
+  const step=q.question_type==="numeric"?' step="any" inputmode="decimal"':'';
+  return `<form class="board-answer-form" data-board-final="${final?"1":"0"}"><div class="board-answer-line"><input name="answer" type="${type}"${step} autocomplete="off" placeholder="${q.question_type==="numeric"?"Your answer":"Type your response"}" required><span>${esc(q.unit||"")}</span></div><button class="btn primary" type="submit">LOCK ANSWER</button></form>`;
+}
+
+function boardScoreRail(b){
+  const players=b.players||[];
+  return `<div class="board-score-rail">${players.map((p,i)=>`<article class="board-score-player ${p.is_control?"control":""} ${p.is_buzzed?"buzzed":""} ${p.is_me?"me":""}"><span>${p.avatar_url?`<img src="${esc(p.avatar_url)}" alt="">`:esc(initials(p.username))}</span><div><small>${p.is_control?"BOARD CONTROL":p.is_buzzed?"BUZZED IN":p.is_host?"HOST":`PLAYER ${i+1}`}</small><b>${esc(p.username)}</b></div><strong class="${Number(p.score)<0?"negative":""}">${boardScore(p.score)}</strong></article>`).join("")}</div>`;
+}
+
+function boardGridView(b){
+  const me=(b.players||[]).find(p=>p.is_me), canPick=!!me?.is_control;
+  const cells=b.cells||[];
+  const cats=b.categories||[];
+  return `<section class="board-stage">
+    <div class="board-turn-banner ${canPick?"your-turn":""}"><span>${canPick?"YOUR BOARD":"BOARD CONTROL"}</span><b>${canPick?"Choose the next clue":`${esc(boardPlayerName(b.control_user_id))} is choosing`}</b><small>${30-cells.filter(c=>c.used).length} clues remaining</small></div>
+    <div class="board-scroll" role="region" aria-label="Board Battle clue board"><div class="board-grid">
+      ${cats.map(c=>`<div class="board-category-head"><span>${categoryGlyph(c)}</span><b>${esc(c)}</b></div>`).join("")}
+      ${[0,1,2,3,4].map(row=>cats.map((cat,col)=>{const c=cells.find(x=>Number(x.row)===row&&Number(x.col)===col);if(!c)return`<div class="board-cell unavailable">—</div>`;return `<button class="board-cell ${c.used?"used":""}" type="button" data-board-cell="${esc(c.id)}" ${c.used||!canPick?"disabled":""}><span>${c.used?"":`$${Number(c.value).toLocaleString()}`}</span>${c.used?`<i>✓</i>`:""}</button>`;}).join("")).join("")}
+    </div></div>
+  </section>`;
+}
+
+function boardClueView(b){
+  const phase=b.phase,q=b.question,me=(b.players||[]).find(p=>p.is_me),active=(b.cells||[]).find(c=>c.id===b.active_cell_id);
+  const host=!!me?.is_host,locked=!!me?.locked_out,buzzed=String(b.buzz_user_id||"")===String(me?.user_id||"");
+  const attempts=b.attempts||[];
+  if(phase==="wager"){
+    const mine=buzzed;
+    return `<section class="board-clue-stage special"><div class="board-clue-meta"><span>${esc(active?.category||"")}</span><strong>$${Number(active?.value||0).toLocaleString()}</strong><em id="board-phase-clock">—</em></div><div class="board-double-burst">DOUBLE<br>DOWN</div><h2>${mine?"Set your wager before the clue appears.":`${esc(boardPlayerName(b.buzz_user_id))} found a Double Down.`}</h2>${mine?`<form id="board-wager-form" class="board-wager-form"><label>WAGER <small>Maximum ${boardScore(b.my_max_double_wager)}</small><input name="wager" type="number" min="0" max="${Number(b.my_max_double_wager||0)}" value="${Math.min(Number(b.my_max_double_wager||0),Number(active?.value||0))}" required></label><button class="btn primary" type="submit">LOCK WAGER →</button></form>`:`<div class="board-waiting"><i></i> Waiting for the wager…</div>`}</section>`;
+  }
+  return `<section class="board-clue-stage ${phase}">
+    <div class="board-clue-meta"><span>${esc(active?.category||q?.category||"")}</span><strong>$${Number(active?.value||0).toLocaleString()}</strong><em id="board-phase-clock">—</em></div>
+    ${q?`${questionTitleFrame(q,{tag:"h1",className:"board-clue-prompt"})}${q.context?`<p class="board-clue-context">${esc(q.context)}</p>`:""}`:`<div class="center-stage"><div class="spinner"></div></div>`}
+    ${phase==="buzz"?`<div class="board-buzz-zone">${locked?`<button class="board-buzzer locked" disabled><span>LOCKED OUT</span><small>Another player can steal it</small></button>`:`<button class="board-buzzer" data-action="board-buzz" ${!me?"disabled":""}><span>BUZZ</span><small>First tap gets control</small></button>`}<p>${attempts.length?`${attempts.length} miss${attempts.length===1?"":"es"} — clue is still live.`:"Buzzing is open."}</p></div>`:""}
+    ${phase==="answer"?`<div class="board-answer-zone">${buzzed?`<span class="board-you-have-it">YOU HAVE THE BUZZER</span>${boardAnswerControl(q)}`:`<div class="board-waiting"><i></i><b>${esc(boardPlayerName(b.buzz_user_id))}</b> is answering…</div>`}</div>`:""}
+    ${phase==="reveal"?`<div class="board-reveal"><small>CORRECT RESPONSE</small><h2>${esc(b.answer_display||"—")}</h2>${q?.explanation?`<p>${esc(q.explanation)}</p>`:""}<div class="board-attempts">${attempts.map(a=>`<span class="${a.correct?"correct":"wrong"}"><b>${esc(a.username)}</b> ${a.correct?"✓":"✕"} ${a.delta>=0?"+":"−"}$${Math.abs(Number(a.delta||0)).toLocaleString()}</span>`).join("")}</div><em>Returning to the board…</em></div>`:""}
+    ${host&&(phase==="buzz"||phase==="answer")?`<button class="btn tiny ghost board-close-clue" data-action="board-close-clue">Reveal / close clue</button>`:""}
+  </section>`;
+}
+
+function boardFinalView(b){
+  const me=(b.players||[]).find(p=>p.is_me),phase=b.phase,spectator=b.my_participation_status==="spectator";
+  if(phase==="final_wager") return `<section class="board-final-stage"><span class="mode-badge hot">FINAL WAGER</span><h1>${esc(b.final_category||"Final clue")}</h1><p>The clue stays hidden until every active player locks a wager.</p>${spectator?`<div class="board-waiting"><i></i> Spectating the final wager…</div>`:me?.final_wagered?`<div class="board-waiting"><i></i> Wager locked. Waiting for the room…</div>`:`<form id="board-final-wager-form" class="board-wager-form"><label>YOUR WAGER <small>Maximum ${boardScore(b.my_max_final_wager)}</small><input name="wager" type="number" min="0" max="${Number(b.my_max_final_wager||0)}" value="0" required></label><button class="btn primary" type="submit">LOCK FINAL WAGER</button></form>`}<div class="final-ready-list">${(b.players||[]).map(p=>`<span class="${p.final_wagered?"ready":""}">${p.final_wagered?"✓":"○"} ${esc(p.username)}</span>`).join("")}</div><em id="board-phase-clock">—</em></section>`;
+  if(phase==="final_clue") return `<section class="board-final-stage clue"><span class="mode-badge hot">FINAL CLUE · ${esc(b.final_category||"")}</span><em id="board-phase-clock">—</em>${b.question?questionTitleFrame(b.question,{tag:"h1",className:"board-clue-prompt"}):""}${spectator?`<div class="board-waiting"><i></i> Spectating Final…</div>`:me?.final_answered?`<div class="board-waiting"><i></i> Final answer locked.</div>`:boardAnswerControl(b.question,{final:true})}<div class="final-ready-list">${(b.players||[]).map(p=>`<span class="${p.final_answered?"ready":""}">${p.final_answered?"✓":"○"} ${esc(p.username)}</span>`).join("")}</div></section>`;
+  return "";
+}
+
+function boardFinishedView(b){
+  const players=[...(b.players||[])].sort((a,c)=>Number(c.score)-Number(a.score)),winner=players[0],me=players.find(p=>p.is_me);
+  const meHost=String(state.lobby?.host_id||"")===String(state.session?.user?.id||"");
+  return `<section class="board-finish"><div class="victory-burst"><span>♛</span></div><span class="mode-badge hot">BOARD COMPLETE</span><h1>${winner?`${esc(winner.username)} wins the board!`:"Board complete"}</h1><p>Thirty clues, one final wager, and a whole lot of score swings.${me?` You banked <b>+${Number(me.xp_awarded||0).toLocaleString()} XP</b>.`:""}</p>
+    ${b.question?`<div class="board-final-answer"><small>FINAL RESPONSE</small><b>${esc(b.answer_display||"—")}</b>${b.question.explanation?`<span>${esc(b.question.explanation)}</span>`:""}</div>`:""}
+    <div class="board-final-standings">${players.map((p,i)=>`<article class="${i===0?"winner":""}"><span>#${i+1}</span><div><b>${esc(p.username)}</b><small>${p.final_wager!=null?`Final wager ${boardScore(p.final_wager)} · ${p.final_correct?"correct":"missed"}`:""}</small></div><strong class="${Number(p.score)<0?"negative":""}">${boardScore(p.score)}</strong></article>`).join("")}</div>
+    ${meHost?`<button class="btn primary launch-btn" data-action="return-lobby"><span>RETURN TO SAME LOBBY</span><b>↻</b></button>`:`<div class="board-return-wait">Returning everyone to the same lobby in <b id="board-return-countdown">8</b>s…</div>`}</section>`;
+}
+
+function boardGameView(){
+  const b=state.boardGame;
+  if(!b) return appShell(`<section class="center-stage"><div class="spinner"></div><h2>Loading the board…</h2></section>`);
+  const spectator=b.my_participation_status==="spectator";
+  return appShell(`<section class="board-game-shell">
+    <header class="board-game-head"><div><span class="mode-badge hot">BOARD BATTLE</span><h1>${esc(state.lobby?.title||"Board Battle")}</h1><p>ROOM ${esc(state.lobby?.code||b.code||"")} · ${Number(state.lobby?.current_question_index||0)}/30 clues cleared</p></div><div class="board-game-logo"><span>6 × 5</span><b>BUZZ • RISK • WIN</b></div></header>
+    ${spectator?`<section class="board-spectator-banner"><b>SPECTATOR MODE</b><span>This board is already in progress. Watch this game, then you’ll be activated when the room resets.</span></section>`:""}
+    ${boardScoreRail(b)}
+    ${b.phase==="board"?boardGridView(b):b.phase==="final_wager"||b.phase==="final_clue"?boardFinalView(b):b.phase==="finished"?boardFinishedView(b):boardClueView(b)}
+  </section>`);
+}
+
 function lobbyView() {
   const g = state.lobby;
   if (!g) return homeView();
@@ -472,6 +596,7 @@ function lobbyView() {
   const spectators = players.filter(p=>p.participation_status==="spectator");
   const playing = players.filter(p=>p.participation_status!=="spectator");
   const phase = g.status || "lobby";
+  if (g.experience_mode === "board" && (phase === "question" || phase === "results" || phase === "finished")) return boardGameView();
   if (phase === "question" || phase === "results" || phase === "finished") return gameView();
 
   return appShell(`
@@ -493,15 +618,11 @@ function lobbyView() {
 
       <aside class="party-side">
         <section class="hud-panel rules-card"><small>GAME RULES</small><h3>Match loadout</h3>
-          <div class="rule-row"><span>${categoryGlyph(g.category)} Category</span><b>${esc(g.category)}</b></div>
-          <div class="rule-row"><span>⚡ Difficulty</span><b>${esc(g.difficulty)}</b></div>
-          <div class="rule-row"><span>◫ Rounds</span><b>${g.question_count}</b></div>
-          <div class="rule-row"><span>◷ Timer</span><b id="timer-value">${g.seconds_per_question}s</b></div>
-          <div class="rule-row"><span>◈ Network</span><b>${g.game_mode==="event"?"Event":"Standard"}</b></div>
+          ${g.experience_mode==="board"?`<div class="rule-row"><span>▦ Mode</span><b>Board Battle</b></div><div class="rule-row board-lobby-categories"><span>6 Categories</span><b>${esc((state.boardGame?.categories||[]).join(" · ")||"Loading…")}</b></div><div class="rule-row"><span>◆ Board</span><b>30 clues · $400–$2000</b></div><div class="rule-row"><span>◷ Answer timer</span><b>${g.seconds_per_question}s</b></div>`:`<div class="rule-row"><span>${categoryGlyph(g.category)} Category</span><b>${esc(g.category)}</b></div><div class="rule-row"><span>⚡ Difficulty</span><b>${esc(g.difficulty)}</b></div><div class="rule-row"><span>◫ Rounds</span><b>${g.question_count}</b></div><div class="rule-row"><span>◷ Timer</span><b id="timer-value">${g.seconds_per_question}s</b></div><div class="rule-row"><span>◈ Network</span><b>${g.game_mode==="event"?"Event":"Standard"}</b></div>`}
           <div class="rule-row"><span>${g.visibility==="public"?"🌐":"🔒"} Access</span><b>${g.visibility==="public"?"Public":"Invite only"}</b></div>
           ${g.lobby_kind==="matchmaking"?`<div class="rule-row"><span>⚔ Queue</span><b>Quick Match</b></div>`:""}
         </section>
-        ${meHost?`<section class="host-launch"><small>HOST CONTROL</small><h3>Everyone here?</h3><p>Starting locks the game rules and launches Round 1.</p><button class="btn primary launch-btn" data-action="start-game" ${players.length<1?"disabled":""}><span>START MATCH</span><b>▶</b></button></section>`:`<section class="host-launch waiting-card"><span class="waiting-pulse"></span><small>WAITING FOR HOST</small><h3>You're in.</h3><p>The first question will appear automatically.</p></section>`}
+        ${meHost?`<section class="host-launch"><small>HOST CONTROL</small><h3>${g.experience_mode==="board"?"Ready to open the board?":"Everyone here?"}</h3><p>${g.experience_mode==="board"?"Board Battle requires at least 2 players. Starting builds all 30 clues and randomly assigns first control.":"Starting locks the game rules and launches Round 1."}</p><button class="btn primary launch-btn" data-action="start-game" ${playing.filter(p=>!p.is_bot).length<(g.experience_mode==="board"?2:1)?"disabled":""}><span>${g.experience_mode==="board"?"START BOARD":"START MATCH"}</span><b>▶</b></button></section>`:`<section class="host-launch waiting-card"><span class="waiting-pulse"></span><small>WAITING FOR HOST</small><h3>You're in.</h3><p>${g.experience_mode==="board"?"The board will appear when the host starts the game.":"The first question will appear automatically."}</p></section>`}
       </aside>
     </section>
 
@@ -921,6 +1042,7 @@ async function navigate(view, opts={}) {
   state.view = view;
   if (view === "home") $("#app").innerHTML = homeView();
   else if (view === "create") $("#app").innerHTML = createView(opts.event);
+  else if (view === "board-setup") $("#app").innerHTML = boardSetupView();
   else if (view === "lobby") $("#app").innerHTML = lobbyView();
   else if (view === "daily") $("#app").innerHTML = dailyView();
   else if (view === "practice-setup") $("#app").innerHTML = practiceSetupView();
@@ -948,6 +1070,9 @@ function bind() {
     if (a==="library-play") el.onclick = ()=> libraryPlay(el.dataset.libraryId);
     if (a==="quick-join") el.onclick = ()=> quickJoin($("#quick-code")?.value);
     if (a==="matchmake") el.onclick = ()=>navigate("matchmaking-setup");
+    if (a==="board-auto-categories") el.onclick = autoPickBoardCategories;
+    if (a==="board-buzz") el.onclick = boardBuzzAction;
+    if (a==="board-close-clue") el.onclick = boardCloseClueAction;
     if (a==="return-lobby") el.onclick = returnMatchToLobby;
     if (a==="start-game") el.onclick = hostStart;
     if (a==="reveal-round") el.onclick = hostReveal;
@@ -959,6 +1084,14 @@ function bind() {
     if (a==="admin-delete-question") el.onclick = ()=> adminDeleteCurrentQuestion(el.dataset.questionId);
   });
   $("#create-form")?.addEventListener("submit", createSubmit);
+  $("#board-setup-form")?.addEventListener("submit", createBoardSubmit);
+  $("#board-wager-form")?.addEventListener("submit", boardWagerSubmit);
+  $("#board-final-wager-form")?.addEventListener("submit", boardFinalWagerSubmit);
+  $$(".board-answer-form").forEach(form=>form.addEventListener("submit",boardAnswerSubmit));
+  $$("[data-board-cell]").forEach(btn=>btn.onclick=()=>boardSelectCellAction(btn.dataset.boardCell));
+  $$("[data-board-answer]").forEach(btn=>btn.onclick=()=>boardAnswerSubmitValue(btn.dataset.boardAnswer,{final:btn.dataset.boardFinal==="1"}));
+  $$('#board-setup-form input[name="categories"]').forEach(box=>box.addEventListener("change",()=>{if(box.checked&&$$('#board-setup-form input[name="categories"]:checked').length>6){box.checked=false;toast("Board Battle uses exactly six categories.","bad");}refreshBoardCategoryPicker();}));
+  if($("#board-setup-form")) refreshBoardCategoryPicker();
   $("#daily-form")?.addEventListener("submit", dailySubmit);
   $("#practice-setup-form")?.addEventListener("submit", practiceStart);
   $("#matchmaking-setup-form")?.addEventListener("submit", startMatchmaking);
@@ -990,6 +1123,8 @@ function runExperienceCue(){
   let key="",sound="";
   if(state.view==="daily"&&state.daily?.result){key=`daily:${state.daily.question?.id}:${state.daily.result.score}`;sound=Number(state.daily.result.score||0)>=800?"success":"reveal";if(Number(state.daily.result.score||0)>=900)celebrate(key,1.2)}
   else if(state.view==="practice"&&state.practice?.result){key=`practice:${state.practice.session_id||"demo"}:${state.practice.current_index}:result`;sound="reveal"}
+  else if(state.view==="lobby"&&state.lobby?.experience_mode==="board"&&state.boardGame?.phase==="reveal"){key=`board:${state.lobby.id}:${state.boardGame.active_cell_id}:reveal`;sound="reveal"}
+  else if(state.view==="lobby"&&state.lobby?.experience_mode==="board"&&state.boardGame?.phase==="finished"){key=`board:${state.lobby.id}:finished`;sound="win";celebrate(key,1.8)}
   else if(state.view==="lobby"&&state.lobby?.status==="results"){key=`lobby:${state.lobby.id}:${state.lobby.current_question_index}:results`;sound="reveal"}
   else if(state.view==="lobby"&&state.lobby?.status==="finished"){key=`lobby:${state.lobby.id}:finished`;sound="win";celebrate(key,1.8)}
   if(key&&key!==lastExperienceCue){lastExperienceCue=key;setTimeout(()=>playSfx(sound),90)}
@@ -1022,6 +1157,10 @@ function postRender() {
       const rows=state.roundResults||[]; const me=rows.find(x=>x.is_me);
       renderGuessHistogram($("#guess-chart"), rows.map(x=>x.answer_numeric).filter(x=>x!=null), state.currentQuestion?.answer_numeric, me?.answer_numeric);
     });
+  }
+  if (state.view === "lobby" && state.lobby?.experience_mode === "board") {
+    if(state.boardGame?.phase && state.boardGame.phase!=="board") startBoardPhaseTimer();
+    return;
   }
   if (state.view === "lobby" && state.lobby?.status === "question") startTimer();
   if (state.view === "lobby" && state.lobby?.status === "results") startResultsTimer();
@@ -1285,6 +1424,138 @@ async function practiceNext() {
   }
 }
 
+async function createBoardSubmit(e){
+  e.preventDefault();
+  if(!beginAction("create-board-lobby")) return;
+  try{
+    if(!(await requireAuthOrDemo())) return;
+    if(!isConfigured()){ toast("Board Battle requires the live Supabase backend.","bad"); return; }
+    const fd=new FormData(e.currentTarget);
+    const categories=fd.getAll("categories").map(String).filter(Boolean);
+    if(categories.length!==6 || new Set(categories).size!==6){ toast("Choose exactly six different categories.","bad"); return; }
+    if((state.categories||[]).length){
+      const counts=categories.map(categoryCount);
+      if(counts.some(x=>Number(x||0)<5)){toast("Every Board Battle category needs at least 5 active questions.","bad");return;}
+      if(counts.reduce((sum,x)=>sum+Number(x||0),0)<31){toast("Those six categories need at least 31 total questions so Final gets a fresh clue.","bad");return;}
+    }
+    const settings={categories,maxPlayers:Number(fd.get("maxPlayers")||6),secondsPerQuestion:Number(fd.get("secondsPerQuestion")||15),title:String(fd.get("title")||"").trim(),visibility:String(fd.get("visibility")||"invite_only")};
+    const g=await createBoardLobby(settings);
+    if(!g?.code) throw new Error("Board lobby did not return a code.");
+    await enterLobby(g.code);
+  }catch(error){ reportError(error,"The Board Battle lobby couldn't be created."); }
+  finally{ endAction("create-board-lobby"); }
+}
+
+function refreshBoardCategoryPicker(){
+  const form=$("#board-setup-form"); if(!form)return;
+  const boxes=$$('input[name="categories"]',form);
+  const checked=boxes.filter(x=>x.checked);
+  boxes.forEach(box=>{
+    const label=box.closest('.board-category-option');
+    label?.classList.toggle('selected',box.checked);
+    const mark=label?.querySelector('i'); if(mark)mark.textContent=box.checked?'✓':'+';
+    box.disabled=!box.checked&&checked.length>=6;
+  });
+  const counter=$("#board-category-count"); if(counter)counter.textContent=String(checked.length);
+  const button=$("#board-create-button"); if(button)button.disabled=checked.length!==6||!isConfigured();
+}
+
+function autoPickBoardCategories(){
+  const form=$("#board-setup-form"); if(!form)return;
+  const boxes=$$('input[name="categories"]',form);
+  boxes.forEach((b,i)=>b.checked=i<6);
+  refreshBoardCategoryPicker();
+  playSfx("select");
+}
+
+async function boardSelectCellAction(cellId){
+  if(!state.lobby?.id||!cellId||!beginAction("board-select"))return;
+  try{ await selectBoardCell(state.lobby.id,cellId); await performLobbyRefresh(state.lobby.code); }
+  catch(error){ reportError(error,"That clue couldn't be selected."); }
+  finally{ endAction("board-select"); }
+}
+
+async function boardBuzzAction(){
+  if(!state.lobby?.id||!beginAction("board-buzz"))return;
+  try{
+    const result=await buzzBoard(state.lobby.id);
+    if(!result?.accepted){ if(result?.reason==="locked_out")toast("You're locked out of this clue after a miss.","bad"); else if(result?.reason==="expired")toast("The buzz window just closed.","bad"); else toast("Someone beat you to the buzzer.","bad"); }
+    else playSfx("select");
+    await performLobbyRefresh(state.lobby.code);
+  }catch(error){ reportError(error,"The buzzer didn't register."); }
+  finally{ endAction("board-buzz"); }
+}
+
+async function boardWagerSubmit(e){
+  e.preventDefault(); if(!state.lobby?.id||!beginAction("board-wager"))return;
+  try{ const wager=Number(new FormData(e.currentTarget).get("wager")||0); await submitBoardWager(state.lobby.id,wager); await performLobbyRefresh(state.lobby.code); }
+  catch(error){ reportError(error,"That wager couldn't be locked."); }
+  finally{ endAction("board-wager"); }
+}
+
+async function boardAnswerSubmitValue(answer,{final=false}={}){
+  if(!state.lobby?.id||answer==null||String(answer).trim()===""||!beginAction(final?"board-final-answer":"board-answer"))return;
+  try{
+    if(final) await submitBoardFinalAnswer(state.lobby.id,String(answer));
+    else await submitBoardAnswer(state.lobby.id,String(answer));
+    await performLobbyRefresh(state.lobby.code);
+  }catch(error){ reportError(error,"Your answer couldn't be submitted."); }
+  finally{ endAction(final?"board-final-answer":"board-answer"); }
+}
+
+async function boardAnswerSubmit(e){
+  e.preventDefault(); const fd=new FormData(e.currentTarget); await boardAnswerSubmitValue(fd.get("answer"),{final:e.currentTarget.dataset.boardFinal==="1"});
+}
+
+async function boardFinalWagerSubmit(e){
+  e.preventDefault(); if(!state.lobby?.id||!beginAction("board-final-wager"))return;
+  try{ const wager=Number(new FormData(e.currentTarget).get("wager")||0); await submitBoardFinalWager(state.lobby.id,wager); await performLobbyRefresh(state.lobby.code); }
+  catch(error){ reportError(error,"That final wager couldn't be locked."); }
+  finally{ endAction("board-final-wager"); }
+}
+
+async function boardCloseClueAction(){
+  if(!state.lobby?.id||!beginAction("board-close"))return;
+  try{ await closeBoardClue(state.lobby.id); await performLobbyRefresh(state.lobby.code); }
+  catch(error){ reportError(error,"The clue couldn't be closed."); }
+  finally{ endAction("board-close"); }
+}
+
+async function syncBoardAndRefresh(reason="board-clock"){
+  if(!state.lobby?.id||state.lobby?.experience_mode!=="board"||state.view!=="lobby")return;
+  const key=`board-clock:${state.lobby.id}`; if(!beginAction(key))return;
+  try{ await syncBoardClock(state.lobby.id); await performLobbyRefresh(state.lobby.code); }
+  catch(error){ console.warn(`Board clock sync failed (${reason})`,error); }
+  finally{ endAction(key); }
+}
+
+function startBoardPhaseTimer(){
+  const b=state.boardGame;if(!b||state.lobby?.experience_mode!=="board")return;
+  stopPhaseTimers();
+  let start=null,total=0;
+  if(b.phase==="wager"){start=Date.parse(b.clue_opened_at||"");total=30000;}
+  else if(b.phase==="buzz"){start=Date.parse(b.buzz_opened_at||"");total=12000;}
+  else if(b.phase==="answer"){start=Date.parse(b.answer_started_at||"");total=Math.max(10,Math.min(30,Number(b.seconds_per_question||state.lobby?.seconds_per_question||15)))*1000;}
+  else if(b.phase==="reveal"){start=Date.parse(b.reveal_started_at||"");total=4000;}
+  else if(b.phase==="final_wager"){start=Date.parse(b.updated_at||"");total=30000;}
+  else if(b.phase==="final_clue"){start=Date.parse(b.final_clue_started_at||"");total=30000;}
+  else if(b.phase==="finished"){start=Date.parse(state.lobby?.finished_at||"");total=8000;}
+  else return;
+  if(!Number.isFinite(start))start=Date.now();
+  const end=start+total,key=`board:${state.lobby.id}:${b.phase}:${start}`;
+  const tick=()=>{
+    if(state.view!=="lobby"||state.lobby?.experience_mode!=="board"||state.boardGame?.phase!==b.phase)return;
+    const remaining=Math.max(0,end-Date.now()),node=$(b.phase==="finished"?"#board-return-countdown":"#board-phase-clock");
+    if(node)node.textContent=String(Math.ceil(remaining/1000))+(b.phase==="finished"?"":"s");
+    if(remaining<=0){
+      if(phaseAutoKey!==key){phaseAutoKey=key;if(b.phase==="finished")returnMatchToLobby();else syncBoardAndRefresh("phase-expired");}
+      return;
+    }
+    phaseRaf=requestAnimationFrame(tick);
+  };
+  phaseRaf=requestAnimationFrame(tick);
+}
+
 async function createSubmit(e) {
   e.preventDefault();
   if (!beginAction("create-lobby")) return;
@@ -1331,7 +1602,11 @@ async function startMatchmaking(e){
 
 async function returnMatchToLobby(){
   if(!state.lobby?.id||!beginAction("return-lobby")) return;
-  try{ await returnToLobby(state.lobby.id); await performLobbyRefresh(state.lobby.code); }
+  try{
+    if(state.lobby.experience_mode==="board") await resetBoardLobby(state.lobby.id);
+    else await returnToLobby(state.lobby.id);
+    await performLobbyRefresh(state.lobby.code);
+  }
   catch(e){ reportError(e,"Couldn't return to the lobby yet."); }
   finally{ endAction("return-lobby"); }
 }
@@ -1352,7 +1627,10 @@ async function enterLobby(code) {
   stopLobbySync();
   const g=await getLobby(code); if(!g) throw new Error("Lobby not found.");
   state.lobby=g; state.lobbyPlayers=await getLobbyPlayers(g.id);
-  if(g.status==="question"||g.status==="results"){ state.currentQuestion=await getCurrentQuestion(g.id); if(g.status==="results") state.roundResults=await getRoundResults(g.id); } else if(g.status==="finished"){ state.roundResults=await getRoundResults(g.id); }
+  if(g.experience_mode==="board"){
+    state.boardGame=await getBoardState(g.id); state.currentQuestion=null; state.roundResults=null;
+  } else if(g.status==="question"||g.status==="results"){ state.currentQuestion=await getCurrentQuestion(g.id); if(g.status==="results") state.roundResults=await getRoundResults(g.id); }
+  else if(g.status==="finished"){ state.roundResults=await getRoundResults(g.id); }
   lobbyRealtimeStatus = "CONNECTING";
   lobbyLastSyncAt = Date.now();
   subscribeLobby(
@@ -1380,20 +1658,29 @@ async function performLobbyRefresh(code) {
   lobbyRefreshBusy = true;
   try{
     const previousGame = state.lobby;
+    const previousBoard = state.boardGame;
     const previousRoster = (state.lobbyPlayers || []).map(p=>`${p.user_id}:${p.username || ""}:${p.avatar_url || ""}`).sort().join("|");
     const g=await getLobby(code); if(!g)return;
     const players=await getLobbyPlayers(g.id);
     const nextRoster = players.map(p=>`${p.user_id}:${p.username || ""}:${p.avatar_url || ""}`).sort().join("|");
-    const phaseChanged = !previousGame || previousGame.status !== g.status || previousGame.current_question_index !== g.current_question_index || previousGame.question_count !== g.question_count || previousGame.question_started_at !== g.question_started_at || previousGame.cycle_no !== g.cycle_no || previousGame.my_participation_status !== g.my_participation_status;
+    const phaseChanged = !previousGame || previousGame.status !== g.status || previousGame.current_question_index !== g.current_question_index || previousGame.question_count !== g.question_count || previousGame.question_started_at !== g.question_started_at || previousGame.cycle_no !== g.cycle_no || previousGame.my_participation_status !== g.my_participation_status || previousGame.experience_mode !== g.experience_mode;
     const rosterChanged = previousRoster !== nextRoster;
     state.lobby=g; state.lobbyPlayers=players;
-    if(g.status==="question"||g.status==="results"){state.currentQuestion=await getCurrentQuestion(g.id);}
-    if(g.status==="results"||g.status==="finished") state.roundResults=await getRoundResults(g.id);
+    let boardChanged=false;
+    if(g.experience_mode==="board"){
+      const nextBoard=await getBoardState(g.id);
+      boardChanged=!previousBoard || previousBoard.updated_at!==nextBoard?.updated_at || previousBoard.phase!==nextBoard?.phase;
+      state.boardGame=nextBoard; state.currentQuestion=null; state.roundResults=null;
+    } else {
+      state.boardGame=null;
+      if(g.status==="question"||g.status==="results"){state.currentQuestion=await getCurrentQuestion(g.id);}
+      if(g.status==="results"||g.status==="finished") state.roundResults=await getRoundResults(g.id);
+    }
     if(g.status==="finished" && previousGame?.status!=="finished") {
       try { await loadProfile(); } catch(profileError) { console.warn("Profile XP refresh failed",profileError); }
     }
     lobbyLastSyncAt = Date.now();
-    if(state.view==="lobby" && (phaseChanged || rosterChanged)) await navigate("lobby");
+    if(state.view==="lobby" && (phaseChanged || rosterChanged || boardChanged)) await navigate("lobby");
     updateLobbySyncBadge();
   }catch(e){
     console.warn("Lobby sync refresh failed", e);
@@ -1417,7 +1704,9 @@ async function hostStart() {
     if(state.lobby.demoHost){
       state.lobby.status="question"; state.lobby.current_question_index=0; state.currentQuestion={...SAMPLE[0]}; answerStartedAt=performance.now(); return navigate("lobby");
     }
-    await startLobby(state.lobby.id); await refreshLobby(state.lobby.code);
+    if(state.lobby.experience_mode==="board") await startBoardGame(state.lobby.id);
+    else await startLobby(state.lobby.id);
+    await refreshLobby(state.lobby.code);
   }catch(e){reportError(e)}
   finally { endAction("host-transition"); }
 }
