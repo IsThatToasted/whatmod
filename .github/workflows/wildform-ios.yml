@@ -1,0 +1,83 @@
+name: Build Wildform iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'wildform/**'
+      - '.github/workflows/wildform-ios.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wildform-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: wildform
+        run: xcodegen generate
+
+      - name: Build Wildform for iPhone
+        working-directory: wildform
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Wildform.xcodeproj \
+            -scheme Wildform \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | tee build.log
+
+      - name: Package unsigned IPA
+        working-directory: wildform
+        run: |
+          set -e
+          APP_PATH=$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -type d -name '*.app' | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app bundle found"
+            exit 1
+          fi
+
+          rm -rf build/Payload
+          mkdir -p build/Payload
+          cp -R "$APP_PATH" build/Payload/
+          cd build
+          zip -qry Wildform-unsigned.ipa Payload
+          ls -lh Wildform-unsigned.ipa
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wildform-unsigned-IPA
+          path: wildform/build/Wildform-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Wildform-build-log
+          path: wildform/build.log
+          if-no-files-found: ignore
+          retention-days: 7
