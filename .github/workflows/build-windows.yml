@@ -8,20 +8,52 @@ on:
       - '**'
       - '.github/workflows/build-windows.yml'
 
+permissions:
+  contents: read
+
 jobs:
   build-windows:
+    name: Build Windows App
     runs-on: windows-latest
+    timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm install --no-audit --no-fund
-      - run: npm run typecheck
-      - run: npm run build
-      - uses: actions/upload-artifact@v4
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Show tool versions
+        shell: pwsh
+        run: |
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build Wildform Studio
+        run: npm run build
+
+      - name: Verify release output
+        shell: pwsh
+        run: |
+          if (!(Test-Path "release")) {
+            throw "The release directory was not created."
+          }
+          Get-ChildItem -Path release -Recurse | Select-Object FullName, Length
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v6
         with:
           name: WildformStudio-Windows
           path: release/*
+          if-no-files-found: error
+          retention-days: 14
