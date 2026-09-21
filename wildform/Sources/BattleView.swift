@@ -34,12 +34,12 @@ struct BattleView: View {
                 Text("WILD ENCOUNTER")
                     .font(.caption.bold())
                     .tracking(3)
-                    .foregroundStyle(.wfMint)
+                    .foregroundStyle(Color.wfMint)
 
                 VStack(spacing: 5) {
                     Image(systemName: enemy.symbol)
                         .font(.system(size: 72, weight: .bold))
-                        .foregroundStyle(.wfMint)
+                        .foregroundStyle(Color.wfMint)
                         .frame(width: 130, height: 130)
                         .background(.black.opacity(0.28), in: Circle())
                     Text(enemy.name)
@@ -55,7 +55,7 @@ struct BattleView: View {
                     .font(.headline)
                     .multilineTextAlignment(.center)
                     .frame(minHeight: 48)
-                    .foregroundStyle(finished ? .wfMint : .primary)
+                    .foregroundStyle(finished ? Color.wfMint : Color.primary)
 
                 if finished {
                     Button("Return to the Wild") {
@@ -63,7 +63,7 @@ struct BattleView: View {
                         dismiss()
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.wfPurple)
+                    .tint(Color.wfPurple)
                     .controlSize(.large)
                 } else {
                     HStack(spacing: 12) {
@@ -135,7 +135,7 @@ private struct HPBar: View {
                 Text("\(current)/\(max)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }
             ProgressView(value: Double(current), total: Double(max))
-                .tint(current > max / 3 ? .wfMint : .orange)
+                .tint(current > max / 3 ? Color.wfMint : Color.orange)
         }
         .panel()
     }
@@ -156,6 +156,6 @@ private struct BattleButton: View {
             .frame(height: 74)
         }
         .buttonStyle(.borderedProminent)
-        .tint(.wfPurple)
+        .tint(Color.wfPurple)
     }
 }

@@ -80,3 +80,12 @@ The prototype does not use continuous background location. That should be design
 ## Next production milestones
 
 The architecture is intentionally small for this first proof-of-concept. The next phase should add Supabase authentication/cloud saves, server-authoritative encounter generation, anti-spoofing protections, real geospatial cells/biomes, world-state events, mutation slots, Bestiary/Research, crafting, Den upgrades, friend/Pack systems and production art/audio.
+
+
+## v0.1.1 build fix
+
+This revision fixes the Xcode 16.4 Release build errors from the first demo:
+
+- Uses explicit `Color.wfMint` / `Color.wfPurple` references where SwiftUI expects a shape style.
+- Breaks the Evolution, Explore, and Inventory screens into smaller subviews so the optimized Swift compiler can type-check them reliably.
+- Keeps the GitHub Actions unsigned-device build and IPA packaging flow unchanged.

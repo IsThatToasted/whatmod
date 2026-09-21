@@ -13,7 +13,7 @@ struct HomeView: View {
                     Text("WILDFORM")
                         .font(.system(size: 13, weight: .black, design: .rounded))
                         .tracking(4)
-                        .foregroundStyle(.wfMint)
+                        .foregroundStyle(Color.wfMint)
                     Text("Walk. Adapt. Evolve.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -56,7 +56,7 @@ struct HomeView: View {
                             .foregroundStyle(.secondary)
                     }
                     ProgressView(value: Double(game.state.xp), total: Double(game.state.xpToNextLevel))
-                        .tint(.wfMint)
+                        .tint(Color.wfMint)
                 }
                 .panel()
 
@@ -74,7 +74,7 @@ struct HomeView: View {
                         Spacer()
                         Image(systemName: "figure.walk.motion")
                             .font(.title)
-                            .foregroundStyle(.wfMint)
+                            .foregroundStyle(Color.wfMint)
                     }
                 }
                 .panel()
@@ -82,7 +82,7 @@ struct HomeView: View {
                 if let reward = game.lastRewardText {
                     Label(reward, systemImage: "gift.fill")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.wfMint)
+                        .foregroundStyle(Color.wfMint)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .panel()
                 }
@@ -101,7 +101,7 @@ struct HomeView: View {
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(.wfPurple)
+                    .tint(Color.wfPurple)
                 }
                 .panel()
             }
@@ -130,7 +130,7 @@ private struct StatPill: View {
     var body: some View {
         VStack(spacing: 5) {
             Image(systemName: icon)
-                .foregroundStyle(.wfMint)
+                .foregroundStyle(Color.wfMint)
             Text(value)
                 .font(.headline.monospacedDigit())
             Text(title)

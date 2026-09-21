@@ -24,7 +24,7 @@ struct ContentView: View {
             NavigationStack { InventoryView() }
                 .tabItem { Label("Pack", systemImage: "backpack.fill") }
         }
-        .tint(.wfMint)
+        .tint(Color.wfMint)
         .preferredColorScheme(.dark)
     }
 }

@@ -9,7 +9,7 @@ struct CreatureView: View {
         case "Emberling": return .orange
         case "Thornling": return .green
         case "Stormling": return .cyan
-        default: return .wfPurple
+        default: return Color.wfPurple
         }
     }
 
