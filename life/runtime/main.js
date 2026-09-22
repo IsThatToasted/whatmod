@@ -6,7 +6,7 @@ import { AuthProvider } from './contexts/AuthContext.js';
 import { AppDataProvider } from './contexts/AppDataContext.js';
 import { OrganizerProvider } from './contexts/OrganizerContext.js';
 import App from './App.js';
-
+import './styles/global.css';
 class AppErrorBoundary extends Component {
     state = { error: null };
     static getDerivedStateFromError(error) { return { error }; }
