@@ -5,6 +5,22 @@ export type Mood = 'nothing' | 'quick' | 'productive' | 'errands' | 'home' | 're
 export type TimePeriod = 'early-morning' | 'morning' | 'midday' | 'afternoon' | 'evening' | 'night'
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived'
 export type EnergyLevel = 'low' | 'medium' | 'high'
+export type SpacePermissionKey = 'view_shopping' | 'edit_shopping' | 'view_tasks' | 'edit_tasks' | 'view_calendar' | 'edit_calendar' | 'view_notes' | 'edit_notes' | 'view_projects' | 'edit_projects' | 'invite_members'
+export type CaptureKind = 'thought' | 'text' | 'link' | 'file' | 'image' | 'calendar_import'
+
+export interface SpacePermissions {
+  view_shopping: boolean
+  edit_shopping: boolean
+  view_tasks: boolean
+  edit_tasks: boolean
+  view_calendar: boolean
+  edit_calendar: boolean
+  view_notes: boolean
+  edit_notes: boolean
+  view_projects: boolean
+  edit_projects: boolean
+  invite_members: boolean
+}
 
 export interface Profile {
   id: string
@@ -54,6 +70,7 @@ export interface SpaceMember {
   space_id: string
   user_id: string
   role: 'owner' | 'admin' | 'member'
+  permissions?: Partial<SpacePermissions> | null
   display_name: string
   greeting_name?: string | null
   avatar_url?: string | null
@@ -71,12 +88,25 @@ export interface Place {
   notes?: string | null
 }
 
+export interface ShoppingList {
+  id: string
+  space_id: string
+  created_by: string
+  name: string
+  icon?: string | null
+  sort_order?: number
+  created_at: string
+  updated_at?: string
+  archived_at?: string | null
+}
+
 export interface ShoppingDetails {
   quantity?: number | null
   unit?: string | null
   preferred_store?: string | null
   estimated_price?: number | null
   aisle_category?: string | null
+  list_id?: string | null
 }
 
 export interface LifeItem {
@@ -177,6 +207,34 @@ export interface ReminderRecord {
   delivered_at?: string | null
   dismissed_at?: string | null
   created_at: string
+}
+
+
+export interface CaptureRecord {
+  id: string
+  user_id: string
+  space_id?: string | null
+  kind: CaptureKind
+  title: string
+  raw_text?: string | null
+  source_url?: string | null
+  mime_type?: string | null
+  file_name?: string | null
+  storage_path?: string | null
+  parsed_kind?: string | null
+  parsed_data?: Record<string, unknown> | null
+  status: 'inbox' | 'processed' | 'archived'
+  created_item_id?: string | null
+  created_event_id?: string | null
+  created_note_id?: string | null
+  created_at: string
+  updated_at?: string
+}
+
+export interface InviteResult {
+  token: string
+  space_id: string
+  expires_at: string
 }
 
 export interface ActivityEntry {

@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { ActivityEntry, EventItem, LifeItem, Note, ParsedIntent, Place, Profile, ShoppingDetails, Space, SpaceMember, UserPreferences } from '../types'
+import type { ActivityEntry, CaptureRecord, EventItem, InviteResult, LifeItem, Note, ParsedIntent, Place, Profile, ShoppingDetails, ShoppingList, Space, SpaceMember, SpacePermissions, UserPreferences } from '../types'
 import { useAuth } from './AuthContext'
 import { demoActivity, demoEvents, demoItems, demoMembers, demoNotes, demoPlaces, demoProfile, demoSpaces } from '../lib/demo'
 import { supabase } from '../lib/supabase'
 import { enqueueMutation, getOfflineQueue, removeMutation } from '../lib/offlineQueue'
 import { nextRecurrenceDate } from '../lib/recurrence'
+import { normalizeSpacePermissions } from '../lib/spacePermissions'
 
 const demoPreferences: UserPreferences = {
   user_id: demoProfile.id,
@@ -31,6 +32,9 @@ interface AppDataValue {
   events: EventItem[]
   notes: Note[]
   activity: ActivityEntry[]
+  captures: CaptureRecord[]
+  shoppingLists: ShoppingList[]
+  collaborationAvailable: boolean
   loading: boolean
   syncState: 'synced' | 'syncing' | 'offline' | 'error'
   refresh(): Promise<void>
@@ -41,8 +45,13 @@ interface AppDataValue {
   deleteItem(id: string): Promise<void>
   snoozeItem(id: string, hours?: number): Promise<void>
   createSpace(name: string): Promise<void>
-  createInvite(spaceId: string, email?: string): Promise<string>
+  createInvite(spaceId: string, email?: string, role?: 'member' | 'admin', permissions?: Partial<SpacePermissions>): Promise<InviteResult>
   consumeInvite(token: string): Promise<string>
+  updateMemberAccess(spaceId: string, userId: string, permissions: Partial<SpacePermissions>, role?: 'member' | 'admin'): Promise<void>
+  createShoppingList(spaceId: string, name: string): Promise<ShoppingList>
+  createCapture(input: { kind: CaptureRecord['kind']; title: string; raw_text?: string | null; source_url?: string | null; space_id?: string | null; parsed_kind?: string | null; parsed_data?: Record<string, unknown>; file?: File | null; status?: CaptureRecord['status']; created_item_id?: string | null; created_event_id?: string | null; created_note_id?: string | null }): Promise<CaptureRecord>
+  updateCapture(id: string, patch: Partial<CaptureRecord>): Promise<void>
+  importCalendarEvents(events: Array<Omit<EventItem,'id'|'user_id'>>, sourceName?: string): Promise<{ imported: number; skipped: number }>
   updateProfile(patch: Partial<Profile>): Promise<void>
   updatePreferences(patch: Partial<UserPreferences>): Promise<void>
   createPlace(place: Partial<Place> & { name: string }): Promise<void>
@@ -95,6 +104,9 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
   const [events, setEvents] = useState<EventItem[]>(demo ? demoEvents : [])
   const [notes, setNotes] = useState<Note[]>(demo ? demoNotes : [])
   const [activity, setActivity] = useState<ActivityEntry[]>(demo ? demoActivity : [])
+  const [captures, setCaptures] = useState<CaptureRecord[]>([])
+  const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([])
+  const [collaborationAvailable, setCollaborationAvailable] = useState(demo)
   const [loading, setLoading] = useState(!demo)
   const [syncState, setSyncState] = useState<AppDataValue['syncState']>(navigator.onLine ? 'synced' : 'offline')
 
@@ -109,17 +121,26 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
     }
     setLoading(true)
     try {
-      const [p, pref, i, s, m, pl, e, n, a] = await withTimeout(Promise.all([
+      const [p, pref, i, s, m, pl, e, n, a, sl, cap] = await withTimeout(Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
         supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle(),
-        supabase.from('items').select('*, places(name), shopping_items(quantity,unit,preferred_store,estimated_price,aisle_category)').is('deleted_at', null).order('created_at', { ascending: false }),
+        (async () => {
+          const modern = await supabase.from('items').select('*, places(name), shopping_items(quantity,unit,preferred_store,estimated_price,aisle_category,list_id)').is('deleted_at', null).order('created_at', { ascending: false })
+          if (!modern.error || !String(modern.error.message || '').includes('list_id')) return modern
+          return supabase.from('items').select('*, places(name), shopping_items(quantity,unit,preferred_store,estimated_price,aisle_category)').is('deleted_at', null).order('created_at', { ascending: false })
+        })(),
         supabase.from('spaces').select('*, space_members!inner(role)').eq('space_members.user_id', userId).order('created_at'),
-        supabase.rpc('get_accessible_space_members'),
+        (async () => {
+          const modern = await supabase.rpc('get_accessible_space_members_v2')
+          return modern.error ? supabase.rpc('get_accessible_space_members') : modern
+        })(),
         supabase.from('places').select('*').order('name'),
         supabase.from('events').select('*').is('deleted_at', null).gte('event_date', new Date().toISOString().slice(0, 10)).order('event_date').order('start_time'),
         supabase.from('notes').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(100),
         supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(50),
-      ]), 8000, 'Initial data load')
+        supabase.from('shopping_lists').select('*').is('archived_at', null).order('sort_order').order('created_at'),
+        supabase.from('captures').select('*').eq('status','inbox').order('created_at', { ascending: false }).limit(100),
+      ]), 9000, 'Initial data load')
 
       if (p.data) {
         setProfile(p.data as Profile)
@@ -136,11 +157,14 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
         shopping_items: undefined,
       })) as LifeItem[]
       const nextSpaces = (s.data || []).map((x: any) => ({ ...x, role: x.space_members?.[0]?.role })) as Space[]
-      const nextMembers = (m.data || []).map((x: any) => ({ space_id: x.space_id, user_id: x.user_id, role: x.role, display_name: x.display_name || 'Member', greeting_name: x.greeting_name || null, avatar_url: x.avatar_url || null })) as SpaceMember[]
+      const nextMembers = (m.data || []).map((x: any) => ({ space_id: x.space_id, user_id: x.user_id, role: x.role, permissions: x.permissions || null, display_name: x.display_name || 'Member', greeting_name: x.greeting_name || null, avatar_url: x.avatar_url || null })) as SpaceMember[]
       const nextPlaces = (pl.data || []) as Place[]
       const nextEvents = (e.data || []) as EventItem[]
       const nextNotes = (n.data || []) as Note[]
       const nextActivity = (a.data || []) as ActivityEntry[]
+      const nextShoppingLists = (sl.data || []) as ShoppingList[]
+      const nextCaptures = (cap.data || []) as CaptureRecord[]
+      setCollaborationAvailable(!sl.error && !cap.error)
       setItems(mapped)
       persistLocal(mapped)
       setSpaces(nextSpaces)
@@ -149,6 +173,8 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
       setEvents(nextEvents)
       setNotes(nextNotes)
       setActivity(nextActivity)
+      setShoppingLists(nextShoppingLists)
+      setCaptures(nextCaptures)
       writeSnapshotPart(userId, {
         profile: p.data || null,
         preferences: pref.data || null,
@@ -159,6 +185,8 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
         events: nextEvents,
         notes: nextNotes,
         activity: nextActivity,
+        shoppingLists: nextShoppingLists,
+        captures: nextCaptures,
       })
       setSyncState('synced')
     } catch {
@@ -174,6 +202,8 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
           if (snapshot.events) setEvents(snapshot.events as EventItem[])
           if (snapshot.notes) setNotes(snapshot.notes as Note[])
           if (snapshot.activity) setActivity(snapshot.activity as ActivityEntry[])
+          if (snapshot.shoppingLists) setShoppingLists(snapshot.shoppingLists as ShoppingList[])
+          if (snapshot.captures) setCaptures(snapshot.captures as CaptureRecord[])
         } else {
           const cached = localStorage.getItem(localKey(userId))
           if (cached) setItems(JSON.parse(cached))
@@ -246,6 +276,8 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, () => { void refresh() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => { void refresh() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => { void refresh() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_lists' }, () => { void refresh() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'captures' }, () => { void refresh() })
       .subscribe()
     return () => { void client.removeChannel(channel) }
   }, [demo, userId, refresh])
@@ -334,6 +366,7 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
       estimated_price: patch.estimated_price ?? null,
       aisle_category: patch.aisle_category?.trim() || null,
     }
+    if (Object.prototype.hasOwnProperty.call(patch, 'list_id')) normalized.list_id = patch.list_id || null
     setItems(current => {
       const next = current.map(item => item.id === id ? { ...item, shopping: { ...(item.shopping || {}), ...normalized } } : item)
       persistLocal(next)
@@ -427,21 +460,131 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
     }
   }
 
-  const createInvite = async (spaceId: string, email?: string) => {
-    if (demo) return `demo-${crypto.randomUUID()}`
+  const createInvite = async (spaceId: string, email?: string, role: 'member' | 'admin' = 'member', permissions: Partial<SpacePermissions> = {}) => {
+    const expires = new Date(Date.now() + 7 * 86400000).toISOString()
+    if (demo) throw new Error('This is demo mode, so it cannot create a real shareable invite. Sign in to the Supabase-backed app first.')
     if (!supabase) throw new Error('Supabase is not configured')
-    const { data, error } = await supabase.rpc('create_space_invite', { p_space: spaceId, p_email: email || null, p_role: 'member' })
-    if (error) throw error
-    return String(data)
+    if (!navigator.onLine) throw new Error('Connect to the internet to create an invite link.')
+    const normalized = normalizeSpacePermissions(permissions)
+    const modern = await supabase.rpc('create_space_invite_v2', {
+      p_space: spaceId,
+      p_email: email?.trim() || null,
+      p_role: role,
+      p_permissions: normalized,
+    })
+    if (!modern.error && modern.data) {
+      const value = modern.data as any
+      return { token: String(value.token), space_id: String(value.space_id || spaceId), expires_at: String(value.expires_at || expires) }
+    }
+    // Migration-safe fallback: older databases can still create a basic member invite.
+    const missingModernRpc = modern.error && ['PGRST202','42883'].includes(String((modern.error as any).code || ''))
+    if (!missingModernRpc) throw modern.error
+    if (role !== 'member') throw new Error('Run migration 003 before inviting admins or using category permissions.')
+    const legacy = await supabase.rpc('create_space_invite', { p_space: spaceId, p_email: email?.trim() || null, p_role: 'member' })
+    if (legacy.error) throw legacy.error
+    return { token: String(legacy.data), space_id: spaceId, expires_at: expires }
   }
 
   const consumeInvite = async (token: string) => {
     if (demo) return spaces[0]?.id || ''
     if (!supabase) throw new Error('Supabase is not configured')
-    const { data, error } = await supabase.rpc('consume_space_invite', { p_token: token })
+    let result = await supabase.rpc('consume_space_invite_v2', { p_token: token })
+    if (result.error && ['PGRST202','42883'].includes(String((result.error as any).code || ''))) {
+      result = await supabase.rpc('consume_space_invite', { p_token: token })
+    }
+    if (result.error) throw result.error
+    await refresh()
+    return String(result.data)
+  }
+
+  const updateMemberAccess = async (spaceId: string, memberUserId: string, permissions: Partial<SpacePermissions>, role?: 'member' | 'admin') => {
+    if (demo) {
+      setMembers(current => current.map(member => member.space_id === spaceId && member.user_id === memberUserId ? { ...member, permissions: normalizeSpacePermissions(permissions), role: role || member.role } : member))
+      return
+    }
+    if (!supabase) throw new Error('Supabase is not configured')
+    const { error } = await supabase.rpc('update_space_member_access', { p_space: spaceId, p_user: memberUserId, p_permissions: normalizeSpacePermissions(permissions), p_role: role || null })
     if (error) throw error
     await refresh()
-    return String(data)
+  }
+
+  const createShoppingList = async (spaceId: string, name: string): Promise<ShoppingList> => {
+    if (!userId) throw new Error('Not signed in')
+    const row: ShoppingList = { id: crypto.randomUUID(), space_id: spaceId, created_by: userId, name: name.trim(), icon: 'basket', sort_order: shoppingLists.filter(list => list.space_id === spaceId).length, created_at: new Date().toISOString() }
+    if (!row.name) throw new Error('List name is required')
+    if (demo) { setShoppingLists(current => [...current, row]); return row }
+    if (!supabase) throw new Error('Supabase is not configured')
+    const { error } = await supabase.from('shopping_lists').insert(row as never)
+    if (error) throw new Error(error.message.includes('shopping_lists') ? 'Run migration 003 to enable named shared shopping lists.' : error.message)
+    setShoppingLists(current => [...current, row])
+    return row
+  }
+
+  const createCapture = async (input: { kind: CaptureRecord['kind']; title: string; raw_text?: string | null; source_url?: string | null; space_id?: string | null; parsed_kind?: string | null; parsed_data?: Record<string, unknown>; file?: File | null; status?: CaptureRecord['status']; created_item_id?: string | null; created_event_id?: string | null; created_note_id?: string | null }): Promise<CaptureRecord> => {
+    if (!userId) throw new Error('Not signed in')
+    let storagePath: string | null = null
+    if (input.file && !demo) {
+      if (!supabase) throw new Error('Supabase is not configured')
+      if (!navigator.onLine) throw new Error('Connect to the internet to upload a file or image.')
+      const safe = input.file.name.replace(/[^a-z0-9._-]+/gi,'-').slice(-120) || 'capture'
+      storagePath = `${userId}/${new Date().toISOString().slice(0,7)}/${crypto.randomUUID()}-${safe}`
+      const upload = await supabase.storage.from('justglance-captures').upload(storagePath, input.file, { upsert: false, contentType: input.file.type || undefined })
+      if (upload.error) throw new Error(upload.error.message.includes('Bucket') ? 'Run migration 003 to enable file and image capture.' : upload.error.message)
+    }
+    const row: CaptureRecord = {
+      id: crypto.randomUUID(), user_id: userId, space_id: input.space_id || null, kind: input.kind,
+      title: (input.title.trim() || input.file?.name || 'Capture').slice(0,500), raw_text: input.raw_text || null, source_url: input.source_url || null,
+      mime_type: input.file?.type || null, file_name: input.file?.name || null, storage_path: storagePath,
+      parsed_kind: input.parsed_kind || null, parsed_data: input.parsed_data || {}, status: input.status || 'inbox',
+      created_item_id: input.created_item_id || null, created_event_id: input.created_event_id || null, created_note_id: input.created_note_id || null,
+      created_at: new Date().toISOString(),
+    }
+    if (demo) { setCaptures(current => [row, ...current]); return row }
+    if (!supabase) throw new Error('Supabase is not configured')
+    const { error } = await supabase.from('captures').insert(row as never)
+    if (error) {
+      if (storagePath) await supabase.storage.from('justglance-captures').remove([storagePath])
+      throw new Error(error.message.includes('captures') ? 'Run migration 003 to enable Smart Intake.' : error.message)
+    }
+    setCaptures(current => [row, ...current])
+    return row
+  }
+
+  const updateCapture = async (id: string, patch: Partial<CaptureRecord>) => {
+    const updated = { ...patch, updated_at: new Date().toISOString() }
+    setCaptures(current => current.map(capture => capture.id === id ? { ...capture, ...updated } : capture).filter(capture => capture.status === 'inbox'))
+    if (!demo && supabase) {
+      const serverPatch = { ...updated } as Record<string, unknown>
+      delete serverPatch.id; delete serverPatch.user_id
+      const { error } = await supabase.from('captures').update(serverPatch as never).eq('id', id)
+      if (error) throw error
+    }
+  }
+
+  const importCalendarEvents = async (incoming: Array<Omit<EventItem,'id'|'user_id'>>, sourceName = 'Calendar file') => {
+    if (!userId) throw new Error('Not signed in')
+    if (!incoming.length) return { imported: 0, skipped: 0 }
+    let imported = 0, skipped = 0
+    if (demo) {
+      const rows = incoming.map(event => ({ id: crypto.randomUUID(), user_id: userId, ...event })) as EventItem[]
+      setEvents(current => [...current, ...rows])
+      return { imported: rows.length, skipped: 0 }
+    }
+    if (!supabase || !navigator.onLine) throw new Error('Connect to the internet to import calendar events.')
+    for (const event of incoming) {
+      if (event.external_id && events.some(existing => existing.provider === event.provider && existing.external_id === event.external_id)) { skipped++; continue }
+      const row: EventItem = { id: crypto.randomUUID(), user_id: userId, ...event }
+      const { error } = await supabase.from('events').insert(row as never)
+      if (error) {
+        if ((error as any).code === '23505') { skipped++; continue }
+        throw error
+      }
+      imported++
+    }
+    const importRow = { id: crypto.randomUUID(), user_id: userId, provider: incoming[0]?.provider || 'ics', source_name: sourceName, imported_count: imported, skipped_count: skipped, metadata: { total: incoming.length } }
+    await supabase.from('calendar_imports').insert(importRow as never)
+    await refresh()
+    return { imported, skipped }
   }
 
   const updateProfile = async (patch: Partial<Profile>) => {
@@ -563,22 +706,23 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
 
   const getSpaceMembers = async (spaceId: string): Promise<SpaceMember[]> => {
     if (demo) {
-      return [{ space_id: spaceId, user_id: userId || demoProfile.id, role: 'owner', display_name: profile?.display_name || 'Demo User', greeting_name: profile?.greeting_name || 'Demo', avatar_url: profile?.avatar_url || null }]
+      return [{ space_id: spaceId, user_id: userId || demoProfile.id, role: 'owner', permissions: normalizeSpacePermissions(), display_name: profile?.display_name || 'Demo User', greeting_name: profile?.greeting_name || 'Demo', avatar_url: profile?.avatar_url || null }]
     }
     if (!supabase || !navigator.onLine) return []
-    const { data, error } = await supabase.rpc('get_space_members', { p_space: spaceId })
-    if (error) {
-      console.error('Could not load space members', error)
+    let result = await supabase.rpc('get_space_members_v2', { p_space: spaceId })
+    if (result.error && ['PGRST202','42883'].includes(String((result.error as any).code || ''))) result = await supabase.rpc('get_space_members', { p_space: spaceId })
+    if (result.error) {
+      console.error('Could not load space members', result.error)
       return []
     }
-    return (data || []).map((row: any) => ({ ...row, space_id: spaceId })) as SpaceMember[]
+    return (result.data || []).map((row: any) => ({ ...row, permissions: row.permissions || null, space_id: spaceId })) as SpaceMember[]
   }
 
   const value = useMemo(() => ({
-    profile, preferences, items, spaces, members, places, events, notes, activity, loading, syncState,
+    profile, preferences, items, spaces, members, places, events, notes, activity, captures, shoppingLists, collaborationAvailable, loading, syncState,
     refresh, createItem, updateItem, updateShopping, completeItem, deleteItem, snoozeItem, createSpace, createInvite,
-    consumeInvite, updateProfile, updatePreferences, createPlace, createEvent, createNote, getSpaceMembers,
-  }), [profile, preferences, items, spaces, members, places, events, notes, activity, loading, syncState, refresh])
+    consumeInvite, updateMemberAccess, createShoppingList, createCapture, updateCapture, importCalendarEvents, updateProfile, updatePreferences, createPlace, createEvent, createNote, getSpaceMembers,
+  }), [profile, preferences, items, spaces, members, places, events, notes, activity, captures, shoppingLists, collaborationAvailable, loading, syncState, refresh])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

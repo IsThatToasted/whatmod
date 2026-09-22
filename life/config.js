@@ -4,7 +4,7 @@
    Never place a service_role key here.
 */
 window.__JUSTGLANCE_CONFIG__ = {
-  appVersion: '2.0.1',
+  appVersion: '2.1.0',
   demoMode: false,
   supabaseUrl: '',
   supabaseAnonKey: ''

@@ -1,7 +1,8 @@
-import { lifeIntentParser } from '../lib/parser.js';
+import { analyzeSmartText } from '../lib/smartIntake.js';
 import { calculateRelevanceScore } from '../lib/relevance.js';
 export class FallbackAIProvider {
-    async parseIntent(text) { return lifeIntentParser.parse(text); }
+    async parseIntent(text) { return analyzeSmartText(text).intent; }
+    async analyzeCapture(text) { return analyzeSmartText(text); }
     async rankItems(items, context) { return [...items].sort((a, b) => calculateRelevanceScore(b, context).score - calculateRelevanceScore(a, context).score); }
     async summarizeDay(items) { const done = items.filter(i => i.status === 'completed').length; return `${done} completed today.`; }
     async estimateDuration() { return null; }

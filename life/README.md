@@ -1,10 +1,10 @@
-# JustGlance v2.0.1 — Organizer Expansion
+# JustGlance v2.1.0 — Shared Spaces + Smart Intake
 
 **Your life, at a glance.**
 
 JustGlance is the personal daily operating system hosted at `https://whatmod.com/life/`. v2 keeps the stable v1.0.7 direct-static GitHub Pages architecture and expands the product into a much broader personal organizer without turning the homepage into a traditional productivity dashboard.
 
-## What v2 adds
+## What v2.1 adds
 
 - **Universal Capture** — capture a task, reminder, shopping item, call, errand, chore, idea, appointment, thought/note, or whole project from the same sheet.
 - **Task Command Center** — smart views for Today, Inbox, Overdue, Next 7 Days, Waiting, Anytime, Completed, and All.
@@ -18,7 +18,9 @@ JustGlance is the personal daily operating system hosted at `https://whatmod.com
 - **Keyboard speed** — `C` opens universal capture and `Ctrl/Cmd + K` opens search when focus is not inside a form field.
 - **Responsive organization navigation** — desktop exposes the full organizer; mobile keeps a simple Now / Tasks / Capture / Plan / More dock.
 
-The original NOW relevance engine, Later, shared Spaces, shopping metadata, places, Daily Reset, Morning Brief, offline queue, Supabase auth/RLS/realtime, search, themes, and responsive design are preserved.
+The original NOW relevance engine, organizer, projects, Later, shared Spaces, places, Daily Reset, Morning Brief, offline queue, Supabase auth/RLS/realtime, search, themes, fixed desktop navigation, and responsive design are preserved.
+
+New in v2.1: secure invite links with category permissions, named shared shopping lists, Smart Intake for links/files/images, stronger appointment parsing, a capture inbox, private capture storage, and `.ics` calendar import for Outlook/Google/Apple exports.
 
 ## Repository placement
 
@@ -61,36 +63,22 @@ Run the migrations in Supabase SQL Editor in order:
 ```text
 life/supabase/migrations/001_initial_schema.sql
 life/supabase/migrations/002_organizer_expansion.sql
+life/supabase/migrations/003_shared_spaces_smart_intake.sql
 ```
 
-For an existing v1 database, only `002_organizer_expansion.sql` needs to be run. It is additive: it creates the organizer tables/columns/indexes/RLS without deleting v1 data.
+For an existing v2.0.x database, run only `003_shared_spaces_smart_intake.sql`. It is additive and keeps existing tasks, projects, events, notes, spaces, members, and shopping rows. Existing members keep full category access until an owner/admin changes it.
 
-### v2 database additions
+### v2.1 database additions
 
-`projects`
-- status: active / paused / completed / archived
-- optional shared Space
-- priority, target date, description, icon/color
+`space_members` and `invites` gain per-category permissions.
 
-`items` gains
-- `project_id`
-- `parent_item_id`
-- `start_date`
-- `scheduled_at`
-- `defer_until`
-- `energy_level`
-- `waiting_for`
-- `is_inbox`
-- `focus_pin`
-- `sort_order`
+`shopping_lists` adds named lists within a shared space; existing unassigned shopping items remain available in the General list.
 
-`events` and `notes` gain `project_id`. Notes also gain pin/color/source metadata.
+`captures` stores Smart Intake records for links, files, images, and unprocessed material. A private `justglance-captures` Storage bucket preserves uploaded files.
 
-`reminders`
-- item/event linkage
-- exact `remind_at`
-- notification/alarm kind
-- delivered/dismissed state
+`calendar_imports` records import runs, while `events.provider` + `events.external_id` are used to avoid duplicate imported events.
+
+RLS now enforces category visibility for shared shopping, tasks, calendar events, notes/files, and projects.
 
 ## Web deployment
 
@@ -130,10 +118,10 @@ v2 adds the `justglanceNative` WKWebView message bridge. When the web app create
 ## Release checklist
 
 1. Copy this package over the existing repo paths.
-2. Run `002_organizer_expansion.sql` in the existing JustGlance Supabase project.
+2. If v2.0.x is already installed, run only `003_shared_spaces_smart_intake.sql` in the existing JustGlance Supabase project.
 3. Confirm GitHub repository secrets `JUSTGLANCE_SUPABASE_URL` and `JUSTGLANCE_SUPABASE_ANON_KEY` exist.
 4. Push to `main`; the existing `web-pages.yml` deploys the web app.
-5. Open `https://whatmod.com/life/`, sign in, create a project, capture a task into it, and create an appointment/reminder.
+5. Open `https://whatmod.com/life/`, sign in, create an invite link in a shared Space, create a named shopping list, Smart Capture an appointment, and import a small `.ics` file.
 6. Run **JustGlance iOS Unsigned IPA** manually (or change an iOS file to trigger it), install the artifact with Sideloadly, and accept notification permission when the first native reminder is scheduled.
 
 ## Security notes
@@ -149,3 +137,7 @@ v2 adds the `justglanceNative` WKWebView message bridge. When the web app create
 ## Repository deployment rule
 
 The web app at `/life` is deployed by the repository-wide `web-pages.yml` workflow together with the other WhatMod subdirectory apps. Do not create or re-enable a separate `justglance-web-build.yml` for web publishing.
+
+### v2.1 import support
+
+Smart Intake and Planner accept `.ics` exports from Outlook, Google Calendar, Apple Calendar and other tools, plus common Outlook/calendar CSV exports. Live OAuth provider adapters remain an extension point; file import works now without OAuth.
