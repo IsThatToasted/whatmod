@@ -5,7 +5,6 @@ import { AuthProvider } from './contexts/AuthContext'
 import { AppDataProvider } from './contexts/AppDataContext'
 import { OrganizerProvider } from './contexts/OrganizerContext'
 import App from './App'
-import './styles/global.css'
 
 class AppErrorBoundary extends Component<{children:ReactNode},{error:Error|null}> {
   state={error:null as Error|null}
