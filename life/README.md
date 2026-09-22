@@ -1,4 +1,4 @@
-# JustGlance v2.0.0 — Organizer Expansion
+# JustGlance v2.0.1 — Organizer Expansion
 
 **Your life, at a glance.**
 
@@ -144,3 +144,8 @@ v2 adds the `justglanceNative` WKWebView message bridge. When the web app create
 - `reminders` are owner-only.
 - The native bridge accepts only a small command set: schedule reminder, cancel reminder, and request notification permission.
 - No service-role key or privileged backend credential is included in the package.
+
+
+## Repository deployment rule
+
+The web app at `/life` is deployed by the repository-wide `web-pages.yml` workflow together with the other WhatMod subdirectory apps. Do not create or re-enable a separate `justglance-web-build.yml` for web publishing.

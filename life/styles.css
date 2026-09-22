@@ -1,6 +1,6 @@
 :root{
   font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;
-  color-scheme:light dark;
+  color-scheme:light;
   --bg:#f6f6f1;--surface:#ffffff;--surface-2:#efefe9;--text:#1e211f;--muted:#737873;--line:#dedfd8;
   --accent:#315c4a;--accent-2:#dce9e1;--accent-text:#f9fff9;--danger:#a74444;--shadow:0 16px 45px rgba(31,39,34,.08);
   --radius:24px;--radius-sm:15px;--safe-bottom:env(safe-area-inset-bottom,0px);
@@ -65,3 +65,66 @@
 }
 .result-card-button > svg { flex: 0 0 auto; margin-top: 2px; }
 .result-card-button > span { min-width: 0; }
+
+
+/* ============================================================
+   v2.0.1 VISUAL CONSISTENCY / CONTRAST SAFETY
+   The static entry point must never pin #root to light colors.
+   Every rendered surface below explicitly uses the active theme
+   variables so light, dark and System mode cannot mix palettes.
+   ============================================================ */
+html{scrollbar-gutter:stable;color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark}}
+body,#root,.app-shell,.app-main{background:var(--bg);color:var(--text)}
+#root{min-height:100vh}
+.boot-loading{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:12px;background:var(--bg);color:var(--muted);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+.boot-loading span{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 10%,transparent)}
+
+/* Native controls can otherwise inherit a browser/OS color that does not
+   match our custom surface, especially in System mode. */
+button,input,textarea,select,option{color:var(--text)}
+input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--muted) 88%,transparent);opacity:1}
+
+/* Explicit surface foregrounds: prevents dark-card/dark-text and
+   light-card/light-text combinations when navigating or changing theme. */
+.item-card,.item-main,.context-card,.context-title,.empty-card,.reset-card,
+.panel-card,.project-card,.project-card-main,.note-card,.settings-section,
+.space-card,.result-card,.popover,.modal,.capture-sheet,.auth-card,
+.smart-filter-row button,.date-strip button,.chip,.organize-grid button,
+.thought-card,.project-health,.organizer-stats>div,.inline-search,
+.capture-grid label,.quick-add-line input,.thought-capture textarea{
+  color:var(--text);
+}
+.item-main strong,.item-title-row strong,.context-title strong,.context-card h3,
+.panel-card h2,.panel-card h3,.project-card strong,.note-card strong,
+.settings-section h2,.space-card h2,.organize-grid strong,.thought-card strong{
+  color:var(--text);
+}
+.item-meta span,.context-card p,.project-card p,.note-card p,.muted-copy,
+.organize-grid span,.project-meta,.thought-card p{color:var(--muted)}
+
+/* Preserve intentional semantic/accent foregrounds after the safety sweep. */
+.primary-button,.sidebar-capture,.capture-fab,.quick-add-line button,
+.smart-filter-row button.active,.date-strip button.active{color:var(--accent-text)}
+.chip.active,.bottom-nav a.active,.desktop-sidebar nav a.active{color:var(--accent)}
+.danger-button{color:var(--danger)}
+.complete-button{color:transparent}
+.complete-button:hover{color:var(--accent)}
+.brand-orb{color:var(--accent-text)}
+
+/* Desktop navigation is taken out of the page grid. Its width is now a
+   constant desktop rail, so switching between short/long pages or pages
+   that add/remove a scrollbar cannot resize the left navigation. */
+@media(min-width:760px){
+  :root{--desktop-sidebar-width:252px}
+  .app-shell{display:block;min-height:100vh}
+  .desktop-sidebar{
+    position:fixed;left:0;top:0;bottom:0;width:var(--desktop-sidebar-width);
+    height:100dvh;min-height:100vh;z-index:40;overflow-y:auto;overflow-x:hidden;
+  }
+  .app-main{
+    margin-left:var(--desktop-sidebar-width);width:calc(100% - var(--desktop-sidebar-width));
+    min-width:0;min-height:100vh;
+  }
+}
