@@ -1,0 +1,3 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+const opts = [['nothing', 'Nothing'], ['quick', 'Quick win'], ['productive', 'Productive'], ['errands', 'Errands'], ['home', 'Home'], ['relax', 'Relax'], ['fun', 'Fun']];
+export function MoodSelector({ value, onChange }) { return _jsxs("div", { className: "mood-wrap", children: [_jsx("p", { children: "What do you feel like doing?" }), _jsx("div", { className: "chip-row", children: opts.map(([v, l]) => _jsx("button", { className: `chip ${value === v ? 'active' : ''}`, onClick: () => onChange(value === v ? null : v), children: l }, v)) })] }); }

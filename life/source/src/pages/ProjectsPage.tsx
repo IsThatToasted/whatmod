@@ -1,0 +1,18 @@
+import { useMemo, useState } from 'react'
+import { Archive, CalendarDays, FolderKanban, Plus, Target } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useAppData } from '../contexts/AppDataContext'
+import { useOrganizer } from '../contexts/OrganizerContext'
+import { projectProgress } from '../lib/organizer'
+
+export default function ProjectsPage(){
+ const {items}=useAppData(); const {projects,createProject,archiveProject,expansionAvailable}=useOrganizer(); const nav=useNavigate()
+ const [creating,setCreating]=useState(false),[name,setName]=useState(''),[description,setDescription]=useState(''),[target,setTarget]=useState('')
+ const active=useMemo(()=>projects.filter(p=>p.status!=='archived'),[projects])
+ async function save(){if(!name.trim())return;const p=await createProject({name,description,target_date:target||null});setName('');setDescription('');setTarget('');setCreating(false);nav(`/projects/${p.id}`)}
+ return <div className="page organizer-page"><header className="page-header"><div><span className="eyebrow">PROJECTS</span><h1>Big things, broken into next actions.</h1><p>Keep outcomes, tasks, appointments and notes connected without turning your life into project-management software.</p></div><button className="primary-button" onClick={()=>setCreating(v=>!v)}><Plus size={17}/>New project</button></header>
+ {!expansionAvailable&&<div className="migration-banner"><strong>Organizer database upgrade needed.</strong><span>Run <code>supabase/migrations/002_organizer_expansion.sql</code> once in Supabase.</span></div>}
+ {creating&&<section className="panel-card create-project-card"><div className="form-stack"><label>Project name<input autoFocus value={name} onChange={e=>setName(e.target.value)} placeholder="Renovate the bedroom"/></label><label>What does done look like?<textarea rows={3} value={description} onChange={e=>setDescription(e.target.value)} placeholder="A short outcome, not a giant plan."/></label><label>Target date (optional)<input type="date" value={target} onChange={e=>setTarget(e.target.value)}/></label><div className="row-actions"><button className="secondary-button" onClick={()=>setCreating(false)}>Cancel</button><button className="primary-button" disabled={!name.trim()} onClick={save}>Create project</button></div></div></section>}
+ <div className="project-grid">{active.map(project=>{const p=projectProgress(project,items);return <article className="project-card" key={project.id}><button className="project-card-main" onClick={()=>nav(`/projects/${project.id}`)}><div className="project-icon"><FolderKanban/></div><div><div className="project-title-row"><strong>{project.name}</strong>{project.priority==='high'&&<span className="priority-dot"/>}</div><p>{project.description||'No description yet.'}</p></div><div className="progress-track"><span style={{width:`${p.percent}%`}}/></div><div className="project-meta"><span><Target size={14}/>{p.open} next</span><span>{p.percent}%</span>{project.target_date&&<span><CalendarDays size={14}/>{new Date(project.target_date+'T12:00:00').toLocaleDateString()}</span>}</div></button><button className="project-archive" onClick={()=>archiveProject(project.id)} aria-label={`Archive ${project.name}`}><Archive size={16}/></button></article>})}</div>
+ {!active.length&&!creating&&<div className="empty-state large"><FolderKanban size={38}/><strong>No projects yet.</strong><span>Create one for anything that takes more than a single action.</span></div>}</div>
+}

@@ -1,0 +1,25 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { CalendarDays, CheckCircle2, ChevronRight, Filter, Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useAppData } from '../contexts/AppDataContext.js';
+import { addDaysISO, todayISO } from '../lib/time.js';
+import { ItemCard } from '../components/ItemCard.js';
+import { Modal } from '../components/Modal.js';
+const filters = ['all', 'task', 'errand', 'shopping', 'call', 'chore', 'reminder', 'idea'];
+function group(items) { const t = todayISO(), week = addDaysISO(7); return { today: items.filter(i => i.due_date && i.due_date <= t), week: items.filter(i => i.due_date && i.due_date > t && i.due_date <= week), someday: items.filter(i => !i.due_date || i.due_date > week) }; }
+export default function LaterPage() {
+    const { items, createEvent, spaces } = useAppData();
+    const [filter, setFilter] = useState('all');
+    const [eventOpen, setEventOpen] = useState(false);
+    const [eventTitle, setEventTitle] = useState('');
+    const [eventDate, setEventDate] = useState(todayISO());
+    const [eventStart, setEventStart] = useState('18:00');
+    const [eventEnd, setEventEnd] = useState('');
+    const [eventLocation, setEventLocation] = useState('');
+    const [eventSpace, setEventSpace] = useState('');
+    const open = useMemo(() => items.filter(i => i.status === 'open' && (filter === 'all' || i.type === filter)), [items, filter]);
+    const g = group(open);
+    async function addEvent() { if (!eventTitle.trim())
+        return; await createEvent({ title: eventTitle.trim(), event_date: eventDate, start_time: eventStart, end_time: eventEnd || null, location: eventLocation || null, notes: null, space_id: eventSpace || null }); setEventTitle(''); setEventLocation(''); setEventEnd(''); setEventOpen(false); }
+    return _jsxs("div", { className: "page", children: [_jsxs("header", { className: "page-header", children: [_jsxs("div", { children: [_jsx("span", { className: "eyebrow", children: "LATER" }), _jsx("h1", { children: "Everything waiting for you." }), _jsx("p", { children: "Organized loosely, so you don\u2019t have to babysit a system." })] }), _jsxs("div", { className: "header-actions", children: [_jsxs("div", { className: "header-stat", children: [_jsx("strong", { children: open.length }), _jsx("span", { children: "open" })] }), _jsxs("button", { className: "secondary-button", onClick: () => setEventOpen(true), children: [_jsx(CalendarDays, { size: 17 }), "Add event"] })] })] }), _jsxs("div", { className: "filter-row", children: [_jsx(Filter, { size: 16 }), filters.map(f => _jsx("button", { className: `chip ${filter === f ? 'active' : ''}`, onClick: () => setFilter(f), children: f }, f))] }), open.length === 0 ? _jsxs("div", { className: "large-empty", children: [_jsx(CheckCircle2, {}), _jsx("h2", { children: "Nothing waiting for you." }), _jsx("p", { children: "Enjoy it." })] }) : _jsx("div", { className: "later-columns", children: [['Today', g.today], ['This week', g.week], ['Someday', g.someday]].map(([name, list]) => _jsxs("section", { className: "later-section", children: [_jsxs("div", { className: "section-heading inline", children: [_jsx("h2", { children: name }), _jsx("span", { children: list.length })] }), list.length ? list.map(i => _jsx(ItemCard, { item: i }, i.id)) : _jsxs("div", { className: "empty-row", children: ["Nothing here ", _jsx(ChevronRight, { size: 15 })] })] }, name)) }), _jsxs("div", { className: "later-note", children: [_jsx(CalendarDays, { size: 18 }), _jsx("span", { children: "Recurring items only appear here when they become relevant." })] }), _jsx(Modal, { open: eventOpen, onClose: () => setEventOpen(false), title: "Add event", children: _jsxs("div", { className: "form-stack", children: [_jsxs("label", { children: ["Title", _jsx("input", { value: eventTitle, onChange: e => setEventTitle(e.target.value), placeholder: "Dinner, appointment, pickup\u2026", autoFocus: true })] }), _jsxs("div", { className: "two-col", children: [_jsxs("label", { children: ["Date", _jsx("input", { type: "date", value: eventDate, onChange: e => setEventDate(e.target.value) })] }), _jsxs("label", { children: ["Start", _jsx("input", { type: "time", value: eventStart, onChange: e => setEventStart(e.target.value) })] })] }), _jsxs("div", { className: "two-col", children: [_jsxs("label", { children: ["End (optional)", _jsx("input", { type: "time", value: eventEnd, onChange: e => setEventEnd(e.target.value) })] }), _jsxs("label", { children: ["Space", _jsxs("select", { value: eventSpace, onChange: e => setEventSpace(e.target.value), children: [_jsx("option", { value: "", children: "Personal" }), spaces.filter(s => !s.name.toLowerCase().includes('personal')).map(s => _jsx("option", { value: s.id, children: s.name }, s.id))] })] })] }), _jsxs("label", { children: ["Location", _jsx("input", { value: eventLocation, onChange: e => setEventLocation(e.target.value), placeholder: "Optional" })] }), _jsxs("button", { className: "primary-button", onClick: addEvent, disabled: !eventTitle.trim(), children: [_jsx(Plus, { size: 17 }), "Add event"] })] }) })] });
+}
