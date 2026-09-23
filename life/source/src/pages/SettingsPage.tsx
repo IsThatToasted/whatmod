@@ -1,4 +1,4 @@
-import { Chrome, Copy, Download, LocateFixed, LogOut, MapPin, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Chrome, Copy, Download, Edit3, LocateFixed, LogOut, MapPin, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase'
 import type { BrowserIntegration } from '../types'
 
 export default function SettingsPage() {
-  const { profile, preferences, updateProfile, updatePreferences, places, createPlace, items, spaces, events, notes } = useAppData()
+  const { profile, preferences, updateProfile, updatePreferences, places, createPlace, updatePlace, deletePlace, items, spaces, events, notes } = useAppData()
   const { signOut, deleteAccount, demo } = useAuth()
   const [name, setName] = useState(profile?.greeting_name || '')
   const [wake, setWake] = useState(profile?.wake_time || '07:00')
@@ -22,6 +22,7 @@ export default function SettingsPage() {
   const [placeAddress, setPlaceAddress] = useState('')
   const [placeCategory, setPlaceCategory] = useState('other')
   const [placeCoords, setPlaceCoords] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [editingPlaceId, setEditingPlaceId] = useState('')
   const [locationMessage, setLocationMessage] = useState('')
   const [accountMessage, setAccountMessage] = useState('')
   const [browserIntegrations, setBrowserIntegrations] = useState<BrowserIntegration[]>([])
@@ -73,20 +74,43 @@ export default function SettingsPage() {
     }
   }
 
-  async function addPlace() {
+  function clearPlaceForm() {
+    setEditingPlaceId('')
+    setPlaceName('')
+    setPlaceAddress('')
+    setPlaceCategory('other')
+    setPlaceCoords(null)
+  }
+
+  function startPlaceEdit(id: string) {
+    const place = places.find(candidate => candidate.id === id)
+    if (!place) return
+    setEditingPlaceId(place.id)
+    setPlaceName(place.name)
+    setPlaceAddress(place.address || '')
+    setPlaceCategory(place.category || 'other')
+    setPlaceCoords(place.latitude != null && place.longitude != null ? { latitude: place.latitude, longitude: place.longitude } : null)
+  }
+
+  async function savePlace() {
     if (!placeName.trim()) return
-    await createPlace({
+    const payload = {
       name: placeName.trim(),
       address: placeAddress.trim() || null,
       category: placeCategory,
       latitude: placeCoords?.latitude ?? null,
       longitude: placeCoords?.longitude ?? null,
       radius_meters: 200,
-    })
-    setPlaceName('')
-    setPlaceAddress('')
-    setPlaceCategory('other')
-    setPlaceCoords(null)
+    }
+    if (editingPlaceId) await updatePlace(editingPlaceId, payload)
+    else await createPlace(payload)
+    clearPlaceForm()
+  }
+
+  async function removePlace() {
+    if (!editingPlaceId) return
+    await deletePlace(editingPlaceId)
+    clearPlaceForm()
   }
 
   async function loadBrowserIntegrations() {
@@ -146,13 +170,14 @@ export default function SettingsPage() {
 
       <section className="settings-section">
         <span className="eyebrow">PLACES</span><h2>Places & location</h2>
-        {places.map(place => <div className="place-row" key={place.id}><MapPin size={17}/><div><strong>{place.name}</strong><span>{place.address || place.category}{place.latitude != null ? ' · location saved' : ''}</span></div></div>)}
+        {places.map(place => <div className="place-row editable-row" key={place.id}><MapPin size={17}/><div><strong>{place.name}</strong><span>{place.address || place.category}{place.latitude != null ? ' · location saved' : ''}</span></div><button className="icon-button subtle" onClick={()=>startPlaceEdit(place.id)} aria-label={`Edit ${place.name}`}><Edit3 size={15}/></button></div>)}
         <div className="form-stack settings-place-form">
+          {editingPlaceId&&<div className="editing-banner"><strong>Editing saved place</strong><button className="text-button" onClick={clearPlaceForm}>Cancel</button></div>}
           <label>Name<input value={placeName} onChange={e => setPlaceName(e.target.value)} placeholder="Gym, Walmart, Parents’ house"/></label>
           <label>Address (optional)<input value={placeAddress} onChange={e => setPlaceAddress(e.target.value)} placeholder="Manual address"/></label>
           <label>Category<select value={placeCategory} onChange={e => setPlaceCategory(e.target.value)}><option value="other">Other</option><option value="home">Home</option><option value="work">Work</option><option value="store">Store</option><option value="gym">Gym</option><option value="pharmacy">Pharmacy</option></select></label>
-          <div className="place-actions"><button className="secondary-button" type="button" onClick={requestLocation} disabled={!featureFlags.LOCATION}><LocateFixed size={17}/>Use current location</button><button className="primary-button" type="button" onClick={addPlace} disabled={!placeName.trim()}><Plus size={17}/>Add place</button></div>
-          {placeCoords && <p className="muted">Current coordinates will be saved with this place when you add it.</p>}
+          <div className="place-actions"><button className="secondary-button" type="button" onClick={requestLocation} disabled={!featureFlags.LOCATION}><LocateFixed size={17}/>Use current location</button>{editingPlaceId&&<button className="text-button danger-text" type="button" onClick={removePlace}><Trash2 size={15}/>Delete</button>}<button className="primary-button" type="button" onClick={savePlace} disabled={!placeName.trim()}>{editingPlaceId?<><Edit3 size={17}/>Save place</>:<><Plus size={17}/>Add place</>}</button></div>
+          {placeCoords && <p className="muted">Coordinates are saved with this place.</p>}
           {locationMessage && <div className="form-message">{locationMessage}</div>}
         </div>
       </section>
@@ -173,7 +198,7 @@ export default function SettingsPage() {
       <section className="settings-section browser-extension-settings">
         <span className="eyebrow">BROWSER</span><h2><Chrome size={20}/> Add to JustGlance</h2>
         <p className="muted">The Chrome extension adds a small button to shopping pages, reads product title/image/price from the page, syncs your named shopping lists, and saves directly to the list you choose.</p>
-        <div className="browser-extension-actions"><a className="secondary-button" href="./chrome-extension/JustGlance-Chrome-Extension-v1.0.0.zip" download><Download size={17}/>Download extension</a><button className="primary-button" onClick={createBrowserPairing} disabled={browserBusy||demo}><Chrome size={17}/>{browserBusy?'Creating…':'Create pairing code'}</button></div>
+        <div className="browser-extension-actions"><a className="secondary-button" href="./chrome-extension/JustGlance-Chrome-Extension-v1.0.1.zip" download><Download size={17}/>Download extension</a><button className="primary-button" onClick={createBrowserPairing} disabled={browserBusy||demo}><Chrome size={17}/>{browserBusy?'Creating…':'Create pairing code'}</button></div>
         {browserToken&&<div className="pairing-token-card"><span>ONE-TIME PAIRING CODE</span><code>{browserToken}</code><button className="secondary-button" onClick={async()=>navigator.clipboard.writeText(browserToken)}><Copy size={16}/>Copy code</button><small>JustGlance stores only a hash. This raw code is shown only in this session.</small></div>}
         {browserMessage&&<div className="form-message">{browserMessage}</div>}
         <div className="integration-list"><div className="section-heading inline"><strong>Connected browsers</strong><button className="icon-button" onClick={loadBrowserIntegrations} aria-label="Refresh browser connections"><RefreshCw size={15}/></button></div>{browserIntegrations.length?browserIntegrations.map(integration=><div className="integration-row" key={integration.id}><span><b>{integration.name}</b><small>{integration.last_used_at?`Last used ${new Date(integration.last_used_at).toLocaleString()}`:`Connected ${new Date(integration.created_at).toLocaleString()}`}</small></span><button className="text-button danger-text" onClick={()=>revokeBrowserPairing(integration.id)}>Revoke</button></div>):<p className="muted">No browser connections yet.</p>}</div>

@@ -46,10 +46,13 @@ interface AppDataValue {
   deleteItem(id: string): Promise<void>
   snoozeItem(id: string, hours?: number): Promise<void>
   createSpace(name: string): Promise<void>
+  updateSpace(id: string, patch: Partial<Pick<Space, 'name' | 'icon'>>): Promise<void>
   createInvite(spaceId: string, email?: string, role?: 'member' | 'admin', permissions?: Partial<SpacePermissions>): Promise<InviteResult>
   consumeInvite(token: string): Promise<string>
   updateMemberAccess(spaceId: string, userId: string, permissions: Partial<SpacePermissions>, role?: 'member' | 'admin'): Promise<void>
   createShoppingList(spaceId: string, name: string): Promise<ShoppingList>
+  updateShoppingList(id: string, patch: Partial<ShoppingList>): Promise<void>
+  archiveShoppingList(id: string): Promise<void>
   createCapture(input: { kind: CaptureRecord['kind']; title: string; raw_text?: string | null; source_url?: string | null; space_id?: string | null; parsed_kind?: string | null; parsed_data?: Record<string, unknown>; file?: File | null; status?: CaptureRecord['status']; created_item_id?: string | null; created_event_id?: string | null; created_note_id?: string | null; contact_id?: string | null; ai_status?: CaptureRecord['ai_status'] }): Promise<CaptureRecord>
   updateCapture(id: string, patch: Partial<CaptureRecord>): Promise<void>
   analyzeCapture(id: string): Promise<UniversalIntakeAnalysis | null>
@@ -61,8 +64,14 @@ interface AppDataValue {
   updateProfile(patch: Partial<Profile>): Promise<void>
   updatePreferences(patch: Partial<UserPreferences>): Promise<void>
   createPlace(place: Partial<Place> & { name: string }): Promise<void>
+  updatePlace(id: string, patch: Partial<Place>): Promise<void>
+  deletePlace(id: string): Promise<void>
   createEvent(event: Omit<EventItem, 'id' | 'user_id'>): Promise<EventItem>
+  updateEvent(id: string, patch: Partial<EventItem>): Promise<void>
+  deleteEvent(id: string): Promise<void>
   createNote(body: string, spaceId?: string | null): Promise<void>
+  updateNote(id: string, patch: Partial<Note>): Promise<void>
+  deleteNote(id: string): Promise<void>
   getSpaceMembers(spaceId: string): Promise<SpaceMember[]>
 }
 
@@ -511,6 +520,26 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
     }
   }
 
+  const updateSpace = async (id: string, patch: Partial<Pick<Space, 'name' | 'icon'>>) => {
+    const clean: Record<string, unknown> = {}
+    if (Object.prototype.hasOwnProperty.call(patch, 'name')) {
+      const name = String(patch.name || '').trim()
+      if (!name) throw new Error('Space name is required')
+      clean.name = name
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'icon')) clean.icon = patch.icon || 'home'
+    if (!Object.keys(clean).length) return
+    setSpaces(current => {
+      const next = current.map(space => space.id === id ? { ...space, ...clean } as Space : space)
+      if (userId) writeSnapshotPart(userId, { spaces: next })
+      return next
+    })
+    if (!demo && supabase) {
+      const { error } = await supabase.from('spaces').update(clean as never).eq('id', id)
+      if (error) throw error
+    }
+  }
+
   const createInvite = async (spaceId: string, email?: string, role: 'member' | 'admin' = 'member', permissions: Partial<SpacePermissions> = {}) => {
     const expires = new Date(Date.now() + 7 * 86400000).toISOString()
     if (demo) throw new Error('This is demo mode, so it cannot create a real shareable invite. Sign in to the Supabase-backed app first.')
@@ -570,6 +599,31 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
     setShoppingLists(current => [...current, row])
     return row
   }
+
+  const updateShoppingList = async (id: string, patch: Partial<ShoppingList>) => {
+    const clean: Record<string, unknown> = {}
+    if (Object.prototype.hasOwnProperty.call(patch, 'name')) {
+      const name = String(patch.name || '').trim()
+      if (!name) throw new Error('List name is required')
+      clean.name = name
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'icon')) clean.icon = patch.icon || 'basket'
+    if (Object.prototype.hasOwnProperty.call(patch, 'sort_order')) clean.sort_order = patch.sort_order ?? 0
+    if (Object.prototype.hasOwnProperty.call(patch, 'archived_at')) clean.archived_at = patch.archived_at || null
+    if (!Object.keys(clean).length) return
+    clean.updated_at = new Date().toISOString()
+    setShoppingLists(current => {
+      const next = current.map(list => list.id === id ? { ...list, ...clean } as ShoppingList : list).filter(list => !list.archived_at)
+      if (userId) writeSnapshotPart(userId, { shoppingLists: next })
+      return next
+    })
+    if (!demo && supabase) {
+      const { error } = await supabase.from('shopping_lists').update(clean as never).eq('id', id)
+      if (error) throw error
+    }
+  }
+
+  const archiveShoppingList = async (id: string) => updateShoppingList(id, { archived_at: new Date().toISOString() })
 
   const createCapture = async (input: { kind: CaptureRecord['kind']; title: string; raw_text?: string | null; source_url?: string | null; space_id?: string | null; parsed_kind?: string | null; parsed_data?: Record<string, unknown>; file?: File | null; status?: CaptureRecord['status']; created_item_id?: string | null; created_event_id?: string | null; created_note_id?: string | null; contact_id?: string | null; ai_status?: CaptureRecord['ai_status'] }): Promise<CaptureRecord> => {
     if (!userId) throw new Error('Not signed in')
@@ -790,6 +844,33 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
     }
   }
 
+  const updatePlace = async (id: string, patch: Partial<Place>) => {
+    const clean = { ...patch } as Record<string, unknown>
+    delete clean.id; delete clean.user_id
+    if (Object.prototype.hasOwnProperty.call(clean, 'name')) {
+      const name = String(clean.name || '').trim()
+      if (!name) throw new Error('Place name is required')
+      clean.name = name
+    }
+    setPlaces(current => {
+      const next = current.map(place => place.id === id ? { ...place, ...clean } as Place : place).sort((a,b)=>a.name.localeCompare(b.name))
+      if (userId) writeSnapshotPart(userId, { places: next })
+      return next
+    })
+    if (!demo && supabase) {
+      const { error } = await supabase.from('places').update(clean as never).eq('id', id)
+      if (error) throw error
+    }
+  }
+
+  const deletePlace = async (id: string) => {
+    setPlaces(current => current.filter(place => place.id !== id))
+    if (!demo && supabase) {
+      const { error } = await supabase.from('places').delete().eq('id', id)
+      if (error) throw error
+    }
+  }
+
   const createEvent = async (event: Omit<EventItem, 'id' | 'user_id'>): Promise<EventItem> => {
     if (!userId) throw new Error('Not signed in')
     const row: EventItem = { id: crypto.randomUUID(), user_id: userId, ...event }
@@ -809,6 +890,28 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
       }
     }
     return row
+  }
+
+  const updateEvent = async (id: string, patch: Partial<EventItem>) => {
+    const clean = { ...patch, updated_at: new Date().toISOString() } as Record<string, unknown>
+    delete clean.id; delete clean.user_id
+    setEvents(current => {
+      const next = current.map(event => event.id === id ? { ...event, ...clean } as EventItem : event).sort((a,b)=>`${a.event_date}${a.start_time}`.localeCompare(`${b.event_date}${b.start_time}`))
+      if (userId) writeSnapshotPart(userId, { events: next })
+      return next
+    })
+    if (!demo && supabase) {
+      const { error } = await supabase.from('events').update(clean as never).eq('id', id)
+      if (error) throw error
+    }
+  }
+
+  const deleteEvent = async (id: string) => {
+    setEvents(current => current.filter(event => event.id !== id))
+    if (!demo && supabase) {
+      const { error } = await supabase.from('events').update({ deleted_at: new Date().toISOString() } as never).eq('id', id)
+      if (error) throw error
+    }
   }
 
   const createNote = async (body: string, spaceId?: string | null) => {
@@ -840,6 +943,30 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
     }
   }
 
+  const updateNote = async (id: string, patch: Partial<Note>) => {
+    const clean = { ...patch, updated_at: new Date().toISOString() } as Record<string, unknown>
+    delete clean.id; delete clean.user_id
+    if (Object.prototype.hasOwnProperty.call(clean, 'title')) clean.title = String(clean.title || '').trim() || 'Note'
+    if (Object.prototype.hasOwnProperty.call(clean, 'body')) clean.body = String(clean.body || '').trim()
+    setNotes(current => {
+      const next = current.map(note => note.id === id ? { ...note, ...clean } as Note : note)
+      if (userId) writeSnapshotPart(userId, { notes: next })
+      return next
+    })
+    if (!demo && supabase) {
+      const { error } = await supabase.from('notes').update(clean as never).eq('id', id)
+      if (error) throw error
+    }
+  }
+
+  const deleteNote = async (id: string) => {
+    setNotes(current => current.filter(note => note.id !== id))
+    if (!demo && supabase) {
+      const { error } = await supabase.from('notes').update({ deleted_at: new Date().toISOString() } as never).eq('id', id)
+      if (error) throw error
+    }
+  }
+
   const getSpaceMembers = async (spaceId: string): Promise<SpaceMember[]> => {
     if (demo) {
       return [{ space_id: spaceId, user_id: userId || demoProfile.id, role: 'owner', permissions: normalizeSpacePermissions(), display_name: profile?.display_name || 'Demo User', greeting_name: profile?.greeting_name || 'Demo', avatar_url: profile?.avatar_url || null }]
@@ -856,8 +983,8 @@ function AppDataStateProvider({ children, userId, demo }: { children: ReactNode;
 
   const value = useMemo(() => ({
     profile, preferences, items, spaces, members, places, events, notes, activity, captures, contacts, shoppingLists, collaborationAvailable, loading, syncState,
-    refresh, createItem, updateItem, updateShopping, completeItem, deleteItem, snoozeItem, createSpace, createInvite,
-    consumeInvite, updateMemberAccess, createShoppingList, createCapture, updateCapture, analyzeCapture, getCaptureSignedUrl, createContact, updateContact, deleteContact, importCalendarEvents, updateProfile, updatePreferences, createPlace, createEvent, createNote, getSpaceMembers,
+    refresh, createItem, updateItem, updateShopping, completeItem, deleteItem, snoozeItem, createSpace, updateSpace, createInvite,
+    consumeInvite, updateMemberAccess, createShoppingList, updateShoppingList, archiveShoppingList, createCapture, updateCapture, analyzeCapture, getCaptureSignedUrl, createContact, updateContact, deleteContact, importCalendarEvents, updateProfile, updatePreferences, createPlace, updatePlace, deletePlace, createEvent, updateEvent, deleteEvent, createNote, updateNote, deleteNote, getSpaceMembers,
   }), [profile, preferences, items, spaces, members, places, events, notes, activity, captures, contacts, shoppingLists, collaborationAvailable, loading, syncState, refresh])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

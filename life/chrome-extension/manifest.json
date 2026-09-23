@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Add to JustGlance",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Save products from the web directly into your JustGlance shared shopping lists.",
   "icons": {
     "16": "icons/icon-16.png",
@@ -9,7 +9,10 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": ["storage", "activeTab"],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
   "host_permissions": [
     "https://whatmod.com/life/*",
     "https://*.supabase.co/*"
@@ -20,9 +23,16 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "exclude_matches": ["https://whatmod.com/life/*"],
-      "js": ["content.js"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "exclude_matches": [
+        "https://whatmod.com/life/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],

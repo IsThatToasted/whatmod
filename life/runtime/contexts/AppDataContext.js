@@ -499,6 +499,30 @@ function AppDataStateProvider({ children, userId, demo }) {
             await refresh();
         }
     };
+    const updateSpace = async (id, patch) => {
+        const clean = {};
+        if (Object.prototype.hasOwnProperty.call(patch, 'name')) {
+            const name = String(patch.name || '').trim();
+            if (!name)
+                throw new Error('Space name is required');
+            clean.name = name;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'icon'))
+            clean.icon = patch.icon || 'home';
+        if (!Object.keys(clean).length)
+            return;
+        setSpaces(current => {
+            const next = current.map(space => space.id === id ? { ...space, ...clean } : space);
+            if (userId)
+                writeSnapshotPart(userId, { spaces: next });
+            return next;
+        });
+        if (!demo && supabase) {
+            const { error } = await supabase.from('spaces').update(clean).eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
     const createInvite = async (spaceId, email, role = 'member', permissions = {}) => {
         const expires = new Date(Date.now() + 7 * 86400000).toISOString();
         if (demo)
@@ -573,6 +597,36 @@ function AppDataStateProvider({ children, userId, demo }) {
         setShoppingLists(current => [...current, row]);
         return row;
     };
+    const updateShoppingList = async (id, patch) => {
+        const clean = {};
+        if (Object.prototype.hasOwnProperty.call(patch, 'name')) {
+            const name = String(patch.name || '').trim();
+            if (!name)
+                throw new Error('List name is required');
+            clean.name = name;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'icon'))
+            clean.icon = patch.icon || 'basket';
+        if (Object.prototype.hasOwnProperty.call(patch, 'sort_order'))
+            clean.sort_order = patch.sort_order ?? 0;
+        if (Object.prototype.hasOwnProperty.call(patch, 'archived_at'))
+            clean.archived_at = patch.archived_at || null;
+        if (!Object.keys(clean).length)
+            return;
+        clean.updated_at = new Date().toISOString();
+        setShoppingLists(current => {
+            const next = current.map(list => list.id === id ? { ...list, ...clean } : list).filter(list => !list.archived_at);
+            if (userId)
+                writeSnapshotPart(userId, { shoppingLists: next });
+            return next;
+        });
+        if (!demo && supabase) {
+            const { error } = await supabase.from('shopping_lists').update(clean).eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
+    const archiveShoppingList = async (id) => updateShoppingList(id, { archived_at: new Date().toISOString() });
     const createCapture = async (input) => {
         if (!userId)
             throw new Error('Not signed in');
@@ -816,6 +870,36 @@ function AppDataStateProvider({ children, userId, demo }) {
             }
         }
     };
+    const updatePlace = async (id, patch) => {
+        const clean = { ...patch };
+        delete clean.id;
+        delete clean.user_id;
+        if (Object.prototype.hasOwnProperty.call(clean, 'name')) {
+            const name = String(clean.name || '').trim();
+            if (!name)
+                throw new Error('Place name is required');
+            clean.name = name;
+        }
+        setPlaces(current => {
+            const next = current.map(place => place.id === id ? { ...place, ...clean } : place).sort((a, b) => a.name.localeCompare(b.name));
+            if (userId)
+                writeSnapshotPart(userId, { places: next });
+            return next;
+        });
+        if (!demo && supabase) {
+            const { error } = await supabase.from('places').update(clean).eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
+    const deletePlace = async (id) => {
+        setPlaces(current => current.filter(place => place.id !== id));
+        if (!demo && supabase) {
+            const { error } = await supabase.from('places').delete().eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
     const createEvent = async (event) => {
         if (!userId)
             throw new Error('Not signed in');
@@ -837,6 +921,30 @@ function AppDataStateProvider({ children, userId, demo }) {
             }
         }
         return row;
+    };
+    const updateEvent = async (id, patch) => {
+        const clean = { ...patch, updated_at: new Date().toISOString() };
+        delete clean.id;
+        delete clean.user_id;
+        setEvents(current => {
+            const next = current.map(event => event.id === id ? { ...event, ...clean } : event).sort((a, b) => `${a.event_date}${a.start_time}`.localeCompare(`${b.event_date}${b.start_time}`));
+            if (userId)
+                writeSnapshotPart(userId, { events: next });
+            return next;
+        });
+        if (!demo && supabase) {
+            const { error } = await supabase.from('events').update(clean).eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
+    const deleteEvent = async (id) => {
+        setEvents(current => current.filter(event => event.id !== id));
+        if (!demo && supabase) {
+            const { error } = await supabase.from('events').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+            if (error)
+                throw error;
+        }
     };
     const createNote = async (body, spaceId) => {
         if (!userId || !body.trim())
@@ -868,6 +976,34 @@ function AppDataStateProvider({ children, userId, demo }) {
             }
         }
     };
+    const updateNote = async (id, patch) => {
+        const clean = { ...patch, updated_at: new Date().toISOString() };
+        delete clean.id;
+        delete clean.user_id;
+        if (Object.prototype.hasOwnProperty.call(clean, 'title'))
+            clean.title = String(clean.title || '').trim() || 'Note';
+        if (Object.prototype.hasOwnProperty.call(clean, 'body'))
+            clean.body = String(clean.body || '').trim();
+        setNotes(current => {
+            const next = current.map(note => note.id === id ? { ...note, ...clean } : note);
+            if (userId)
+                writeSnapshotPart(userId, { notes: next });
+            return next;
+        });
+        if (!demo && supabase) {
+            const { error } = await supabase.from('notes').update(clean).eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
+    const deleteNote = async (id) => {
+        setNotes(current => current.filter(note => note.id !== id));
+        if (!demo && supabase) {
+            const { error } = await supabase.from('notes').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
     const getSpaceMembers = async (spaceId) => {
         if (demo) {
             return [{ space_id: spaceId, user_id: userId || demoProfile.id, role: 'owner', permissions: normalizeSpacePermissions(), display_name: profile?.display_name || 'Demo User', greeting_name: profile?.greeting_name || 'Demo', avatar_url: profile?.avatar_url || null }];
@@ -885,8 +1021,8 @@ function AppDataStateProvider({ children, userId, demo }) {
     };
     const value = useMemo(() => ({
         profile, preferences, items, spaces, members, places, events, notes, activity, captures, contacts, shoppingLists, collaborationAvailable, loading, syncState,
-        refresh, createItem, updateItem, updateShopping, completeItem, deleteItem, snoozeItem, createSpace, createInvite,
-        consumeInvite, updateMemberAccess, createShoppingList, createCapture, updateCapture, analyzeCapture, getCaptureSignedUrl, createContact, updateContact, deleteContact, importCalendarEvents, updateProfile, updatePreferences, createPlace, createEvent, createNote, getSpaceMembers,
+        refresh, createItem, updateItem, updateShopping, completeItem, deleteItem, snoozeItem, createSpace, updateSpace, createInvite,
+        consumeInvite, updateMemberAccess, createShoppingList, updateShoppingList, archiveShoppingList, createCapture, updateCapture, analyzeCapture, getCaptureSignedUrl, createContact, updateContact, deleteContact, importCalendarEvents, updateProfile, updatePreferences, createPlace, updatePlace, deletePlace, createEvent, updateEvent, deleteEvent, createNote, updateNote, deleteNote, getSpaceMembers,
     }), [profile, preferences, items, spaces, members, places, events, notes, activity, captures, contacts, shoppingLists, collaborationAvailable, loading, syncState, refresh]);
     return _jsx(Ctx.Provider, { value: value, children: children });
 }

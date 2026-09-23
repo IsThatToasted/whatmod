@@ -21,3 +21,14 @@ export const SPACE_PERMISSION_GROUPS = [
     { key: 'notes', label: 'Thoughts & files', view: 'view_notes', edit: 'edit_notes' },
     { key: 'projects', label: 'Projects', view: 'view_projects', edit: 'edit_projects' },
 ];
+export function spaceCategoryAccess(space, member, category) {
+    if (!space)
+        return { canView: true, canEdit: true, elevated: true };
+    const elevated = !!(space.is_personal || space.name === 'Personal' || space.role === 'owner' || space.role === 'admin' || member?.role === 'owner' || member?.role === 'admin');
+    if (elevated)
+        return { canView: true, canEdit: true, elevated: true };
+    const permissions = normalizeSpacePermissions(member?.permissions);
+    const viewKey = `view_${category}`;
+    const editKey = `edit_${category}`;
+    return { canView: !!permissions[viewKey], canEdit: !!permissions[editKey], elevated: false };
+}
