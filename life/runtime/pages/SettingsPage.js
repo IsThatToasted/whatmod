@@ -3,9 +3,34 @@ import { Chrome, Copy, Download, Edit3, LocateFixed, LogOut, MapPin, Plus, Refre
 import { useEffect, useState } from 'react';
 import { useAppData } from '../contexts/AppDataContext.js';
 import { useAuth } from '../contexts/AuthContext.js';
-import { APP_VERSION, featureFlags } from '../lib/config.js';
+import { APP_VERSION, SUPABASE_ANON_KEY, SUPABASE_URL, featureFlags } from '../lib/config.js';
 import { requestCurrentPosition } from '../lib/location.js';
 import { supabase } from '../lib/supabase.js';
+function callExtensionBridge(action, payload = {}, timeoutMs = 900) {
+    return new Promise(resolve => {
+        const requestId = crypto.randomUUID();
+        let settled = false;
+        const finish = (value) => {
+            if (settled)
+                return;
+            settled = true;
+            clearTimeout(timer);
+            window.removeEventListener('message', onMessage);
+            resolve(value);
+        };
+        const onMessage = (event) => {
+            if (event.source !== window || event.origin !== location.origin)
+                return;
+            const data = event.data;
+            if (!data || data.channel !== 'JUSTGLANCE_EXTENSION_TO_PAGE' || data.requestId !== requestId)
+                return;
+            finish((data.result || null));
+        };
+        const timer = window.setTimeout(() => finish(null), timeoutMs);
+        window.addEventListener('message', onMessage);
+        window.postMessage({ channel: 'JUSTGLANCE_PAGE_TO_EXTENSION', requestId, action, ...payload }, location.origin);
+    });
+}
 export default function SettingsPage() {
     const { profile, preferences, updateProfile, updatePreferences, places, createPlace, updatePlace, deletePlace, items, spaces, events, notes } = useAppData();
     const { signOut, deleteAccount, demo } = useAuth();
@@ -28,6 +53,9 @@ export default function SettingsPage() {
     const [browserToken, setBrowserToken] = useState('');
     const [browserMessage, setBrowserMessage] = useState('');
     const [browserBusy, setBrowserBusy] = useState(false);
+    const [extensionDetected, setExtensionDetected] = useState(false);
+    const [extensionVersion, setExtensionVersion] = useState('');
+    const [extensionPaired, setExtensionPaired] = useState(false);
     useEffect(() => {
         const root = document.documentElement;
         if (theme === 'system')
@@ -122,6 +150,30 @@ export default function SettingsPage() {
         setBrowserIntegrations((data || []));
     }
     useEffect(() => { void loadBrowserIntegrations(); }, [demo]);
+    useEffect(() => {
+        let active = true;
+        async function pingExtension() {
+            const result = await callExtensionBridge('PING');
+            if (!active)
+                return;
+            setExtensionDetected(Boolean(result?.ok));
+            setExtensionVersion(result?.version || '');
+            setExtensionPaired(Boolean(result?.paired));
+        }
+        void pingExtension();
+        const onFocus = () => { void pingExtension(); };
+        window.addEventListener('focus', onFocus);
+        return () => { active = false; window.removeEventListener('focus', onFocus); };
+    }, []);
+    async function pairBrowserToken(token) {
+        const result = await callExtensionBridge('PAIR', { token, config: { supabaseUrl: SUPABASE_URL, supabaseAnonKey: SUPABASE_ANON_KEY } }, 1800);
+        if (!result?.ok)
+            return result;
+        setExtensionDetected(true);
+        setExtensionVersion(result.version || extensionVersion);
+        setExtensionPaired(true);
+        return result;
+    }
     async function createBrowserPairing() {
         if (!supabase || demo)
             return;
@@ -136,7 +188,19 @@ export default function SettingsPage() {
             if (!token)
                 throw new Error('Supabase did not return a pairing code.');
             setBrowserToken(token);
-            setBrowserMessage('Pairing code created. Paste it into the JustGlance browser panel once; it can be revoked at any time.');
+            if (extensionDetected) {
+                const result = await pairBrowserToken(token);
+                if (result?.ok) {
+                    setBrowserToken('');
+                    setBrowserMessage(`Extension ${result.version ? `v${result.version} ` : ''}connected. ${Array.isArray(result.lists) ? result.lists.length : 0} shopping destination${Array.isArray(result.lists) && result.lists.length === 1 ? '' : 's'} synced.`);
+                }
+                else {
+                    setBrowserMessage(`Pairing code created, but the installed extension returned: ${result?.error || 'No response.'}`);
+                }
+            }
+            else {
+                setBrowserMessage('Pairing code created. The current JustGlance tab cannot see the extension yet. Load/update extension v1.1.0, then reload this JustGlance page once and use “Pair this code”.');
+            }
             await loadBrowserIntegrations();
         }
         catch (error) {
@@ -146,7 +210,42 @@ export default function SettingsPage() {
             setBrowserBusy(false);
         }
     }
-    async function revokeBrowserPairing(id) {
+    async function pairExistingBrowserToken() {
+        if (!browserToken)
+            return;
+        setBrowserBusy(true);
+        setBrowserMessage('');
+        try {
+            const result = await pairBrowserToken(browserToken);
+            if (!result?.ok)
+                throw new Error(result?.error || 'The extension did not respond.');
+            setBrowserToken('');
+            setBrowserMessage(`Extension ${result.version ? `v${result.version} ` : ''}connected. Shopping lists are synced.`);
+            await loadBrowserIntegrations();
+        }
+        catch (error) {
+            setBrowserMessage(error instanceof Error ? error.message : 'Could not pair the installed extension.');
+        }
+        finally {
+            setBrowserBusy(false);
+        }
+    }
+    async function clearUnusedBrowserPairings() {
+        const pending = browserIntegrations.filter(integration => !integration.last_used_at);
+        if (!pending.length)
+            return;
+        setBrowserBusy(true);
+        try {
+            for (const integration of pending)
+                await revokeBrowserPairing(integration.id, false);
+            setBrowserMessage('Unused pairing codes cleared.');
+            await loadBrowserIntegrations();
+        }
+        finally {
+            setBrowserBusy(false);
+        }
+    }
+    async function revokeBrowserPairing(id, reload = true) {
         if (!supabase || demo)
             return;
         const { error } = await supabase.rpc('revoke_browser_integration', { p_id: id });
@@ -154,10 +253,14 @@ export default function SettingsPage() {
             setBrowserMessage(error.message);
             return;
         }
-        setBrowserMessage('Browser connection revoked.');
-        await loadBrowserIntegrations();
+        if (reload) {
+            setBrowserMessage('Browser connection revoked.');
+            await loadBrowserIntegrations();
+        }
     }
-    return _jsxs("div", { className: "page", children: [_jsx("header", { className: "page-header", children: _jsxs("div", { children: [_jsx("span", { className: "eyebrow", children: "SETTINGS" }), _jsx("h1", { children: "Keep the system out of your way." }), _jsx("p", { children: "Most defaults are designed to work without tuning." })] }) }), _jsxs("div", { className: "settings-grid", children: [_jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "PROFILE" }), _jsx("h2", { children: "Profile" }), _jsxs("label", { children: ["Greeting name", _jsx("input", { value: name, onChange: e => setName(e.target.value) })] }), _jsxs("label", { children: ["Timezone", _jsx("input", { value: profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone, readOnly: true })] })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "SCHEDULE" }), _jsx("h2", { children: "Your usual rhythm" }), _jsxs("div", { className: "two-col", children: [_jsxs("label", { children: ["Wake time", _jsx("input", { type: "time", value: wake, onChange: e => setWake(e.target.value) })] }), _jsxs("label", { children: ["Sleep time", _jsx("input", { type: "time", value: sleep, onChange: e => setSleep(e.target.value) })] })] }), _jsxs("div", { className: "two-col", children: [_jsxs("label", { children: ["Work starts", _jsx("input", { type: "time", value: workStart, onChange: e => setWorkStart(e.target.value) })] }), _jsxs("label", { children: ["Work ends", _jsx("input", { type: "time", value: workEnd, onChange: e => setWorkEnd(e.target.value) })] })] }), _jsxs("div", { className: "two-col", children: [_jsxs("label", { children: ["Week starts", _jsxs("select", { value: weekStart, onChange: e => setWeekStart(e.target.value), children: [_jsx("option", { value: "0", children: "Sunday" }), _jsx("option", { value: "1", children: "Monday" })] })] }), _jsxs("label", { children: ["Time format", _jsxs("select", { value: timeFormat, onChange: e => setTimeFormat(e.target.value), children: [_jsx("option", { value: "12h", children: "12 hour" }), _jsx("option", { value: "24h", children: "24 hour" })] })] })] }), _jsx("button", { className: "secondary-button", onClick: saveProfile, children: "Save profile & schedule" })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "APPEARANCE" }), _jsx("h2", { children: "Theme" }), _jsxs("label", { children: ["Theme", _jsxs("select", { value: theme, onChange: e => setTheme(e.target.value), children: [_jsx("option", { value: "system", children: "System" }), _jsx("option", { value: "light", children: "Light" }), _jsx("option", { value: "dark", children: "Dark" })] })] }), _jsx("p", { className: "muted", children: "Changes preview immediately. Save profile & schedule to keep the preference on your account." })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "PLACES" }), _jsx("h2", { children: "Places & location" }), places.map(place => _jsxs("div", { className: "place-row editable-row", children: [_jsx(MapPin, { size: 17 }), _jsxs("div", { children: [_jsx("strong", { children: place.name }), _jsxs("span", { children: [place.address || place.category, place.latitude != null ? ' · location saved' : ''] })] }), _jsx("button", { className: "icon-button subtle", onClick: () => startPlaceEdit(place.id), "aria-label": `Edit ${place.name}`, children: _jsx(Edit3, { size: 15 }) })] }, place.id)), _jsxs("div", { className: "form-stack settings-place-form", children: [editingPlaceId && _jsxs("div", { className: "editing-banner", children: [_jsx("strong", { children: "Editing saved place" }), _jsx("button", { className: "text-button", onClick: clearPlaceForm, children: "Cancel" })] }), _jsxs("label", { children: ["Name", _jsx("input", { value: placeName, onChange: e => setPlaceName(e.target.value), placeholder: "Gym, Walmart, Parents\u2019 house" })] }), _jsxs("label", { children: ["Address (optional)", _jsx("input", { value: placeAddress, onChange: e => setPlaceAddress(e.target.value), placeholder: "Manual address" })] }), _jsxs("label", { children: ["Category", _jsxs("select", { value: placeCategory, onChange: e => setPlaceCategory(e.target.value), children: [_jsx("option", { value: "other", children: "Other" }), _jsx("option", { value: "home", children: "Home" }), _jsx("option", { value: "work", children: "Work" }), _jsx("option", { value: "store", children: "Store" }), _jsx("option", { value: "gym", children: "Gym" }), _jsx("option", { value: "pharmacy", children: "Pharmacy" })] })] }), _jsxs("div", { className: "place-actions", children: [_jsxs("button", { className: "secondary-button", type: "button", onClick: requestLocation, disabled: !featureFlags.LOCATION, children: [_jsx(LocateFixed, { size: 17 }), "Use current location"] }), editingPlaceId && _jsxs("button", { className: "text-button danger-text", type: "button", onClick: removePlace, children: [_jsx(Trash2, { size: 15 }), "Delete"] }), _jsx("button", { className: "primary-button", type: "button", onClick: savePlace, disabled: !placeName.trim(), children: editingPlaceId ? _jsxs(_Fragment, { children: [_jsx(Edit3, { size: 17 }), "Save place"] }) : _jsxs(_Fragment, { children: [_jsx(Plus, { size: 17 }), "Add place"] }) })] }), placeCoords && _jsx("p", { className: "muted", children: "Coordinates are saved with this place." }), locationMessage && _jsx("div", { className: "form-message", children: locationMessage })] })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "NOTIFICATIONS" }), _jsx("h2", { children: "What may interrupt you" }), _jsx(Toggle, { label: "Urgent reminders", value: preferences?.urgent_reminders_enabled ?? true, onChange: value => updatePreferences({ urgent_reminders_enabled: value }) }), _jsx(Toggle, { label: "Upcoming tasks", value: preferences?.upcoming_tasks_enabled ?? true, onChange: value => updatePreferences({ upcoming_tasks_enabled: value }) }), _jsx(Toggle, { label: "Morning brief", value: preferences?.morning_brief_enabled ?? true, onChange: value => updatePreferences({ morning_brief_enabled: value }) }), _jsx(Toggle, { label: "Daily reset", value: preferences?.daily_reset_enabled ?? true, onChange: value => updatePreferences({ daily_reset_enabled: value }) }), _jsx(Toggle, { label: "Shared activity", value: preferences?.shared_activity_enabled ?? true, onChange: value => updatePreferences({ shared_activity_enabled: value }) }), _jsx(Toggle, { label: "Location reminders", value: preferences?.location_reminders_enabled ?? false, onChange: value => updatePreferences({ location_reminders_enabled: value }) }), _jsx(Toggle, { label: "Routine reminders", value: preferences?.routine_reminders_enabled ?? true, onChange: value => updatePreferences({ routine_reminders_enabled: value }) }), _jsx("p", { className: "muted", children: "These preferences are stored now. Actual push delivery remains disabled until a push provider is configured." })] }), _jsxs("section", { className: "settings-section browser-extension-settings", children: [_jsx("span", { className: "eyebrow", children: "BROWSER" }), _jsxs("h2", { children: [_jsx(Chrome, { size: 20 }), " Add to JustGlance"] }), _jsx("p", { className: "muted", children: "The Chrome extension adds a small button to shopping pages, reads product title/image/price from the page, syncs your named shopping lists, and saves directly to the list you choose." }), _jsxs("div", { className: "browser-extension-actions", children: [_jsxs("a", { className: "secondary-button", href: "./chrome-extension/JustGlance-Chrome-Extension-v1.0.1.zip", download: true, children: [_jsx(Download, { size: 17 }), "Download extension"] }), _jsxs("button", { className: "primary-button", onClick: createBrowserPairing, disabled: browserBusy || demo, children: [_jsx(Chrome, { size: 17 }), browserBusy ? 'Creating…' : 'Create pairing code'] })] }), browserToken && _jsxs("div", { className: "pairing-token-card", children: [_jsx("span", { children: "ONE-TIME PAIRING CODE" }), _jsx("code", { children: browserToken }), _jsxs("button", { className: "secondary-button", onClick: async () => navigator.clipboard.writeText(browserToken), children: [_jsx(Copy, { size: 16 }), "Copy code"] }), _jsx("small", { children: "JustGlance stores only a hash. This raw code is shown only in this session." })] }), browserMessage && _jsx("div", { className: "form-message", children: browserMessage }), _jsxs("div", { className: "integration-list", children: [_jsxs("div", { className: "section-heading inline", children: [_jsx("strong", { children: "Connected browsers" }), _jsx("button", { className: "icon-button", onClick: loadBrowserIntegrations, "aria-label": "Refresh browser connections", children: _jsx(RefreshCw, { size: 15 }) })] }), browserIntegrations.length ? browserIntegrations.map(integration => _jsxs("div", { className: "integration-row", children: [_jsxs("span", { children: [_jsx("b", { children: integration.name }), _jsx("small", { children: integration.last_used_at ? `Last used ${new Date(integration.last_used_at).toLocaleString()}` : `Connected ${new Date(integration.created_at).toLocaleString()}` })] }), _jsx("button", { className: "text-button danger-text", onClick: () => revokeBrowserPairing(integration.id), children: "Revoke" })] }, integration.id)) : _jsx("p", { className: "muted", children: "No browser connections yet." })] }), _jsxs("p", { className: "muted", children: ["Install: unzip the download, open ", _jsx("b", { children: "chrome://extensions" }), ", enable Developer mode, choose ", _jsx("b", { children: "Load unpacked" }), ", and select the extracted extension folder. Then paste the pairing code into the bottom-left JustGlance button on any normal website."] })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "PRIVACY & DATA" }), _jsx("h2", { children: "Your data" }), _jsxs("button", { className: "secondary-button", onClick: exportData, children: [_jsx(Download, { size: 17 }), "Export my data"] }), _jsx("p", { className: "muted", children: "Exports stay on your device. Task and note text is never sent to analytics by this app." }), _jsx("p", { className: "muted", children: "Privacy Policy and Terms URLs should be published before public launch; no dead links are exposed in this build." })] }), _jsxs("section", { className: "settings-section danger-zone", children: [_jsx("span", { className: "eyebrow", children: "ACCOUNT" }), _jsx("h2", { children: "Account" }), _jsxs("button", { className: "secondary-button", onClick: signOut, disabled: demo, children: [_jsx(LogOut, { size: 17 }), demo ? 'Sign out unavailable in demo' : 'Sign out'] }), _jsxs("button", { className: "danger-button", disabled: demo, onClick: async () => { if (!confirm('Permanently delete your JustGlance account and all owned data? This cannot be undone.'))
+    const connectedBrowserIntegrations = browserIntegrations.filter(integration => !!integration.last_used_at);
+    const pendingBrowserIntegrations = browserIntegrations.filter(integration => !integration.last_used_at);
+    return _jsxs("div", { className: "page", children: [_jsx("header", { className: "page-header", children: _jsxs("div", { children: [_jsx("span", { className: "eyebrow", children: "SETTINGS" }), _jsx("h1", { children: "Keep the system out of your way." }), _jsx("p", { children: "Most defaults are designed to work without tuning." })] }) }), _jsxs("div", { className: "settings-grid", children: [_jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "PROFILE" }), _jsx("h2", { children: "Profile" }), _jsxs("label", { children: ["Greeting name", _jsx("input", { value: name, onChange: e => setName(e.target.value) })] }), _jsxs("label", { children: ["Timezone", _jsx("input", { value: profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone, readOnly: true })] })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "SCHEDULE" }), _jsx("h2", { children: "Your usual rhythm" }), _jsxs("div", { className: "two-col", children: [_jsxs("label", { children: ["Wake time", _jsx("input", { type: "time", value: wake, onChange: e => setWake(e.target.value) })] }), _jsxs("label", { children: ["Sleep time", _jsx("input", { type: "time", value: sleep, onChange: e => setSleep(e.target.value) })] })] }), _jsxs("div", { className: "two-col", children: [_jsxs("label", { children: ["Work starts", _jsx("input", { type: "time", value: workStart, onChange: e => setWorkStart(e.target.value) })] }), _jsxs("label", { children: ["Work ends", _jsx("input", { type: "time", value: workEnd, onChange: e => setWorkEnd(e.target.value) })] })] }), _jsxs("div", { className: "two-col", children: [_jsxs("label", { children: ["Week starts", _jsxs("select", { value: weekStart, onChange: e => setWeekStart(e.target.value), children: [_jsx("option", { value: "0", children: "Sunday" }), _jsx("option", { value: "1", children: "Monday" })] })] }), _jsxs("label", { children: ["Time format", _jsxs("select", { value: timeFormat, onChange: e => setTimeFormat(e.target.value), children: [_jsx("option", { value: "12h", children: "12 hour" }), _jsx("option", { value: "24h", children: "24 hour" })] })] })] }), _jsx("button", { className: "secondary-button", onClick: saveProfile, children: "Save profile & schedule" })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "APPEARANCE" }), _jsx("h2", { children: "Theme" }), _jsxs("label", { children: ["Theme", _jsxs("select", { value: theme, onChange: e => setTheme(e.target.value), children: [_jsx("option", { value: "system", children: "System" }), _jsx("option", { value: "light", children: "Light" }), _jsx("option", { value: "dark", children: "Dark" })] })] }), _jsx("p", { className: "muted", children: "Changes preview immediately. Save profile & schedule to keep the preference on your account." })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "PLACES" }), _jsx("h2", { children: "Places & location" }), places.map(place => _jsxs("div", { className: "place-row editable-row", children: [_jsx(MapPin, { size: 17 }), _jsxs("div", { children: [_jsx("strong", { children: place.name }), _jsxs("span", { children: [place.address || place.category, place.latitude != null ? ' · location saved' : ''] })] }), _jsx("button", { className: "icon-button subtle", onClick: () => startPlaceEdit(place.id), "aria-label": `Edit ${place.name}`, children: _jsx(Edit3, { size: 15 }) })] }, place.id)), _jsxs("div", { className: "form-stack settings-place-form", children: [editingPlaceId && _jsxs("div", { className: "editing-banner", children: [_jsx("strong", { children: "Editing saved place" }), _jsx("button", { className: "text-button", onClick: clearPlaceForm, children: "Cancel" })] }), _jsxs("label", { children: ["Name", _jsx("input", { value: placeName, onChange: e => setPlaceName(e.target.value), placeholder: "Gym, Walmart, Parents\u2019 house" })] }), _jsxs("label", { children: ["Address (optional)", _jsx("input", { value: placeAddress, onChange: e => setPlaceAddress(e.target.value), placeholder: "Manual address" })] }), _jsxs("label", { children: ["Category", _jsxs("select", { value: placeCategory, onChange: e => setPlaceCategory(e.target.value), children: [_jsx("option", { value: "other", children: "Other" }), _jsx("option", { value: "home", children: "Home" }), _jsx("option", { value: "work", children: "Work" }), _jsx("option", { value: "store", children: "Store" }), _jsx("option", { value: "gym", children: "Gym" }), _jsx("option", { value: "pharmacy", children: "Pharmacy" })] })] }), _jsxs("div", { className: "place-actions", children: [_jsxs("button", { className: "secondary-button", type: "button", onClick: requestLocation, disabled: !featureFlags.LOCATION, children: [_jsx(LocateFixed, { size: 17 }), "Use current location"] }), editingPlaceId && _jsxs("button", { className: "text-button danger-text", type: "button", onClick: removePlace, children: [_jsx(Trash2, { size: 15 }), "Delete"] }), _jsx("button", { className: "primary-button", type: "button", onClick: savePlace, disabled: !placeName.trim(), children: editingPlaceId ? _jsxs(_Fragment, { children: [_jsx(Edit3, { size: 17 }), "Save place"] }) : _jsxs(_Fragment, { children: [_jsx(Plus, { size: 17 }), "Add place"] }) })] }), placeCoords && _jsx("p", { className: "muted", children: "Coordinates are saved with this place." }), locationMessage && _jsx("div", { className: "form-message", children: locationMessage })] })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "NOTIFICATIONS" }), _jsx("h2", { children: "What may interrupt you" }), _jsx(Toggle, { label: "Urgent reminders", value: preferences?.urgent_reminders_enabled ?? true, onChange: value => updatePreferences({ urgent_reminders_enabled: value }) }), _jsx(Toggle, { label: "Upcoming tasks", value: preferences?.upcoming_tasks_enabled ?? true, onChange: value => updatePreferences({ upcoming_tasks_enabled: value }) }), _jsx(Toggle, { label: "Morning brief", value: preferences?.morning_brief_enabled ?? true, onChange: value => updatePreferences({ morning_brief_enabled: value }) }), _jsx(Toggle, { label: "Daily reset", value: preferences?.daily_reset_enabled ?? true, onChange: value => updatePreferences({ daily_reset_enabled: value }) }), _jsx(Toggle, { label: "Shared activity", value: preferences?.shared_activity_enabled ?? true, onChange: value => updatePreferences({ shared_activity_enabled: value }) }), _jsx(Toggle, { label: "Location reminders", value: preferences?.location_reminders_enabled ?? false, onChange: value => updatePreferences({ location_reminders_enabled: value }) }), _jsx(Toggle, { label: "Routine reminders", value: preferences?.routine_reminders_enabled ?? true, onChange: value => updatePreferences({ routine_reminders_enabled: value }) }), _jsx("p", { className: "muted", children: "These preferences are stored now. Actual push delivery remains disabled until a push provider is configured." })] }), _jsxs("section", { className: "settings-section browser-extension-settings", children: [_jsx("span", { className: "eyebrow", children: "BROWSER" }), _jsxs("h2", { children: [_jsx(Chrome, { size: 20 }), " Add to JustGlance"] }), _jsx("p", { className: "muted", children: "The extension reads product title, image and price from the page, syncs the shopping lists you can edit, and saves directly into JustGlance." }), _jsxs("div", { className: `extension-detection ${extensionDetected ? 'detected' : 'missing'}`, children: [_jsx("span", { className: "extension-dot" }), _jsxs("div", { children: [_jsx("strong", { children: extensionDetected ? `Extension detected${extensionVersion ? ` · v${extensionVersion}` : ''}` : 'Extension not detected on this JustGlance tab' }), _jsx("small", { children: extensionDetected ? (extensionPaired ? 'This browser already has a JustGlance token.' : 'Ready for one-click pairing.') : 'After loading/updating the extension, reload this JustGlance page once so Chrome can inject the pairing bridge.' })] })] }), _jsxs("div", { className: "browser-extension-actions", children: [_jsxs("a", { className: "secondary-button", href: "./chrome-extension/JustGlance-Chrome-Extension-v1.1.0.zip", download: true, children: [_jsx(Download, { size: 17 }), "Download v1.1.0"] }), _jsxs("button", { className: "primary-button", onClick: createBrowserPairing, disabled: browserBusy || demo, children: [_jsx(Chrome, { size: 17 }), browserBusy ? 'Working…' : extensionDetected ? 'Create & pair this browser' : 'Create manual pairing code'] })] }), browserToken && _jsxs("div", { className: "pairing-token-card", children: [_jsx("span", { children: "ONE-TIME PAIRING CODE" }), _jsx("code", { children: browserToken }), _jsxs("div", { className: "row-actions", children: [_jsxs("button", { className: "secondary-button", onClick: async () => navigator.clipboard.writeText(browserToken), children: [_jsx(Copy, { size: 16 }), "Copy code"] }), extensionDetected && _jsxs("button", { className: "primary-button", onClick: pairExistingBrowserToken, disabled: browserBusy, children: [_jsx(Chrome, { size: 16 }), "Pair this code"] })] }), _jsx("small", { children: "JustGlance stores only a hash. This raw code is shown only in this session." })] }), browserMessage && _jsx("div", { className: "form-message", children: browserMessage }), _jsxs("div", { className: "integration-list", children: [_jsxs("div", { className: "section-heading inline", children: [_jsx("strong", { children: "Connected browsers" }), _jsx("button", { className: "icon-button", onClick: loadBrowserIntegrations, "aria-label": "Refresh browser connections", children: _jsx(RefreshCw, { size: 15 }) })] }), connectedBrowserIntegrations.length ? connectedBrowserIntegrations.map(integration => _jsxs("div", { className: "integration-row", children: [_jsxs("span", { children: [_jsx("b", { children: integration.name }), _jsxs("small", { children: ["Last used ", new Date(integration.last_used_at).toLocaleString()] })] }), _jsx("button", { className: "text-button danger-text", onClick: () => revokeBrowserPairing(integration.id), children: "Revoke" })] }, integration.id)) : _jsx("p", { className: "muted", children: "No browser has successfully used a pairing token yet." })] }), pendingBrowserIntegrations.length > 0 && _jsxs("div", { className: "integration-list pending-integrations", children: [_jsxs("div", { className: "section-heading inline", children: [_jsxs("div", { children: [_jsx("strong", { children: "Unused pairing codes" }), _jsxs("small", { children: [pendingBrowserIntegrations.length, " created but never used by an extension"] })] }), _jsx("button", { className: "text-button", onClick: clearUnusedBrowserPairings, disabled: browserBusy, children: "Clear unused" })] }), pendingBrowserIntegrations.slice(0, 5).map(integration => _jsxs("div", { className: "integration-row pending", children: [_jsxs("span", { children: [_jsx("b", { children: "Pending browser pairing" }), _jsxs("small", { children: ["Created ", new Date(integration.created_at).toLocaleString()] })] }), _jsx("button", { className: "text-button danger-text", onClick: () => revokeBrowserPairing(integration.id), children: "Revoke" })] }, integration.id))] }), _jsxs("p", { className: "muted", children: ["Install/update: unzip the download, open ", _jsx("b", { children: "chrome://extensions" }), ", remove or reload the old Add to JustGlance extension, choose ", _jsx("b", { children: "Load unpacked" }), ", then reload this JustGlance tab once. Version 1.0.0 is the build that produced the old \u201Cproduction configuration is not available yet\u201D message."] })] }), _jsxs("section", { className: "settings-section", children: [_jsx("span", { className: "eyebrow", children: "PRIVACY & DATA" }), _jsx("h2", { children: "Your data" }), _jsxs("button", { className: "secondary-button", onClick: exportData, children: [_jsx(Download, { size: 17 }), "Export my data"] }), _jsx("p", { className: "muted", children: "Exports stay on your device. Task and note text is never sent to analytics by this app." }), _jsx("p", { className: "muted", children: "Privacy Policy and Terms URLs should be published before public launch; no dead links are exposed in this build." })] }), _jsxs("section", { className: "settings-section danger-zone", children: [_jsx("span", { className: "eyebrow", children: "ACCOUNT" }), _jsx("h2", { children: "Account" }), _jsxs("button", { className: "secondary-button", onClick: signOut, disabled: demo, children: [_jsx(LogOut, { size: 17 }), demo ? 'Sign out unavailable in demo' : 'Sign out'] }), _jsxs("button", { className: "danger-button", disabled: demo, onClick: async () => { if (!confirm('Permanently delete your JustGlance account and all owned data? This cannot be undone.'))
                                     return; const err = await deleteAccount(); if (err)
                                     setAccountMessage(err); }, children: [_jsx(Trash2, { size: 17 }), demo ? 'Delete account unavailable in demo' : 'Delete account'] }), accountMessage && _jsx("div", { className: "form-message", children: accountMessage }), _jsxs("p", { className: "muted", children: ["Version ", APP_VERSION] })] })] })] });
 }

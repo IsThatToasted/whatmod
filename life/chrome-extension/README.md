@@ -1,32 +1,21 @@
-# Add to JustGlance — Chrome extension
+# Add to JustGlance — Chrome Extension v1.1.0
 
-Manifest V3 unpacked extension for JustGlance v2.2.0.
+Adds an **Add to JustGlance** button to normal web pages and can save detected products directly into shopping lists you can edit.
 
-## What it does
+## Pairing
 
-- Adds a persistent **Add to JustGlance** button at the bottom-left of normal HTTP/HTTPS pages.
-- Reads product JSON-LD, OpenGraph/meta tags and common product attributes directly from the current page.
-- Captures title, canonical URL, image, price, currency, store, brand, category and product ID when available.
-- Syncs the user's currently accessible named JustGlance shopping lists through a revocable shopping-only token.
-- Suggests a list using the product metadata and list name. For example, a stiletto/platform product can suggest **Heels**, while lingerie/panty/thong/bra products can suggest **Lingerie/Panties**.
-- Lets the user edit title/price, choose another list, and add optional size/color/notes before saving.
+The preferred flow is now one-click pairing from JustGlance:
 
-## Install locally
+1. Load this unpacked extension in `chrome://extensions`.
+2. The extension attempts to inject its pairing bridge into any already-open JustGlance tab automatically. If Settings does not detect it, reload `https://whatmod.com/life/` once.
+3. In JustGlance open **Settings → Add to JustGlance**.
+4. Confirm JustGlance shows **Extension detected · v1.1.0**.
+5. Choose **Create & pair this browser**.
 
-1. Run `004_smart_shopping_browser_bridge.sql` in the JustGlance Supabase project.
-2. In Chrome open `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Choose **Load unpacked**.
-5. Select this `chrome-extension` folder.
-6. In JustGlance open **Settings → Add to JustGlance** and create a pairing code.
-7. Open any shopping page, click the bottom-left **Add to JustGlance** button, and paste the pairing code once.
+JustGlance securely hands the extension the raw one-time `jgext_...` token plus the public Supabase URL/publishable key already used by the web app. The extension stores no JustGlance password or Supabase user session.
 
-The extension fetches the public JustGlance `config.js` to discover the existing Supabase URL/anon key; it does not require a second copy of those GitHub secrets.
+Manual pairing remains available on shopping pages if needed. In that fallback path the extension attempts to read the public `/life/config.js` deployment config.
 
-## Security
+## Important after updating
 
-The extension never stores the user's Supabase password or Supabase session token. It stores only a random JustGlance browser integration token. The database stores only a SHA-256 hash of that token. The token can call only the two shopping bridge RPCs and every write re-checks the user's current `edit_shopping` permission for the selected Space. Revoke a browser at any time from JustGlance Settings.
-
-## v1.0.1 pairing repair
-
-v1.0.1 accepts both JavaScript-style and JSON-style property names in the deployed JustGlance `config.js`. It force-refreshes the public configuration while pairing so a stale Manifest V3 service worker cannot keep an old deployment configuration.
+Chrome does not replace an already-loaded unpacked extension automatically. Remove/reload the old extension in `chrome://extensions`, then reload existing website tabs. Version **1.0.0** contained the old “production configuration is not available yet” error path; version **1.1.0** no longer depends on that path when paired from JustGlance Settings.

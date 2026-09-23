@@ -2,10 +2,36 @@ import { Chrome, Copy, Download, Edit3, LocateFixed, LogOut, MapPin, Plus, Refre
 import { useEffect, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { useAuth } from '../contexts/AuthContext'
-import { APP_VERSION, featureFlags } from '../lib/config'
+import { APP_VERSION, SUPABASE_ANON_KEY, SUPABASE_URL, featureFlags } from '../lib/config'
 import { requestCurrentPosition } from '../lib/location'
 import { supabase } from '../lib/supabase'
 import type { BrowserIntegration } from '../types'
+
+
+type ExtensionBridgeResult = { ok?: boolean; error?: string; version?: string; paired?: boolean; lists?: unknown[] }
+
+function callExtensionBridge(action: 'PING' | 'PAIR' | 'STATUS', payload: Record<string, unknown> = {}, timeoutMs = 900): Promise<ExtensionBridgeResult | null> {
+  return new Promise(resolve => {
+    const requestId = crypto.randomUUID()
+    let settled = false
+    const finish = (value: ExtensionBridgeResult | null) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      window.removeEventListener('message', onMessage)
+      resolve(value)
+    }
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window || event.origin !== location.origin) return
+      const data = event.data
+      if (!data || data.channel !== 'JUSTGLANCE_EXTENSION_TO_PAGE' || data.requestId !== requestId) return
+      finish((data.result || null) as ExtensionBridgeResult | null)
+    }
+    const timer = window.setTimeout(() => finish(null), timeoutMs)
+    window.addEventListener('message', onMessage)
+    window.postMessage({ channel: 'JUSTGLANCE_PAGE_TO_EXTENSION', requestId, action, ...payload }, location.origin)
+  })
+}
 
 export default function SettingsPage() {
   const { profile, preferences, updateProfile, updatePreferences, places, createPlace, updatePlace, deletePlace, items, spaces, events, notes } = useAppData()
@@ -29,6 +55,9 @@ export default function SettingsPage() {
   const [browserToken, setBrowserToken] = useState('')
   const [browserMessage, setBrowserMessage] = useState('')
   const [browserBusy, setBrowserBusy] = useState(false)
+  const [extensionDetected, setExtensionDetected] = useState(false)
+  const [extensionVersion, setExtensionVersion] = useState('')
+  const [extensionPaired, setExtensionPaired] = useState(false)
 
   useEffect(() => {
     const root = document.documentElement
@@ -122,6 +151,30 @@ export default function SettingsPage() {
 
   useEffect(() => { void loadBrowserIntegrations() }, [demo])
 
+  useEffect(() => {
+    let active = true
+    async function pingExtension() {
+      const result = await callExtensionBridge('PING')
+      if (!active) return
+      setExtensionDetected(Boolean(result?.ok))
+      setExtensionVersion(result?.version || '')
+      setExtensionPaired(Boolean(result?.paired))
+    }
+    void pingExtension()
+    const onFocus = () => { void pingExtension() }
+    window.addEventListener('focus', onFocus)
+    return () => { active = false; window.removeEventListener('focus', onFocus) }
+  }, [])
+
+  async function pairBrowserToken(token: string) {
+    const result = await callExtensionBridge('PAIR', { token, config: { supabaseUrl: SUPABASE_URL, supabaseAnonKey: SUPABASE_ANON_KEY } }, 1800)
+    if (!result?.ok) return result
+    setExtensionDetected(true)
+    setExtensionVersion(result.version || extensionVersion)
+    setExtensionPaired(true)
+    return result
+  }
+
   async function createBrowserPairing() {
     if (!supabase || demo) return
     setBrowserBusy(true); setBrowserMessage(''); setBrowserToken('')
@@ -131,19 +184,55 @@ export default function SettingsPage() {
       const token = (data as { token?: string } | null)?.token || ''
       if (!token) throw new Error('Supabase did not return a pairing code.')
       setBrowserToken(token)
-      setBrowserMessage('Pairing code created. Paste it into the JustGlance browser panel once; it can be revoked at any time.')
+      if (extensionDetected) {
+        const result = await pairBrowserToken(token)
+        if (result?.ok) {
+          setBrowserToken('')
+          setBrowserMessage(`Extension ${result.version ? `v${result.version} ` : ''}connected. ${Array.isArray(result.lists) ? result.lists.length : 0} shopping destination${Array.isArray(result.lists) && result.lists.length === 1 ? '' : 's'} synced.`)
+        } else {
+          setBrowserMessage(`Pairing code created, but the installed extension returned: ${result?.error || 'No response.'}`)
+        }
+      } else {
+        setBrowserMessage('Pairing code created. The current JustGlance tab cannot see the extension yet. Load/update extension v1.1.0, then reload this JustGlance page once and use “Pair this code”.')
+      }
       await loadBrowserIntegrations()
     } catch (error) { setBrowserMessage(error instanceof Error ? error.message : 'Could not create a pairing code.') }
     finally { setBrowserBusy(false) }
   }
 
-  async function revokeBrowserPairing(id: string) {
+  async function pairExistingBrowserToken() {
+    if (!browserToken) return
+    setBrowserBusy(true); setBrowserMessage('')
+    try {
+      const result = await pairBrowserToken(browserToken)
+      if (!result?.ok) throw new Error(result?.error || 'The extension did not respond.')
+      setBrowserToken('')
+      setBrowserMessage(`Extension ${result.version ? `v${result.version} ` : ''}connected. Shopping lists are synced.`)
+      await loadBrowserIntegrations()
+    } catch (error) { setBrowserMessage(error instanceof Error ? error.message : 'Could not pair the installed extension.') }
+    finally { setBrowserBusy(false) }
+  }
+
+  async function clearUnusedBrowserPairings() {
+    const pending = browserIntegrations.filter(integration => !integration.last_used_at)
+    if (!pending.length) return
+    setBrowserBusy(true)
+    try {
+      for (const integration of pending) await revokeBrowserPairing(integration.id, false)
+      setBrowserMessage('Unused pairing codes cleared.')
+      await loadBrowserIntegrations()
+    } finally { setBrowserBusy(false) }
+  }
+
+  async function revokeBrowserPairing(id: string, reload = true) {
     if (!supabase || demo) return
     const { error } = await supabase.rpc('revoke_browser_integration', { p_id: id })
     if (error) { setBrowserMessage(error.message); return }
-    setBrowserMessage('Browser connection revoked.')
-    await loadBrowserIntegrations()
+    if (reload) { setBrowserMessage('Browser connection revoked.'); await loadBrowserIntegrations() }
   }
+
+  const connectedBrowserIntegrations = browserIntegrations.filter(integration => !!integration.last_used_at)
+  const pendingBrowserIntegrations = browserIntegrations.filter(integration => !integration.last_used_at)
 
   return <div className="page">
     <header className="page-header"><div><span className="eyebrow">SETTINGS</span><h1>Keep the system out of your way.</h1><p>Most defaults are designed to work without tuning.</p></div></header>
@@ -197,12 +286,14 @@ export default function SettingsPage() {
 
       <section className="settings-section browser-extension-settings">
         <span className="eyebrow">BROWSER</span><h2><Chrome size={20}/> Add to JustGlance</h2>
-        <p className="muted">The Chrome extension adds a small button to shopping pages, reads product title/image/price from the page, syncs your named shopping lists, and saves directly to the list you choose.</p>
-        <div className="browser-extension-actions"><a className="secondary-button" href="./chrome-extension/JustGlance-Chrome-Extension-v1.0.1.zip" download><Download size={17}/>Download extension</a><button className="primary-button" onClick={createBrowserPairing} disabled={browserBusy||demo}><Chrome size={17}/>{browserBusy?'Creating…':'Create pairing code'}</button></div>
-        {browserToken&&<div className="pairing-token-card"><span>ONE-TIME PAIRING CODE</span><code>{browserToken}</code><button className="secondary-button" onClick={async()=>navigator.clipboard.writeText(browserToken)}><Copy size={16}/>Copy code</button><small>JustGlance stores only a hash. This raw code is shown only in this session.</small></div>}
+        <p className="muted">The extension reads product title, image and price from the page, syncs the shopping lists you can edit, and saves directly into JustGlance.</p>
+        <div className={`extension-detection ${extensionDetected?'detected':'missing'}`}><span className="extension-dot"/><div><strong>{extensionDetected?`Extension detected${extensionVersion?` · v${extensionVersion}`:''}`:'Extension not detected on this JustGlance tab'}</strong><small>{extensionDetected?(extensionPaired?'This browser already has a JustGlance token.':'Ready for one-click pairing.'):'After loading/updating the extension, reload this JustGlance page once so Chrome can inject the pairing bridge.'}</small></div></div>
+        <div className="browser-extension-actions"><a className="secondary-button" href="./chrome-extension/JustGlance-Chrome-Extension-v1.1.0.zip" download><Download size={17}/>Download v1.1.0</a><button className="primary-button" onClick={createBrowserPairing} disabled={browserBusy||demo}><Chrome size={17}/>{browserBusy?'Working…':extensionDetected?'Create & pair this browser':'Create manual pairing code'}</button></div>
+        {browserToken&&<div className="pairing-token-card"><span>ONE-TIME PAIRING CODE</span><code>{browserToken}</code><div className="row-actions"><button className="secondary-button" onClick={async()=>navigator.clipboard.writeText(browserToken)}><Copy size={16}/>Copy code</button>{extensionDetected&&<button className="primary-button" onClick={pairExistingBrowserToken} disabled={browserBusy}><Chrome size={16}/>Pair this code</button>}</div><small>JustGlance stores only a hash. This raw code is shown only in this session.</small></div>}
         {browserMessage&&<div className="form-message">{browserMessage}</div>}
-        <div className="integration-list"><div className="section-heading inline"><strong>Connected browsers</strong><button className="icon-button" onClick={loadBrowserIntegrations} aria-label="Refresh browser connections"><RefreshCw size={15}/></button></div>{browserIntegrations.length?browserIntegrations.map(integration=><div className="integration-row" key={integration.id}><span><b>{integration.name}</b><small>{integration.last_used_at?`Last used ${new Date(integration.last_used_at).toLocaleString()}`:`Connected ${new Date(integration.created_at).toLocaleString()}`}</small></span><button className="text-button danger-text" onClick={()=>revokeBrowserPairing(integration.id)}>Revoke</button></div>):<p className="muted">No browser connections yet.</p>}</div>
-        <p className="muted">Install: unzip the download, open <b>chrome://extensions</b>, enable Developer mode, choose <b>Load unpacked</b>, and select the extracted extension folder. Then paste the pairing code into the bottom-left JustGlance button on any normal website.</p>
+        <div className="integration-list"><div className="section-heading inline"><strong>Connected browsers</strong><button className="icon-button" onClick={loadBrowserIntegrations} aria-label="Refresh browser connections"><RefreshCw size={15}/></button></div>{connectedBrowserIntegrations.length?connectedBrowserIntegrations.map(integration=><div className="integration-row" key={integration.id}><span><b>{integration.name}</b><small>Last used {new Date(integration.last_used_at!).toLocaleString()}</small></span><button className="text-button danger-text" onClick={()=>revokeBrowserPairing(integration.id)}>Revoke</button></div>):<p className="muted">No browser has successfully used a pairing token yet.</p>}</div>
+        {pendingBrowserIntegrations.length>0&&<div className="integration-list pending-integrations"><div className="section-heading inline"><div><strong>Unused pairing codes</strong><small>{pendingBrowserIntegrations.length} created but never used by an extension</small></div><button className="text-button" onClick={clearUnusedBrowserPairings} disabled={browserBusy}>Clear unused</button></div>{pendingBrowserIntegrations.slice(0,5).map(integration=><div className="integration-row pending" key={integration.id}><span><b>Pending browser pairing</b><small>Created {new Date(integration.created_at).toLocaleString()}</small></span><button className="text-button danger-text" onClick={()=>revokeBrowserPairing(integration.id)}>Revoke</button></div>)}</div>}
+        <p className="muted">Install/update: unzip the download, open <b>chrome://extensions</b>, remove or reload the old Add to JustGlance extension, choose <b>Load unpacked</b>, then reload this JustGlance tab once. Version 1.0.0 is the build that produced the old “production configuration is not available yet” message.</p>
       </section>
 
       <section className="settings-section">
