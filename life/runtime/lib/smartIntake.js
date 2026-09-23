@@ -1,5 +1,5 @@
 import { lifeIntentParser } from './parser.js';
-const appointmentRx = /\b(appointment|appt|dentist|doctor|dr\.?\s|meeting|meet with|interview|reservation|therapy|haircut|checkup|check-up|conference|webinar|class|lesson|consultation|visit|dinner with|lunch with|breakfast with)\b/i;
+const appointmentRx = /\b(appointment|appt|dentist|doctor(?:'s|s)?|physician|medical|clinic|dr\.?\s|meeting|meet with|interview|reservation|therapy|haircut|checkup|check-up|conference|webinar|class|lesson|consultation|visit|dinner with|lunch with|breakfast with)\b/i;
 const thoughtRx = /\b(idea|thought|note to self|remember this|reference|save this|research|maybe someday|inspiration)\b/i;
 const urlRx = /https?:\/\/[^\s<>()]+/i;
 function isoLocalDate(d) {
@@ -8,15 +8,19 @@ function isoLocalDate(d) {
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
 }
-function nextWeekday(name) {
+function nextWeekday(name, followingWeek = false) {
     const names = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const target = names.indexOf(name.toLowerCase());
     if (target < 0)
         return null;
     const now = new Date();
     let delta = (target - now.getDay() + 7) % 7;
-    if (delta === 0)
+    if (followingWeek) {
+        delta = delta === 0 ? 7 : delta + 7;
+    }
+    else if (delta === 0) {
         delta = 7;
+    }
     now.setDate(now.getDate() + delta);
     return isoLocalDate(now);
 }
@@ -29,7 +33,10 @@ function smartDate(text, fallback) {
         now.setDate(now.getDate() + 1);
         return isoLocalDate(now);
     }
-    const weekday = lower.match(/\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+    const nextWeekdayPhrase = lower.match(/\bnext(?:\s+week)?\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
+    if (nextWeekdayPhrase)
+        return nextWeekday(nextWeekdayPhrase[1], true);
+    const weekday = lower.match(/\b(?:this\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/);
     if (weekday)
         return nextWeekday(weekday[1]);
     const numeric = text.match(/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/);
@@ -77,7 +84,7 @@ function smartTime(text, fallback) {
         let h = Number(bare[1]);
         if (/\b(tonight|evening|dinner)\b/i.test(text) && h < 12)
             h += 12;
-        else if (/\b(appointment|appt|dentist|doctor|meeting|meet with|interview|reservation|therapy|haircut|checkup|visit)\b/i.test(text) && h >= 1 && h <= 6)
+        else if (/\b(appointment|appt|dentist|doctor(?:'s|s)?|physician|medical|clinic|meeting|meet with|interview|reservation|therapy|haircut|checkup|visit)\b/i.test(text) && h >= 1 && h <= 6)
             h += 12;
         return `${String(h).padStart(2, '0')}:00`;
     }
@@ -97,7 +104,7 @@ function cleanAppointmentTitle(text, location, url) {
         title = title.replace(url, '');
     title = title
         .replace(/^\s*(?:appointment|appt)\s*(?:for|with)?\s*/i, '')
-        .replace(/\b(?:today|tomorrow|on\s+)?(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/ig, '')
+        .replace(/\b(?:on\s+)?(?:next(?:\s+week)?|this)?\s*(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/ig, '')
         .replace(/\b(?:today|tomorrow)\b/ig, '')
         .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/ig, '')
         .replace(/\b(?:at\s+)?(?:[01]?\d|2[0-3]):[0-5]\d\b/g, '')
@@ -116,7 +123,7 @@ export function analyzeSmartText(text) {
     const date = smartDate(clean, intent.dueDate || null);
     const time = smartTime(clean, intent.dueTime || null);
     const location = extractLocation(clean) || intent.context || null;
-    const isAppointment = appointmentRx.test(clean) || (!!date && !!time && /\b(with|appointment|meeting|dentist|doctor|interview|reservation|visit)\b/i.test(clean));
+    const isAppointment = appointmentRx.test(clean) || (!!date && !!time && /\b(with|appointment|meeting|dentist|doctor(?:'s|s)?|physician|medical|clinic|interview|reservation|visit)\b/i.test(clean));
     const isLink = !!url && !isAppointment;
     const isThought = !isAppointment && !isLink && thoughtRx.test(clean) && !/\b(remind|buy|call|pick up|clean|return|drop off)\b/i.test(clean);
     let kind;

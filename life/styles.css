@@ -165,3 +165,5 @@ input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--muted) 88
 @media (max-width: 700px) {
   .account-status-card { align-items: flex-start; flex-direction: column; gap: 3px; }
 }
+
+.mood-feedback{margin-top:9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:.78rem}.mood-feedback strong{color:var(--text);font-size:.8rem}.mood-feedback span{line-height:1.35}

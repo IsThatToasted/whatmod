@@ -1,5 +1,5 @@
 import { Calendar, FileText, FolderKanban, Image as ImageIcon, Link2, MapPin, Paperclip, Send, Sparkles, StickyNote, Users, X } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { useOrganizer } from '../contexts/OrganizerContext'
 import { isoToday } from '../lib/organizer'
@@ -32,13 +32,24 @@ export function CaptureSheet({ open, onClose }: { open: boolean; onClose: () => 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const lastInferredDate = useRef('')
+  const lastInferredTime = useRef('')
   const analysis = useMemo(() => text.trim() ? analyzeSmartText(text) : null, [text])
   const effectiveKind = kind || (analysis ? mappedKind(analysis.kind) : null)
+
+  useEffect(() => {
+    const inferredDate = analysis?.dueDate || ''
+    const inferredTime = analysis?.dueTime || ''
+    setDate(current => (!current || current === lastInferredDate.current) ? inferredDate : current)
+    setTime(current => (!current || current === lastInferredTime.current) ? inferredTime : current)
+    lastInferredDate.current = inferredDate
+    lastInferredTime.current = inferredTime
+  }, [analysis?.dueDate, analysis?.dueTime])
 
   if (!open) return null
 
   function reset() {
-    setText(''); setKind(null); setPriority('normal'); setSpaceId(''); setProjectId(''); setDate(''); setTime(''); setPlaceId(''); setFiles([]); setError('')
+    setText(''); setKind(null); setPriority('normal'); setSpaceId(''); setProjectId(''); setDate(''); setTime(''); setPlaceId(''); setFiles([]); setError(''); lastInferredDate.current=''; lastInferredTime.current='' 
   }
 
   async function saveText() {
