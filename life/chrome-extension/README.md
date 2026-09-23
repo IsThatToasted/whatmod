@@ -1,21 +1,39 @@
-# Add to JustGlance — Chrome Extension v1.1.0
+# Add to JustGlance — Chrome Extension v1.2.0
 
-Adds an **Add to JustGlance** button to normal web pages and can save detected products directly into shopping lists you can edit.
+Adds an **Add to JustGlance** button to normal web pages and saves products directly to shopping lists you can edit.
 
-## Pairing
+## v1.2.0 product extraction
 
-The preferred flow is now one-click pairing from JustGlance:
+The extension now uses a layered product parser instead of relying on one generic metadata strategy:
 
-1. Load this unpacked extension in `chrome://extensions`.
-2. The extension attempts to inject its pairing bridge into any already-open JustGlance tab automatically. If Settings does not detect it, reload `https://whatmod.com/life/` once.
-3. In JustGlance open **Settings → Add to JustGlance**.
-4. Confirm JustGlance shows **Extension detected · v1.1.0**.
-5. Choose **Create & pair this browser**.
+1. Retailer-specific DOM adapters
+2. JSON-LD `Product` structured data
+3. OpenGraph / product meta tags
+4. Generic product/breadcrumb fallbacks
 
-JustGlance securely hands the extension the raw one-time `jgext_...` token plus the public Supabase URL/publishable key already used by the web app. The extension stores no JustGlance password or Supabase user session.
+Built-in retailer adapters currently include:
 
-Manual pairing remains available on shopping pages if needed. In that fallback path the extension attempts to read the public `/life/config.js` deployment config.
+- Amazon
+- Walmart
+- Target
+- Etsy
+- Best Buy
 
-## Important after updating
+Amazon extraction specifically supports the current product-title, breadcrumb/category, price-to-pay, ASIN, and landing-image structures. The parser also understands split Amazon prices (`a-price-whole` + `a-price-fraction`) when `.a-offscreen` is empty.
 
-Chrome does not replace an already-loaded unpacked extension automatically. Remove/reload the old extension in `chrome://extensions`, then reload existing website tabs. Version **1.0.0** contained the old “production configuration is not available yet” error path; version **1.1.0** no longer depends on that path when paired from JustGlance Settings.
+The capture panel displays a small extraction status for **Title / Image / Price / Category**, shows which parser was used, and includes **Rescan product page** for stores that change the active variant after initial page load.
+
+## Install / update
+
+1. Open `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Remove older copies of **Add to JustGlance**, or replace the files in the existing unpacked extension folder.
+4. Choose **Load unpacked** and select this folder.
+5. Verify the extension version is **1.2.0**.
+6. Open JustGlance → Settings → Add to JustGlance and pair the browser if needed.
+
+## Notes
+
+- Product parsing happens locally in the current product page. No retailer login credentials are sent to JustGlance.
+- Retailers change markup regularly. The generic structured-data fallback remains active when a site-specific selector changes.
+- `product-parser.js` is intentionally separated from the panel UI so retailer adapters can be expanded without rewriting pairing or saving logic.
