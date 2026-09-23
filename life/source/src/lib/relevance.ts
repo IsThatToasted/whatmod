@@ -2,15 +2,21 @@ import type { AppContextSnapshot, LifeItem, Mood } from '../types'
 import { todayISO } from './time'
 
 export interface ScoredItem { item: LifeItem; score: number; reasons: string[] }
+export interface ShoppingNowSignal { show: boolean; daysUntil: number | null; label: string | null; reason: string | null }
 
 const moodBoost: Record<string, string[]> = {
   quick: ['task', 'call'],
   productive: ['call', 'task'],
   errands: ['shopping', 'errand'],
-  home: ['chore', 'shopping'],
+  home: ['chore'],
   relax: ['idea'],
   fun: ['idea'],
   nothing: [],
+}
+
+function daysUntilDate(dateISO: string, now: Date) {
+  const today = todayISO(now)
+  return Math.round((new Date(`${dateISO}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86400000)
 }
 
 function minutesUntilDueTime(item: LifeItem, now: Date) {
@@ -21,6 +27,48 @@ function minutesUntilDueTime(item: LifeItem, now: Date) {
   return Math.round((target.getTime() - now.getTime()) / 60000)
 }
 
+export function shoppingNowSignal(item: LifeItem, context: AppContextSnapshot): ShoppingNowSignal {
+  if (item.type !== 'shopping' || item.status !== 'open') return { show:false, daysUntil:null, label:null, reason:null }
+
+  const nearStore = Boolean(
+    context.currentPlaceName &&
+    item.place_name &&
+    item.place_name.toLowerCase() === context.currentPlaceName.toLowerCase()
+  )
+
+  if (!item.due_date) {
+    if (context.mood === 'errands') return { show:true, daysUntil:null, label:'Shopping · errands mode', reason:'errands mode' }
+    if (nearStore) return { show:true, daysUntil:null, label:`Shopping · you’re near ${item.place_name}`, reason:'nearby' }
+    return { show:false, daysUntil:null, label:null, reason:'shopping belongs in its list until relevant' }
+  }
+
+  const daysUntil = daysUntilDate(item.due_date, context.now)
+  const important = item.priority === 'high'
+
+  // Far-future shopping should never leak into Now just because it is new or quick.
+  if (daysUntil > 7) return { show:false, daysUntil, label:null, reason:'shopping due later' }
+
+  // Normal shopping reminders are intentionally sparse. High-priority shopping becomes
+  // a daily countdown once it enters the final seven-day window.
+  if (daysUntil < 0) {
+    if (!important) return { show:false, daysUntil, label:null, reason:'shopping due date passed' }
+    const overdueDays = Math.abs(daysUntil)
+    return { show:true, daysUntil, label:`Important shopping · ${overdueDays} day${overdueDays === 1 ? '' : 's'} overdue`, reason:'important shopping overdue' }
+  }
+
+  if (important) {
+    if (daysUntil === 0) return { show:true, daysUntil, label:'Important shopping · due today', reason:'important shopping due today' }
+    if (daysUntil === 1) return { show:true, daysUntil, label:'Important shopping · due tomorrow', reason:'important shopping countdown' }
+    return { show:true, daysUntil, label:`Important shopping · ${daysUntil} days remaining`, reason:'important shopping countdown' }
+  }
+
+  if (daysUntil === 7) return { show:true, daysUntil, label:'Shopping reminder · due in 7 days', reason:'shopping seven-day reminder' }
+  if (daysUntil === 1) return { show:true, daysUntil, label:'Shopping reminder · due tomorrow', reason:'shopping day-before reminder' }
+  if (daysUntil === 0) return { show:true, daysUntil, label:'Shopping reminder · due today', reason:'shopping due today' }
+
+  return { show:false, daysUntil, label:null, reason:'shopping reminder not scheduled today' }
+}
+
 export function calculateRelevanceScore(item: LifeItem, context: AppContextSnapshot): ScoredItem {
   let score = 0
   const reasons: string[] = []
@@ -29,8 +77,19 @@ export function calculateRelevanceScore(item: LifeItem, context: AppContextSnaps
   if (item.status !== 'open') return { item, score: -999, reasons: ['not open'] }
   if (item.snoozed_until && new Date(item.snoozed_until) > context.now) return { item, score: -100, reasons: ['snoozed'] }
 
+  if (item.type === 'shopping') {
+    const shoppingSignal = shoppingNowSignal(item, context)
+    if (!shoppingSignal.show) return { item, score: -90, reasons: [shoppingSignal.reason || 'shopping not relevant now'] }
+    if (shoppingSignal.daysUntil === 7) score += 26
+    else if (shoppingSignal.daysUntil === 1) score += 30
+    else if (shoppingSignal.daysUntil === 0) score += 38
+    else if (shoppingSignal.daysUntil != null && shoppingSignal.daysUntil < 0) score += 34
+    else if (shoppingSignal.daysUntil != null) score += 24
+    reasons.push(shoppingSignal.reason || 'shopping reminder')
+  }
+
   if (item.due_date) {
-    const diff = Math.ceil((new Date(`${item.due_date}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86400000)
+    const diff = daysUntilDate(item.due_date, context.now)
     if (diff < 0) { score += 30; reasons.push('overdue') }
     else if (diff === 0) { score += 35; reasons.push('due today') }
     else if (diff <= 2) { score += 20; reasons.push('due soon') }
@@ -61,7 +120,6 @@ export function calculateRelevanceScore(item: LifeItem, context: AppContextSnaps
 
   const hour = context.now.getHours()
   if (item.type === 'call' && (hour < 8 || hour >= 17)) { score -= 30; reasons.push('outside call hours') }
-  if (item.type === 'shopping' && context.period === 'early-morning') { score -= 20; reasons.push('low relevance now') }
 
   if (context.mood !== 'nothing' && context.mood && moodBoost[context.mood]?.includes(item.type)) {
     score += 40
@@ -93,7 +151,7 @@ export function matchesMoodFocus(item: LifeItem, mood: Mood | null) {
   if (mood === 'quick') return (item.estimated_minutes || 999) <= 15
   if (mood === 'productive') return item.priority === 'high' || item.energy_level === 'high' || item.type === 'task' || item.type === 'call'
   if (mood === 'errands') return item.type === 'errand' || item.type === 'shopping'
-  if (mood === 'home') return item.type === 'chore' || item.type === 'shopping' || /home/i.test(item.place_name || '')
+  if (mood === 'home') return item.type === 'chore' || /home/i.test(item.place_name || '')
   if (mood === 'relax') return item.energy_level === 'low' || item.type === 'idea'
   if (mood === 'fun') return item.type === 'idea' || item.context_tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)) === true
   return (item.estimated_minutes || 999) <= 10 || item.energy_level === 'low' || item.priority === 'high' || !!item.due_date

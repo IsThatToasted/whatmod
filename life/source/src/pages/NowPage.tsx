@@ -2,7 +2,7 @@ import { BellRing, Cake, CheckCircle2, Clock3, FolderKanban, Home, Inbox, Shoppi
 import { useMemo, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { formatDate, formatTime, getTimePeriod, greeting, minutesUntilEvent, todayISO } from '../lib/time'
-import { matchesMoodFocus, rankItems } from '../lib/relevance'
+import { matchesMoodFocus, rankItems, shoppingNowSignal } from '../lib/relevance'
 import type { AppContextSnapshot, Mood } from '../types'
 import { ItemCard } from '../components/ItemCard'
 import { MoodSelector } from '../components/MoodSelector'
@@ -78,7 +78,14 @@ export default function NowPage() {
     <section className="now-grid">
       <div className="feed">
         <div className="section-heading"><div><span className="eyebrow">WORTH DOING NOW</span><h2>{useful.length ? (mood ? moodHeading[mood] : 'Useful right now') : 'You’re clear'}</h2></div><Sparkles size={20}/></div>
-        {useful.length ? useful.map(scored => <div key={scored.item.id} className="recommendation"><ItemCard item={scored.item}/>{Boolean((import.meta as any).env?.DEV) && <small className="score-debug">score {scored.score} · {scored.reasons.slice(0, 2).join(', ')}</small>}</div>) : <div className="empty-card"><CheckCircle2/><strong>Nothing urgent.</strong><span>Enjoy the open space, or capture something if it’s on your mind.</span></div>}
+        {useful.length ? useful.map(scored => {
+          const shoppingSignal = scored.item.type === 'shopping' ? shoppingNowSignal(scored.item, context) : null
+          return <div key={scored.item.id} className="recommendation">
+            {shoppingSignal?.show && shoppingSignal.label && <div className={`shopping-now-reminder ${scored.item.priority === 'high' ? 'important' : ''}`}><ShoppingBasket size={14}/><span>{shoppingSignal.label}</span></div>}
+            <ItemCard item={scored.item}/>
+            {Boolean((import.meta as any).env?.DEV) && <small className="score-debug">score {scored.score} · {scored.reasons.slice(0, 2).join(', ')}</small>}
+          </div>
+        }) : <div className="empty-card"><CheckCircle2/><strong>Nothing urgent.</strong><span>Enjoy the open space, or capture something if it’s on your mind.</span></div>}
         {evening && featureFlags.DAILY_RESET && <DailyReset />}
       </div>
 
@@ -90,7 +97,6 @@ export default function NowPage() {
         {upcomingBirthday&&upcomingBirthday.days<=30&&<div className="context-card"><div className="context-title"><Cake size={18}/><strong>Birthday</strong></div><h3>{upcomingBirthday.contact.display_name}</h3><p>{upcomingBirthday.days===0?'Today':upcomingBirthday.days===1?'Tomorrow':`${upcomingBirthday.date.toLocaleDateString(undefined,{month:'short',day:'numeric'})} · ${upcomingBirthday.days} days`}</p></div>}
         <div className="context-card"><div className="context-title"><Home size={18}/><strong>Shared</strong></div><p>{items.filter(i => i.space_id && i.status === 'open').length} shared item(s) waiting.</p></div>
         {preferences?.shared_activity_enabled !== false && activity[0] && <div className="context-card"><div className="context-title"><Users size={18}/><strong>Recent</strong></div><p>{activity[0].actor_name || 'Someone'} {activity[0].action} {activity[0].entity_title}.</p></div>}
-        <div className="context-card"><div className="context-title"><ShoppingBasket size={18}/><strong>Shopping</strong></div><p>{items.filter(i => i.type === 'shopping' && i.status === 'open').length} item(s) on your lists.</p></div>
         <div className="context-card"><div className="context-title"><CheckCircle2 size={18}/><strong>Today</strong></div><p>{completed} completed so far.</p></div>
       </aside>
     </section>
