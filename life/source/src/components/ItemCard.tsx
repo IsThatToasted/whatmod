@@ -3,12 +3,15 @@ import type { ItemType, LifeItem, Priority } from '../types'
 import { relativeDue, addDaysISO } from '../lib/time'
 import { useEffect, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
+import { useAuth } from '../contexts/AuthContext'
 import { useOrganizer } from '../contexts/OrganizerContext'
 import type { EnergyLevel } from '../types'
 import { Modal } from './Modal'
 import { contactPrimaryPhone, dialHref } from '../lib/contacts'
+import { spaceCategoryAccess } from '../lib/spacePermissions'
 
-export function ItemCard({ item, compact = false }: { item: LifeItem; compact?: boolean }) {
+export function ItemCard({ item, compact = false, readOnly }: { item: LifeItem; compact?: boolean; readOnly?: boolean }) {
+  const { userId } = useAuth()
   const { completeItem, snoozeItem, deleteItem, updateItem, updateShopping, places, spaces, members, contacts } = useAppData()
   const { projects } = useOrganizer()
   const [menu, setMenu] = useState(false)
@@ -38,6 +41,9 @@ export function ItemCard({ item, compact = false }: { item: LifeItem; compact?: 
   const due = relativeDue(item.due_date, item.due_time)
   const contextName = item.place_name || item.parser_result?.context || null
   const currentSpace = spaces.find(space => space.id === item.space_id)
+  const currentMember = currentSpace ? members.find(member => member.space_id === currentSpace.id && member.user_id === userId) : undefined
+  const permissionAccess = spaceCategoryAccess(currentSpace, currentMember, item.type === 'shopping' ? 'shopping' : 'tasks')
+  const canEdit = readOnly === true ? false : permissionAccess.canEdit
   const assignee = members.find(member => member.user_id === item.assigned_to && member.space_id === item.space_id)
   const availableMembers = members.filter(member => member.space_id === spaceId)
   const currentProject = projects.find(project => project.id === item.project_id)
@@ -109,7 +115,7 @@ export function ItemCard({ item, compact = false }: { item: LifeItem; compact?: 
 
   return <>
     <article className={`item-card ${compact ? 'compact' : ''} ${item.shopping?.image_url ? 'has-product-image' : ''}`}>
-      <button className="complete-button" onClick={() => completeItem(item.id)} aria-label={`Complete ${item.title}`}><Check size={18}/></button>
+      {canEdit?<button className="complete-button" onClick={() => completeItem(item.id)} aria-label={`Complete ${item.title}`}><Check size={18}/></button>:<span className="complete-button readonly-complete" aria-hidden="true"><Check size={18}/></span>}
       {item.type === 'shopping' && item.shopping?.image_url && <a className="item-product-thumb" href={itemLink || item.shopping.image_url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}><img src={item.shopping.image_url} alt="" referrerPolicy="no-referrer"/></a>}
       <div className="item-main">
         <div className="item-title-row"><strong>{item.title}</strong>{itemLink&&<a className="item-product-link" href={itemLink} target="_blank" rel="noreferrer" aria-label="Open attached link" onClick={e=>e.stopPropagation()}><ExternalLink size={14}/></a>}{item.priority === 'high' && <span className="priority-dot" title="High priority"/>}</div>
@@ -130,7 +136,7 @@ export function ItemCard({ item, compact = false }: { item: LifeItem; compact?: 
           {itemLink && <a className="item-open-link" href={itemLink} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}><ExternalLink size={13}/>Open link</a>}
         </div>
       </div>
-      <div className="item-actions">
+      {canEdit&&<div className="item-actions">
         <button className="icon-button" onClick={() => setMenu(value => !value)} aria-label="Item actions"><MoreHorizontal size={19}/></button>
         {menu && <div className="popover">
           <button onClick={() => { setEditing(true); setMenu(false) }}><Edit3 size={15}/>Edit</button>
@@ -138,10 +144,10 @@ export function ItemCard({ item, compact = false }: { item: LifeItem; compact?: 
           <button onClick={() => { void snoozeItem(item.id); setMenu(false) }}><RotateCcw size={15}/>Snooze 1 day</button>
           <button onClick={() => { void deleteItem(item.id); setMenu(false) }}><Trash2 size={15}/>Delete</button>
         </div>}
-      </div>
+      </div>}
     </article>
 
-    <Modal open={editing} onClose={() => setEditing(false)} title="Edit item">
+    <Modal open={editing&&canEdit} onClose={() => setEditing(false)} title="Edit item">
       <div className="form-stack">
         <label>Title<input value={title} onChange={e => setTitle(e.target.value)}/></label>
         <label>Notes<textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}/></label>

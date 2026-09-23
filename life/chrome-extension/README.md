@@ -26,3 +26,7 @@ The extension fetches the public JustGlance `config.js` to discover the existing
 ## Security
 
 The extension never stores the user's Supabase password or Supabase session token. It stores only a random JustGlance browser integration token. The database stores only a SHA-256 hash of that token. The token can call only the two shopping bridge RPCs and every write re-checks the user's current `edit_shopping` permission for the selected Space. Revoke a browser at any time from JustGlance Settings.
+
+## v1.0.1 pairing repair
+
+v1.0.1 accepts both JavaScript-style and JSON-style property names in the deployed JustGlance `config.js`. It force-refreshes the public configuration while pairing so a stale Manifest V3 service worker cannot keep an old deployment configuration.

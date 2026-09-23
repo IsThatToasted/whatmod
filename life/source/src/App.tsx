@@ -7,6 +7,7 @@ import AuthPage from './pages/AuthPage'
 import NowPage from './pages/NowPage'
 import LaterPage from './pages/LaterPage'
 import TasksPage from './pages/TasksPage'
+import ShoppingPage from './pages/ShoppingPage'
 import InboxPage from './pages/InboxPage'
 import ProjectsPage from './pages/ProjectsPage'
 import ProjectPage from './pages/ProjectPage'
@@ -37,6 +38,7 @@ export default function App(){
       <Route index element={<Navigate to="/now" replace/>}/>
       <Route path="/now" element={<NowPage/>}/>
       <Route path="/tasks" element={<TasksPage/>}/>
+      <Route path="/shopping" element={<ShoppingPage/>}/>
       <Route path="/inbox" element={<InboxPage/>}/>
       <Route path="/projects" element={<ProjectsPage/>}/>
       <Route path="/projects/:id" element={<ProjectPage/>}/>
