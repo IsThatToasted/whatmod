@@ -1,9 +1,11 @@
-import { Download, LocateFixed, LogOut, MapPin, Plus, Trash2 } from 'lucide-react'
+import { Chrome, Copy, Download, LocateFixed, LogOut, MapPin, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_VERSION, featureFlags } from '../lib/config'
 import { requestCurrentPosition } from '../lib/location'
+import { supabase } from '../lib/supabase'
+import type { BrowserIntegration } from '../types'
 
 export default function SettingsPage() {
   const { profile, preferences, updateProfile, updatePreferences, places, createPlace, items, spaces, events, notes } = useAppData()
@@ -22,6 +24,10 @@ export default function SettingsPage() {
   const [placeCoords, setPlaceCoords] = useState<{ latitude: number; longitude: number } | null>(null)
   const [locationMessage, setLocationMessage] = useState('')
   const [accountMessage, setAccountMessage] = useState('')
+  const [browserIntegrations, setBrowserIntegrations] = useState<BrowserIntegration[]>([])
+  const [browserToken, setBrowserToken] = useState('')
+  const [browserMessage, setBrowserMessage] = useState('')
+  const [browserBusy, setBrowserBusy] = useState(false)
 
   useEffect(() => {
     const root = document.documentElement
@@ -83,6 +89,38 @@ export default function SettingsPage() {
     setPlaceCoords(null)
   }
 
+  async function loadBrowserIntegrations() {
+    if (!supabase || demo) return
+    const { data, error } = await supabase.from('browser_integrations').select('id,user_id,name,created_at,last_used_at,revoked_at').is('revoked_at', null).order('created_at', { ascending: false })
+    if (error) { setBrowserMessage(error.message.includes('browser_integrations') ? 'Run migration 004 to enable the browser extension bridge.' : error.message); return }
+    setBrowserIntegrations((data || []) as BrowserIntegration[])
+  }
+
+  useEffect(() => { void loadBrowserIntegrations() }, [demo])
+
+  async function createBrowserPairing() {
+    if (!supabase || demo) return
+    setBrowserBusy(true); setBrowserMessage(''); setBrowserToken('')
+    try {
+      const { data, error } = await supabase.rpc('create_browser_integration', { p_name: 'Chrome extension' })
+      if (error) throw error
+      const token = (data as { token?: string } | null)?.token || ''
+      if (!token) throw new Error('Supabase did not return a pairing code.')
+      setBrowserToken(token)
+      setBrowserMessage('Pairing code created. Paste it into the JustGlance browser panel once; it can be revoked at any time.')
+      await loadBrowserIntegrations()
+    } catch (error) { setBrowserMessage(error instanceof Error ? error.message : 'Could not create a pairing code.') }
+    finally { setBrowserBusy(false) }
+  }
+
+  async function revokeBrowserPairing(id: string) {
+    if (!supabase || demo) return
+    const { error } = await supabase.rpc('revoke_browser_integration', { p_id: id })
+    if (error) { setBrowserMessage(error.message); return }
+    setBrowserMessage('Browser connection revoked.')
+    await loadBrowserIntegrations()
+  }
+
   return <div className="page">
     <header className="page-header"><div><span className="eyebrow">SETTINGS</span><h1>Keep the system out of your way.</h1><p>Most defaults are designed to work without tuning.</p></div></header>
     <div className="settings-grid">
@@ -129,6 +167,17 @@ export default function SettingsPage() {
         <Toggle label="Location reminders" value={preferences?.location_reminders_enabled ?? false} onChange={value => updatePreferences({ location_reminders_enabled: value })}/>
         <Toggle label="Routine reminders" value={preferences?.routine_reminders_enabled ?? true} onChange={value => updatePreferences({ routine_reminders_enabled: value })}/>
         <p className="muted">These preferences are stored now. Actual push delivery remains disabled until a push provider is configured.</p>
+      </section>
+
+
+      <section className="settings-section browser-extension-settings">
+        <span className="eyebrow">BROWSER</span><h2><Chrome size={20}/> Add to JustGlance</h2>
+        <p className="muted">The Chrome extension adds a small button to shopping pages, reads product title/image/price from the page, syncs your named shopping lists, and saves directly to the list you choose.</p>
+        <div className="browser-extension-actions"><a className="secondary-button" href="./chrome-extension/JustGlance-Chrome-Extension-v1.0.0.zip" download><Download size={17}/>Download extension</a><button className="primary-button" onClick={createBrowserPairing} disabled={browserBusy||demo}><Chrome size={17}/>{browserBusy?'Creating…':'Create pairing code'}</button></div>
+        {browserToken&&<div className="pairing-token-card"><span>ONE-TIME PAIRING CODE</span><code>{browserToken}</code><button className="secondary-button" onClick={async()=>navigator.clipboard.writeText(browserToken)}><Copy size={16}/>Copy code</button><small>JustGlance stores only a hash. This raw code is shown only in this session.</small></div>}
+        {browserMessage&&<div className="form-message">{browserMessage}</div>}
+        <div className="integration-list"><div className="section-heading inline"><strong>Connected browsers</strong><button className="icon-button" onClick={loadBrowserIntegrations} aria-label="Refresh browser connections"><RefreshCw size={15}/></button></div>{browserIntegrations.length?browserIntegrations.map(integration=><div className="integration-row" key={integration.id}><span><b>{integration.name}</b><small>{integration.last_used_at?`Last used ${new Date(integration.last_used_at).toLocaleString()}`:`Connected ${new Date(integration.created_at).toLocaleString()}`}</small></span><button className="text-button danger-text" onClick={()=>revokeBrowserPairing(integration.id)}>Revoke</button></div>):<p className="muted">No browser connections yet.</p>}</div>
+        <p className="muted">Install: unzip the download, open <b>chrome://extensions</b>, enable Developer mode, choose <b>Load unpacked</b>, and select the extracted extension folder. Then paste the pairing code into the bottom-left JustGlance button on any normal website.</p>
       </section>
 
       <section className="settings-section">

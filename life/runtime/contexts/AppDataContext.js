@@ -46,6 +46,40 @@ function stripClientOnly(item) {
     const { place_name: _placeName, shopping: _shopping, ...payload } = item;
     return payload;
 }
+function legacyShoppingDetails(shopping, includeList = true) {
+    const row = {
+        quantity: shopping.quantity ?? null,
+        unit: shopping.unit ?? null,
+        preferred_store: shopping.preferred_store ?? null,
+        estimated_price: shopping.estimated_price ?? null,
+        aisle_category: shopping.aisle_category ?? null,
+    };
+    if (includeList && Object.prototype.hasOwnProperty.call(shopping, 'list_id'))
+        row.list_id = shopping.list_id || null;
+    return row;
+}
+async function upsertShoppingServer(itemId, shopping) {
+    if (!supabase)
+        return new Error('Supabase is not available');
+    const rich = { item_id: itemId, ...shopping };
+    let result = await supabase.from('shopping_items').upsert(rich, { onConflict: 'item_id' });
+    if (!result.error)
+        return null;
+    const message = String(result.error.message || '');
+    if (/source_url|image_url|currency|product_id|product_metadata|schema cache/i.test(message)) {
+        const legacy = { item_id: itemId, ...legacyShoppingDetails(shopping, true) };
+        result = await supabase.from('shopping_items').upsert(legacy, { onConflict: 'item_id' });
+        if (!result.error)
+            return null;
+    }
+    if (String(result.error?.message || '').includes('list_id')) {
+        const oldest = { item_id: itemId, ...legacyShoppingDetails(shopping, false) };
+        result = await supabase.from('shopping_items').upsert(oldest, { onConflict: 'item_id' });
+        if (!result.error)
+            return null;
+    }
+    return result.error || new Error('Could not save shopping details');
+}
 export function AppDataProvider({ children }) {
     const { userId, demo } = useAuth();
     return _jsx(AppDataStateProvider, { userId: userId, demo: demo, children: children }, demo ? 'demo' : userId || 'signed-out');
@@ -61,6 +95,7 @@ function AppDataStateProvider({ children, userId, demo }) {
     const [notes, setNotes] = useState(demo ? demoNotes : []);
     const [activity, setActivity] = useState(demo ? demoActivity : []);
     const [captures, setCaptures] = useState([]);
+    const [contacts, setContacts] = useState([]);
     const [shoppingLists, setShoppingLists] = useState([]);
     const [collaborationAvailable, setCollaborationAvailable] = useState(demo);
     const [loading, setLoading] = useState(!demo);
@@ -76,10 +111,13 @@ function AppDataStateProvider({ children, userId, demo }) {
         }
         setLoading(true);
         try {
-            const [p, pref, i, s, m, pl, e, n, a, sl, cap] = await withTimeout(Promise.all([
+            const [p, pref, i, s, m, pl, e, n, a, sl, cap, con] = await withTimeout(Promise.all([
                 supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
                 supabase.from('user_preferences').select('*').eq('user_id', userId).maybeSingle(),
                 (async () => {
+                    const rich = await supabase.from('items').select('*, places(name), shopping_items(quantity,unit,preferred_store,estimated_price,aisle_category,list_id,source_url,image_url,currency,product_id,product_metadata)').is('deleted_at', null).order('created_at', { ascending: false });
+                    if (!rich.error)
+                        return rich;
                     const modern = await supabase.from('items').select('*, places(name), shopping_items(quantity,unit,preferred_store,estimated_price,aisle_category,list_id)').is('deleted_at', null).order('created_at', { ascending: false });
                     if (!modern.error || !String(modern.error.message || '').includes('list_id'))
                         return modern;
@@ -95,7 +133,8 @@ function AppDataStateProvider({ children, userId, demo }) {
                 supabase.from('notes').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(100),
                 supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(50),
                 supabase.from('shopping_lists').select('*').is('archived_at', null).order('sort_order').order('created_at'),
-                supabase.from('captures').select('*').eq('status', 'inbox').order('created_at', { ascending: false }).limit(100),
+                supabase.from('captures').select('*').order('created_at', { ascending: false }).limit(500),
+                supabase.from('contacts').select('*').is('deleted_at', null).order('display_name').limit(500),
             ]), 9000, 'Initial data load');
             if (p.data) {
                 setProfile(p.data);
@@ -120,6 +159,7 @@ function AppDataStateProvider({ children, userId, demo }) {
             const nextActivity = (a.data || []);
             const nextShoppingLists = (sl.data || []);
             const nextCaptures = (cap.data || []);
+            const nextContacts = (con.data || []);
             setCollaborationAvailable(!sl.error && !cap.error);
             setItems(mapped);
             persistLocal(mapped);
@@ -131,6 +171,7 @@ function AppDataStateProvider({ children, userId, demo }) {
             setActivity(nextActivity);
             setShoppingLists(nextShoppingLists);
             setCaptures(nextCaptures);
+            setContacts(nextContacts);
             writeSnapshotPart(userId, {
                 profile: p.data || null,
                 preferences: pref.data || null,
@@ -143,6 +184,7 @@ function AppDataStateProvider({ children, userId, demo }) {
                 activity: nextActivity,
                 shoppingLists: nextShoppingLists,
                 captures: nextCaptures,
+                contacts: nextContacts,
             });
             setSyncState('synced');
         }
@@ -172,6 +214,8 @@ function AppDataStateProvider({ children, userId, demo }) {
                         setShoppingLists(snapshot.shoppingLists);
                     if (snapshot.captures)
                         setCaptures(snapshot.captures);
+                    if (snapshot.contacts)
+                        setContacts(snapshot.contacts);
                 }
                 else {
                     const cached = localStorage.getItem(localKey(userId));
@@ -255,6 +299,7 @@ function AppDataStateProvider({ children, userId, demo }) {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => { void refresh(); })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_lists' }, () => { void refresh(); })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'captures' }, () => { void refresh(); })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts' }, () => { void refresh(); })
             .subscribe();
         return () => { void client.removeChannel(channel); };
     }, [demo, userId, refresh]);
@@ -303,7 +348,7 @@ function AppDataStateProvider({ children, userId, demo }) {
                 }
                 else if (item.type === 'shopping' && item.shopping) {
                     const shoppingData = { item_id: item.id, ...item.shopping };
-                    const { error: shoppingError } = await supabase.from('shopping_items').upsert(shoppingData, { onConflict: 'item_id' });
+                    const shoppingError = await upsertShoppingServer(item.id, item.shopping);
                     if (shoppingError) {
                         enqueueMutation(userId, { table: 'shopping_items', action: 'upsert', payload: { data: shoppingData, onConflict: 'item_id' } });
                         setSyncState('error');
@@ -347,6 +392,16 @@ function AppDataStateProvider({ children, userId, demo }) {
         };
         if (Object.prototype.hasOwnProperty.call(patch, 'list_id'))
             normalized.list_id = patch.list_id || null;
+        if (Object.prototype.hasOwnProperty.call(patch, 'source_url'))
+            normalized.source_url = patch.source_url?.trim() || null;
+        if (Object.prototype.hasOwnProperty.call(patch, 'image_url'))
+            normalized.image_url = patch.image_url?.trim() || null;
+        if (Object.prototype.hasOwnProperty.call(patch, 'currency'))
+            normalized.currency = patch.currency?.trim().toUpperCase() || null;
+        if (Object.prototype.hasOwnProperty.call(patch, 'product_id'))
+            normalized.product_id = patch.product_id?.trim() || null;
+        if (Object.prototype.hasOwnProperty.call(patch, 'product_metadata'))
+            normalized.product_metadata = patch.product_metadata || {};
         setItems(current => {
             const next = current.map(item => item.id === id ? { ...item, shopping: { ...(item.shopping || {}), ...normalized } } : item);
             persistLocal(next);
@@ -359,7 +414,7 @@ function AppDataStateProvider({ children, userId, demo }) {
             if (!navigator.onLine)
                 enqueueMutation(userId, { table: 'shopping_items', action: 'upsert', payload: { data, onConflict: 'item_id' } });
             else {
-                const { error } = await supabase.from('shopping_items').upsert(data, { onConflict: 'item_id' });
+                const error = await upsertShoppingServer(id, normalized);
                 if (error) {
                     enqueueMutation(userId, { table: 'shopping_items', action: 'upsert', payload: { data, onConflict: 'item_id' } });
                     setSyncState('error');
@@ -539,6 +594,7 @@ function AppDataStateProvider({ children, userId, demo }) {
             mime_type: input.file?.type || null, file_name: input.file?.name || null, storage_path: storagePath,
             parsed_kind: input.parsed_kind || null, parsed_data: input.parsed_data || {}, status: input.status || 'inbox',
             created_item_id: input.created_item_id || null, created_event_id: input.created_event_id || null, created_note_id: input.created_note_id || null,
+            contact_id: input.contact_id || null, ai_status: input.ai_status || 'not_requested', ai_summary: null, ai_entities: {}, ai_suggestions: {},
             created_at: new Date().toISOString(),
         };
         if (demo) {
@@ -547,18 +603,22 @@ function AppDataStateProvider({ children, userId, demo }) {
         }
         if (!supabase)
             throw new Error('Supabase is not configured');
-        const { error } = await supabase.from('captures').insert(row);
-        if (error) {
+        let insertResult = await supabase.from('captures').insert(row);
+        if (insertResult.error && /ai_status|ai_summary|ai_entities|ai_suggestions|contact_id|schema cache/i.test(String(insertResult.error.message || ''))) {
+            const { contact_id: _contact, ai_status: _aiStatus, ai_summary: _aiSummary, ai_entities: _aiEntities, ai_suggestions: _aiSuggestions, ...legacyRow } = row;
+            insertResult = await supabase.from('captures').insert(legacyRow);
+        }
+        if (insertResult.error) {
             if (storagePath)
                 await supabase.storage.from('justglance-captures').remove([storagePath]);
-            throw new Error(error.message.includes('captures') ? 'Run migration 003 to enable Smart Intake.' : error.message);
+            throw new Error(insertResult.error.message.includes('captures') ? 'Run migration 003 to enable Smart Intake.' : insertResult.error.message);
         }
         setCaptures(current => [row, ...current]);
         return row;
     };
     const updateCapture = async (id, patch) => {
         const updated = { ...patch, updated_at: new Date().toISOString() };
-        setCaptures(current => current.map(capture => capture.id === id ? { ...capture, ...updated } : capture).filter(capture => capture.status === 'inbox'));
+        setCaptures(current => current.map(capture => capture.id === id ? { ...capture, ...updated } : capture));
         if (!demo && supabase) {
             const serverPatch = { ...updated };
             delete serverPatch.id;
@@ -567,6 +627,90 @@ function AppDataStateProvider({ children, userId, demo }) {
             if (error)
                 throw error;
         }
+    };
+    const createContact = async (input) => {
+        if (!userId)
+            throw new Error('Not signed in');
+        const name = input.display_name.trim();
+        if (!name)
+            throw new Error('Contact name is required');
+        const now = new Date().toISOString();
+        const row = {
+            id: input.id || crypto.randomUUID(), user_id: userId, display_name: name,
+            first_name: input.first_name?.trim() || null, last_name: input.last_name?.trim() || null,
+            nickname: input.nickname?.trim() || null, relationship: input.relationship?.trim() || null,
+            company: input.company?.trim() || null, job_title: input.job_title?.trim() || null,
+            email_personal: input.email_personal?.trim() || null, email_work: input.email_work?.trim() || null,
+            phone_mobile: input.phone_mobile?.trim() || null, phone_home: input.phone_home?.trim() || null, phone_work: input.phone_work?.trim() || null,
+            address_home: input.address_home?.trim() || null, address_business: input.address_business?.trim() || null,
+            birthday: input.birthday || null, notes: input.notes?.trim() || null, tags: input.tags || [], avatar_url: input.avatar_url || null,
+            linked_profile_id: input.linked_profile_id || null, created_at: input.created_at || now, updated_at: now, deleted_at: null,
+        };
+        setContacts(current => {
+            const next = [...current.filter(contact => contact.id !== row.id), row].sort((a, b) => a.display_name.localeCompare(b.display_name));
+            writeSnapshotPart(userId, { contacts: next });
+            return next;
+        });
+        if (!demo && supabase) {
+            const { error } = await supabase.from('contacts').insert(row);
+            if (error) {
+                setContacts(current => current.filter(contact => contact.id !== row.id));
+                throw new Error(String(error.message || '').includes('contacts') ? 'Run migration 005 to enable Contacts.' : error.message);
+            }
+        }
+        return row;
+    };
+    const updateContact = async (id, patch) => {
+        const clean = { ...patch, updated_at: new Date().toISOString() };
+        delete clean.id;
+        delete clean.user_id;
+        setContacts(current => {
+            const next = current.map(contact => contact.id === id ? { ...contact, ...clean } : contact).sort((a, b) => a.display_name.localeCompare(b.display_name));
+            if (userId)
+                writeSnapshotPart(userId, { contacts: next });
+            return next;
+        });
+        if (!demo && supabase) {
+            const { error } = await supabase.from('contacts').update(clean).eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
+    const deleteContact = async (id) => {
+        const deletedAt = new Date().toISOString();
+        setContacts(current => current.filter(contact => contact.id !== id));
+        if (!demo && supabase) {
+            const { error } = await supabase.from('contacts').update({ deleted_at: deletedAt }).eq('id', id);
+            if (error)
+                throw error;
+        }
+    };
+    const analyzeCapture = async (id) => {
+        if (demo || !supabase || !navigator.onLine)
+            return null;
+        setCaptures(current => current.map(capture => capture.id === id ? { ...capture, ai_status: 'processing' } : capture));
+        const { data, error } = await supabase.functions.invoke('smart-intake', { body: { capture_id: id } });
+        if (error) {
+            setCaptures(current => current.map(capture => capture.id === id ? { ...capture, ai_status: 'error', ai_summary: error.message } : capture));
+            return null;
+        }
+        const analysis = data?.analysis;
+        if (!analysis)
+            return null;
+        setCaptures(current => current.map(capture => capture.id === id ? {
+            ...capture, title: analysis.title || capture.title, parsed_kind: analysis.kind,
+            ai_status: 'analyzed', ai_summary: analysis.summary || null,
+            ai_entities: { person: analysis.person, phone: analysis.phone, email: analysis.email, location: analysis.location, url: analysis.url, contact: analysis.contact, shopping: analysis.shopping },
+            ai_suggestions: { action: analysis.suggested_action, due_date: analysis.due_date, due_time: analysis.due_time, tags: analysis.tags, confidence: analysis.confidence },
+            parsed_data: { ...(capture.parsed_data || {}), ai: analysis },
+        } : capture));
+        return analysis;
+    };
+    const getCaptureSignedUrl = async (storagePath) => {
+        if (!supabase || !storagePath || !navigator.onLine)
+            return null;
+        const { data, error } = await supabase.storage.from('justglance-captures').createSignedUrl(storagePath, 3600);
+        return error ? null : data?.signedUrl || null;
     };
     const importCalendarEvents = async (incoming, sourceName = 'Calendar file') => {
         if (!userId)
@@ -740,10 +884,10 @@ function AppDataStateProvider({ children, userId, demo }) {
         return (result.data || []).map((row) => ({ ...row, permissions: row.permissions || null, space_id: spaceId }));
     };
     const value = useMemo(() => ({
-        profile, preferences, items, spaces, members, places, events, notes, activity, captures, shoppingLists, collaborationAvailable, loading, syncState,
+        profile, preferences, items, spaces, members, places, events, notes, activity, captures, contacts, shoppingLists, collaborationAvailable, loading, syncState,
         refresh, createItem, updateItem, updateShopping, completeItem, deleteItem, snoozeItem, createSpace, createInvite,
-        consumeInvite, updateMemberAccess, createShoppingList, createCapture, updateCapture, importCalendarEvents, updateProfile, updatePreferences, createPlace, createEvent, createNote, getSpaceMembers,
-    }), [profile, preferences, items, spaces, members, places, events, notes, activity, captures, shoppingLists, collaborationAvailable, loading, syncState, refresh]);
+        consumeInvite, updateMemberAccess, createShoppingList, createCapture, updateCapture, analyzeCapture, getCaptureSignedUrl, createContact, updateContact, deleteContact, importCalendarEvents, updateProfile, updatePreferences, createPlace, createEvent, createNote, getSpaceMembers,
+    }), [profile, preferences, items, spaces, members, places, events, notes, activity, captures, contacts, shoppingLists, collaborationAvailable, loading, syncState, refresh]);
     return _jsx(Ctx.Provider, { value: value, children: children });
 }
 export function useAppData() {

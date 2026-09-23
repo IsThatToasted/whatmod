@@ -1,4 +1,4 @@
-import { BellRing, CheckCircle2, Clock3, FolderKanban, Home, Inbox, ShoppingBasket, Sparkles, Users } from 'lucide-react'
+import { BellRing, Cake, CheckCircle2, Clock3, FolderKanban, Home, Inbox, ShoppingBasket, Sparkles, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { formatDate, formatTime, getTimePeriod, greeting, minutesUntilEvent, todayISO } from '../lib/time'
@@ -14,7 +14,7 @@ import { useOrganizer } from '../contexts/OrganizerContext'
 import { taskBucket } from '../lib/organizer'
 
 export default function NowPage() {
-  const { profile, preferences, items, events, activity, places } = useAppData()
+  const { profile, preferences, items, events, activity, places, contacts } = useAppData()
   const { projects, reminders } = useOrganizer()
   const [mood, setMood] = useState<Mood | null>(null)
   const now = new Date()
@@ -48,6 +48,17 @@ export default function NowPage() {
   const activeProjects = projects.filter(p => p.status === 'active').length
   const nextReminder = reminders.find(r => new Date(r.remind_at) > now) || null
   const morning = period === 'early-morning' || period === 'morning'
+  const upcomingBirthday = useMemo(() => {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    return contacts.map(contact => {
+      if (!contact.birthday) return null
+      const [,month,day] = contact.birthday.split('-').map(Number)
+      let date = new Date(start.getFullYear(), month-1, day)
+      if (date < start) date = new Date(start.getFullYear()+1, month-1, day)
+      const days = Math.round((date.getTime()-start.getTime())/86400000)
+      return { contact, date, days }
+    }).filter(Boolean).sort((a:any,b:any)=>a.days-b.days)[0] as {contact:typeof contacts[number];date:Date;days:number}|undefined
+  }, [contacts, today])
   const hero = minutes != null && minutes > 0
     ? `You have about ${minutes} minute${minutes === 1 ? '' : 's'} before ${next?.title}.`
     : openToday
@@ -76,6 +87,7 @@ export default function NowPage() {
         <div className="context-card"><div className="context-title"><Inbox size={18}/><strong>Inbox</strong></div><p>{inboxCount ? `${inboxCount} captured thing${inboxCount === 1 ? '' : 's'} to organize when you have a minute.` : 'Nothing waiting to be sorted.'}</p></div>
         <div className="context-card"><div className="context-title"><FolderKanban size={18}/><strong>Projects</strong></div><p>{activeProjects ? `${activeProjects} active project${activeProjects === 1 ? '' : 's'} with connected next actions.` : 'No active projects right now.'}</p></div>
         {nextReminder && <div className="context-card"><div className="context-title"><BellRing size={18}/><strong>Reminder</strong></div><h3>{nextReminder.title}</h3><p>{new Date(nextReminder.remind_at).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})}</p></div>}
+        {upcomingBirthday&&upcomingBirthday.days<=30&&<div className="context-card"><div className="context-title"><Cake size={18}/><strong>Birthday</strong></div><h3>{upcomingBirthday.contact.display_name}</h3><p>{upcomingBirthday.days===0?'Today':upcomingBirthday.days===1?'Tomorrow':`${upcomingBirthday.date.toLocaleDateString(undefined,{month:'short',day:'numeric'})} · ${upcomingBirthday.days} days`}</p></div>}
         <div className="context-card"><div className="context-title"><Home size={18}/><strong>Shared</strong></div><p>{items.filter(i => i.space_id && i.status === 'open').length} shared item(s) waiting.</p></div>
         {preferences?.shared_activity_enabled !== false && activity[0] && <div className="context-card"><div className="context-title"><Users size={18}/><strong>Recent</strong></div><p>{activity[0].actor_name || 'Someone'} {activity[0].action} {activity[0].entity_title}.</p></div>}
         <div className="context-card"><div className="context-title"><ShoppingBasket size={18}/><strong>Shopping</strong></div><p>{items.filter(i => i.type === 'shopping' && i.status === 'open').length} item(s) on your lists.</p></div>

@@ -141,3 +141,43 @@ The web app at `/life` is deployed by the repository-wide `web-pages.yml` workfl
 ### v2.1 import support
 
 Smart Intake and Planner accept `.ics` exports from Outlook, Google Calendar, Apple Calendar and other tools, plus common Outlook/calendar CSV exports. Live OAuth provider adapters remain an extension point; file import works now without OAuth.
+
+## v2.2 smart shopping links + Chrome capture
+
+Run the additive migration after the existing schema is healthy:
+
+```text
+life/supabase/migrations/004_smart_shopping_browser_bridge.sql
+```
+
+Migration 004 keeps all existing data and adds rich product fields (`source_url`, image, price currency, product ID, metadata) plus revocable browser-integration tokens and shopping-only RPCs.
+
+Inside a shared Space, each shopping list now has a smart add field. Paste text normally, or paste a product URL. The app preserves the source link and suggests a named list using the product metadata/list name. This includes semantic hints for list names such as **Lingerie/Panties** and **Heels**.
+
+### Rich pasted-link previews
+
+A browser page cannot reliably fetch another retailer's HTML because of CORS. The optional authenticated Supabase Edge Function at:
+
+```text
+life/supabase/functions/product-preview
+```
+
+performs the server-side fetch and extracts JSON-LD/OpenGraph product metadata. Deploy it with:
+
+```bash
+supabase functions deploy product-preview
+```
+
+If the function is not deployed, the app still stores the URL and uses URL/hostname parsing. The Chrome extension does not require the Edge Function because it can read the current retailer page directly.
+
+### Add to JustGlance Chrome extension
+
+The unpacked Manifest V3 extension lives at:
+
+```text
+life/chrome-extension
+```
+
+It adds a persistent bottom-left **Add to JustGlance** button to normal websites. The extension parses product JSON-LD/OpenGraph data, previews title/image/price, syncs editable shopping lists, suggests the destination list, and saves directly to Supabase.
+
+Pair it from **JustGlance → Settings → Add to JustGlance**. Pairing uses a revocable shopping-only token; the extension never receives or stores the user's Supabase auth session.

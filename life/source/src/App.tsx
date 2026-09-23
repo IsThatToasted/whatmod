@@ -17,6 +17,8 @@ import SpacesPage from './pages/SpacesPage'
 import SpacePage from './pages/SpacePage'
 import YouPage from './pages/YouPage'
 import SettingsPage from './pages/SettingsPage'
+import ContactsPage from './pages/ContactsPage'
+import MemoryPage from './pages/MemoryPage'
 import OnboardingPage from './pages/OnboardingPage'
 import SearchPage from './pages/SearchPage'
 import DebugPage from './pages/DebugPage'
@@ -42,6 +44,7 @@ export default function App(){
       <Route path="/thoughts" element={<ThoughtsPage/>}/>
       <Route path="/organize" element={<OrganizePage/>}/>
       <Route path="/later" element={<LaterPage/>}/>
+      <Route path="/contacts" element={<ContactsPage/>}/><Route path="/memory" element={<MemoryPage/>}/>
       <Route path="/spaces" element={<SpacesPage/>}/>
       <Route path="/spaces/:id" element={<SpacePage/>}/>
       <Route path="/you" element={<YouPage/>}/>

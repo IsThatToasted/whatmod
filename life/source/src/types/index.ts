@@ -6,7 +6,7 @@ export type TimePeriod = 'early-morning' | 'morning' | 'midday' | 'afternoon' | 
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived'
 export type EnergyLevel = 'low' | 'medium' | 'high'
 export type SpacePermissionKey = 'view_shopping' | 'edit_shopping' | 'view_tasks' | 'edit_tasks' | 'view_calendar' | 'edit_calendar' | 'view_notes' | 'edit_notes' | 'view_projects' | 'edit_projects' | 'invite_members'
-export type CaptureKind = 'thought' | 'text' | 'link' | 'file' | 'image' | 'calendar_import'
+export type CaptureKind = 'thought' | 'text' | 'link' | 'file' | 'image' | 'calendar_import' | 'contact_import'
 
 export interface SpacePermissions {
   view_shopping: boolean
@@ -76,6 +76,52 @@ export interface SpaceMember {
   avatar_url?: string | null
 }
 
+
+export interface Contact {
+  id: string
+  user_id: string
+  first_name?: string | null
+  last_name?: string | null
+  display_name: string
+  nickname?: string | null
+  relationship?: string | null
+  company?: string | null
+  job_title?: string | null
+  email_personal?: string | null
+  email_work?: string | null
+  phone_mobile?: string | null
+  phone_home?: string | null
+  phone_work?: string | null
+  address_home?: string | null
+  address_business?: string | null
+  birthday?: string | null
+  notes?: string | null
+  tags?: string[]
+  avatar_url?: string | null
+  linked_profile_id?: string | null
+  created_at: string
+  updated_at?: string
+  deleted_at?: string | null
+}
+
+export interface UniversalIntakeAnalysis {
+  kind: 'appointment' | 'task' | 'reminder' | 'shopping' | 'call' | 'contact' | 'receipt' | 'document' | 'reference' | 'idea' | 'place' | 'image'
+  title: string
+  summary: string
+  confidence: number
+  due_date?: string | null
+  due_time?: string | null
+  location?: string | null
+  person?: string | null
+  phone?: string | null
+  email?: string | null
+  url?: string | null
+  tags: string[]
+  suggested_action: 'create_event' | 'create_item' | 'create_contact' | 'keep_memory'
+  contact?: Partial<Contact>
+  shopping?: { store?: string | null; price?: number | null; currency?: string | null; product_name?: string | null }
+}
+
 export interface Place {
   id: string
   user_id: string
@@ -107,6 +153,20 @@ export interface ShoppingDetails {
   estimated_price?: number | null
   aisle_category?: string | null
   list_id?: string | null
+  source_url?: string | null
+  image_url?: string | null
+  currency?: string | null
+  product_id?: string | null
+  product_metadata?: Record<string, unknown> | null
+}
+
+export interface BrowserIntegration {
+  id: string
+  user_id: string
+  name: string
+  created_at: string
+  last_used_at?: string | null
+  revoked_at?: string | null
 }
 
 export interface LifeItem {
@@ -115,6 +175,7 @@ export interface LifeItem {
   space_id?: string | null
   project_id?: string | null
   parent_item_id?: string | null
+  contact_id?: string | null
   title: string
   description?: string | null
   type: ItemType
@@ -151,6 +212,7 @@ export interface EventItem {
   user_id: string
   space_id?: string | null
   project_id?: string | null
+  contact_id?: string | null
   title: string
   event_date: string
   start_time: string
@@ -227,6 +289,11 @@ export interface CaptureRecord {
   created_item_id?: string | null
   created_event_id?: string | null
   created_note_id?: string | null
+  contact_id?: string | null
+  ai_status?: 'not_requested' | 'queued' | 'processing' | 'analyzed' | 'error'
+  ai_summary?: string | null
+  ai_entities?: Record<string, unknown> | null
+  ai_suggestions?: Record<string, unknown> | null
   created_at: string
   updated_at?: string
 }

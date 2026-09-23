@@ -66,7 +66,7 @@ export class LifeIntentParser {
             priority = 'low';
         const dueDate = inferDate(text);
         const dueTime = inferTime(text);
-        const store = text.match(/\b(?:at|from)\s+(Walmart|Target|Costco|CVS|Walgreens|Aldi|Lidl|Giant|Weis)\b/i)?.[1] || null;
+        const store = text.match(/\b(?:at|from)\s+(Walmart|Target|Costco|CVS|Walgreens|Aldi|Lidl|Giant|Weis|Amazon|eBay|Etsy)\b/i)?.[1] || null;
         const tags = [type, ...(store ? ['shopping-place'] : []), ...(dueTime ? ['timed'] : [])];
         const quick = text.match(/\b(2|5|10|15|30|60)\s*(?:min|mins|minutes)\b/i);
         const confidence = Math.min(.96, .55 + (type !== 'task' ? .16 : 0) + (dueDate ? .1 : 0) + (dueTime ? .08 : 0) + (store ? .08 : 0));

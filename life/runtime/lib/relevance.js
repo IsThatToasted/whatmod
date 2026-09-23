@@ -102,7 +102,7 @@ export function calculateRelevanceScore(item, context) {
         score += 30;
         reasons.push('low-energy fit');
     }
-    if (context.mood === 'fun' && (item.type === 'idea' || item.tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)))) {
+    if (context.mood === 'fun' && (item.type === 'idea' || item.context_tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)))) {
         score += 35;
         reasons.push('fun-mode fit');
     }
@@ -122,14 +122,20 @@ export function rankItems(items, context) {
         .filter(scored => scored.score > -80)
         .sort((a, b) => b.score - a.score);
 }
-
 export function matchesMoodFocus(item, mood) {
-    if (!mood) return true;
-    if (mood === 'quick') return (item.estimated_minutes || 999) <= 15;
-    if (mood === 'productive') return item.priority === 'high' || item.energy_level === 'high' || item.type === 'task' || item.type === 'call';
-    if (mood === 'errands') return item.type === 'errand' || item.type === 'shopping';
-    if (mood === 'home') return item.type === 'chore' || item.type === 'shopping' || /home/i.test(item.place_name || '');
-    if (mood === 'relax') return item.energy_level === 'low' || item.type === 'idea';
-    if (mood === 'fun') return item.type === 'idea' || item.tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)) === true;
+    if (!mood)
+        return true;
+    if (mood === 'quick')
+        return (item.estimated_minutes || 999) <= 15;
+    if (mood === 'productive')
+        return item.priority === 'high' || item.energy_level === 'high' || item.type === 'task' || item.type === 'call';
+    if (mood === 'errands')
+        return item.type === 'errand' || item.type === 'shopping';
+    if (mood === 'home')
+        return item.type === 'chore' || item.type === 'shopping' || /home/i.test(item.place_name || '');
+    if (mood === 'relax')
+        return item.energy_level === 'low' || item.type === 'idea';
+    if (mood === 'fun')
+        return item.type === 'idea' || item.context_tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)) === true;
     return (item.estimated_minutes || 999) <= 10 || item.energy_level === 'low' || item.priority === 'high' || !!item.due_date;
 }

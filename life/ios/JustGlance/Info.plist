@@ -4,7 +4,7 @@
 <key>CFBundleDisplayName</key><string>JustGlance</string>
 <key>CFBundleIdentifier</key><string>com.whatmod.justglance</string>
 <key>CFBundleName</key><string>JustGlance</string>
-<key>CFBundleShortVersionString</key><string>2.0.0</string>
+<key>CFBundleShortVersionString</key><string>2.3.0</string>
 <key>CFBundleVersion</key><string>2</string>
 <key>UILaunchScreen</key><dict/>
 <key>UIRequiresFullScreen</key><false/>

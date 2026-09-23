@@ -1,11 +1,11 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { CalendarDays, CircleUserRound, FolderKanban, Inbox, LayoutGrid, Lightbulb, ListChecks, Menu, Plus, Search, Sparkles, UsersRound } from 'lucide-react'
+import { AddressBook, Archive, CalendarDays, CircleUserRound, FolderKanban, Inbox, LayoutGrid, Lightbulb, ListChecks, Menu, Plus, Search, Sparkles, UsersRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { CaptureSheet } from './CaptureSheet'
 import { OfflineBanner } from './OfflineBanner'
 
 const desktopLinks=[
-  ['/now','Now',Sparkles],['/tasks','Tasks',ListChecks],['/planner','Planner',CalendarDays],['/projects','Projects',FolderKanban],['/inbox','Inbox',Inbox],['/thoughts','Thoughts',Lightbulb],['/spaces','Spaces',UsersRound],['/you','You',CircleUserRound]
+  ['/now','Now',Sparkles],['/tasks','Tasks',ListChecks],['/planner','Planner',CalendarDays],['/projects','Projects',FolderKanban],['/inbox','Inbox',Inbox],['/memory','Memory',Archive],['/thoughts','Thoughts',Lightbulb],['/contacts','Contacts',AddressBook],['/spaces','Spaces',UsersRound],['/you','You',CircleUserRound]
 ] as const
 const mobileLinks=[['/now','Now',Sparkles],['/tasks','Tasks',ListChecks],['/planner','Plan',CalendarDays],['/organize','More',LayoutGrid]] as const
 

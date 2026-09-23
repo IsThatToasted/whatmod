@@ -42,7 +42,7 @@ export function agendaForDate(date, items, events) {
     const dayEvents = events.filter(event => event.event_date === date);
     const rows = [
         ...dayEvents.map(event => ({ id: event.id, kind: 'event', time: event.start_time || '00:00', title: event.title, event })),
-        ...dayItems.map(item => ({ id: item.id, kind: 'task', time: item.due_time || '23:59', title: item.title, item })),
+        ...dayItems.map(item => ({ id: item.id, kind: 'task', time: item.due_time || (item.type === 'call' ? '08:30' : '23:59'), title: item.title, item })),
     ];
     return rows.sort((a, b) => a.time.localeCompare(b.time));
 }

@@ -36,7 +36,7 @@ export function agendaForDate(date: string, items: LifeItem[], events: EventItem
   const dayEvents = events.filter(event => event.event_date === date)
   const rows = [
     ...dayEvents.map(event => ({ id: event.id, kind: 'event' as const, time: event.start_time || '00:00', title: event.title, event })),
-    ...dayItems.map(item => ({ id: item.id, kind: 'task' as const, time: item.due_time || '23:59', title: item.title, item })),
+    ...dayItems.map(item => ({ id: item.id, kind: 'task' as const, time: item.due_time || (item.type === 'call' ? '08:30' : '23:59'), title: item.title, item })),
   ]
   return rows.sort((a,b) => a.time.localeCompare(b.time))
 }
