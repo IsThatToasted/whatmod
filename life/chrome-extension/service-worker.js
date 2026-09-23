@@ -180,7 +180,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           brand: p.brand || null,
           description: p.description || null,
           captured_at: new Date().toISOString(),
-          capture_method: 'chrome-extension-dom'
+          capture_method: 'chrome-extension-dom',
+          parser: p.parser || null,
+          parser_confidence: p.confidence ?? null,
+          detected_fields: p.detected || null
         }
       });
       return { ok: true, result, version: chrome.runtime.getManifest().version };
