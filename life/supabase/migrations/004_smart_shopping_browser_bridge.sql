@@ -1,7 +1,10 @@
--- JustGlance v2.2.0 — Smart shopping links + browser extension bridge
+-- JustGlance v2.3.1 — FIXED Smart shopping links + browser extension bridge
 -- Additive / migration-safe. Does not delete existing items, lists, members, invites, or captures.
 
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+-- Supabase normally keeps pgcrypto in the extensions schema. Qualify its functions explicitly below.
+
 
 -- Rich product metadata. The base public.items row remains canonical.
 alter table if exists public.shopping_items
@@ -76,8 +79,8 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  raw_token := 'jgext_' || encode(gen_random_bytes(32), 'hex');
-  hashed := encode(digest(raw_token, 'sha256'), 'hex');
+  raw_token := 'jgext_' || encode(extensions.gen_random_bytes(32), 'hex');
+  hashed := encode(extensions.digest(convert_to(raw_token, 'UTF8'), 'sha256'::text), 'hex');
 
   insert into public.browser_integrations(user_id, name, token_hash)
   values(auth.uid(), coalesce(nullif(trim(p_name), ''), 'Chrome'), hashed)
@@ -119,7 +122,7 @@ set search_path = public
 as $$
   select bi.user_id
   from public.browser_integrations bi
-  where bi.token_hash = encode(digest(coalesce(p_token, ''), 'sha256'), 'hex')
+  where bi.token_hash = encode(extensions.digest(convert_to(coalesce(p_token, ''), 'UTF8'), 'sha256'::text), 'hex')
     and bi.revoked_at is null
   limit 1
 $$;
@@ -173,7 +176,7 @@ begin
   update public.browser_integrations
   set last_used_at = now()
   where user_id = token_user
-    and token_hash = encode(digest(coalesce(p_token, ''), 'sha256'), 'hex');
+    and token_hash = encode(extensions.digest(convert_to(coalesce(p_token, ''), 'UTF8'), 'sha256'::text), 'hex');
 
   return query
   select s.id, s.name, sl.id, sl.name, sl.icon, sl.sort_order
@@ -258,7 +261,7 @@ begin
   update public.browser_integrations
   set last_used_at = now()
   where user_id = token_user
-    and token_hash = encode(digest(coalesce(p_token, ''), 'sha256'), 'hex');
+    and token_hash = encode(extensions.digest(convert_to(coalesce(p_token, ''), 'UTF8'), 'sha256'::text), 'hex');
 
   return jsonb_build_object('item_id', new_item, 'space_id', p_space, 'list_id', p_list, 'title', clean_title);
 end $$;

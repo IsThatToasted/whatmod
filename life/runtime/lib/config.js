@@ -1,6 +1,6 @@
 const runtime = window.__JUSTGLANCE_CONFIG__ || {};
 const metaEnv = (import.meta.env || {});
-export const APP_VERSION = runtime.appVersion || metaEnv.VITE_APP_VERSION || '2.3.0';
+export const APP_VERSION = runtime.appVersion || metaEnv.VITE_APP_VERSION || '2.3.1';
 export const DEMO_MODE = runtime.demoMode === true || String(metaEnv.VITE_DEMO_MODE || '').toLowerCase() === 'true';
 export const SUPABASE_URL = runtime.supabaseUrl || metaEnv.VITE_SUPABASE_URL || '';
 export const SUPABASE_ANON_KEY = runtime.supabaseAnonKey || metaEnv.VITE_SUPABASE_ANON_KEY || '';

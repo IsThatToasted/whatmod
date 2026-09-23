@@ -2,7 +2,8 @@
 -- ADDITIVE / MIGRATION-SAFE. Safe to run after previous JustGlance migrations.
 -- Existing tasks, events, captures, shopping data, spaces, invites and projects are preserved.
 
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.contacts (
   id uuid primary key default gen_random_uuid(),
