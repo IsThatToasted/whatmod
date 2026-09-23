@@ -2,7 +2,7 @@ import { BellRing, CheckCircle2, Clock3, FolderKanban, Home, Inbox, ShoppingBask
 import { useMemo, useState } from 'react'
 import { useAppData } from '../contexts/AppDataContext'
 import { formatDate, formatTime, getTimePeriod, greeting, minutesUntilEvent, todayISO } from '../lib/time'
-import { rankItems } from '../lib/relevance'
+import { matchesMoodFocus, rankItems } from '../lib/relevance'
 import type { AppContextSnapshot, Mood } from '../types'
 import { ItemCard } from '../components/ItemCard'
 import { MoodSelector } from '../components/MoodSelector'
@@ -32,7 +32,15 @@ export default function NowPage() {
   const currentPlaceName = useNearbyPlace(places, locationEnabled)
   const context: AppContextSnapshot = { now, period, mood, minutesUntilNextEvent: minutes, nextEvent: next, currentPlaceName }
   const ranked = useMemo(() => rankItems(items, context), [items, mood, period, minutes, currentPlaceName])
-  const useful = ranked.slice(0, 5)
+  const useful = useMemo(() => {
+    if (!mood) return ranked.slice(0, 5)
+    const preferred = ranked.filter(scored => matchesMoodFocus(scored.item, mood))
+    if (!preferred.length) return ranked.slice(0, 5)
+    const urgent = ranked.filter(scored => scored.reasons.some(reason => reason === 'overdue' || reason === 'due today' || reason === 'time window closing'))
+    const seen = new Set<string>()
+    return [...urgent, ...preferred, ...ranked].filter(scored => !seen.has(scored.item.id) && seen.add(scored.item.id)).slice(0, 5)
+  }, [ranked, mood])
+  const moodHeading: Record<Mood,string> = { nothing:'Keep it light', quick:'Quick wins', productive:'Productive picks', errands:'Errands first', home:'Home mode', relax:'Low-energy options', fun:'Something fun' }
   const completed = items.filter(i => i.status === 'completed' && i.completed_at?.startsWith(today)).length
   const openToday = items.filter(i => i.status === 'open' && i.due_date === today).length
   const evening = period === 'evening' || period === 'night'
@@ -58,7 +66,7 @@ export default function NowPage() {
 
     <section className="now-grid">
       <div className="feed">
-        <div className="section-heading"><div><span className="eyebrow">WORTH DOING NOW</span><h2>{useful.length ? 'Useful right now' : 'You’re clear'}</h2></div><Sparkles size={20}/></div>
+        <div className="section-heading"><div><span className="eyebrow">WORTH DOING NOW</span><h2>{useful.length ? (mood ? moodHeading[mood] : 'Useful right now') : 'You’re clear'}</h2></div><Sparkles size={20}/></div>
         {useful.length ? useful.map(scored => <div key={scored.item.id} className="recommendation"><ItemCard item={scored.item}/>{Boolean((import.meta as any).env?.DEV) && <small className="score-debug">score {scored.score} · {scored.reasons.slice(0, 2).join(', ')}</small>}</div>) : <div className="empty-card"><CheckCircle2/><strong>Nothing urgent.</strong><span>Enjoy the open space, or capture something if it’s on your mind.</span></div>}
         {evening && featureFlags.DAILY_RESET && <DailyReset />}
       </div>

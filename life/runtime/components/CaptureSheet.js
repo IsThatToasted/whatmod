@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { Calendar, FileText, FolderKanban, Image as ImageIcon, Link2, MapPin, Paperclip, Send, Sparkles, Users, X } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppData } from '../contexts/AppDataContext.js';
 import { useOrganizer } from '../contexts/OrganizerContext.js';
 import { isoToday } from '../lib/organizer.js';
@@ -33,8 +33,18 @@ export function CaptureSheet({ open, onClose }) {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const fileRef = useRef(null);
+    const lastInferredDate = useRef('');
+    const lastInferredTime = useRef('');
     const analysis = useMemo(() => text.trim() ? analyzeSmartText(text) : null, [text]);
     const effectiveKind = kind || (analysis ? mappedKind(analysis.kind) : null);
+    useEffect(() => {
+        const inferredDate = analysis?.dueDate || '';
+        const inferredTime = analysis?.dueTime || '';
+        setDate(current => (!current || current === lastInferredDate.current) ? inferredDate : current);
+        setTime(current => (!current || current === lastInferredTime.current) ? inferredTime : current);
+        lastInferredDate.current = inferredDate;
+        lastInferredTime.current = inferredTime;
+    }, [analysis?.dueDate, analysis?.dueTime]);
     if (!open)
         return null;
     function reset() {
@@ -48,6 +58,8 @@ export function CaptureSheet({ open, onClose }) {
         setPlaceId('');
         setFiles([]);
         setError('');
+        lastInferredDate.current = '';
+        lastInferredTime.current = '';
     }
     async function saveText() {
         if (!text.trim() || !analysis)
