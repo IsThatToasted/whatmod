@@ -1,7 +1,7 @@
 import type { EventItem, ParsedIntent } from '../types'
 import { lifeIntentParser } from './parser'
 
-export type SmartKind = 'appointment' | 'task' | 'reminder' | 'shopping' | 'thought' | 'link' | 'file' | 'image' | 'calendar'
+export type SmartKind = 'appointment' | 'task' | 'reminder' | 'shopping' | 'call' | 'errand' | 'chore' | 'idea' | 'thought' | 'link' | 'file' | 'image' | 'calendar'
 
 export interface SmartAnalysis {
   kind: SmartKind
@@ -32,7 +32,7 @@ export interface ParsedCalendarEvent {
 
 const appointmentRx = /\b(appointment|appt|dentist|doctor(?:'s|s)?|physician|medical|clinic|dr\.?\s|meeting|meet with|interview|reservation|therapy|haircut|checkup|check-up|conference|webinar|class|lesson|consultation|visit|dinner with|lunch with|breakfast with)\b/i
 const thoughtRx = /\b(idea|thought|note to self|remember this|reference|save this|research|maybe someday|inspiration)\b/i
-const urlRx = /https?:\/\/[^\s<>()]+/i
+const urlRx = /https?:\/\/[^\s<>()\"']+/i
 
 function isoLocalDate(d: Date) {
   const y = d.getFullYear()
@@ -64,6 +64,12 @@ function smartDate(text: string, fallback: string | null) {
   const now = new Date()
   if (/\btoday\b/.test(lower)) return isoLocalDate(now)
   if (/\btomorrow\b/.test(lower)) { now.setDate(now.getDate() + 1); return isoLocalDate(now) }
+  if (/\bnext week\b/.test(lower)) {
+    const day = now.getDay()
+    const daysUntilNextMonday = ((8 - day) % 7) || 7
+    now.setDate(now.getDate() + daysUntilNextMonday)
+    return isoLocalDate(now)
+  }
   const nextWeekdayPhrase = lower.match(/\bnext(?:\s+week)?\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/)
   if (nextWeekdayPhrase) return nextWeekday(nextWeekdayPhrase[1], true)
   const weekday = lower.match(/\b(?:this\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/)
@@ -139,15 +145,36 @@ function cleanAppointmentTitle(text: string, location: string | null, url: strin
   return title || 'Appointment'
 }
 
+function cleanActionTitle(text: string, url: string | null) {
+  let title = text.trim()
+  if (url) title = title.replace(url, '')
+  title = title
+    .replace(/\bnext week\b/ig, '')
+    .replace(/\b(?:on\s+)?(?:next(?:\s+week)?|this)?\s*(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/ig, '')
+    .replace(/\b(?:today|tomorrow)\b/ig, '')
+    .replace(/\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/ig, '')
+    .replace(/[\"'“”‘’]+/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[,;\-\s]+|[,;\-\s]+$/g, '')
+  return title || 'Untitled item'
+}
+
 export function analyzeSmartText(text: string): SmartAnalysis {
   const clean = text.trim()
   const intent = lifeIntentParser.parse(clean)
-  const url = clean.match(urlRx)?.[0] || null
+  const url = clean.match(urlRx)?.[0]?.replace(/[.,;!?]+$/, '') || null
   const date = smartDate(clean, intent.dueDate || null)
   const time = smartTime(clean, intent.dueTime || null)
   const location = extractLocation(clean) || intent.context || null
   const isAppointment = appointmentRx.test(clean) || (!!date && !!time && /\b(with|appointment|meeting|dentist|doctor(?:'s|s)?|physician|medical|clinic|interview|reservation|visit)\b/i.test(clean))
-  const isLink = !!url && !isAppointment
+  const hasActionWithLink = !!url && (
+    intent.type !== 'task' ||
+    !!date || !!time ||
+    /\b(buy|order|purchase|pick up|pickup|read|watch|review|compare|research|check|use|download|register|apply|book|call|return|send|share)\b/i.test(clean)
+  )
+  // A URL should enrich an actionable item rather than turning the whole capture
+  // into a passive bookmark. Only URL-only/reference captures become link records.
+  const isLink = !!url && !isAppointment && !hasActionWithLink
   const isThought = !isAppointment && !isLink && thoughtRx.test(clean) && !/\b(remind|buy|call|pick up|clean|return|drop off)\b/i.test(clean)
 
   let kind: SmartKind
@@ -158,9 +185,13 @@ export function analyzeSmartText(text: string): SmartAnalysis {
   else if (isThought) { kind = 'thought'; reason = 'thought/reference language detected'; confidence = .82 }
   else if (intent.type === 'shopping') { kind = 'shopping'; reason = 'shopping language detected'; confidence = Math.max(.78, confidence) }
   else if (intent.type === 'reminder') { kind = 'reminder'; reason = 'reminder language detected'; confidence = Math.max(.78, confidence) }
+  else if (intent.type === 'call') { kind = 'call'; reason = 'call language detected'; confidence = Math.max(.84, confidence) }
+  else if (intent.type === 'errand') { kind = 'errand'; reason = 'errand language detected'; confidence = Math.max(.76, confidence) }
+  else if (intent.type === 'chore') { kind = 'chore'; reason = 'chore language detected'; confidence = Math.max(.76, confidence) }
+  else if (intent.type === 'idea') { kind = 'idea'; reason = 'idea language detected'; confidence = Math.max(.72, confidence) }
   else { kind = 'task'; reason = 'actionable item detected'; confidence = Math.max(.62, confidence) }
 
-  let title = isAppointment ? cleanAppointmentTitle(clean, location, url) : intent.title
+  let title = isAppointment ? cleanAppointmentTitle(clean, location, url) : cleanActionTitle(intent.title, url)
   if (isLink && url) {
     const withoutUrl = clean.replace(url,'').replace(/^(?:save|remember|bookmark|keep)\s+(?:this\s+)?/i,'').trim()
     try { title = withoutUrl || new URL(url).hostname.replace(/^www\./,'') } catch { title = withoutUrl || 'Saved link' }

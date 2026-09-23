@@ -1,42 +1,67 @@
-# JustGlance v2.1.0 — Tonight setup
+# JustGlance v2.3.0 — Tonight setup
 
-This release is designed to upgrade an existing v2.0.x database without deleting or replacing existing user data.
+This upgrade is additive. Keep using the existing `/life` app while development continues; migration 005 does not delete existing tasks, projects, shopping data, spaces, events, captures, links or notes.
 
-## 1. Supabase migration
+## 1. Keep the working GitHub Pages deployment
 
-If JustGlance already has migrations 001 and 002, run only:
+`/life` continues to publish through the repository-wide `.github/workflows/web-pages.yml` alongside the other WhatMod apps. Do not enable or depend on `justglance-web-build.yml`.
 
-`supabase/migrations/003_shared_spaces_smart_intake.sql`
-
-Migration 003 is additive. Existing shared members keep full category access initially so current behavior is preserved until you explicitly narrow permissions.
-
-For a brand-new Supabase project, run 001, then 002, then 003.
-
-## 2. Confirm the existing GitHub secrets
-
-The shared `.github/workflows/web-pages.yml` deployment reads these repository Actions secrets:
+The browser still uses only these existing GitHub repository secrets:
 
 - `JUSTGLANCE_SUPABASE_URL`
 - `JUSTGLANCE_SUPABASE_ANON_KEY`
 
-Do not put a Supabase service-role key in the browser app.
+## 2. Run migration 005
 
-If either public secret is missing, the deployed app intentionally falls back to demo mode. In v2.1, Spaces displays **Demo mode** or the real signed-in email so this is immediately visible.
+If your existing database already has the previous JustGlance migrations/repairs, run only:
 
-## 3. Deploy only `/life`
+`supabase/migrations/005_contacts_universal_memory.sql`
 
-Apply this release to the repository's `/life` directory, inspect `git status`, then commit and push. Do not add a separate JustGlance Pages workflow. The existing shared `web-pages.yml` publishes `/life` together with the other WhatMod apps.
+Its final diagnostic should report all values `true`:
 
-## 4. Quick smoke test
+- `contacts_ready`
+- `item_contact_ready`
+- `event_contact_ready`
+- `capture_ai_ready`
+- `contacts_auth_ready`
 
-After deployment:
+## 3. Optional but strongly recommended: turn on photo intelligence
 
-1. Sign in with a real Supabase account.
-2. Open **Spaces** and confirm the account strip says **Signed in** with your email, not **Demo mode**.
-3. Create a non-personal shared space.
-4. Open it and create an invite link.
-5. Create a named shopping list and add an item.
-6. Use **Capture** with `Dentist Thursday at 2:30 PM at Aspen Dental` and confirm it proposes an appointment.
-7. Import a small `.ics` or Outlook-style calendar `.csv` in **Planner**.
-8. Attach an image or file in **Capture** and confirm it appears in the Smart Capture inbox.
+The photo itself saves safely even without AI. To let JustGlance understand images and automatically organize clear captures, configure the included authenticated Edge Function.
 
+Store the API key in **Supabase Function secrets**, never in the web app or GitHub Pages:
+
+```bash
+supabase secrets set OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+```
+
+Optional model override:
+
+```bash
+supabase secrets set JUSTGLANCE_AI_MODEL=gpt-5.6-luna
+```
+
+Then deploy:
+
+```bash
+supabase functions deploy smart-intake
+```
+
+Leave JWT verification enabled. The source is:
+
+`life/supabase/functions/smart-intake/index.ts`
+
+If this function is not configured or temporarily fails, the original photo/file remains in JustGlance and can be analyzed later from Memory.
+
+## 4. Deploy normally
+
+Merge/copy this release into the existing `/life` directory, inspect `git status`, and push. No `.github` workflow change is needed.
+
+## 5. Start using it immediately
+
+- Open **Capture → Take photo** and photograph something you want to remember. Text is optional.
+- Open **More → Contacts** and create people you frequently refer to.
+- Try `call Ashley for something next Tuesday` after Ashley has a mobile number.
+- Open **Planner** to see the call and use **Dial**.
+- Open **Memory** to find the original captures even after they have been turned into structured actions.
+- Import an exported `.vcf` file from another address book if desired.

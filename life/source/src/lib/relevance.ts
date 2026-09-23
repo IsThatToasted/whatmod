@@ -72,7 +72,7 @@ export function calculateRelevanceScore(item: LifeItem, context: AppContextSnaps
   if (context.mood === 'errands' && (item.type === 'errand' || item.type === 'shopping')) { score += 25; reasons.push('errand-mode fit') }
   if (context.mood === 'home' && (item.type === 'chore' || /home/i.test(item.place_name || ''))) { score += 25; reasons.push('home-mode fit') }
   if (context.mood === 'relax' && (item.energy_level === 'low' || item.type === 'idea')) { score += 30; reasons.push('low-energy fit') }
-  if (context.mood === 'fun' && (item.type === 'idea' || item.tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)))) { score += 35; reasons.push('fun-mode fit') }
+  if (context.mood === 'fun' && (item.type === 'idea' || item.context_tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)))) { score += 35; reasons.push('fun-mode fit') }
   if (context.mood === 'nothing') {
     if ((item.estimated_minutes || 999) <= 10 || item.energy_level === 'low') { score += 25; reasons.push('easy-mode fit') }
     else if (!item.due_date && item.priority !== 'high') score -= 35
@@ -95,6 +95,6 @@ export function matchesMoodFocus(item: LifeItem, mood: Mood | null) {
   if (mood === 'errands') return item.type === 'errand' || item.type === 'shopping'
   if (mood === 'home') return item.type === 'chore' || item.type === 'shopping' || /home/i.test(item.place_name || '')
   if (mood === 'relax') return item.energy_level === 'low' || item.type === 'idea'
-  if (mood === 'fun') return item.type === 'idea' || item.tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)) === true
+  if (mood === 'fun') return item.type === 'idea' || item.context_tags?.some(tag => /fun|hobby|game|watch|read/i.test(tag)) === true
   return (item.estimated_minutes || 999) <= 10 || item.energy_level === 'low' || item.priority === 'high' || !!item.due_date
 }
