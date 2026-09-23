@@ -28,15 +28,45 @@
 
   const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>`;
 
-  function send(message) { return new Promise(resolve => chrome.runtime.sendMessage(message, resolve)); }
+  function send(message) {
+    return new Promise(resolve => {
+      try {
+        chrome.runtime.sendMessage(message, response => {
+          const runtimeError = chrome.runtime.lastError;
+          if (runtimeError) {
+            resolve({ ok: false, error: 'JustGlance is temporarily unavailable. Try again.' });
+            return;
+          }
+          resolve(response);
+        });
+      } catch {
+        resolve({ ok: false, error: 'JustGlance is temporarily unavailable. Try again.' });
+      }
+    });
+  }
   function esc(value='') { return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
   function money(price,currency='USD'){ if(price==null||price==='')return ''; try{return new Intl.NumberFormat(undefined,{style:'currency',currency:currency||'USD'}).format(Number(price))}catch{return `${currency||'$'} ${Number(price).toFixed(2)}`}}
+  function fallbackProduct(parser='fallback'){
+    return {
+      title: document.title || location.hostname,
+      url: location.href,
+      imageUrl: '',
+      price: null,
+      currency: 'USD',
+      store: location.hostname.replace(/^www\./,''),
+      category: '',
+      brand: '',
+      productId: '',
+      description: '',
+      parser,
+      detected: { title: Boolean(document.title), image: false, price: false, category: false, brand: false, productId: false }
+    };
+  }
   function scrapeProduct(){
     try {
-      return globalThis.JustGlanceProductParser?.scrape?.() || {title:document.title||location.hostname,url:location.href,imageUrl:'',price:null,currency:'USD',store:location.hostname.replace(/^www\./,''),category:'',brand:'',productId:'',description:'',parser:'fallback',detected:{}};
-    } catch (error) {
-      console.warn('[JustGlance] Product parser failed:', error);
-      return {title:document.title||location.hostname,url:location.href,imageUrl:'',price:null,currency:'USD',store:location.hostname.replace(/^www\./,''),category:'',brand:'',productId:'',description:'',parser:'parser-error',detected:{}};
+      return globalThis.JustGlanceProductParser?.scrape?.() || fallbackProduct();
+    } catch {
+      return fallbackProduct('parser-fallback');
     }
   }
   function numberPrice(raw){ return globalThis.JustGlanceProductParser?.numberPrice?.(raw) ?? (raw==null?null:(Number.isFinite(Number(String(raw).replace(/[^0-9.\-]/g,'')))?Number(String(raw).replace(/[^0-9.\-]/g,'')):null)); }
@@ -70,7 +100,7 @@
   }
   function renderPair(){return `<div class="pair"><h3>Connect this browser</h3><p>In JustGlance open <b>Settings → Add to JustGlance</b>, create a pairing code, then paste it here.</p><label>Pairing code<input id="jg-token" placeholder="jgext_…" autocomplete="off"></label><button class="primary" id="jg-pair">Connect JustGlance</button>${state.error?`<div class="error">${esc(state.error)}</div>`:''}<p class="hint">The code is shopping-only and revocable. Your Supabase password/session is never stored in the extension.</p></div>`}
   function renderProduct(suggested){
-    const p=state.product||scrapeProduct();
+    const p=state.product||fallbackProduct('not-scanned');
     const listOptions=state.lists.map(l=>`<option value="${esc(keyFor(l))}" ${keyFor(l)===state.selectedKey?'selected':''}>${esc(l.space_name)} · ${esc(l.list_name)}</option>`).join('');
     const detected=p.detected||{};
     const checks=[['Title',detected.title],['Image',detected.image],['Price',detected.price],['Category',detected.category]].map(([label,ok])=>`<span class="${ok?'scan-ok':'scan-miss'}">${ok?'✓':'○'} ${label}</span>`).join('');
@@ -80,7 +110,7 @@
       <div class="form"><label>Item title<input id="jg-title" value="${esc(p.title)}"></label><div class="two"><label>Price<input id="jg-price" type="number" min="0" step="0.01" value="${p.price??''}"></label><label>Currency<input id="jg-currency" maxlength="3" value="${esc(p.currency||'USD')}"></label></div><label>Category<input id="jg-category" value="${esc(p.category||'')}" placeholder="Shoes, lingerie, electronics…"></label><label>Save to<select id="jg-list">${listOptions}</select></label><label>Notes / size / color<textarea id="jg-notes" rows="2" placeholder="Optional details…"></textarea></label><button class="secondary" id="jg-rescan">Rescan product page</button><button class="primary" id="jg-save" ${state.saving||!state.lists.length?'disabled':''}>${state.saving?'Saving…':'Add to shopping list'}</button>${state.message?`<div class="success">${esc(state.message)}</div>`:''}${state.error?`<div class="error">${esc(state.error)}</div>`:''}</div><div class="foot"><button id="jg-refresh">Refresh lists</button><button id="jg-unpair">Disconnect browser</button></div>`;
   }
   function bindPanel(){
-    root.querySelector('#jg-pair')?.addEventListener('click',async()=>{state.error='';const token=root.querySelector('#jg-token')?.value?.trim();const result=await send({type:'JG_PAIR',token});if(!result?.ok){state.error=result?.error||'Pairing failed.'}else{state.paired=true;state.lists=result.lists||[];const sug=suggestList(state.product||scrapeProduct(),state.lists);state.selectedKey=sug.list?keyFor(sug.list):state.lists[0]?keyFor(state.lists[0]):''}render()});
+    root.querySelector('#jg-pair')?.addEventListener('click',async()=>{state.error='';const token=root.querySelector('#jg-token')?.value?.trim();const result=await send({type:'JG_PAIR',token});if(!result?.ok){state.error=result?.error||'Pairing failed.'}else{state.paired=true;state.lists=result.lists||[];if(!state.product)state.product=fallbackProduct('not-scanned');const sug=suggestList(state.product,state.lists);state.selectedKey=sug.list?keyFor(sug.list):state.lists[0]?keyFor(state.lists[0]):''}render()});
     root.querySelector('#jg-list')?.addEventListener('change',e=>{state.selectedKey=e.target.value});
     root.querySelector('#jg-save')?.addEventListener('click',saveProduct);
     root.querySelector('#jg-rescan')?.addEventListener('click',()=>{state.product=scrapeProduct();state.error='';state.message='Page data rescanned.';if(state.lists.length){const sug=suggestList(state.product,state.lists);if(sug.list)state.selectedKey=keyFor(sug.list)}render()});
@@ -95,8 +125,30 @@
     const result=await send({type:'JG_ADD_PRODUCT',spaceId:selected.space_id,listId:selected.list_id||null,product,notes:root.querySelector('#jg-notes')?.value?.trim()||''});
     state.saving=false;if(!result?.ok)state.error=result?.error||'Could not save product.';else state.message=`Added to ${selected.list_name}.`;render();
   }
-  async function toggle(){state.open=!state.open;if(state.open){state.product=scrapeProduct();state.message='';state.error='';await loadStatus();if(state.paired&&state.lists.length){const sug=suggestList(state.product,state.lists);state.selectedKey=sug.list?keyFor(sug.list):state.selectedKey||keyFor(state.lists[0])}}render()}
+  async function toggle(){
+    state.open=!state.open;
+    if(state.open){
+      // Intentionally lazy: no product DOM scan happens during normal browsing.
+      // We inspect the page only after the user explicitly opens Add to JustGlance.
+      state.product=scrapeProduct();
+      state.message='';
+      state.error='';
+      await loadStatus();
+      if(state.paired&&state.lists.length){
+        const sug=suggestList(state.product,state.lists);
+        state.selectedKey=sug.list?keyFor(sug.list):state.selectedKey||keyFor(state.lists[0]);
+      }
+    }
+    render();
+  }
 
-  chrome.runtime.onMessage.addListener(message=>{if(message?.type==='JG_TOGGLE_PANEL'){void toggle()}});
-  state.product=scrapeProduct(); render();
+  chrome.runtime.onMessage.addListener(message=>{
+    if(message?.type==='JG_TOGGLE_PANEL'){
+      void toggle().catch(()=>{});
+    }
+  });
+
+  // Passive idle state: draw the button only. No JSON-LD, image, price, breadcrumb,
+  // or retailer-specific page inspection until the user opens the panel.
+  render();
 })();
