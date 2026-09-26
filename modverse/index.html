@@ -6,6 +6,14 @@
     <meta name="theme-color" content="#090a12" />
     <meta name="description" content="An explorable interactive portfolio — enter The Modverse." />
     <title>The Modverse — Interactive Portfolio</title>
+    <link rel="stylesheet" href="./src/style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <canvas id="world" aria-label="Interactive 3D portfolio"></canvas>
@@ -95,6 +103,6 @@
       <span>Original experience by Brian / WhatMod · Tribute to playful web portfolios inspired by <a href="https://bruno-simon.com/" target="_blank" rel="noreferrer">Bruno Simon</a></span>
     </footer>
 
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

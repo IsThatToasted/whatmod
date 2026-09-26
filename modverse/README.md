@@ -18,6 +18,15 @@ An original explorable 3D portfolio concept inspired by the playful-web philosop
 - GitHub Pages-friendly relative build paths
 - Responsive UI and reduced-motion support
 
+## Deployment modes
+
+This project now supports both:
+
+- **Direct static hosting / GitHub Pages source hosting** — `index.html` loads CSS with a relative path and resolves Three.js through an import map.
+- **Vite builds** — `npm run build` still produces an optimized `dist/` folder using the installed `three` dependency.
+
+Do not change `./src/main.js` or `./src/style.css` to root-absolute `/src/...` paths when deploying in a subdirectory.
+
 ## Run locally
 
 ```bash

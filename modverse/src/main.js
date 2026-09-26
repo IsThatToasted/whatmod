@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import './style.css'
 import { PROJECTS, SECRETS } from './data.js'
 
 const $ = (selector) => document.querySelector(selector)
