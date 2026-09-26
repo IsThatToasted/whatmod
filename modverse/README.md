@@ -1,4 +1,4 @@
-# The Modverse — Interactive Portfolio
+# The Modverse — Living World V0.3 — Interactive Portfolio
 
 An original explorable 3D portfolio concept inspired by the playful-web philosophy of interactive portfolios such as Bruno Simon's, without copying its car, world layout, assets, or visual identity.
 
@@ -60,3 +60,24 @@ The starting project data intentionally includes examples from the WhatMod ecosy
 ## Originality / tribute note
 
 The experience is a tribute to creators who made personal websites feel like worlds. It deliberately uses a different player metaphor, world structure, UI, progression system, navigation and art direction rather than recreating Bruno Simon's portfolio.
+
+
+## V0.3 — Living World
+
+This pass turns the prototype into a more reactive miniature world while keeping the project asset-light:
+
+- Procedural ambient synth, movement/boost engine tone, district hums, UI chords and boost whooshes
+- Dynamic zone lighting, fog tint, Core glow and HUD accent based on the nearest project district
+- Energy-limited pulse drive with camera FOV kick, shake, shockwave and longer additive trail
+- Animated project-specific micro-biomes: floating life cards, travel route rings + aircraft, Wildform crystals, construction cranes, Lab torus knots and origin pylons
+- Orbiting drones, firefly particles, moving skyline atmosphere, aurora ribbons and meteor streaks
+- Project/secret particle bursts, world celebration events and animated event banners
+- Persistent project and secret discovery using localStorage
+- Mobile PULSE control in addition to joystick + ACT
+- Low-quality mode disables the more expensive decorative world layer
+
+Audio starts only after the visitor presses Enter, which keeps it compatible with normal browser autoplay policies. No external sound files are required.
+
+### Static hosting note
+
+`index.html`, `src/style.css`, and `src/main.js` use relative paths so the project can live inside a GitHub Pages subdirectory. The browser import map currently loads Three.js from jsDelivr when running the raw source directly. A Vite production build will bundle the npm `three` dependency instead.

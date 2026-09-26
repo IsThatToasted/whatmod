@@ -93,3 +93,68 @@ kbd { background:#f7f9ff; color:#0b0e18; border-radius:6px; padding:3px 7px; fon
 @media (prefers-reduced-motion: reduce) {
   *, *:before, *:after { scroll-behavior:auto !important; transition-duration:.001ms !important; animation-duration:.001ms !important; }
 }
+
+/* ---------- V0.3 Living World additions ---------- */
+:root { --zone-accent:#78ffd6; }
+.fx-overlay { position:fixed; inset:0; z-index:12; pointer-events:none; overflow:hidden; }
+.fx-overlay::before { content:""; position:absolute; inset:-20%; background:
+  radial-gradient(circle at 50% 58%, transparent 0 32%, rgba(0,0,0,.16) 54%, rgba(0,0,0,.58) 100%),
+  repeating-linear-gradient(180deg, rgba(255,255,255,.012) 0 1px, transparent 1px 4px); mix-blend-mode:screen; opacity:.75; }
+.fx-overlay::after { content:""; position:absolute; inset:-35%; background:conic-gradient(from 180deg at 50% 50%, transparent 0 18%, color-mix(in srgb, var(--zone-accent) 24%, transparent) 22%, transparent 27% 55%, color-mix(in srgb, var(--zone-accent) 15%, transparent) 60%, transparent 66% 100%); filter:blur(40px); opacity:.22; animation:fxDrift 16s linear infinite; }
+body.boosting .fx-overlay::after { opacity:.48; animation-duration:5s; }
+body.boosting #world { filter:saturate(1.12) contrast(1.04); }
+@keyframes fxDrift { to { transform:rotate(1turn) scale(1.08); } }
+
+.boot-card { animation:bootFloat 5s ease-in-out infinite; transform-origin:center; }
+.boot-card::after { content:""; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none; background:linear-gradient(120deg, transparent 20%, rgba(255,255,255,.18) 48%, transparent 72%); transform:translateX(-120%); animation:bootSheen 6s ease-in-out infinite; }
+@keyframes bootFloat { 50% { transform:translateY(-5px); } }
+@keyframes bootSheen { 0%,68% { transform:translateX(-120%); } 86%,100% { transform:translateX(120%); } }
+.resume-note { margin:0 0 18px; padding:9px 11px; border:1px solid rgba(120,255,214,.18); background:rgba(120,255,214,.055); border-radius:12px; color:#bfeee2; font-size:10px; letter-spacing:.04em; line-height:1.5; }
+.tiny-dim { opacity:.54; margin-top:7px !important; }
+
+.telemetry { position:fixed; z-index:18; right:16px; top:76px; min-width:245px; padding:11px 13px; border-radius:15px; }
+.telemetry-row,.energy-row { display:flex; align-items:center; gap:9px; }
+.telemetry-row { justify-content:space-between; margin-bottom:9px; }
+.telemetry span { color:#6f7b99; font-size:8px; letter-spacing:.16em; font-weight:800; }
+.telemetry strong { color:#edf5ff; font-size:9px; letter-spacing:.1em; white-space:nowrap; }
+.telemetry-row strong { color:var(--zone-accent); text-shadow:0 0 16px color-mix(in srgb,var(--zone-accent) 70%,transparent); }
+.energy-row strong { min-width:48px; text-align:right; color:#aeb9d4; font-size:8px; }
+.energy-track { position:relative; width:96px; height:5px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.08); box-shadow:inset 0 0 0 1px rgba(255,255,255,.04); }
+.energy-track i { display:block; width:100%; height:100%; transform-origin:left center; background:linear-gradient(90deg,var(--zone-accent),#fff); box-shadow:0 0 12px var(--zone-accent); transition:transform .08s linear; }
+body.boosting .energy-track { box-shadow:0 0 18px color-mix(in srgb,var(--zone-accent) 40%,transparent), inset 0 0 0 1px rgba(255,255,255,.08); }
+
+.event-banner { position:fixed; z-index:55; top:max(92px,calc(env(safe-area-inset-top) + 72px)); left:50%; transform:translateX(-50%); min-width:min(430px,calc(100% - 34px)); padding:13px 18px; border-radius:17px; text-align:center; overflow:hidden; }
+.event-banner::before { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--zone-accent) 14%,transparent),transparent); animation:eventSweep 1.8s linear infinite; }
+.event-banner small,.event-banner strong,.event-banner span { position:relative; z-index:1; display:block; }
+.event-banner small { color:#69748e; font-size:7px; letter-spacing:.22em; font-weight:900; }
+.event-banner strong { margin-top:3px; color:var(--zone-accent); font-size:15px; letter-spacing:.09em; text-shadow:0 0 18px color-mix(in srgb,var(--zone-accent) 60%,transparent); }
+.event-banner span { margin-top:3px; color:#b8c2d9; font-size:9px; }
+@keyframes eventSweep { from { transform:translateX(-100%); } to { transform:translateX(100%); } }
+
+.panel { overflow:hidden; }
+.panel::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--panel-accent,var(--accent)); box-shadow:0 0 22px var(--panel-accent,var(--accent)); }
+.panel::after { content:""; position:absolute; inset:0; pointer-events:none; background:radial-gradient(circle at 15% 0%, color-mix(in srgb,var(--panel-accent,var(--accent)) 13%,transparent), transparent 42%); }
+.panel > * { position:relative; z-index:1; }
+.danger-ghost { margin-top:18px; color:#ff9ea8; border-color:rgba(255,126,143,.2); }
+
+.interact-hint { animation:hintPulse 1.8s ease-in-out infinite; border-color:color-mix(in srgb,var(--zone-accent) 32%,var(--line)); }
+@keyframes hintPulse { 50% { box-shadow:0 10px 42px rgba(0,0,0,.4), 0 0 26px color-mix(in srgb,var(--zone-accent) 20%,transparent); transform:translateX(-50%) translateY(-2px); } }
+
+.mission .dot { animation:signalBeat 1.7s ease-in-out infinite; }
+@keyframes signalBeat { 0%,100% { transform:scale(.8); opacity:.55; } 45% { transform:scale(1.25); opacity:1; box-shadow:0 0 26px var(--zone-accent); } }
+
+.hud-actions button,.brand,.telemetry,.mission,.panel,.modal,.map-card,.event-banner { transition:border-color .35s ease, box-shadow .35s ease, background .35s ease; }
+.hud-actions button:hover { color:var(--zone-accent); text-shadow:0 0 12px color-mix(in srgb,var(--zone-accent) 70%,transparent); }
+
+@media (max-width:700px) {
+  .telemetry { right:10px; top:67px; min-width:190px; padding:9px 10px; }
+  .energy-track { width:70px; }
+  .event-banner { top:118px; }
+  .tiny-dim { display:none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-overlay::after,.boot-card,.boot-card::after,.event-banner::before,.interact-hint,.mission .dot { animation:none !important; }
+}
+.touch-pulse { pointer-events:auto; position:absolute; right:118px; bottom:6px; width:68px; height:68px; border-radius:50%; border:1px solid rgba(255,255,255,.14); background:rgba(117,92,255,.12); color:#dcd7ff; font-size:8px; font-weight:900; letter-spacing:.09em; touch-action:none; box-shadow:0 0 26px rgba(117,92,255,.08); }
+.touch-pulse:active { transform:scale(.94); background:rgba(120,255,214,.18); color:#fff; box-shadow:0 0 32px color-mix(in srgb,var(--zone-accent) 30%,transparent); }

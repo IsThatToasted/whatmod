@@ -17,15 +17,18 @@
   </head>
   <body>
     <canvas id="world" aria-label="Interactive 3D portfolio"></canvas>
+    <div id="fxOverlay" class="fx-overlay hidden" aria-hidden="true"></div>
 
     <div id="boot" class="boot">
       <div class="boot-card glass">
         <p class="eyebrow">AN INTERACTIVE PORTFOLIO</p>
         <h1>THE <span>MODVERSE</span></h1>
         <p class="boot-copy">Don't scroll through my work. Explore it.</p>
+        <p id="resumeNote" class="resume-note hidden"></p>
         <button id="enterWorld" class="primary">Enter the world</button>
         <button id="viewSimple" class="ghost">Use simple view</button>
         <p class="tiny">WASD / arrows to move · E to interact · Shift to pulse</p>
+        <p class="tiny tiny-dim">Headphones recommended · procedural ambience reacts to the world</p>
       </div>
     </div>
 
@@ -38,6 +41,11 @@
         <button id="helpBtn" title="Help">?</button>
       </div>
     </header>
+
+    <aside id="telemetry" class="telemetry glass hidden">
+      <div class="telemetry-row"><span>ZONE</span><strong id="zoneText">THE NULL</strong></div>
+      <div class="energy-row"><span>CORE</span><div class="energy-track"><i id="energyFill"></i></div><strong id="speedText">0 u/s</strong></div>
+    </aside>
 
     <aside id="mission" class="mission glass hidden">
       <span class="dot"></span>
@@ -80,6 +88,7 @@
         <div><kbd>M</kbd><span>Map</span></div>
       </div>
       <p class="tiny">On touch devices, use the thumb pad and ACT button. Drag anywhere else to shift the camera.</p>
+      <button id="resetProgress" class="ghost danger-ghost">Reset discovery memory</button>
     </section>
 
     <section id="mapOverlay" class="map-overlay hidden">
@@ -94,8 +103,15 @@
 
     <div id="toast" class="toast glass hidden"></div>
 
+    <div id="eventBanner" class="event-banner glass hidden">
+      <small>MODVERSE EVENT</small>
+      <strong id="eventTitle">CORE ONLINE</strong>
+      <span id="eventCopy">The Modverse is listening.</span>
+    </div>
+
     <div id="touchControls" class="touch hidden">
       <div id="joystick" class="joystick"><div id="stick" class="stick"></div></div>
+      <button id="touchPulse" class="touch-pulse">PULSE</button>
       <button id="touchInteract" class="touch-act">ACT</button>
     </div>
 
