@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#090a12" />
+    <meta name="description" content="An explorable interactive portfolio — enter The Modverse." />
+    <title>The Modverse — Interactive Portfolio</title>
+  </head>
+  <body>
+    <canvas id="world" aria-label="Interactive 3D portfolio"></canvas>
+
+    <div id="boot" class="boot">
+      <div class="boot-card glass">
+        <p class="eyebrow">AN INTERACTIVE PORTFOLIO</p>
+        <h1>THE <span>MODVERSE</span></h1>
+        <p class="boot-copy">Don't scroll through my work. Explore it.</p>
+        <button id="enterWorld" class="primary">Enter the world</button>
+        <button id="viewSimple" class="ghost">Use simple view</button>
+        <p class="tiny">WASD / arrows to move · E to interact · Shift to pulse</p>
+      </div>
+    </div>
+
+    <header id="hud" class="hud hidden">
+      <div class="brand glass"><strong>WHATMOD</strong><span>THE MODVERSE</span></div>
+      <div class="hud-actions glass">
+        <button id="mapBtn" title="Map">MAP</button>
+        <button id="audioBtn" title="Audio">AUDIO</button>
+        <button id="qualityBtn" title="Quality">HIGH</button>
+        <button id="helpBtn" title="Help">?</button>
+      </div>
+    </header>
+
+    <aside id="mission" class="mission glass hidden">
+      <span class="dot"></span>
+      <div><small>CURRENT SIGNAL</small><strong id="missionText">Explore the world</strong></div>
+    </aside>
+
+    <div id="interactHint" class="interact-hint hidden">Press <kbd>E</kbd> to open</div>
+
+    <section id="panel" class="panel glass hidden" aria-live="polite">
+      <button id="closePanel" class="close" aria-label="Close">×</button>
+      <p id="panelTag" class="eyebrow">PROJECT SIGNAL</p>
+      <h2 id="panelTitle"></h2>
+      <p id="panelDescription"></p>
+      <div id="panelMeta" class="chips"></div>
+      <div class="panel-actions">
+        <a id="panelLink" class="primary" href="#" target="_blank" rel="noreferrer">Open project</a>
+        <button id="panelContinue" class="ghost">Keep exploring</button>
+      </div>
+    </section>
+
+    <section id="simpleView" class="simple hidden">
+      <div class="simple-shell">
+        <div class="simple-head">
+          <div><p class="eyebrow">ACCESSIBLE VIEW</p><h1>WHATMOD / THE MODVERSE</h1></div>
+          <button id="return3d" class="primary">Enter 3D</button>
+        </div>
+        <p class="lede">I build playful tools, practical software, and strange experiments. Pick a signal.</p>
+        <div id="simpleProjects" class="simple-grid"></div>
+      </div>
+    </section>
+
+    <section id="help" class="modal glass hidden">
+      <button class="close" data-close="help">×</button>
+      <p class="eyebrow">CONTROLS</p>
+      <h2>Move like a game, browse like a portfolio.</h2>
+      <div class="help-grid">
+        <div><kbd>WASD</kbd><span>Move</span></div>
+        <div><kbd>SHIFT</kbd><span>Pulse boost</span></div>
+        <div><kbd>E</kbd><span>Interact</span></div>
+        <div><kbd>M</kbd><span>Map</span></div>
+      </div>
+      <p class="tiny">On touch devices, use the thumb pad and ACT button. Drag anywhere else to shift the camera.</p>
+    </section>
+
+    <section id="mapOverlay" class="map-overlay hidden">
+      <div class="map-card glass">
+        <button class="close" data-close="mapOverlay">×</button>
+        <p class="eyebrow">WORLD MAP</p>
+        <h2>Signals discovered <span id="discoveredCount">0</span>/<span id="totalCount">0</span></h2>
+        <canvas id="miniMap" width="760" height="500"></canvas>
+        <p class="tiny">The world reacts as you visit more signals. Find the three hidden fragments.</p>
+      </div>
+    </section>
+
+    <div id="toast" class="toast glass hidden"></div>
+
+    <div id="touchControls" class="touch hidden">
+      <div id="joystick" class="joystick"><div id="stick" class="stick"></div></div>
+      <button id="touchInteract" class="touch-act">ACT</button>
+    </div>
+
+    <footer id="credit" class="credit hidden">
+      <span>Original experience by Brian / WhatMod · Tribute to playful web portfolios inspired by <a href="https://bruno-simon.com/" target="_blank" rel="noreferrer">Bruno Simon</a></span>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
