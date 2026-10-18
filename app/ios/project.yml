@@ -33,6 +33,7 @@ targets:
       - AureliumField/Services/ScanRecordingService.swift
       - AureliumField/Services/SpeechCaptureService.swift
       - AureliumField/Services/WorkspaceService.swift
+      - AureliumField/Services/PermissionService.swift
       - AureliumField/Services/EstimateAdminService.swift
       - AureliumField/Services/TimeClockService.swift
       - AureliumField/Services/FieldOperationsService.swift
@@ -44,8 +45,8 @@ targets:
       path: AureliumField/Resources/Info.plist
       properties:
         CFBundleDisplayName: Aurelium Field
-        CFBundleShortVersionString: '0.13.0'
-        CFBundleVersion: '32'
+        CFBundleShortVersionString: '0.14.0'
+        CFBundleVersion: '33'
         CFBundleURLTypes:
           - CFBundleURLName: com.aurelium.field.auth
             CFBundleURLSchemes:

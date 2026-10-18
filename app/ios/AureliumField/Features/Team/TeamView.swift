@@ -45,6 +45,7 @@ private struct TimeClockView: View {
     @State private var editing: TimeEntryRecord?
     @State private var submitTarget: TimeEntryRecord?
     @State private var showingClockInSheet = false
+    @State private var permissions: [String: Bool] = [:]
 
     private let commonCostCodes = ["Painting", "Prep", "Punch", "Travel", "Shop", "Supervision"]
 
@@ -62,6 +63,7 @@ private struct TimeClockView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             selectedProjectID = model.selectedProjectID ?? model.projects.first?.id
+            if let rows = try? await PermissionService.shared.myPermissions() { permissions = rows.reduce(into: [:]) { $0[$1.permissionKey] = $1.allowed } }
             await clock.refresh()
         }
         .sheet(isPresented: $showingClockInSheet) { clockInSheet }
@@ -196,7 +198,7 @@ private struct TimeClockView: View {
                     .frame(minHeight: 180)
             } else {
                 ForEach(clock.entries.prefix(14)) { entry in
-                    Button { editing = entry } label: {
+                    Button { if permissions["time.edit_own"] ?? true { editing = entry } } label: {
                         HStack(spacing: 12) {
                             VStack(spacing: 2) {
                                 Text(entry.clockIn.formatted(.dateTime.day()))
@@ -231,7 +233,8 @@ private struct TimeClockView: View {
                     .padding(.vertical, 5)
 
                     if ["draft", "rejected"].contains(entry.status), entry.clockOut != nil {
-                        Button(entry.status == "rejected" ? "Review & Resubmit" : "Review & Submit") { submitTarget = entry }
+                        Button(entry.status == "rejected" ? "Review & Resubmit" : "Review & Submit") { if permissions["time.submit"] ?? true { submitTarget = entry } }
+                            .disabled(!(permissions["time.submit"] ?? true))
                             .font(.caption.bold())
                             .buttonStyle(.bordered)
                     }

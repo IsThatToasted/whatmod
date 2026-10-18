@@ -76,7 +76,7 @@ struct ExteriorSmartScanView: View {
                     Button("Ignore", role: .destructive) { controller.candidates.removeAll { $0.id == candidate.id } }
                 } label: {
                     RoundedRectangle(cornerRadius: 8).stroke(.yellow, lineWidth: 2).frame(width: rect.width, height: rect.height)
-                        .overlay(alignment: .topLeading) { Text("OPENING?").font(.caption2.bold()).padding(4).background(.black.opacity(0.65), in: Capsule()).foregroundStyle(.white) }
+                        .overlay(alignment: .topLeading) { Text(candidate.locked ? "OPENING LOCKED" : "TRACKING OPENING").font(.caption2.bold()).padding(4).background(.black.opacity(0.65), in: Capsule()).foregroundStyle(.white) }
                 }
                 .position(x: rect.midX, y: rect.midY)
             }
@@ -98,11 +98,16 @@ struct ExteriorSmartScanView: View {
                 HStack(spacing: 8) {
                     teachButton(.window); teachButton(.door); teachButton(.opening); teachButton(.roofSlope)
                 }
-                HStack {
-                    Label("\(controller.surfaces.count) wall planes", systemImage: "square.split.2x1")
-                    Spacer()
-                    Label("\(controller.openings.count) openings", systemImage: "rectangle.dashed")
-                    if let slope = controller.lastSlopeDegrees { Spacer(); Text(String(format: "Roof %.1f°", slope)) }
+                VStack(spacing: 7) {
+                    HStack {
+                        Label("\(controller.surfaces.count) locked facades", systemImage: "square.split.2x1")
+                        Spacer()
+                        Label("\(controller.openings.count) openings", systemImage: "rectangle.dashed")
+                        if let slope = controller.lastSlopeDegrees { Spacer(); Text(String(format: "Roof %.1f°", slope)) }
+                    }
+                    ProgressView(value: controller.captureProgress).tint(.green)
+                    HStack { Text(controller.trackingQuality); Spacer(); Text("\(Int(controller.captureProgress * 100))% capture confidence") }
+                        .font(.caption2).foregroundStyle(.white.opacity(0.82))
                 }
                 .font(.caption.bold()).foregroundStyle(.white).padding(10).background(.black.opacity(0.58), in: RoundedRectangle(cornerRadius: 12))
             }

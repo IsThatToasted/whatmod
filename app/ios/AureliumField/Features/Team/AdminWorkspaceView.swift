@@ -67,19 +67,19 @@ private final class AdminWorkspaceStore {
     }
 
     func load() async {
-        guard cloud.isAdmin else {
-            errorMessage = "Admin access is required."
-            return
-        }
+        guard cloud.isAdmin else { errorMessage = "Admin access is required. Reference: AF-ADM-101"; return }
         isLoading = true
         defer { isLoading = false }
-        do {
-            members = try await cloud.fetchAdminMembers()
-            timecards = try await cloud.fetchAdminTimeEntries()
-            editRequests = try await cloud.fetchPendingTimeEditRequests()
-            invites = try await cloud.fetchOrganizationInvites()
-            estimatePackets = try await EstimateAdminService.shared.fetchPackets()
-        } catch { errorMessage = error.localizedDescription }
+        errorMessage = nil
+        var failed: [String] = []
+        do { members = try await cloud.fetchAdminMembers() } catch { failed.append("employees") }
+        do { timecards = try await cloud.fetchAdminTimeEntries() } catch { failed.append("timecards") }
+        do { editRequests = try await cloud.fetchPendingTimeEditRequests() } catch { failed.append("edit requests") }
+        do { invites = try await cloud.fetchOrganizationInvites() } catch { failed.append("invites") }
+        do { estimatePackets = try await EstimateAdminService.shared.fetchPackets() } catch { failed.append("estimates") }
+        if !failed.isEmpty {
+            errorMessage = "Some Admin data could not update (\(failed.joined(separator: ", "))). Reference: AF-ADM-103"
+        }
     }
 
     func approve(_ entry: TimeEntryRecord) async { await decide(entry, approve: true, note: nil) }
@@ -601,18 +601,40 @@ private struct AdminEmployeeEditor: View {
     @Environment(AdminWorkspaceStore.self) private var store
     @State private var cloud = WorkspaceService.shared
     @State var member: AdminOrganizationMember
+    @State private var permissions: [String: Bool] = [:]
+    @State private var permissionsLoaded = false
     let onSaved: () async -> Void
     private let roles = ["crew", "foreman", "estimator", "pm", "office", "admin", "owner"]
+    private let permissionGroups: [(String, [(String,String)])] = [
+        ("Chat", [("chat.send","Send Chat"),("chat.create","Create Chat")]),
+        ("Time", [("time.edit_own","Edit Time Sheet"),("time.submit","Submit Time Sheet")]),
+        ("Field", [("field.photos","Add Photos"),("field.daily_logs","Daily Logs"),("field.punch","Punch / Quality")]),
+        ("Estimating", [("estimate.smart_scan","Smart Scanner"),("estimate.blueprint","Blueprint Estimate")])
+    ]
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Display name", text: optionalText($member.displayName))
-                LabeledContent("Email", value: member.email ?? "Unavailable")
-                TextField("Phone", text: optionalText($member.phone)).keyboardType(.phonePad)
-                Picker("Role", selection: $member.role) { ForEach(roles, id: \.self) { Text($0.capitalized).tag($0) } }
-                Toggle("Active organization access", isOn: $member.active)
+                Section("Profile & access") {
+                    TextField("Display name", text: optionalText($member.displayName))
+                    LabeledContent("Email", value: member.email ?? "Unavailable")
+                    TextField("Phone", text: optionalText($member.phone)).keyboardType(.phonePad)
+                    Picker("Role", selection: $member.role) { ForEach(roles, id: \.self) { Text($0.capitalized).tag($0) } }
+                    Toggle("Active organization access", isOn: $member.active)
+                }
+                if member.role == "owner" || member.role == "admin" {
+                    Section("Permissions") { Text("Owners and admins always have all operational permissions.").font(.caption).foregroundStyle(.secondary) }
+                } else {
+                    ForEach(permissionGroups, id: \.0) { group in
+                        Section(group.0) {
+                            ForEach(group.1, id: \.0) { item in
+                                Toggle(item.1, isOn: Binding(get: { permissions[item.0] ?? true }, set: { permissions[item.0] = $0 }))
+                            }
+                        }
+                    }
+                }
             }
+            .task { await loadPermissions() }
             .navigationTitle("Edit Employee")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -621,9 +643,23 @@ private struct AdminEmployeeEditor: View {
         }
     }
 
+    private func loadPermissions() async {
+        guard !permissionsLoaded else { return }
+        do {
+            let rows = try await PermissionService.shared.adminPermissions(userID: member.userID)
+            permissions = rows.reduce(into: [:]) { $0[$1.permissionKey] = $1.allowed }
+            permissionsLoaded = true
+        } catch { store.errorMessage = "Employee permissions could not load. Reference: AF-ADM-PERM-101" }
+    }
+
     private func save() async {
-        do { try await cloud.updateAdminMember(member); await onSaved(); dismiss() }
-        catch { store.errorMessage = error.localizedDescription }
+        do {
+            try await cloud.updateAdminMember(member)
+            if member.role != "owner" && member.role != "admin" {
+                for (key, allowed) in permissions { try await PermissionService.shared.setAdminPermission(userID: member.userID, key: key, allowed: allowed) }
+            }
+            await onSaved(); dismiss()
+        } catch { store.errorMessage = "Employee access could not update. Reference: AF-ADM-PERM-102" }
     }
 }
 

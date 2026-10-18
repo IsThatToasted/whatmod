@@ -55,6 +55,7 @@ struct ChatView: View {
     @State private var errorReference: String?
     @State private var showingCreate = false
     @State private var search = ""
+    @State private var permissions: [String: Bool] = [:]
 
     private var filtered: [ChatConversation] {
         let q = search.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -77,7 +78,7 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showingCreate = true } label: { Image(systemName: "square.and.pencil") }
+                Button { showingCreate = true } label: { Image(systemName: "square.and.pencil") }.disabled(!(permissions["chat.create"] ?? true))
             }
         }
         .navigationDestination(item: $selected) { conversation in
@@ -102,7 +103,7 @@ struct ChatView: View {
             Spacer()
             Button { showingCreate = true } label: {
                 Image(systemName: "plus").font(.headline).frame(width: 42, height: 42)
-            }
+            }.disabled(!(permissions["chat.create"] ?? true))
             .buttonStyle(.borderedProminent)
             .clipShape(Circle())
         }
@@ -154,8 +155,14 @@ struct ChatView: View {
     }
 
     private func reload() async {
+        await loadPermissions()
         await loadDirectory()
         await loadConversations()
+    }
+
+    private func loadPermissions() async {
+        do { permissions = try await PermissionService.shared.myPermissions().reduce(into: [:]) { $0[$1.permissionKey] = $1.allowed } }
+        catch { permissions = [:] }
     }
 
     private func loadDirectory() async {
@@ -185,6 +192,7 @@ struct ChatView: View {
             let p_member_ids: [UUID]
         }
         do {
+            try await PermissionService.shared.assertChatCreatePermission()
             let id: UUID = try await cloud.rpcValue("chat_create_conversation", params: Params(p_organization_id: organizationID, p_title: request.title, p_kind: request.kind, p_project_id: nil, p_audience: request.audience, p_member_ids: request.memberIDs), as: UUID.self)
             await loadConversations()
             selected = conversations.first(where: { $0.id == id })
