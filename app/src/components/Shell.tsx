@@ -5,10 +5,10 @@ import { useAuth } from '../auth/AuthGate';
 const links = [
   ['/', 'Home', House],
   ['/projects', 'Projects', BriefcaseBusiness],
-  ['/chat', 'Chat', MessageSquare],
+  ['/estimator', 'Smart Estimate', Sparkles],
   ['/field', 'Field', Camera],
   ['/team', 'My Time', Clock3],
-  ['/estimator', 'Smart Estimate', Sparkles],
+  ['/inbox', 'Inbox', MessageSquare],
   ['/settings', 'Settings', Settings]
 ] as const;
 

@@ -120,13 +120,6 @@ struct AutoEstimateResult: Codable, Hashable {
     var totalLaborHours: Double?
 }
 
-struct ScannerCorrectionSummary: Codable, Hashable {
-    var rawDoorCount: Int
-    var rawWindowCount: Int
-    var confirmedDoorCount: Int
-    var confirmedWindowCount: Int
-}
-
 struct WalkthroughScan: Identifiable, Codable, Hashable {
     let id: UUID
     var projectID: UUID
@@ -142,7 +135,6 @@ struct WalkthroughScan: Identifiable, Codable, Hashable {
     var autoEstimate: AutoEstimateResult?
     var measuredWalls: [MeasuredWall]?
     var archivedAt: Date? = nil
-    var scannerCorrections: ScannerCorrectionSummary? = nil
 }
 
 enum AppMediaStore {
@@ -154,146 +146,4 @@ enum AppMediaStore {
     }
 
     static func url(for fileName: String) -> URL { directory.appendingPathComponent(fileName) }
-}
-
-// MARK: - Smart Scanner v2 / Blueprint Estimate
-
-enum SmartScanMode: String, Codable, CaseIterable, Hashable {
-    case interior = "Interior"
-    case exterior = "Exterior"
-}
-
-enum TaughtFeatureKind: String, Codable, CaseIterable, Hashable {
-    case door = "Door"
-    case window = "Window"
-    case opening = "Opening"
-    case roofSlope = "Roof slope"
-    case wall = "Wall"
-
-    var systemImage: String {
-        switch self {
-        case .door: return "door.left.hand.open"
-        case .window: return "rectangle.split.3x1"
-        case .opening: return "rectangle.dashed"
-        case .roofSlope: return "angle"
-        case .wall: return "square.split.2x1"
-        }
-    }
-}
-
-struct SmartOpening: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var kind: TaughtFeatureKind
-    var widthFeet: Double
-    var heightFeet: Double
-    var confidence: Double
-    var source: String
-    var confirmedByUser: Bool
-    var capturedAt: Date = .now
-
-    var areaSquareFeet: Double { widthFeet * heightFeet }
-}
-
-struct SmartSurface: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var label: String
-    var widthFeet: Double
-    var heightFeet: Double
-    var confidence: Double
-    var source: String
-    var slopeDegrees: Double? = nil
-
-    var grossSquareFeet: Double { widthFeet * heightFeet }
-}
-
-struct ScannerLearningSample: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var projectID: UUID
-    var walkthroughID: UUID?
-    var mode: SmartScanMode
-    var feature: TaughtFeatureKind
-    var action: String
-    var predictedCount: Int? = nil
-    var correctedCount: Int? = nil
-    var predictedWidthFeet: Double? = nil
-    var predictedHeightFeet: Double? = nil
-    var correctedWidthFeet: Double? = nil
-    var correctedHeightFeet: Double? = nil
-    var correctedSlopeDegrees: Double? = nil
-    var confidence: Double? = nil
-    var createdAt: Date = .now
-}
-
-enum BlueprintIssueSeverity: String, Codable, Hashable { case info, warning, blocking }
-
-struct BlueprintIssue: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var pageNumber: Int
-    var severity: BlueprintIssueSeverity
-    var message: String
-    var resolved: Bool = false
-}
-
-struct BlueprintQuantity: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var pageNumber: Int
-    var sourceLabel: String
-    var scope: EstimateScopeKind
-    var quantity: Double
-    var unit: String
-    var confidence: Double
-    var evidence: String
-    var needsVerification: Bool
-}
-
-struct BlueprintRoomGeometry: Codable, Hashable, Identifiable {
-    var id: UUID = UUID()
-    var label: String
-    var lengthFeet: Double
-    var widthFeet: Double
-}
-
-struct BlueprintPageAnalysis: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var pageNumber: Int
-    var title: String
-    var recognizedText: String
-    var drawingScale: String?
-    var roomNames: [String]
-    var finishCodes: [String]
-    var quantities: [BlueprintQuantity]
-    var issues: [BlueprintIssue]
-    var roomGeometries: [BlueprintRoomGeometry]? = nil
-}
-
-
-struct BlueprintAssumptions: Codable, Hashable {
-    var wallHeightFeet: Double? = nil
-    var coats: Int = 2
-    var wastePercent: Double = 5
-    var wallProductionRate: Double = 150
-    var ceilingProductionRate: Double = 125
-    var trimProductionRate: Double = 50
-    var doorProductionRate: Double = 2
-    var windowProductionRate: Double = 2
-    var includeWalls: Bool = true
-    var includeCeilings: Bool = true
-    var includeTrim: Bool = true
-    var includeDoors: Bool = true
-    var includeWindows: Bool = true
-}
-
-struct BlueprintEstimateDraft: Identifiable, Codable, Hashable {
-    var id: UUID = UUID()
-    var projectID: UUID
-    var fileName: String
-    var importedAt: Date = .now
-    var pages: [BlueprintPageAnalysis]
-    var issues: [BlueprintIssue]
-    var proposalReady: Bool
-    var totalPaintableSquareFeet: Double
-    var totalLaborHours: Double
-    var notes: String = ""
-    var assumptions: BlueprintAssumptions? = nil
-    var reviewedAt: Date? = nil
 }

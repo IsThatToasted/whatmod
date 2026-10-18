@@ -13,9 +13,7 @@ struct RootView: View {
             }
         }
         .onChange(of: cloud.isAdmin) { _, isAdmin in
-            if !isAdmin {
-                model.workspaceMode = .employee
-            }
+            if !isAdmin { model.workspaceMode = .employee }
         }
     }
 }
@@ -24,74 +22,37 @@ private struct EmployeeWorkspaceView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        @Bindable var model = model
         VStack(spacing: 0) {
-            activeWorkspace
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            workspaceSwitcher
-            Divider()
-            primaryTabBar
-        }
-        .fullScreenCover(
-            isPresented: Binding(
-                get: { model.isSmartEstimatePresented },
-                set: { model.isSmartEstimatePresented = $0 }
-            )
-        ) {
-            SmartEstimateWorkspace(onClose: { model.isSmartEstimatePresented = false })
-        }
-    }
-
-    @ViewBuilder
-    private var activeWorkspace: some View {
-        switch model.selectedTab {
-        case .home:
-            NavigationStack { HomeView() }
-        case .projects:
-            NavigationStack { ProjectsView() }
-        case .chat:
-            NavigationStack { ChatView() }
-        case .field:
-            NavigationStack { FieldView() }
-        case .team:
-            NavigationStack { TeamView() }
-        }
-    }
-
-    private var workspaceSwitcher: some View {
-        HStack {
-            Menu {
-                Button("Field Workspace") {
-                    model.isSmartEstimatePresented = false
+            Group {
+                switch model.selectedTab {
+                case .home:
+                    NavigationStack { HomeView() }
+                case .projects:
+                    NavigationStack { ProjectsView() }
+                case .estimate:
+                    NavigationStack { EstimatorView() }
+                case .field:
+                    NavigationStack { FieldView() }
+                case .team:
+                    NavigationStack { TeamView() }
                 }
-                Button("Smart Estimate") {
-                    model.isSmartEstimatePresented = true
-                }
-            } label: {
-                Label("Aurelium", systemImage: "square.grid.2x2")
-                    .font(.caption.bold())
             }
-            Spacer()
-            Text("Field")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .background(.bar)
-    }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-    private var primaryTabBar: some View {
-        HStack(spacing: 0) {
-            workspaceTab(.home, title: "Home", icon: "house")
-            workspaceTab(.projects, title: "Projects", icon: "briefcase")
-            workspaceTab(.chat, title: "Chat", icon: "bubble.left.and.bubble.right")
-            workspaceTab(.field, title: "Field", icon: "camera")
-            workspaceTab(.team, title: "My Time", icon: "clock.badge.checkmark")
+            Divider()
+            HStack(spacing: 0) {
+                workspaceTab(.home, title: "Home", icon: "house")
+                workspaceTab(.projects, title: "Projects", icon: "briefcase")
+                workspaceTab(.estimate, title: "Estimate", icon: "wand.and.stars")
+                workspaceTab(.field, title: "Field", icon: "camera")
+                workspaceTab(.team, title: "My Time", icon: "clock.badge.checkmark")
+            }
+            .padding(.horizontal, 4)
+            .padding(.top, 8)
+            .padding(.bottom, 6)
+            .background(.bar)
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .background(.bar)
     }
 
     private func workspaceTab(_ tab: AppTab, title: String, icon: String) -> some View {
@@ -112,20 +73,5 @@ private struct EmployeeWorkspaceView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(model.selectedTab == tab ? .isSelected : [])
-    }
-}
-
-private struct SmartEstimateWorkspace: View {
-    let onClose: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            EstimatorView()
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Back to Field", action: onClose)
-                    }
-                }
-        }
     }
 }

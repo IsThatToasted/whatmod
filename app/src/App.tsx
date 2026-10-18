@@ -9,7 +9,6 @@ import { Field } from './pages/Field';
 import { Team } from './pages/Team';
 import { AdminWorkspace } from './pages/Admin';
 import { Placeholder } from './pages/Placeholder';
-import { Chat } from './pages/Chat';
 
 function AdminRoute({children}:{children:ReactNode}){
   const {isAdmin}=useAuth();
@@ -21,7 +20,6 @@ const router = createHashRouter([
   {index:true, element:<Home/>},
   {path:'projects', element:<Projects/>},
   {path:'estimator', element:<Estimator/>},
-  {path:'chat', element:<Chat/>},
   {path:'field', element:<Field/>},
   {path:'team', element:<Team/>},
   {path:'inbox', element:<Placeholder title="Inbox" copy="Project conversations, mentions, approvals, and client communication in one focused queue."/>},
