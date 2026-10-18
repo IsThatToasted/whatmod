@@ -33,15 +33,25 @@ private struct FacadePlaneTrack {
 
     var stability: Double {
         guard samples.count >= 3 else { return 0 }
-        let ws = samples.map(\.0), hs = samples.map(\.1)
-        let wm = ws.reduce(0,+) / Double(ws.count), hm = hs.reduce(0,+) / Double(hs.count)
-        let variance = zip(ws,hs).map { abs($0-wm)/max(wm,0.1) + abs($1-hm)/max(hm,0.1) }.reduce(0,+) / Double(samples.count)
-        return max(0, min(1, 1 - variance * 4))
+        let widths = samples.map { $0.0 }
+        let heights = samples.map { $0.1 }
+        let widthMean = widths.reduce(0.0, +) / Double(widths.count)
+        let heightMean = heights.reduce(0.0, +) / Double(heights.count)
+        let widthDenominator = max(widthMean, 0.1)
+        let heightDenominator = max(heightMean, 0.1)
+        var normalizedVariance = 0.0
+        for sample in samples {
+            let widthError = abs(sample.0 - widthMean) / widthDenominator
+            let heightError = abs(sample.1 - heightMean) / heightDenominator
+            normalizedVariance += widthError + heightError
+        }
+        normalizedVariance /= Double(samples.count)
+        return max(0.0, min(1.0, 1.0 - normalizedVariance * 4.0))
     }
 }
 
 @MainActor @Observable
-final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
+final class ExteriorSmartScanController: NSObject, @preconcurrency ARSessionDelegate {
     var candidates: [VisionOpeningCandidate] = []
     var openings: [SmartOpening] = []
     var surfaces: [SmartSurface] = []
@@ -96,7 +106,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         let a = pendingTeachPoints[0], b = pendingTeachPoints[1]
         if kind == .roofSlope {
             let horizontal = hypot(Double(b.x-a.x),Double(b.z-a.z)); let rise = abs(Double(b.y-a.y))
-            let angle = atan2(rise,max(horizontal,0.0001))*180/.pi
+            let angle = atan2(rise, max(horizontal, 0.0001)) * 180.0 / Double.pi
             lastSlopeDegrees = angle
             status = String(format:"Roof slope locked at %.1f°.",angle)
         } else {
