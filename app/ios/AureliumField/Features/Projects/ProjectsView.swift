@@ -97,7 +97,7 @@ private struct ProjectDetailsView: View {
                     Text("Employee View shows your own time. Administrators can review organization-wide time in Admin View.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section {
-                    Button { model.selectProject(project); dismiss(); model.selectedTab = .estimate } label: { Label("Open Smart Estimate",systemImage:"wand.and.stars") }
+                    Button { model.selectProject(project); dismiss(); model.isSmartEstimatePresented = true } label: { Label("Open Smart Estimate",systemImage:"wand.and.stars") }
                     Button(action:edit){Label("Edit Project",systemImage:"pencil")}
                 }
             }

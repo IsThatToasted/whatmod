@@ -19,13 +19,21 @@ targets:
       - AureliumField/Features/Home/HomeView.swift
       - AureliumField/Features/Projects/ProjectsView.swift
       - AureliumField/Features/Projects/FieldView.swift
+      - AureliumField/Features/Chat/ChatView.swift
+      - AureliumField/Features/Payroll/PayrollAdminView.swift
       - AureliumField/Features/Estimator/EstimatorView.swift
+      - AureliumField/Features/Estimator/SmartScannerV2View.swift
+      - AureliumField/Features/Estimator/BlueprintEstimateView.swift
       - AureliumField/Features/Team/TeamView.swift
       - AureliumField/Features/Team/AdminWorkspaceView.swift
       - AureliumField/Services/RoomPlanCaptureView.swift
+      - AureliumField/Services/ExteriorSmartScanService.swift
+      - AureliumField/Services/BlueprintAnalysisService.swift
+      - AureliumField/Services/BlueprintCloudSync.swift
       - AureliumField/Services/ScanRecordingService.swift
       - AureliumField/Services/SpeechCaptureService.swift
       - AureliumField/Services/WorkspaceService.swift
+      - AureliumField/Services/EstimateAdminService.swift
       - AureliumField/Services/TimeClockService.swift
       - AureliumField/Services/FieldOperationsService.swift
       - AureliumField/Services/WalkthroughCloudSync.swift
@@ -36,8 +44,8 @@ targets:
       path: AureliumField/Resources/Info.plist
       properties:
         CFBundleDisplayName: Aurelium Field
-        CFBundleShortVersionString: '0.9.4'
-        CFBundleVersion: '24'
+        CFBundleShortVersionString: '0.13.0'
+        CFBundleVersion: '32'
         CFBundleURLTypes:
           - CFBundleURLName: com.aurelium.field.auth
             CFBundleURLSchemes:

@@ -57,6 +57,26 @@ final class WalkthroughCloudSync {
         }
     }
 
+    func updateEstimateMetadata(_ scan: WalkthroughScan) async {
+        let cloud = WorkspaceService.shared
+        guard let user = cloud.userID, scan.archivedAt == nil else { return }
+        struct Patch: Encodable {
+            let room_name: String
+            let transcript: String
+            let production_units_per_hour: Double?
+            let measurements_confirmed: Bool
+            let scope_lines: [ScopeEstimateLine]?
+            let estimate_notes: String?
+            let edited_at: Date
+            let edited_by: UUID
+        }
+        do {
+            try await cloud.updateRows(table: "walkthrough_scans", payload: Patch(room_name: scan.room.name, transcript: scan.transcript, production_units_per_hour: scan.autoEstimate?.productionSquareFeetPerHour, measurements_confirmed: scan.autoEstimate?.measurementsConfirmed ?? false, scope_lines: scan.autoEstimate?.scopeLines, estimate_notes: scan.transcript.isEmpty ? nil : scan.transcript, edited_at: .now, edited_by: user), filters: [CloudFilter("id", scan.id.uuidString)])
+        } catch {
+            cloud.errorMessage = "Walkthrough edits are saved on this device. Cloud update failed. Reference: AF-WALK-201"
+        }
+    }
+
     func completeProjectWalkthrough(projectID: UUID) async {
         let cloud = WorkspaceService.shared
         do {
