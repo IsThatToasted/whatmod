@@ -88,10 +88,20 @@ final class AppModel {
         scannerLearningSamples.append(contentsOf: samples)
         activeEstimate.rooms.append(walkthrough.room)
         persist()
-        if let project = projects.first(where: { $0.id == walkthrough.projectID }) {
-            Task { await WalkthroughCloudSync.shared.sync(walkthrough, project: project) }
+        let project = projects.first(where: { $0.id == walkthrough.projectID })
+        // The v3 exterior scanner stores its full wall/opening model in the walkthrough's JSON slot.
+        var detail: ExteriorScanDetail?
+        if let name = walkthrough.roomPlanJSONFileName, let data = try? Data(contentsOf: AppMediaStore.url(for: name)) {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            detail = try? decoder.decode(ExteriorScanDetail.self, from: data)
         }
-        Task { await syncLearningSamples(samples) }
+        // One sequential task: the walkthrough_scans row must exist before learning samples and details reference it.
+        Task {
+            if let project { await WalkthroughCloudSync.shared.sync(walkthrough, project: project) }
+            await syncLearningSamples(samples)
+            if let detail { await ExteriorDetailCloudSync.shared.sync(walkthrough, detail: detail) }
+        }
     }
 
     func saveBlueprintDraft(_ draft: BlueprintEstimateDraft) {

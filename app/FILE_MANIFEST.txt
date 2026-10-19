@@ -82,3 +82,8 @@ app/tsconfig.json
 app/tsconfig.node.json
 app/tsconfig.node.tsbuildinfo
 app/vite.config.ts
+app/RELEASE-v0.15.0-EXTERIOR-SCANNER-V3.md
+app/ios/AureliumField/Services/ExteriorGeometry.swift
+app/ios/AureliumField/Services/ExteriorDetailCloudSync.swift
+app/ios/AureliumField/Features/Estimator/ExteriorScanViews.swift
+app/supabase/migrations/015_exterior_scanner_v3.sql

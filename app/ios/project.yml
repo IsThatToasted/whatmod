@@ -23,11 +23,14 @@ targets:
       - AureliumField/Features/Payroll/PayrollAdminView.swift
       - AureliumField/Features/Estimator/EstimatorView.swift
       - AureliumField/Features/Estimator/SmartScannerV2View.swift
+      - AureliumField/Features/Estimator/ExteriorScanViews.swift
       - AureliumField/Features/Estimator/BlueprintEstimateView.swift
       - AureliumField/Features/Team/TeamView.swift
       - AureliumField/Features/Team/AdminWorkspaceView.swift
       - AureliumField/Services/RoomPlanCaptureView.swift
       - AureliumField/Services/ExteriorSmartScanService.swift
+      - AureliumField/Services/ExteriorGeometry.swift
+      - AureliumField/Services/ExteriorDetailCloudSync.swift
       - AureliumField/Services/BlueprintAnalysisService.swift
       - AureliumField/Services/BlueprintCloudSync.swift
       - AureliumField/Services/ScanRecordingService.swift
@@ -45,13 +48,13 @@ targets:
       path: AureliumField/Resources/Info.plist
       properties:
         CFBundleDisplayName: Aurelium Field
-        CFBundleShortVersionString: '0.14.1'
+        CFBundleShortVersionString: '0.15.0'
         CFBundleVersion: '34'
         CFBundleURLTypes:
           - CFBundleURLName: com.aurelium.field.auth
             CFBundleURLSchemes:
               - aureliumfield
-        NSCameraUsageDescription: Aurelium Field uses the camera to capture jobsite photos and spatial room measurements.
+        NSCameraUsageDescription: Aurelium Field uses the camera to capture jobsite photos and spatial room and building measurements.
         NSMicrophoneUsageDescription: Aurelium Field uses the microphone to capture narrated walkthrough notes.
         NSSpeechRecognitionUsageDescription: Aurelium Field transcribes walkthrough narration into editable field notes.
         NSLocationWhenInUseUsageDescription: Aurelium Field records jobsite location while you are clocked in so timecards can be verified.

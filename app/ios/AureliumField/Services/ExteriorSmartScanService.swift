@@ -4,69 +4,133 @@ import ARKit
 import SceneKit
 import UIKit
 import Observation
+import simd
 
-struct VisionOpeningCandidate: Identifiable, Hashable {
+// MARK: - Exterior Smart Scanner v3
+//
+// Workflow:
+//   1. FOOTPRINT  – stand back, aim the crosshair at each building corner where the wall meets the ground, tap Mark Corner.
+//                   Corners define vertical wall planes. A ballpark estimate is available immediately from story count.
+//   2. WALLS      – face a wall (auto-detected from where you aim). Measure eave height, gable apex and openings by
+//                   intersecting camera rays with the KNOWN wall plane. Vision rectangles are mapped into wall space,
+//                   fused across frames, size-filtered and auto-classified. One tap accepts them.
+//   3. REVIEW     – confidence report, editable takeoff, labor model, photos, save.
+
+enum ExteriorPhase: Equatable { case footprint, walls }
+enum ExteriorTool: Equatable { case aim, height, gable, opening }
+
+struct ExteriorCandidate: Identifiable, Hashable {
     var id: UUID
-    var normalizedRect: CGRect
+    var wallIndex: Int
+    var u0: Double
+    var v0: Double
+    var u1: Double
+    var v1: Double
+    var kind: ExteriorOpeningClass
     var confidence: Double
-    var observations: Int
-    var locked: Bool
+    var hits: Int
+    var widthFeet: Double { u1 - u0 }
+    var heightFeet: Double { v1 - v0 }
+}
+
+struct ExteriorOverlayShape: Identifiable {
+    enum Style { case footprint, wall, candidate, accepted, pending }
+    let id: String
+    var points: [CGPoint]
+    var closed: Bool
+    var style: Style
+    var label: String?
+}
+
+struct ExteriorPendingCorner: Equatable {
+    var wallIndex: Int
+    var u: Double
+    var v: Double
 }
 
 private struct OpeningTrack {
     var id: UUID
-    var rect: CGRect
+    var wallIndex: Int
+    var samples: [SIMD4<Double>]
     var hits: Int
     var misses: Int
-    var confidence: Double
-    var lastSeen: Date
-}
+    var visionConfidence: Double
 
-private struct FacadePlaneTrack {
-    var id: UUID
-    var widthFeet: Double
-    var heightFeet: Double
-    var samples: [(Double, Double)]
-    var observations: Int
-    var locked: Bool
-    var lastUpdated: Date
-
-    var stability: Double {
-        guard samples.count >= 3 else { return 0 }
-        let widths = samples.map { $0.0 }
-        let heights = samples.map { $0.1 }
-        let widthMean = widths.reduce(0.0, +) / Double(widths.count)
-        let heightMean = heights.reduce(0.0, +) / Double(heights.count)
-        let widthDenominator = max(widthMean, 0.1)
-        let heightDenominator = max(heightMean, 0.1)
-        var normalizedVariance = 0.0
-        for sample in samples {
-            let widthError = abs(sample.0 - widthMean) / widthDenominator
-            let heightError = abs(sample.1 - heightMean) / heightDenominator
-            normalizedVariance += widthError + heightError
+    var fused: SIMD4<Double> {
+        func median(_ k: Int) -> Double {
+            let s = samples.map { $0[k] }.sorted()
+            return s[s.count / 2]
         }
-        normalizedVariance /= Double(samples.count)
-        return max(0.0, min(1.0, 1.0 - normalizedVariance * 4.0))
+        return SIMD4<Double>(median(0), median(1), median(2), median(3))
+    }
+
+    /// 1 = every frame agrees on size, 0 = measurements all over the place.
+    var stability: Double {
+        guard samples.count >= 3 else { return 0.3 }
+        let ws = samples.map { $0[2] - $0[0] }, hs = samples.map { $0[3] - $0[1] }
+        let w = max(0.5, ws.sorted()[ws.count / 2]), h = max(0.5, hs.sorted()[hs.count / 2])
+        let wr = (ws.max() ?? w) - (ws.min() ?? w), hr = (hs.max() ?? h) - (hs.min() ?? h)
+        return max(0, min(1, 1 - (wr / w + hr / h)))
     }
 }
 
-@MainActor @Observable
-final class ExteriorSmartScanController: NSObject, @preconcurrency ARSessionDelegate {
-    var candidates: [VisionOpeningCandidate] = []
-    var openings: [SmartOpening] = []
-    var surfaces: [SmartSurface] = []
-    var status = "Point at one elevation and sweep slowly left to right. Aurelium will lock stable facade geometry."
-    var teachKind: TaughtFeatureKind?
-    var pendingTeachPoints: [SIMD3<Float>] = []
-    var lastSlopeDegrees: Double?
-    var captureProgress: Double = 0
-    var trackingQuality = "Initializing"
+private struct RejectedRect {
+    var wallIndex: Int
+    var u0: Double
+    var v0: Double
+    var u1: Double
+    var v1: Double
+    var kind: ExteriorOpeningClass
+    var confidence: Double
+}
 
-    weak var sceneView: ARSCNView?
-    private var lastVisionAt = Date.distantPast
-    private var visionRunning = false
-    private var openingTracks: [UUID: OpeningTrack] = [:]
-    private var facadeTracks: [UUID: FacadePlaneTrack] = [:]
+@MainActor @Observable
+final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
+    // Capture state
+    var phase: ExteriorPhase = .footprint
+    var tool: ExteriorTool = .aim
+    var corners: [SIMD3<Float>] = []
+    var loopClosed = false
+    var closureErrorFeet: Double?
+    var squaredUp = false
+    var walls: [ExteriorWall] = []
+    var inputs = ExteriorEstimateInputs()
+    var captures: [TaggedCapture] = []
+    var manualKind: ExteriorOpeningClass?
+    var pendingOpeningCorner: ExteriorPendingCorner?
+
+    // HUD state
+    var status = "Stand back where you can see the base of a building corner. Aim the crosshair at the corner where the wall meets the ground, then tap Mark Corner."
+    var candidates: [ExteriorCandidate] = []
+    var overlay: [ExteriorOverlayShape] = []
+    var reticleReadout = ""
+    var reticleActive = false
+    var focusedWallIndex: Int?
+    var pinnedWallIndex: Int?
+    var trackingQuality = "Initializing"
+    var trackingNormal = false
+
+    @ObservationIgnored weak var sceneView: ARSCNView?
+    @ObservationIgnored private var cameraTransform = matrix_identity_float4x4
+    @ObservationIgnored private var poseAtLastHUD = matrix_identity_float4x4
+    @ObservationIgnored private var steady = false
+    @ObservationIgnored private var groundY: Float?
+    @ObservationIgnored private var lastHUDTime: TimeInterval = 0
+    @ObservationIgnored private var lastVisionTime: TimeInterval = 0
+    @ObservationIgnored private var visionRunning = false
+    @ObservationIgnored private var tracks: [UUID: OpeningTrack] = [:]
+    @ObservationIgnored private var rejected: [RejectedRect] = []
+    @ObservationIgnored private var openingHistory: [UUID] = []
+    @ObservationIgnored private var totalFrames = 0
+    @ObservationIgnored private var limitedFrames = 0
+
+    // MARK: Derived
+
+    var activeWallIndex: Int? { pinnedWallIndex ?? focusedWallIndex }
+    var takeoff: ExteriorTakeoff { ExteriorEstimator.compute(walls: walls, inputs: inputs) }
+    var anyHeightAssumed: Bool { walls.contains { !$0.heightMeasured } }
+
+    // MARK: Session
 
     func configure(_ view: ARSCNView) {
         sceneView = view
@@ -76,127 +140,738 @@ final class ExteriorSmartScanController: NSObject, @preconcurrency ARSessionDele
         view.debugOptions = []
         let config = ARWorldTrackingConfiguration()
         config.worldAlignment = .gravity
-        config.planeDetection = [.vertical, .horizontal]
-        config.environmentTexturing = .automatic
-        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) { config.sceneReconstruction = .meshWithClassification }
-        else if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) { config.sceneReconstruction = .mesh }
+        config.planeDetection = [.horizontal]
+        config.environmentTexturing = .none
+        if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) { config.sceneReconstruction = .mesh }
         view.session.run(config, options: [.resetTracking, .removeExistingAnchors, .resetSceneReconstruction])
     }
 
     func stop() { sceneView?.session.pause() }
 
-    func beginTeach(_ kind: TaughtFeatureKind) {
-        teachKind = kind
-        pendingTeachPoints.removeAll()
-        status = kind == .roofSlope ? "Teach roof slope: tap the low point, then the high point." : "Teach \(kind.rawValue.lowercased()): tap opposite corners on the facade."
+    // MARK: Rays
+
+    private var viewCenter: CGPoint {
+        guard let v = sceneView else { return .zero }
+        return CGPoint(x: v.bounds.midX, y: v.bounds.midY)
     }
 
-    func cancelTeach() { teachKind = nil; pendingTeachPoints.removeAll(); status = "Teaching cancelled. Continue the facade sweep." }
+    private func rayFor(_ p: CGPoint) -> (origin: SIMD3<Float>, dir: SIMD3<Float>)? {
+        guard let v = sceneView else { return nil }
+        let n = v.unprojectPoint(SCNVector3(Float(p.x), Float(p.y), 0))
+        let f = v.unprojectPoint(SCNVector3(Float(p.x), Float(p.y), 1))
+        let o = SIMD3<Float>(n.x, n.y, n.z)
+        let d = SIMD3<Float>(f.x - n.x, f.y - n.y, f.z - n.z)
+        let len = simd_length(d)
+        guard len > 1e-6 else { return nil }
+        return (o, d / len)
+    }
 
-    func handleTap(_ point: CGPoint) {
-        guard let view = sceneView, let kind = teachKind,
-              let query = view.raycastQuery(from: point, allowing: .existingPlaneGeometry, alignment: .any) ?? view.raycastQuery(from: point, allowing: .estimatedPlane, alignment: .any),
-              let hit = view.session.raycast(query).first else {
-            status = "Could not lock that point to mapped geometry. Sweep across this area once more and retry."
+    private var cameraPosition: SIMD3<Float> {
+        let c = cameraTransform.columns.3
+        return SIMD3<Float>(c.x, c.y, c.z)
+    }
+
+    private func isInFront(_ p: SIMD3<Float>) -> Bool {
+        let c = cameraTransform.columns.2
+        let forward = SIMD3<Float>(-c.x, -c.y, -c.z)
+        return simd_dot(p - cameraPosition, forward) > 0.05
+    }
+
+    private func project(_ p: SIMD3<Float>) -> CGPoint? {
+        guard let v = sceneView, isInFront(p) else { return nil }
+        let s = v.projectPoint(SCNVector3(p.x, p.y, p.z))
+        guard s.z > 0, s.z < 1 else { return nil }
+        return CGPoint(x: CGFloat(s.x), y: CGFloat(s.y))
+    }
+
+    private func groundHit(at p: CGPoint) -> SIMD3<Float>? {
+        guard let v = sceneView else { return nil }
+        let eye = cameraPosition
+        if let q = v.raycastQuery(from: p, allowing: .estimatedPlane, alignment: .horizontal),
+           let hit = v.session.raycast(q).first {
+            let c = hit.worldTransform.columns.3
+            // Ground must be clearly below the camera; otherwise we hit something overhead.
+            if c.y < eye.y - 0.3 { return SIMD3<Float>(c.x, c.y, c.z) }
+        }
+        if let gy = groundY, let r = rayFor(p), r.dir.y < -0.02 {
+            let t = (gy - r.origin.y) / r.dir.y
+            if t > 0.3, t < 90 { return r.origin + r.dir * t }
+        }
+        return nil
+    }
+
+    private func frameFor(_ wallIndex: Int) -> WallFrame? {
+        guard wallIndex >= 0, wallIndex < walls.count else { return nil }
+        let w = walls[wallIndex]
+        guard w.startIndex < corners.count, w.endIndex < corners.count else { return nil }
+        return WallFrame(a: corners[w.startIndex], b: corners[w.endIndex])
+    }
+
+    private func wallUnderRay(_ r: (origin: SIMD3<Float>, dir: SIMD3<Float>)) -> Int? {
+        var bestIndex: Int?
+        var bestT: Float = .greatestFiniteMagnitude
+        for i in walls.indices {
+            guard let f = frameFor(i), let hit = f.intersect(origin: r.origin, direction: r.dir) else { continue }
+            let l = f.local(hit.point)
+            guard l.u > -0.5, l.u < f.lengthMeters + 0.5, l.v > -0.7, l.v < 25 else { continue }
+            if hit.t < bestT { bestT = hit.t; bestIndex = i }
+        }
+        return bestIndex
+    }
+
+    private func meters(_ feet: Double) -> Float { Float(feet / exteriorFeetPerMeter) }
+    private func feet(_ m: Float) -> Double { Double(m) * exteriorFeetPerMeter }
+
+    // MARK: Footprint
+
+    func setStories(_ n: Int) {
+        inputs.stories = max(1, min(3, n))
+        let h = ExteriorDefaults.assumedEaveHeightFeet(stories: inputs.stories)
+        for i in walls.indices where !walls[i].heightMeasured { walls[i].heightFeet = h }
+    }
+
+    func markCorner() {
+        guard phase == .footprint else { return }
+        guard let p = groundHit(at: viewCenter) else {
+            status = "No ground lock yet. Aim lower at the base of the corner and move slowly until the crosshair turns green."
             return
         }
-        let t = hit.worldTransform.columns.3
-        pendingTeachPoints.append(SIMD3<Float>(t.x,t.y,t.z))
-        guard pendingTeachPoints.count == 2 else { status = "First edge locked. Tap the opposite corner."; return }
-        let a = pendingTeachPoints[0], b = pendingTeachPoints[1]
-        if kind == .roofSlope {
-            let horizontal = hypot(Double(b.x-a.x),Double(b.z-a.z)); let rise = abs(Double(b.y-a.y))
-            let angle = atan2(rise, max(horizontal, 0.0001)) * 180.0 / Double.pi
-            lastSlopeDegrees = angle
-            status = String(format:"Roof slope locked at %.1f°.",angle)
-        } else {
-            let width = hypot(Double(b.x-a.x),Double(b.z-a.z))*3.28084
-            let height = abs(Double(b.y-a.y))*3.28084
-            openings.append(SmartOpening(kind:kind,widthFeet:max(width,0.1),heightFeet:max(height,0.1),confidence:1,source:"taught+world-geometry",confirmedByUser:true))
-            status = "\(kind.rawValue) locked from taught facade geometry."
+        if groundY == nil { groundY = p.y }
+        if corners.count >= 3, ExteriorGeometry.distanceXZ(p, corners[0]) < 1.5 {
+            closeLoop(measuredStart: p)
+            return
         }
-        teachKind=nil; pendingTeachPoints.removeAll(); recomputeProgress()
-    }
-
-    func confirmCandidate(_ candidate: VisionOpeningCandidate, as kind: TaughtFeatureKind) {
-        guard let view = sceneView else { return }
-        let b=view.bounds, r=candidate.normalizedRect
-        let points=[CGPoint(x:r.minX*b.width,y:(1-r.maxY)*b.height),CGPoint(x:r.maxX*b.width,y:(1-r.minY)*b.height)]
-        let hits=points.compactMap { p -> ARRaycastResult? in
-            guard let q=view.raycastQuery(from:p,allowing:.existingPlaneGeometry,alignment:.vertical) ?? view.raycastQuery(from:p,allowing:.estimatedPlane,alignment:.vertical) else{return nil}
-            return view.session.raycast(q).first
+        if let last = corners.last, ExteriorGeometry.distanceXZ(p, last) < 0.9 {
+            status = "That is too close to the last corner. Walk to the next corner."
+            return
         }
-        guard hits.count==2 else { status="Opening is visually stable, but its wall depth is not locked yet. Sweep across it once more or use Teach Scanner."; return }
-        let a=hits[0].worldTransform.columns.3,bp=hits[1].worldTransform.columns.3
-        let width=hypot(Double(bp.x-a.x),Double(bp.z-a.z))*3.28084, height=abs(Double(bp.y-a.y))*3.28084
-        guard width > 0.5, height > 0.5, width < 30, height < 30 else { status="Depth lock produced an implausible opening size. Use Teach Scanner for this feature."; return }
-        openings.append(SmartOpening(kind:kind,widthFeet:width,heightFeet:height,confidence:candidate.confidence,source:"tracked-vision+facade-depth",confirmedByUser:true))
-        candidates.removeAll{$0.id==candidate.id}; openingTracks.removeValue(forKey:candidate.id)
-        status=String(format:"%@ locked · %.1f × %.1f ft",kind.rawValue,width,height); recomputeProgress()
-    }
-
-    func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        switch frame.camera.trackingState {
-        case .normal: trackingQuality="Tracking locked"
-        case .limited(_): trackingQuality="Tracking limited"
-        case .notAvailable: trackingQuality="Tracking unavailable"
-        }
-        guard Date().timeIntervalSince(lastVisionAt)>0.45,!visionRunning else{return}
-        lastVisionAt = .now; visionRunning = true
-        let request=VNDetectRectanglesRequest { [weak self] req,_ in
-            let observations=(req.results as? [VNRectangleObservation] ?? []).filter{$0.confidence>=0.52 && $0.boundingBox.width>0.045 && $0.boundingBox.height>0.065}.prefix(12)
-            let compact=observations.map{($0.boundingBox,Double($0.confidence))}
-            Task{@MainActor in self?.mergeOpeningObservations(compact);self?.visionRunning=false}
-        }
-        request.maximumObservations=12; request.minimumAspectRatio=0.18; request.maximumAspectRatio=0.92; request.minimumSize=0.045; request.quadratureTolerance=18
-        let pixelBuffer=frame.capturedImage
-        DispatchQueue.global(qos:.userInitiated).async { [weak self] in
-            let handler=VNImageRequestHandler(cvPixelBuffer:pixelBuffer,orientation:.right,options:[:])
-            do{try handler.perform([request])}catch{Task{@MainActor in self?.visionRunning=false}}
+        corners.append(p)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        switch corners.count {
+        case 1: status = "Corner 1 locked. Walk to the next corner and mark it. Re-marking Corner 1 at the end closes the loop and corrects drift."
+        case 2: status = "Wall 1 defined. Keep going around, or tap Finish if you only need this wall."
+        default: status = "Corner \(corners.count) locked. Aim back at Corner 1 to close the loop automatically."
         }
     }
 
-    func session(_ session: ARSession,didAdd anchors:[ARAnchor]){updatePlanes(from:anchors)}
-    func session(_ session: ARSession,didUpdate anchors:[ARAnchor]){updatePlanes(from:anchors)}
+    func undoCorner() {
+        guard phase == .footprint, !corners.isEmpty else { return }
+        corners.removeLast()
+        if corners.isEmpty { groundY = nil }
+        status = "Last corner removed."
+    }
 
-    private func mergeOpeningObservations(_ observations:[(CGRect,Double)]) {
-        var touched=Set<UUID>()
-        for (rect,confidence) in observations {
-            let match=openingTracks.values.filter{$0.misses<4}.max{a,b in iou(a.rect,rect)<iou(b.rect,rect)}
-            if let m=match, iou(m.rect,rect)>0.38 {
-                var t=m; t.rect=blend(t.rect,rect,0.35);t.hits+=1;t.misses=0;t.confidence=max(t.confidence,confidence);t.lastSeen = .now; openingTracks[t.id] = t; touched.insert(t.id)
-            } else {
-                let id=UUID();openingTracks[id]=OpeningTrack(id:id,rect:rect,hits:1,misses:0,confidence:confidence,lastSeen:.now);touched.insert(id)
+    /// The user re-marked the first corner: use the misclosure to spread drift across the loop (compass rule).
+    private func closeLoop(measuredStart p: SIMD3<Float>) {
+        let start = corners[0]
+        let ex = p.x - start.x, ez = p.z - start.z
+        closureErrorFeet = feet((ex * ex + ez * ez).squareRoot())
+        let n = Float(corners.count)
+        for i in 1..<corners.count {
+            let k = Float(i) / n
+            corners[i].x -= ex * k
+            corners[i].z -= ez * k
+        }
+        loopClosed = true
+        finishFootprint()
+    }
+
+    func closeLoopManually() {
+        guard phase == .footprint, corners.count >= 3 else { return }
+        loopClosed = true
+        closureErrorFeet = nil
+        finishFootprint()
+    }
+
+    func finishOpen() {
+        guard phase == .footprint, corners.count >= 2 else { return }
+        loopClosed = false
+        finishFootprint()
+    }
+
+    private func finishFootprint() {
+        squaredUp = false
+        if loopClosed, let sq = ExteriorGeometry.squaredUp(corners) {
+            corners = sq
+            squaredUp = true
+        }
+        let count = loopClosed ? corners.count : corners.count - 1
+        let h = ExteriorDefaults.assumedEaveHeightFeet(stories: inputs.stories)
+        var built: [ExteriorWall] = []
+        for i in 0..<count {
+            let j = (i + 1) % corners.count
+            guard let f = WallFrame(a: corners[i], b: corners[j]) else { continue }
+            built.append(ExteriorWall(label: "Wall \(built.count + 1)", startIndex: i, endIndex: j, lengthFeet: f.lengthFeet, heightFeet: h, heightMeasured: false))
+        }
+        guard !built.isEmpty else {
+            status = "Those corners were too close together to form a wall. Undo and re-mark them."
+            loopClosed = false
+            return
+        }
+        walls = built
+        phase = .walls
+        tool = .aim
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        status = "Footprint locked: \(walls.count) wall\(walls.count == 1 ? "" : "s"). Ballpark estimate is live. Face a wall and set its height, gable and openings to tighten it."
+    }
+
+    func resetFootprint() {
+        corners.removeAll(); walls.removeAll(); candidates.removeAll(); tracks.removeAll(); rejected.removeAll(); openingHistory.removeAll()
+        loopClosed = false; closureErrorFeet = nil; squaredUp = false
+        groundY = nil; phase = .footprint; tool = .aim
+        pinnedWallIndex = nil; focusedWallIndex = nil; pendingOpeningCorner = nil
+        status = "Footprint cleared. Aim at the base of the first corner and tap Mark Corner."
+    }
+
+    // MARK: Wall measurement
+
+    func setTool(_ t: ExteriorTool) {
+        tool = (tool == t) ? .aim : t
+        pendingOpeningCorner = nil
+        switch tool {
+        case .aim: status = "Aim at a wall to work on it. Candidate openings appear as you hold steady."
+        case .height: status = "Aim at the top of the wall (the eave or top of the siding) and tap Set Height."
+        case .gable: status = "Aim at the very peak of the gable and tap Set Apex."
+        case .opening: status = "Aim at one corner of the opening, tap Corner 1, then aim at the opposite corner."
+        }
+    }
+
+    func togglePin() {
+        if pinnedWallIndex != nil { pinnedWallIndex = nil; status = "Wall lock released. Aim auto-selects the wall."; return }
+        pinnedWallIndex = focusedWallIndex
+        if let i = pinnedWallIndex, i < walls.count { status = "\(walls[i].label) locked. Measure it from any angle." }
+    }
+
+    func pinWall(_ index: Int) {
+        guard index < walls.count else { return }
+        pinnedWallIndex = (pinnedWallIndex == index) ? nil : index
+    }
+
+    private func hitOnActiveWall() -> (index: Int, frame: WallFrame, u: Double, v: Double)? {
+        guard let idx = activeWallIndex, let f = frameFor(idx), let r = rayFor(viewCenter),
+              let hit = f.intersect(origin: r.origin, direction: r.dir) else { return nil }
+        let l = f.local(hit.point)
+        return (idx, f, feet(l.u), feet(l.v))
+    }
+
+    func commitPrimaryAction() {
+        switch (phase, tool) {
+        case (.footprint, _): markCorner()
+        case (.walls, .height): commitHeight()
+        case (.walls, .gable): commitGable()
+        case (.walls, .opening): commitOpeningCorner()
+        default: break
+        }
+    }
+
+    private func commitHeight() {
+        guard let h = hitOnActiveWall() else { status = "Aim at the wall you are measuring."; return }
+        guard h.v >= 2, h.v <= 45 else { status = "That height looks wrong. Aim at the eave line of this wall."; return }
+        walls[h.index].heightFeet = h.v
+        walls[h.index].heightMeasured = true
+        // Until measured, other walls assume the same eave. Better than the story guess, and still flagged as assumed.
+        for i in walls.indices where !walls[i].heightMeasured { walls[i].heightFeet = h.v }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        status = String(format: "%@ height locked at %.1f ft. Unmeasured walls assume the same eave.", walls[h.index].label, h.v)
+        tool = .aim
+    }
+
+    private func commitGable() {
+        guard let h = hitOnActiveWall() else { status = "Aim at the gable peak on the wall plane."; return }
+        let rise = h.v - walls[h.index].heightFeet
+        guard rise > 0.8, rise < walls[h.index].lengthFeet * 0.9 else {
+            status = "The apex must be above the eave line. Set the eave height first, then aim at the peak."
+            return
+        }
+        walls[h.index].gableRiseFeet = rise
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let slope = walls[h.index].gableSlopeDegrees ?? 0
+        status = String(format: "Gable added: %.1f ft rise, roof pitch about %.0f°.", rise, slope)
+        tool = .aim
+    }
+
+    func removeGable() {
+        guard let i = activeWallIndex, i < walls.count else { return }
+        walls[i].gableRiseFeet = nil
+        status = "Gable removed from \(walls[i].label)."
+    }
+
+    private func commitOpeningCorner() {
+        guard let h = hitOnActiveWall() else { status = "Aim at the wall the opening is on."; return }
+        guard let first = pendingOpeningCorner else {
+            pendingOpeningCorner = ExteriorPendingCorner(wallIndex: h.index, u: h.u, v: h.v)
+            status = "Corner 1 set. Aim at the opposite corner and tap again."
+            return
+        }
+        guard first.wallIndex == h.index else {
+            pendingOpeningCorner = nil
+            status = "Both corners must be on the same wall. Start again."
+            return
+        }
+        let u0 = min(first.u, h.u), u1 = max(first.u, h.u), v0 = min(first.v, h.v), v1 = max(first.v, h.v)
+        pendingOpeningCorner = nil
+        guard ExteriorOpeningPriors.plausible(widthFeet: u1 - u0, heightFeet: v1 - v0) else {
+            status = "That size is not plausible for an opening. Try the two opposite corners again."
+            return
+        }
+        let guess = ExteriorOpeningPriors.classify(widthFeet: u1 - u0, heightFeet: v1 - v0, bottomFeet: v0)
+        let kind = manualKind ?? guess.kind
+        addOpening(wall: h.index, kind: kind, u0: u0, v0: v0, u1: u1, v1: v1, confidence: 0.92, source: "manual", assumed: false, predicted: nil)
+        status = String(format: "%@ added · %.1f × %.1f ft.", kind.rawValue, u1 - u0, v1 - v0)
+    }
+
+    private func addOpening(wall: Int, kind: ExteriorOpeningClass, u0: Double, v0: Double, u1: Double, v1: Double, confidence: Double, source: String, assumed: Bool, predicted: (Double, Double)?) {
+        guard wall < walls.count else { return }
+        var o = ExteriorOpening(kind: kind, u0: u0, v0: v0, u1: u1, v1: v1, confidence: confidence, source: source)
+        o.assumedSize = assumed
+        o.predictedWidthFeet = predicted?.0
+        o.predictedHeightFeet = predicted?.1
+        walls[wall].openings.append(o)
+        openingHistory.append(o.id)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    func quickAdd(_ kind: ExteriorOpeningClass) {
+        guard phase == .walls, let idx = activeWallIndex, idx < walls.count else { status = "Aim at a wall first."; return }
+        let size = ExteriorOpeningPriors.standardSize(for: kind)
+        var centerU = walls[idx].lengthFeet / 2
+        var bottom: Double = (kind == .window) ? 3.0 : 0
+        if let h = hitOnActiveWall() {
+            centerU = max(size.w / 2, min(walls[idx].lengthFeet - size.w / 2, h.u))
+            if kind == .window { bottom = max(0.5, h.v - size.h / 2) }
+        }
+        addOpening(wall: idx, kind: kind, u0: centerU - size.w / 2, v0: bottom, u1: centerU + size.w / 2, v1: bottom + size.h, confidence: 0.4, source: "quick-add", assumed: true, predicted: nil)
+        status = "\(kind.rawValue) added at a standard size. Measure it for a tighter number."
+    }
+
+    func undoLastOpening() {
+        while let last = openingHistory.popLast() {
+            for i in walls.indices {
+                if let k = walls[i].openings.firstIndex(where: { $0.id == last }) {
+                    walls[i].openings.remove(at: k)
+                    status = "Last opening removed."
+                    return
+                }
             }
         }
-        for id in Array(openingTracks.keys) where !touched.contains(id) { openingTracks[id]?.misses += 1; if openingTracks[id]!.misses>5 { openingTracks.removeValue(forKey:id) } }
-        candidates=openingTracks.values.filter{$0.hits>=3 && $0.misses<=2}.sorted{$0.hits>$1.hits}.prefix(5).map{VisionOpeningCandidate(id:$0.id,normalizedRect:$0.rect,confidence:min(0.98,$0.confidence + Double(min($0.hits,8))*0.025),observations:$0.hits,locked:$0.hits>=6)}
-        if !candidates.isEmpty && teachKind==nil { status="Facade geometry is stable. Confirm highlighted openings only when they stay locked in place." }
     }
 
-    private func updatePlanes(from anchors:[ARAnchor]) {
-        for plane in anchors.compactMap({$0 as? ARPlaneAnchor}).filter({$0.alignment == .vertical}) {
-            let width=Double(plane.extent.x)*3.28084, height=Double(plane.extent.z)*3.28084
-            guard width>3,height>3 else{continue}
-            var track=facadeTracks[plane.identifier] ?? FacadePlaneTrack(id:plane.identifier,widthFeet:width,heightFeet:height,samples:[],observations:0,locked:false,lastUpdated:.now)
-            track.widthFeet=width;track.heightFeet=height;track.observations+=1;track.lastUpdated = .now; track.samples.append((width,height)); if track.samples.count > 10 { track.samples.removeFirst() }
-            track.locked = track.observations>=5 && track.stability>=0.82
-            facadeTracks[plane.identifier]=track
+    // MARK: Candidates
+
+    func accept(_ c: ExteriorCandidate, as kind: ExteriorOpeningClass? = nil) {
+        guard c.wallIndex < walls.count else { return }
+        addOpening(wall: c.wallIndex, kind: kind ?? c.kind, u0: c.u0, v0: c.v0, u1: c.u1, v1: c.v1, confidence: c.confidence, source: "auto-tracked", assumed: false, predicted: (c.widthFeet, c.heightFeet))
+        tracks.removeValue(forKey: c.id)
+        candidates.removeAll { $0.id == c.id }
+        status = String(format: "%@ accepted · %.1f × %.1f ft.", (kind ?? c.kind).rawValue, c.widthFeet, c.heightFeet)
+    }
+
+    func acceptLikely() {
+        let likely = candidates.filter { $0.confidence >= 0.72 && $0.hits >= 5 }
+        for c in likely { accept(c) }
+        status = likely.isEmpty ? "No candidates are stable enough to bulk-accept yet. Hold steady a little longer." : "\(likely.count) openings accepted. Check them in review."
+    }
+
+    func dismiss(_ c: ExteriorCandidate) {
+        rejected.append(RejectedRect(wallIndex: c.wallIndex, u0: c.u0, v0: c.v0, u1: c.u1, v1: c.v1, kind: c.kind, confidence: c.confidence))
+        tracks.removeValue(forKey: c.id)
+        candidates.removeAll { $0.id == c.id }
+    }
+
+    // MARK: Photos
+
+    func capturePhoto(tag: EvidenceTag) {
+        guard let v = sceneView else { return }
+        let image = v.snapshot()
+        guard let data = image.jpegData(compressionQuality: 0.82) else { status = "Could not capture that photo."; return }
+        let id = UUID()
+        let name = "exterior-\(id.uuidString).jpg"
+        do { try data.write(to: AppMediaStore.url(for: name), options: .atomic) } catch { status = "Could not save that photo."; return }
+        var label = "Exterior"
+        if let i = activeWallIndex, i < walls.count { label = walls[i].label }
+        captures.append(TaggedCapture(id: id, tag: tag, capturedAt: .now, imageFileName: name, note: label))
+        if let i = activeWallIndex, i < walls.count { walls[i].photoCaptureIDs.append(id) }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        status = "\(tag.rawValue.capitalized) photo saved to \(label)."
+    }
+
+    func discardUnsavedMedia() {
+        for c in captures { try? FileManager.default.removeItem(at: AppMediaStore.url(for: c.imageFileName)) }
+        captures.removeAll()
+    }
+
+    // MARK: Frame loop
+
+    func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        cameraTransform = frame.camera.transform
+        totalFrames += 1
+        var quality = "Tracking locked"
+        var normal = true
+        switch frame.camera.trackingState {
+        case .normal: break
+        case .limited(_): quality = "Tracking limited"; normal = false; limitedFrames += 1
+        case .notAvailable: quality = "Tracking unavailable"; normal = false; limitedFrames += 1
         }
-        let stable=facadeTracks.values.filter{$0.locked}.sorted{$0.widthFeet*$0.heightFeet > $1.widthFeet*$1.heightFeet}
-        surfaces=stable.enumerated().map{idx,t in SmartSurface(id:t.id,label:"Locked facade \(idx+1)",widthFeet:t.widthFeet,heightFeet:t.heightFeet,confidence:t.stability,source:"ARKit persistent vertical plane")}
-        if surfaces.isEmpty && !facadeTracks.isEmpty { status="Hold the elevation in view and move sideways slowly. Aurelium is stabilizing its edges before locking dimensions." }
-        else if !surfaces.isEmpty && candidates.isEmpty && teachKind==nil { status="Facade locked. Continue the sweep to find doors/windows, or teach anything Aurelium misses." }
-        recomputeProgress()
+        if trackingQuality != quality { trackingQuality = quality }
+        if trackingNormal != normal { trackingNormal = normal }
+
+        if frame.timestamp - lastHUDTime > 0.1 {
+            lastHUDTime = frame.timestamp
+            updateSteady()
+            refreshHUD()
+        }
+        if phase == .walls, steady, trackingNormal, !visionRunning, pendingOpeningCorner == nil,
+           frame.timestamp - lastVisionTime > 0.5, let idx = activeWallIndex {
+            lastVisionTime = frame.timestamp
+            runVision(frame: frame, wallIndex: idx)
+        }
     }
 
-    private func recomputeProgress(){
-        let geometry = min(1,Double(surfaces.count)/2.0)
-        let tracking = trackingQuality == "Tracking locked" ? 1.0 : 0.45
-        let features = openings.isEmpty ? 0.35 : min(1,0.45+Double(openings.count)*0.1)
-        captureProgress = min(1,geometry*0.55 + tracking*0.2 + features*0.25)
+    private func updateSteady() {
+        let a = poseAtLastHUD.columns.3, b = cameraTransform.columns.3
+        let moved = simd_length(SIMD3<Float>(a.x - b.x, a.y - b.y, a.z - b.z))
+        let fa = poseAtLastHUD.columns.2, fb = cameraTransform.columns.2
+        let turned = simd_dot(SIMD3<Float>(fa.x, fa.y, fa.z), SIMD3<Float>(fb.x, fb.y, fb.z))
+        steady = moved < 0.03 && turned > 0.9995
+        poseAtLastHUD = cameraTransform
     }
 
-    private func iou(_ a:CGRect,_ b:CGRect)->Double { let i=a.intersection(b);guard !i.isNull else{return 0};return Double(i.width*i.height/(a.width*a.height+b.width*b.height-i.width*i.height)) }
-    private func blend(_ a:CGRect,_ b:CGRect,_ f:CGFloat)->CGRect { CGRect(x:a.origin.x*(1-f)+b.origin.x*f,y:a.origin.y*(1-f)+b.origin.y*f,width:a.width*(1-f)+b.width*f,height:a.height*(1-f)+b.height*f) }
+    // MARK: Overlay + readouts
+
+    private func refreshHUD() {
+        guard let view = sceneView, view.bounds.width > 1 else { return }
+        var shapes = footprintShapes()
+        switch phase {
+        case .footprint:
+            if let p = groundHit(at: viewCenter) {
+                reticleActive = true
+                if let last = corners.last {
+                    reticleReadout = String(format: "%.1f ft from last corner", feet(ExteriorGeometry.distanceXZ(p, last)))
+                    if let a = project(last), let b = project(p) {
+                        shapes.append(ExteriorOverlayShape(id: "rubber", points: [a, b], closed: false, style: .pending, label: nil))
+                    }
+                } else {
+                    reticleReadout = "Ground locked. Aim at the first corner."
+                }
+            } else {
+                reticleActive = false
+                reticleReadout = "Searching for ground…"
+            }
+        case .walls:
+            var focus: Int?
+            if let ray = rayFor(viewCenter) { focus = wallUnderRay(ray) }
+            if focusedWallIndex != focus { focusedWallIndex = focus }
+            if let idx = activeWallIndex, idx < walls.count, let f = frameFor(idx) {
+                shapes.append(contentsOf: wallShapes(index: idx, frame: f))
+                reticleActive = true
+                if let h = hitOnActiveWall() {
+                    reticleReadout = readout(for: h.index, u: h.u, v: h.v)
+                    if let p = pendingOpeningCorner, p.wallIndex == idx {
+                        if let pts = rect(frame: f, u0: min(p.u, h.u), v0: min(p.v, h.v), u1: max(p.u, h.u), v1: max(p.v, h.v)) {
+                            shapes.append(ExteriorOverlayShape(id: "pending", points: pts, closed: true, style: .pending, label: nil))
+                        }
+                    }
+                } else {
+                    reticleReadout = "\(walls[idx].label) · aim at the wall"
+                }
+            } else {
+                reticleActive = false
+                reticleReadout = "Aim at a wall. Corners define where walls are."
+            }
+        }
+        overlay = shapes
+    }
+
+    private func readout(for idx: Int, u: Double, v: Double) -> String {
+        let w = walls[idx]
+        switch tool {
+        case .height: return String(format: "Height here %.1f ft", v)
+        case .gable: return String(format: "Apex %.1f ft · rise %.1f ft", v, v - w.heightFeet)
+        case .opening:
+            if let p = pendingOpeningCorner, p.wallIndex == idx { return String(format: "%.1f × %.1f ft", abs(u - p.u), abs(v - p.v)) }
+            return String(format: "%.1f ft along · %.1f ft up", u, v)
+        case .aim:
+            let assumed = w.heightMeasured ? "" : " (assumed)"
+            return String(format: "%@ · %.0f ft long · %.1f ft high", w.label, w.lengthFeet, w.heightFeet) + assumed
+        }
+    }
+
+    private func rect(frame f: WallFrame, u0: Double, v0: Double, u1: Double, v1: Double) -> [CGPoint]? {
+        let pts = [f.world(u: meters(u0), v: meters(v0)), f.world(u: meters(u1), v: meters(v0)), f.world(u: meters(u1), v: meters(v1)), f.world(u: meters(u0), v: meters(v1))]
+        let projected = pts.compactMap { project($0) }
+        return projected.count == 4 ? projected : nil
+    }
+
+    private func footprintShapes() -> [ExteriorOverlayShape] {
+        var out: [ExteriorOverlayShape] = []
+        for (i, c) in corners.enumerated() {
+            if let p = project(c) { out.append(ExteriorOverlayShape(id: "corner-\(i)", points: [p], closed: false, style: .footprint, label: "\(i + 1)")) }
+            if i + 1 < corners.count, let a = project(c), let b = project(corners[i + 1]) {
+                out.append(ExteriorOverlayShape(id: "seg-\(i)", points: [a, b], closed: false, style: .footprint, label: nil))
+            }
+        }
+        if loopClosed, corners.count > 2, let a = project(corners[corners.count - 1]), let b = project(corners[0]) {
+            out.append(ExteriorOverlayShape(id: "seg-close", points: [a, b], closed: false, style: .footprint, label: nil))
+        }
+        return out
+    }
+
+    private func wallShapes(index: Int, frame f: WallFrame) -> [ExteriorOverlayShape] {
+        var out: [ExteriorOverlayShape] = []
+        let w = walls[index]
+        let L = f.lengthMeters, H = meters(w.heightFeet)
+        var outline = [f.world(u: 0, v: 0), f.world(u: L, v: 0), f.world(u: L, v: H)]
+        if let rise = w.gableRiseFeet { outline.append(f.world(u: L / 2, v: H + meters(rise))) }
+        outline.append(f.world(u: 0, v: H))
+        let pts = outline.compactMap { project($0) }
+        if pts.count == outline.count { out.append(ExteriorOverlayShape(id: "wall-\(index)", points: pts, closed: true, style: .wall, label: nil)) }
+        for o in w.openings {
+            if let r = rect(frame: f, u0: o.u0, v0: o.v0, u1: o.u1, v1: o.v1) {
+                let label = String(format: "%@ %.1f×%.1f", o.kind.rawValue, o.widthFeet, o.heightFeet)
+                out.append(ExteriorOverlayShape(id: "open-\(o.id.uuidString)", points: r, closed: true, style: .accepted, label: label))
+            }
+        }
+        for c in candidates where c.wallIndex == index {
+            if let r = rect(frame: f, u0: c.u0, v0: c.v0, u1: c.u1, v1: c.v1) {
+                let label = String(format: "%@? %.1f×%.1f", c.kind.rawValue, c.widthFeet, c.heightFeet)
+                out.append(ExteriorOverlayShape(id: "cand-\(c.id.uuidString)", points: r, closed: true, style: .candidate, label: label))
+            }
+        }
+        return out
+    }
+
+    // MARK: Vision → wall space
+
+    private func interfaceOrientation() -> UIInterfaceOrientation {
+        sceneView?.window?.windowScene?.interfaceOrientation ?? .portrait
+    }
+
+    private func runVision(frame: ARFrame, wallIndex: Int) {
+        guard let view = sceneView, view.bounds.width > 1 else { return }
+        visionRunning = true
+        let pixelBuffer = frame.capturedImage
+        let size = view.bounds.size
+        let transform = frame.displayTransform(for: interfaceOrientation(), viewportSize: size)
+        let pose = frame.camera.transform
+        let request = VNDetectRectanglesRequest { [weak self] req, _ in
+            let results = (req.results as? [VNRectangleObservation]) ?? []
+            var quads: [[CGPoint]] = []
+            var confs: [Double] = []
+            for o in results where o.confidence >= 0.5 {
+                quads.append([o.topLeft, o.topRight, o.bottomRight, o.bottomLeft])
+                confs.append(Double(o.confidence))
+            }
+            Task { @MainActor in
+                self?.consumeVision(quads: quads, confidences: confs, transform: transform, size: size, pose: pose, wallIndex: wallIndex)
+            }
+        }
+        request.maximumObservations = 16
+        request.minimumAspectRatio = 0.15
+        request.maximumAspectRatio = 1.0
+        request.minimumSize = 0.03
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            // Raw sensor orientation. Corners are mapped through ARKit's displayTransform so they match what the user sees.
+            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
+            do { try handler.perform([request]) } catch { Task { @MainActor in self?.visionRunning = false } }
+        }
+    }
+
+    private func poseDrifted(from a: simd_float4x4, to b: simd_float4x4) -> Bool {
+        let ta = a.columns.3, tb = b.columns.3
+        let moved = simd_length(SIMD3<Float>(ta.x - tb.x, ta.y - tb.y, ta.z - tb.z))
+        let fa = a.columns.2, fb = b.columns.2
+        let facing = simd_dot(SIMD3<Float>(fa.x, fa.y, fa.z), SIMD3<Float>(fb.x, fb.y, fb.z))
+        return moved > 0.05 || facing < 0.9990
+    }
+
+    private func consumeVision(quads: [[CGPoint]], confidences: [Double], transform: CGAffineTransform, size: CGSize, pose: simd_float4x4, wallIndex: Int) {
+        visionRunning = false
+        guard phase == .walls, wallIndex < walls.count, let f = frameFor(wallIndex) else { return }
+        // If the camera moved while Vision was running, the corner rays would be wrong. Drop this result.
+        guard !poseDrifted(from: pose, to: cameraTransform) else { return }
+
+        let wall = walls[wallIndex]
+        let wallArea = max(1, wall.rectangleSquareFeet)
+        var touched = Set<UUID>()
+
+        for (qi, quad) in quads.enumerated() {
+            var pts: [(u: Double, v: Double)] = []
+            for q in quad {
+                let imageTopLeft = CGPoint(x: q.x, y: 1 - q.y)
+                let n = imageTopLeft.applying(transform)
+                let vp = CGPoint(x: n.x * size.width, y: n.y * size.height)
+                guard let r = rayFor(vp), let hit = f.intersect(origin: r.origin, direction: r.dir) else { break }
+                let l = f.local(hit.point)
+                pts.append((feet(l.u), feet(l.v)))
+            }
+            guard pts.count == 4 else { continue }
+            let us = pts.map { $0.u }, vs = pts.map { $0.v }
+            guard let u0 = us.min(), let u1 = us.max(), let v0 = vs.min(), let v1 = vs.max() else { continue }
+            let w = u1 - u0, h = v1 - v0
+            // A real opening is an upright rectangle in wall space. Skewed or rotated quads are siding lines, shadows, trim edges.
+            var area = 0.0
+            for i in 0..<4 {
+                let j = (i + 1) % 4
+                area += pts[i].u * pts[j].v - pts[j].u * pts[i].v
+            }
+            let fill = abs(area) / 2 / max(w * h, 0.01)
+            guard fill > 0.85 else { continue }
+            guard ExteriorOpeningPriors.plausible(widthFeet: w, heightFeet: h) else { continue }
+            guard u0 > -0.5, u1 < wall.lengthFeet + 0.5, v0 > -0.7, v1 < wall.peakHeightFeet + 1.5 else { continue }
+            guard w * h < wallArea * 0.5 else { continue }
+            merge(rect: SIMD4<Double>(u0, v0, u1, v1), confidence: confidences[qi], wallIndex: wallIndex, touched: &touched)
+        }
+
+        for id in Array(tracks.keys) {
+            guard let t = tracks[id], t.wallIndex == wallIndex, !touched.contains(id) else { continue }
+            var updated = t
+            updated.misses += 1
+            if (updated.misses > 6 && updated.hits < 5) || updated.misses > 20 {
+                tracks.removeValue(forKey: id)
+            } else {
+                tracks[id] = updated
+            }
+        }
+        publishCandidates(for: wallIndex)
+    }
+
+    private func merge(rect r: SIMD4<Double>, confidence: Double, wallIndex: Int, touched: inout Set<UUID>) {
+        var bestID: UUID?
+        var bestIoU = 0.45
+        for (id, t) in tracks where t.wallIndex == wallIndex {
+            let m = t.fused
+            let score = ExteriorGeometry.iou((u0: m[0], v0: m[1], u1: m[2], v1: m[3]), (u0: r[0], v0: r[1], u1: r[2], v1: r[3]))
+            if score > bestIoU { bestIoU = score; bestID = id }
+        }
+        if let id = bestID, var t = tracks[id] {
+            t.samples.append(r)
+            if t.samples.count > 12 { t.samples.removeFirst() }
+            t.hits += 1
+            t.misses = 0
+            t.visionConfidence = max(t.visionConfidence * 0.9, confidence)
+            tracks[id] = t
+            touched.insert(id)
+        } else {
+            let id = UUID()
+            tracks[id] = OpeningTrack(id: id, wallIndex: wallIndex, samples: [r], hits: 1, misses: 0, visionConfidence: confidence)
+            touched.insert(id)
+        }
+    }
+
+    private func publishCandidates(for wallIndex: Int) {
+        guard wallIndex < walls.count else { return }
+        var out: [ExteriorCandidate] = []
+        for t in tracks.values where t.wallIndex == wallIndex && t.hits >= 3 && t.misses <= 3 {
+            let m = t.fused
+            let w = m[2] - m[0], h = m[3] - m[1]
+            let key = (u0: m[0], v0: m[1], u1: m[2], v1: m[3])
+            // Skip anything already accepted or dismissed.
+            let alreadyAccepted = walls[wallIndex].openings.contains { o in
+                ExteriorGeometry.iou(key, (u0: o.u0, v0: min(o.v0, o.v1), u1: o.u1, v1: max(o.v0, o.v1))) > 0.4
+            }
+            if alreadyAccepted { continue }
+            let dismissed = rejected.contains { r in
+                r.wallIndex == wallIndex && ExteriorGeometry.iou(key, (u0: r.u0, v0: r.v0, u1: r.u1, v1: r.v1)) > 0.4
+            }
+            if dismissed { continue }
+            let guess = ExteriorOpeningPriors.classify(widthFeet: w, heightFeet: h, bottomFeet: m[1])
+            let conf = 0.3 * t.visionConfidence + 0.3 * min(1, Double(t.hits) / 8) + 0.2 * guess.fit + 0.2 * t.stability
+            out.append(ExteriorCandidate(id: t.id, wallIndex: wallIndex, u0: m[0], v0: m[1], u1: m[2], v1: m[3], kind: guess.kind, confidence: min(0.98, conf), hits: t.hits))
+        }
+        out.sort { $0.hits > $1.hits }
+        let top = Array(out.prefix(8))
+        candidates = top + candidates.filter { $0.wallIndex != wallIndex }
+    }
+
+    // MARK: Save
+
+    func buildDetail() -> ExteriorScanDetail {
+        let limitedShare = totalFrames > 0 ? Double(limitedFrames) / Double(totalFrames) : 0
+        return ExteriorScanDetail(
+            corners: corners.map { ExteriorCorner($0) },
+            loopClosed: loopClosed,
+            closureErrorFeet: closureErrorFeet,
+            squaredUp: squaredUp,
+            inputs: inputs,
+            walls: walls,
+            trackingLimitedShare: limitedShare,
+            rejectedCandidateCount: rejected.count
+        )
+    }
+
+    func learningSamples(projectID: UUID, walkthroughID: UUID) -> [ScannerLearningSample] {
+        var out: [ScannerLearningSample] = []
+        for w in walls {
+            for o in w.openings where o.source != "quick-add" {
+                if let pw = o.predictedWidthFeet, let ph = o.predictedHeightFeet {
+                    let changed = abs(pw - o.widthFeet) > 0.25 || abs(ph - o.heightFeet) > 0.25
+                    let action = changed ? "edit_prediction" : "confirm_prediction"
+                    out.append(ScannerLearningSample(projectID: projectID, walkthroughID: walkthroughID, mode: .exterior, feature: o.kind.featureKind, action: action, predictedWidthFeet: pw, predictedHeightFeet: ph, correctedWidthFeet: o.widthFeet, correctedHeightFeet: o.heightFeet, confidence: o.confidence))
+                } else {
+                    out.append(ScannerLearningSample(projectID: projectID, walkthroughID: walkthroughID, mode: .exterior, feature: o.kind.featureKind, action: "manual_teach", correctedWidthFeet: o.widthFeet, correctedHeightFeet: o.heightFeet, confidence: o.confidence))
+                }
+            }
+            if let slope = w.gableSlopeDegrees {
+                out.append(ScannerLearningSample(projectID: projectID, walkthroughID: walkthroughID, mode: .exterior, feature: .roofSlope, action: "manual_teach", correctedSlopeDegrees: slope, confidence: 0.9))
+            }
+        }
+        for r in rejected.prefix(25) {
+            out.append(ScannerLearningSample(projectID: projectID, walkthroughID: walkthroughID, mode: .exterior, feature: r.kind.featureKind, action: "reject_prediction", predictedWidthFeet: r.u1 - r.u0, predictedHeightFeet: r.v1 - r.v0, confidence: r.confidence))
+        }
+        return out
+    }
+
+    func makeScan(projectID: UUID, name: String, notes: String) -> (scan: WalkthroughScan, samples: [ScannerLearningSample])? {
+        guard !walls.isEmpty else { return nil }
+        let scanID = UUID()
+        let detail = buildDetail()
+        let t = ExteriorEstimator.compute(walls: walls, inputs: inputs)
+        let report = ExteriorConfidence.evaluate(detail: detail)
+
+        var jsonName: String?
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        if let data = try? encoder.encode(detail) {
+            let fileName = "exterior-\(scanID.uuidString).json"
+            if (try? data.write(to: AppMediaStore.url(for: fileName), options: .atomic)) != nil { jsonName = fileName }
+        }
+
+        let entryAndGarage = t.entryDoorCount + t.garageDoorCount
+        let measurement = RoomMeasurementSummary(
+            wallLinearFeet: t.perimeterFeet,
+            averageWallHeightFeet: t.averageHeightFeet,
+            grossWallSquareFeet: t.grossSquareFeet,
+            openingsSquareFeet: t.deductedSquareFeet,
+            paintableWallSquareFeet: t.netSquareFeet,
+            ceilingSquareFeet: nil,
+            detectedDoorCount: entryAndGarage,
+            detectedWindowCount: t.windowCount,
+            estimatedTrimLinearFeet: inputs.includeTrim ? t.trimLinearFeet : nil
+        )
+
+        let doorRate = t.doorHours > 0 ? Double(entryAndGarage) / t.doorHours : inputs.doorRate
+        let trimRateEffective = t.trimHours > 0 ? t.trimLinearFeet / t.trimHours : inputs.trimRate
+        let lines: [ScopeEstimateLine] = [
+            ScopeEstimateLine(kind: .walls, enabled: true, quantity: t.netSquareFeet, unit: "sq ft", productionRate: t.effectiveWallRate, laborHours: t.wallLaborHours),
+            ScopeEstimateLine(kind: .doors, enabled: entryAndGarage > 0, quantity: Double(entryAndGarage), unit: "doors", productionRate: doorRate, laborHours: t.doorHours),
+            ScopeEstimateLine(kind: .windows, enabled: t.windowCount > 0, quantity: Double(t.windowCount), unit: "windows", productionRate: inputs.windowRate, laborHours: t.windowHours),
+            ScopeEstimateLine(kind: .trim, enabled: inputs.includeTrim && t.trimLinearFeet > 0, quantity: t.trimLinearFeet, unit: "lin ft", productionRate: trimRateEffective, laborHours: t.trimHours),
+            ScopeEstimateLine(kind: .ceiling, enabled: false, quantity: 0, unit: "sq ft", productionRate: 125, laborHours: 0)
+        ]
+        let total = lines.filter { $0.enabled }.reduce(0) { $0 + $1.laborHours }
+
+        let storyWord = inputs.stories == 1 ? "story" : "stories"
+        var summary = "Exterior Smart Scan v3 · \(walls.count) wall\(walls.count == 1 ? "" : "s") · \(inputs.stories) \(storyWord) · \(inputs.surface.rawValue) · \(inputs.condition.rawValue) · \(inputs.application.rawValue) · \(inputs.coats) coats."
+        summary += " Scan confidence \(report.label) (\(Int(report.score * 100))%). " + report.reasons.joined(separator: " ")
+        if let slope = t.maxSlopeDegrees { summary += String(format: " Roof pitch about %.0f° from measured gable.", slope) }
+        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedNotes.isEmpty { summary += " Notes: " + trimmedNotes }
+
+        let room = CapturedRoomSummary(id: UUID(), name: name, wallCount: walls.count, doorCount: entryAndGarage, windowCount: t.windowCount, source: .manual, verificationRequired: report.label != "High")
+        let measuredWalls = walls.map { MeasuredWall(id: $0.id, lengthFeet: $0.lengthFeet, heightFeet: $0.heightFeet, grossSquareFeet: $0.grossSquareFeet) }
+        let auto = AutoEstimateResult(productionSquareFeetPerHour: t.effectiveWallRate, laborHours: t.wallLaborHours, measurementsConfirmed: inputs.measurementsVerified, scopeLines: lines, totalLaborHours: total)
+        let scan = WalkthroughScan(id: scanID, projectID: projectID, createdAt: .now, room: room, transcript: summary, captures: captures, videoFileName: nil, durationSeconds: nil, usdzFileName: nil, roomPlanJSONFileName: jsonName, measurements: measurement, autoEstimate: auto, measuredWalls: measuredWalls, archivedAt: nil)
+        return (scan, learningSamples(projectID: projectID, walkthroughID: scanID))
+    }
 }
