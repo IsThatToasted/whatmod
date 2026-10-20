@@ -152,6 +152,12 @@ struct ExteriorSmartScanView: View {
                     }
                     .buttonStyle(.borderedProminent).tint(controller.inputs.stories == n ? .blue : .black.opacity(0.6))
                 }
+                Menu {
+                    ForEach(4...12, id: \.self) { n in Button("\(n) stories (≈\(Int(ExteriorDefaults.assumedEaveHeightFeet(stories: n))) ft)") { controller.setStories(n) } }
+                } label: {
+                    Text(controller.inputs.stories > 3 ? "\(controller.inputs.stories)" : "4+").font(.subheadline.bold()).frame(width: 40, height: 32)
+                }
+                .buttonStyle(.borderedProminent).tint(controller.inputs.stories > 3 ? .blue : .black.opacity(0.6))
                 Spacer()
                 Text("\(controller.corners.count) corner\(controller.corners.count == 1 ? "" : "s")")
                     .font(.caption.bold()).foregroundStyle(.white)
@@ -165,10 +171,11 @@ struct ExteriorSmartScanView: View {
                 }
                 .buttonStyle(.borderedProminent).tint(controller.reticleEstimated ? .orange : .green)
                 Menu {
-                    Text("Base of the corner hidden? Aim at the vertical corner edge anywhere you can see it.")
-                    Button("Use wall surface at crosshair") { controller.markBlockedCorner(.wallSurface) }
-                    Button("Square to previous wall (perspective)") { controller.markBlockedCorner(.square) }.disabled(controller.corners.count < 2)
-                    Button("Straight along previous wall") { controller.markBlockedCorner(.straight) }.disabled(controller.corners.count < 2)
+                    Text("Corner too far, too tall, or hidden? Aim at its vertical edge at any height.")
+                    Button("Far corner · wall continues straight") { controller.markBlockedCorner(.straight) }.disabled(controller.corners.count < 2)
+                    Button("Far corner · wall turns 90°") { controller.markBlockedCorner(.square) }.disabled(controller.corners.count < 2)
+                    Button("Wall surface at crosshair (near)") { controller.markBlockedCorner(.wallSurface) }
+                    Button("Stand at the corner · mark my position") { controller.markBlockedCorner(.myPosition) }
                     Button("Complete rectangle (auto 4th corner)") { controller.completeRectangle() }.disabled(controller.corners.count != 3)
                 } label: { Text("Blocked").font(.subheadline.bold()).frame(width: 70, height: 44) }
                 .buttonStyle(.borderedProminent).tint(.black.opacity(0.65))
@@ -217,7 +224,10 @@ struct ExteriorSmartScanView: View {
 
     private var activeCandidates: [ExteriorCandidate] {
         guard let idx = controller.activeWallIndex else { return [] }
-        return controller.candidates.filter { $0.wallIndex == idx }
+        let all = controller.candidates.filter { $0.wallIndex == idx }
+        // Long walls can have dozens of candidates: show the ones nearest the crosshair first.
+        guard let u = controller.reticleU else { return Array(all.prefix(10)) }
+        return Array(all.sorted { abs(($0.u0 + $0.u1) / 2 - u) < abs(($1.u0 + $1.u1) / 2 - u) }.prefix(10))
     }
 
     private var candidateStrip: some View {
@@ -407,7 +417,7 @@ private struct ExteriorScanReviewView: View {
 
     private var profileSection: some View {
         Section("Job profile") {
-            Stepper("Stories: \(controller.inputs.stories)", value: storiesBinding, in: 1...3)
+            Stepper("Stories: \(controller.inputs.stories)", value: storiesBinding, in: 1...12)
             Picker("Surface", selection: $controller.inputs.surface) {
                 ForEach(ExteriorSurface.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }

@@ -211,7 +211,7 @@ struct WallFrame {
         let denom = simd_dot(d, normal)
         guard abs(denom) > 0.04 else { return nil }
         let t = simd_dot(a - o, normal) / denom
-        guard t > 0.2, t < 90 else { return nil }
+        guard t > 0.2, t < 700 else { return nil }
         return (o + d * t, t)
     }
 }
@@ -273,15 +273,16 @@ enum ExteriorOpeningPriors {
     static func classify(widthFeet w: Double, heightFeet h: Double, bottomFeet b: Double) -> (kind: ExteriorOpeningClass, fit: Double) {
         let atGrade = b < 1.2
         if atGrade, (7.5...18.5).contains(w), (6.2...8.8).contains(h) { return (.garageDoor, 0.9) }
+        if atGrade, (8...32).contains(w), (8.8...16).contains(h) { return (.garageDoor, 0.6) } // roll-up / dock / commercial overhead
         if atGrade, (2.3...6.8).contains(w), (6.0...8.8).contains(h) { return (.door, w < 4.3 ? 0.92 : 0.8) }
-        if (0.9...9.0).contains(w), (1.2...6.8).contains(h), b >= 0.8 { return (.window, (1.5...6).contains(w) && (2...5.5).contains(h) ? 0.9 : 0.7) }
+        if (0.9...40).contains(w), (1.2...20).contains(h), b >= 0.8 { return (.window, (1.5...6).contains(w) && (2...5.5).contains(h) ? 0.9 : 0.7) }
         if b < 2.5, (4.5...9.5).contains(w), (5.5...8.8).contains(h) { return (.door, 0.6) } // sliding / patio
         return (.opening, 0.4)
     }
 
     /// Reject geometry that cannot be a real opening before it ever reaches the estimator.
     static func plausible(widthFeet w: Double, heightFeet h: Double) -> Bool {
-        w >= 0.9 && w <= 20 && h >= 1.2 && h <= 9.5 && w * h >= 2.2
+        w >= 0.9 && w <= 40 && h >= 1.2 && h <= 20 && w * h >= 2.2
     }
 
     static func standardSize(for kind: ExteriorOpeningClass) -> (w: Double, h: Double) {
@@ -332,7 +333,8 @@ enum ExteriorEstimator {
     static func accessFactor(heightFeet h: Double) -> Double {
         if h <= 10.5 { return 1.0 }
         if h <= 20.5 { return 0.85 }
-        return 0.7
+        if h <= 40.5 { return 0.7 }
+        return 0.55   // lift / swing-stage work above ~40 ft
     }
 
     static func deducts(_ o: ExteriorOpening, policy: ExteriorDeductPolicy) -> Bool {
@@ -442,7 +444,7 @@ enum ExteriorDefaults {
         switch max(1, stories) {
         case 1: return 9.5
         case 2: return 19.5
-        default: return 29.0
+        default: return 9.5 + 10.0 * Double(max(1, stories) - 1)
         }
     }
 }

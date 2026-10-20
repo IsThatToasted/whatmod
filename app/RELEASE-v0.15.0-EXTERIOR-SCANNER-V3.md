@@ -80,3 +80,37 @@ swipe through every photo, "n of N" counter, tag/wall/time caption, Close button
 
 New files: `EvidenceGalleryView.swift`, `ScanFeatureFlags.swift`. Edited: `EstimatorView.swift` (video flag, gallery, label).
 Frozen auth/Supabase files remain byte-identical. Still not compiled by the author; send CI errors if any appear.
+
+---
+# v0.15.2 — Build 36 (large and tall facades)
+
+**Root cause of "move the crosshair closer to the ground":** marking a corner required the crosshair to hit the ground. That is
+impossible when you raise the phone or aim up at a tall wall, and ground rays become meaningless at long range. The scanner also
+had house-scale caps (ray range 90 m, wall height 45 ft, opening width 20 ft, 3 stories).
+
+**Marking corners without seeing the ground**
+- Mark Corner now falls back automatically to the wall surface at the crosshair when the ground is not hit.
+- Blocked menu rebuilt around big buildings: *Far corner · wall continues straight* and *Far corner · wall turns 90°* (aim at the
+  corner's vertical edge at ANY height; the ray is intersected with the wall's vertical plane, so the base is never needed),
+  *Wall surface at crosshair (near)*, *Stand at the corner · mark my position*, *Complete rectangle*.
+- Long-wall recipe: mark the near corner, walk 20-30 ft along the wall and mark a second base point, step back, aim at the far
+  corner's vertical edge, Blocked > Far corner. Collinear points are merged, so a 409 ft elevation is ONE wall.
+  Use **Finish with open footprint** when you only need one side (e.g. 49 ft x 409 ft).
+- A measured ground hit later replaces an estimated ground height and re-levels corners that were placed on the estimate.
+
+**Scale limits raised:** ray range 90 -> 700 m; far clip plane 2000 m; wall height 45 -> 250 ft; stories 1-3 -> 1-12 (default
+height 9.5 ft + 10 ft per extra story); windows up to 40 x 20 ft, roll-up/dock doors up to 32 x 16 ft; access factor adds
+a 0.7 tier to 40 ft and a 0.55 lift/swing-stage tier above it.
+
+**Long walls are swept, not seen at once**
+- Wall outlines and openings are clipped to the camera near plane, so a wall you stand next to still draws.
+- Detected openings are no longer discarded when you pan away; a miss only counts if the opening should be on screen.
+- Candidate chips show the ones nearest the crosshair first (up to 80 tracked per wall).
+- Aim readout shows distance and warns past 250 ft.
+
+**Database:** run `016_exterior_large_buildings.sql` (allows up to 12 stories in `exterior_scan_details`; 015 updated for fresh installs).
+
+**Honest limits at this scale:** AR tracking drift is roughly 1% of distance walked (about 4 ft over 409 ft) and a 0.1 degree aim
+error at 200 ft is about 0.4 ft. Closing the loop corrects drift; for a single 400 ft wall, mark both ends from the wall line
+rather than from far away and treat the confidence report as a guide. Vision opening detection is weakest on distant, small
+windows; use Opening (two taps) or Quick add for those. Not yet compiled or field-tested by the author.

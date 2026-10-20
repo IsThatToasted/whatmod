@@ -110,9 +110,11 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
     var trackingQuality = "Initializing"
     var trackingNormal = false
     var reticleEstimated = false
+    var reticleU: Double?
 
     @ObservationIgnored weak var sceneView: ARSCNView?
     @ObservationIgnored private var cameraTransform = matrix_identity_float4x4
+    @ObservationIgnored private var arCamera: ARCamera?
     @ObservationIgnored private var poseAtLastHUD = matrix_identity_float4x4
     @ObservationIgnored private var steady = false
     @ObservationIgnored private var groundY: Float?
@@ -142,6 +144,8 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         view.automaticallyUpdatesLighting = true
         view.scene = SCNScene()
         view.debugOptions = []
+        view.pointOfView?.camera?.zNear = 0.05
+        view.pointOfView?.camera?.zFar = 2000
         let config = ARWorldTrackingConfiguration()
         config.worldAlignment = .gravity
         config.planeDetection = [.horizontal]
@@ -182,10 +186,54 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
     }
 
     private func project(_ p: SIMD3<Float>) -> CGPoint? {
-        guard let v = sceneView, isInFront(p) else { return nil }
-        let s = v.projectPoint(SCNVector3(p.x, p.y, p.z))
-        guard s.z > 0, s.z < 1 else { return nil }
-        return CGPoint(x: CGFloat(s.x), y: CGFloat(s.y))
+        guard let v = sceneView, let cam = arCamera, isInFront(p) else { return nil }
+        return cam.projectPoint(p, orientation: interfaceOrientation(), viewportSize: v.bounds.size)
+    }
+
+    private func toCamera(_ p: SIMD3<Float>, inverse inv: simd_float4x4) -> SIMD3<Float> {
+        let q = inv * SIMD4<Float>(p.x, p.y, p.z, 1)
+        return SIMD3<Float>(q.x, q.y, q.z)
+    }
+
+    /// Projects a world polygon after clipping it to the camera's near plane, so a 400 ft wall you are standing next to
+    /// still draws the part that is in view instead of disappearing because one corner is behind you.
+    private func clippedPolygon(_ pts: [SIMD3<Float>]) -> [CGPoint]? {
+        guard pts.count >= 3 else { return nil }
+        let inv = simd_inverse(cameraTransform)
+        let cs = pts.map { toCamera($0, inverse: inv) }
+        let near: Float = -0.15   // camera space looks down -z
+        var out: [SIMD3<Float>] = []
+        for i in cs.indices {
+            let a = cs[i], b = cs[(i + 1) % cs.count]
+            let aIn = a.z < near, bIn = b.z < near
+            if aIn { out.append(a) }
+            if aIn != bIn {
+                let t = (near - a.z) / (b.z - a.z)
+                out.append(a + (b - a) * t)
+            }
+        }
+        guard out.count >= 3 else { return nil }
+        let pts2 = out.compactMap { cp -> CGPoint? in
+            let w = cameraTransform * SIMD4<Float>(cp.x, cp.y, cp.z, 1)
+            return project(SIMD3<Float>(w.x, w.y, w.z))
+        }
+        return pts2.count >= 3 ? pts2 : nil
+    }
+
+    private func clippedSegment(_ a: SIMD3<Float>, _ b: SIMD3<Float>) -> [CGPoint]? {
+        let inv = simd_inverse(cameraTransform)
+        var ca = toCamera(a, inverse: inv), cb = toCamera(b, inverse: inv)
+        let near: Float = -0.15
+        let aIn = ca.z < near, bIn = cb.z < near
+        if !aIn && !bIn { return nil }
+        if aIn != bIn {
+            let t = (near - ca.z) / (cb.z - ca.z)
+            let m = ca + (cb - ca) * t
+            if aIn { cb = m } else { ca = m }
+        }
+        let wa = cameraTransform * SIMD4<Float>(ca.x, ca.y, ca.z, 1), wb = cameraTransform * SIMD4<Float>(cb.x, cb.y, cb.z, 1)
+        guard let pa = project(SIMD3<Float>(wa.x, wa.y, wa.z)), let pb = project(SIMD3<Float>(wb.x, wb.y, wb.z)) else { return nil }
+        return [pa, pb]
     }
 
     /// Forgiving ground lock. Order: ARKit plane hits (measured) -> geometric intersection with the ground height we
@@ -203,11 +251,11 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
             if let gy = groundY, !groundAssumed, abs(c.y - gy) > 1.2 { continue }
             return (SIMD3<Float>(c.x, c.y, c.z), false)
         }
-        guard let r = rayFor(p), r.dir.y < -0.015 else { return nil }
+        guard let r = rayFor(p), r.dir.y < -0.006 else { return nil }
         let known = groundY != nil
         let gy = groundY ?? (eye.y - 1.45)
         let t = (gy - r.origin.y) / r.dir.y
-        guard t > 0.3, t < 120 else { return nil }
+        guard t > 0.3, t < 400 else { return nil }
         return (r.origin + r.dir * t, !known || groundAssumed)
     }
 
@@ -224,7 +272,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         for i in walls.indices {
             guard let f = frameFor(i), let hit = f.intersect(origin: r.origin, direction: r.dir) else { continue }
             let l = f.local(hit.point)
-            guard l.u > -0.5, l.u < f.lengthMeters + 0.5, l.v > -0.7, l.v < 25 else { continue }
+            guard l.u > -0.5, l.u < f.lengthMeters + 0.5, l.v > -0.7, l.v < 90 else { continue }
             if hit.t < bestT { bestT = hit.t; bestIndex = i }
         }
         return bestIndex
@@ -236,12 +284,12 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
     // MARK: Footprint
 
     func setStories(_ n: Int) {
-        inputs.stories = max(1, min(3, n))
+        inputs.stories = max(1, min(12, n))
         let h = ExteriorDefaults.assumedEaveHeightFeet(stories: inputs.stories)
         for i in walls.indices where !walls[i].heightMeasured { walls[i].heightFeet = h }
     }
 
-    enum CornerAssumption { case wallSurface, square, straight }
+    enum CornerAssumption { case wallSurface, square, straight, myPosition }
 
     func markCorner() { placeCorner(assumption: nil) }
 
@@ -256,21 +304,16 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
             guard let r = rayFor(viewCenter) else { return }
             switch assumption {
             case .wallSurface:
-                var found: SIMD3<Float>?
-                let targets: [ARRaycastQuery.Target] = [.existingPlaneInfinite, .estimatedPlane]
-                if let v = sceneView {
-                    for target in targets where found == nil {
-                        if let q = v.raycastQuery(from: viewCenter, allowing: target, alignment: .vertical), let hit = v.session.raycast(q).first {
-                            let c = hit.worldTransform.columns.3
-                            found = SIMD3<Float>(c.x, groundY ?? c.y, c.z)
-                        }
-                    }
-                }
-                guard let f = found else {
-                    status = "No wall surface found there. Move closer, or use Square to previous wall."
+                guard let f = wallSurfacePoint() else {
+                    status = "No wall surface found there (surface detection reaches about 15 ft). Use a Far corner option instead."
                     return
                 }
                 point = f
+                assumed = groundY == nil
+            case .myPosition:
+                let cp = cameraPosition
+                point = SIMD3<Float>(cp.x, groundY ?? (cp.y - 1.45), cp.z)
+                assumed = true
             case .square, .straight:
                 guard corners.count >= 2 else { status = "Mark at least two corners first so the app knows the wall direction."; return }
                 let last = corners[corners.count - 1], prev = corners[corners.count - 2]
@@ -286,21 +329,28 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
                     return
                 }
                 let t = simd_dot(last - r.origin, n) / denom
-                guard t > 0.5, t < 120 else { status = "Aim at the vertical corner edge you want to place."; return }
+                guard t > 0.5, t < 400 else { status = "Aim at the vertical corner edge you want to place."; return }
                 let hit = r.origin + r.dir * t
                 point = SIMD3<Float>(hit.x, last.y, hit.z)
                 assumed = true
             }
         } else {
-            guard let g = groundHit(at: viewCenter) else {
-                status = "Tilt the phone down so the crosshair is on the ground, or use Blocked if the base is hidden."
+            if let g = groundHit(at: viewCenter) {
+                point = g.point
+                assumed = g.estimated
+                if !g.estimated, groundAssumed { refineGround(to: point.y) }
+            } else if let f = wallSurfacePoint() {
+                // Aiming above the ground (tall wall, distant corner): use the wall surface at the crosshair instead.
+                point = f
+                assumed = groundY == nil
+            } else {
+                status = corners.count >= 2
+                    ? "Crosshair is not on the ground or a detected wall. For a far or tall corner, aim at its vertical edge and use Blocked > Far corner."
+                    : "Crosshair is not on the ground or a detected wall. Stand at the corner and use Blocked > Mark my position, or tilt down to the base."
                 return
             }
-            point = g.point
-            assumed = g.estimated
-            if !g.estimated, groundAssumed { groundAssumed = false; groundY = point.y }
         }
-        if groundY == nil { groundY = point.y; groundAssumed = assumed && assumption == nil }
+        if groundY == nil { groundY = point.y; groundAssumed = assumed }
         if corners.count >= 3, ExteriorGeometry.distanceXZ(point, corners[0]) < 1.5 {
             closeLoop(measuredStart: point)
             return
@@ -315,9 +365,29 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         let flag = assumed ? " Placed by assumption, so it is flagged for review." : ""
         switch corners.count {
         case 1: status = "Corner 1 locked. Walk to the next corner and mark it. Re-marking Corner 1 at the end closes the loop and corrects drift." + flag
-        case 2: status = "Wall 1 defined. Keep going around, or tap Finish if you only need this wall." + flag
+        case 2: status = "Wall 1 defined. Long wall? Step back, aim at the far corner's vertical edge at any height and use Blocked > Far corner. Otherwise keep going around." + flag
         default: status = "Corner \(corners.count) locked. Aim back at Corner 1 to close the loop automatically." + flag
         }
+    }
+
+    /// Vertical surface at the crosshair (ARKit plane). Height is forced to the ground level so base heights stay consistent.
+    private func wallSurfacePoint() -> SIMD3<Float>? {
+        guard let v = sceneView else { return nil }
+        let targets: [ARRaycastQuery.Target] = [.existingPlaneInfinite, .estimatedPlane]
+        for target in targets {
+            if let q = v.raycastQuery(from: viewCenter, allowing: target, alignment: .vertical), let hit = v.session.raycast(q).first {
+                let c = hit.worldTransform.columns.3
+                return SIMD3<Float>(c.x, groundY ?? (cameraPosition.y - 1.45), c.z)
+            }
+        }
+        return nil
+    }
+
+    /// A measured ground hit replaces an earlier estimated ground height, and corners placed on the estimate follow it.
+    private func refineGround(to y: Float) {
+        groundY = y
+        groundAssumed = false
+        for i in corners.indices where i < cornerAssumed.count && cornerAssumed[i] { corners[i].y = y }
     }
 
     /// Three corners of a rectangular building are enough: the fourth is c0 + c2 - c1.
@@ -368,7 +438,29 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         finishFootprint()
     }
 
+    /// Drops vertices where the wall continues straight (a baseline "direction point" on a long facade), so a 400 ft
+    /// elevation is one wall instead of several.
+    private func mergeCollinearCorners() {
+        var changed = true
+        while changed {
+            changed = false
+            let n = corners.count
+            if (loopClosed && n <= 3) || (!loopClosed && n <= 2) { return }
+            let range: Range<Int> = loopClosed ? 0..<n : 1..<(n - 1)
+            for k in range {
+                let prev = corners[(k + n - 1) % n], cur = corners[k], next = corners[(k + 1) % n]
+                if abs(ExteriorGeometry.cornerAngleDegrees(prev, cur, next) - 180) < 4 {
+                    corners.remove(at: k)
+                    if k < cornerAssumed.count { cornerAssumed.remove(at: k) }
+                    changed = true
+                    break
+                }
+            }
+        }
+    }
+
     private func finishFootprint() {
+        mergeCollinearCorners()
         squaredUp = false
         if loopClosed, let sq = ExteriorGeometry.squaredUp(corners) {
             corners = sq
@@ -426,11 +518,11 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         pinnedWallIndex = (pinnedWallIndex == index) ? nil : index
     }
 
-    private func hitOnActiveWall() -> (index: Int, frame: WallFrame, u: Double, v: Double)? {
+    private func hitOnActiveWall() -> (index: Int, frame: WallFrame, u: Double, v: Double, range: Double)? {
         guard let idx = activeWallIndex, let f = frameFor(idx), let r = rayFor(viewCenter),
               let hit = f.intersect(origin: r.origin, direction: r.dir) else { return nil }
         let l = f.local(hit.point)
-        return (idx, f, feet(l.u), feet(l.v))
+        return (idx, f, feet(l.u), feet(l.v), feet(hit.t))
     }
 
     func commitPrimaryAction() {
@@ -445,7 +537,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
 
     private func commitHeight() {
         guard let h = hitOnActiveWall() else { status = "Aim at the wall you are measuring."; return }
-        guard h.v >= 2, h.v <= 45 else { status = "That height looks wrong. Aim at the eave line of this wall."; return }
+        guard h.v >= 2, h.v <= 250 else { status = "That height looks wrong. Aim at the eave line of this wall."; return }
         walls[h.index].heightFeet = h.v
         walls[h.index].heightMeasured = true
         // Until measured, other walls assume the same eave. Better than the story guess, and still flagged as assumed.
@@ -583,6 +675,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
 
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         cameraTransform = frame.camera.transform
+        arCamera = frame.camera
         totalFrames += 1
         var quality = "Tracking locked"
         var normal = true
@@ -629,8 +722,8 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
                 if let last = corners.last {
                     let d = String(format: "%.1f ft from last corner", feet(ExteriorGeometry.distanceXZ(p, last)))
                     reticleReadout = g.estimated ? d + " · estimated ground" : d
-                    if let a = project(last), let b = project(p) {
-                        shapes.append(ExteriorOverlayShape(id: "rubber", points: [a, b], closed: false, style: .pending, label: nil))
+                    if let seg = clippedSegment(last, p) {
+                        shapes.append(ExteriorOverlayShape(id: "rubber", points: seg, closed: false, style: .pending, label: nil))
                     }
                 } else {
                     reticleReadout = g.estimated ? "Estimated ground. Tap to start here." : "Ground locked. Aim at the first corner."
@@ -638,7 +731,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
             } else {
                 reticleActive = false
                 reticleEstimated = false
-                reticleReadout = "Tilt down to the ground, or use Blocked"
+                reticleReadout = corners.count >= 2 ? "Not on ground · use Blocked > Far corner" : "Not on ground · use Blocked"
             }
         case .walls:
             var focus: Int?
@@ -648,13 +741,15 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
                 shapes.append(contentsOf: wallShapes(index: idx, frame: f))
                 reticleActive = true
                 if let h = hitOnActiveWall() {
-                    reticleReadout = readout(for: h.index, u: h.u, v: h.v)
+                    reticleU = h.u
+                    reticleReadout = readout(for: h.index, u: h.u, v: h.v, range: h.range)
                     if let p = pendingOpeningCorner, p.wallIndex == idx {
                         if let pts = rect(frame: f, u0: min(p.u, h.u), v0: min(p.v, h.v), u1: max(p.u, h.u), v1: max(p.v, h.v)) {
                             shapes.append(ExteriorOverlayShape(id: "pending", points: pts, closed: true, style: .pending, label: nil))
                         }
                     }
                 } else {
+                    reticleU = nil
                     reticleReadout = "\(walls[idx].label) · aim at the wall"
                 }
             } else {
@@ -665,7 +760,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         overlay = shapes
     }
 
-    private func readout(for idx: Int, u: Double, v: Double) -> String {
+    private func readout(for idx: Int, u: Double, v: Double, range: Double) -> String {
         let w = walls[idx]
         switch tool {
         case .height: return String(format: "Height here %.1f ft", v)
@@ -675,26 +770,28 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
             return String(format: "%.1f ft along · %.1f ft up", u, v)
         case .aim:
             let assumed = w.heightMeasured ? "" : " (assumed)"
-            return String(format: "%@ · %.0f ft long · %.1f ft high", w.label, w.lengthFeet, w.heightFeet) + assumed
+            var text = String(format: "%@ · %.0f ft long · %.1f ft high", w.label, w.lengthFeet, w.heightFeet) + assumed
+            text += String(format: " · %.0f ft away", range)
+            if range > 250 { text += " · long range, accuracy drops" }
+            return text
         }
     }
 
     private func rect(frame f: WallFrame, u0: Double, v0: Double, u1: Double, v1: Double) -> [CGPoint]? {
         let pts = [f.world(u: meters(u0), v: meters(v0)), f.world(u: meters(u1), v: meters(v0)), f.world(u: meters(u1), v: meters(v1)), f.world(u: meters(u0), v: meters(v1))]
-        let projected = pts.compactMap { project($0) }
-        return projected.count == 4 ? projected : nil
+        return clippedPolygon(pts)
     }
 
     private func footprintShapes() -> [ExteriorOverlayShape] {
         var out: [ExteriorOverlayShape] = []
         for (i, c) in corners.enumerated() {
             if let p = project(c) { out.append(ExteriorOverlayShape(id: "corner-\(i)", points: [p], closed: false, style: .footprint, label: "\(i + 1)")) }
-            if i + 1 < corners.count, let a = project(c), let b = project(corners[i + 1]) {
-                out.append(ExteriorOverlayShape(id: "seg-\(i)", points: [a, b], closed: false, style: .footprint, label: nil))
+            if i + 1 < corners.count, let seg = clippedSegment(c, corners[i + 1]) {
+                out.append(ExteriorOverlayShape(id: "seg-\(i)", points: seg, closed: false, style: .footprint, label: nil))
             }
         }
-        if loopClosed, corners.count > 2, let a = project(corners[corners.count - 1]), let b = project(corners[0]) {
-            out.append(ExteriorOverlayShape(id: "seg-close", points: [a, b], closed: false, style: .footprint, label: nil))
+        if loopClosed, corners.count > 2, let seg = clippedSegment(corners[corners.count - 1], corners[0]) {
+            out.append(ExteriorOverlayShape(id: "seg-close", points: seg, closed: false, style: .footprint, label: nil))
         }
         return out
     }
@@ -706,8 +803,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         var outline = [f.world(u: 0, v: 0), f.world(u: L, v: 0), f.world(u: L, v: H)]
         if let rise = w.gableRiseFeet { outline.append(f.world(u: L / 2, v: H + meters(rise))) }
         outline.append(f.world(u: 0, v: H))
-        let pts = outline.compactMap { project($0) }
-        if pts.count == outline.count { out.append(ExteriorOverlayShape(id: "wall-\(index)", points: pts, closed: true, style: .wall, label: nil)) }
+        if let pts = clippedPolygon(outline) { out.append(ExteriorOverlayShape(id: "wall-\(index)", points: pts, closed: true, style: .wall, label: nil)) }
         for o in w.openings {
             if let r = rect(frame: f, u0: o.u0, v0: o.v0, u1: o.u1, v1: o.v1) {
                 let label = String(format: "%@ %.1f×%.1f", o.kind.rawValue, o.widthFeet, o.heightFeet)
@@ -751,7 +847,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
         request.maximumObservations = 16
         request.minimumAspectRatio = 0.15
         request.maximumAspectRatio = 1.0
-        request.minimumSize = 0.03
+        request.minimumSize = 0.015
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             // Raw sensor orientation. Corners are mapped through ARKit's displayTransform so they match what the user sees.
             let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
@@ -805,8 +901,13 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
             merge(rect: SIMD4<Double>(u0, v0, u1, v1), confidence: confidences[qi], wallIndex: wallIndex, touched: &touched)
         }
 
+        let viewBounds = sceneView?.bounds ?? .zero
         for id in Array(tracks.keys) {
             guard let t = tracks[id], t.wallIndex == wallIndex, !touched.contains(id) else { continue }
+            // Only count a miss if the opening should currently be on screen. Panning away is not a failed detection.
+            let m = t.fused
+            let center = f.world(u: meters((m[0] + m[2]) / 2), v: meters((m[1] + m[3]) / 2))
+            guard let sp = project(center), viewBounds.insetBy(dx: 20, dy: 20).contains(sp) else { continue }
             var updated = t
             updated.misses += 1
             if (updated.misses > 6 && updated.hits < 5) || updated.misses > 20 {
@@ -862,7 +963,7 @@ final class ExteriorSmartScanController: NSObject, ARSessionDelegate {
             out.append(ExteriorCandidate(id: t.id, wallIndex: wallIndex, u0: m[0], v0: m[1], u1: m[2], v1: m[3], kind: guess.kind, confidence: min(0.98, conf), hits: t.hits))
         }
         out.sort { $0.hits > $1.hits }
-        let top = Array(out.prefix(8))
+        let top = Array(out.prefix(80))
         candidates = top + candidates.filter { $0.wallIndex != wallIndex }
     }
 

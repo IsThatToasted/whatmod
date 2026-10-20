@@ -89,3 +89,4 @@ app/ios/AureliumField/Features/Estimator/ExteriorScanViews.swift
 app/supabase/migrations/015_exterior_scanner_v3.sql
 app/ios/AureliumField/Features/Estimator/EvidenceGalleryView.swift
 app/ios/AureliumField/Services/ScanFeatureFlags.swift
+app/supabase/migrations/016_exterior_large_buildings.sql

@@ -10,7 +10,7 @@ create table if not exists public.exterior_scan_details (
   walkthrough_id uuid not null references public.walkthrough_scans(id) on delete cascade,
   created_by uuid not null default auth.uid() references auth.users(id) on delete cascade,
   wall_count integer not null default 0,
-  stories integer not null default 1 check (stories between 1 and 3),
+  stories integer not null default 1 check (stories between 1 and 12),
   surface text not null default '',
   condition text not null default '',
   perimeter_ft double precision not null default 0,
