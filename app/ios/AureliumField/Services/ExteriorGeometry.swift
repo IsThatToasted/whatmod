@@ -169,6 +169,7 @@ struct ExteriorScanDetail: Codable, Hashable {
     var walls: [ExteriorWall]
     var trackingLimitedShare: Double
     var rejectedCandidateCount: Int
+    var assumedCorners: Int? = nil
 }
 
 // MARK: Wall coordinate frame
@@ -414,6 +415,10 @@ enum ExteriorConfidence {
         } else if !detail.loopClosed, walls.count > 1 {
             score -= 0.05
             reasons.append("Footprint left open (partial scan).")
+        }
+        if let a = detail.assumedCorners, a > 0 {
+            score -= min(0.2, 0.07 * Double(a))
+            reasons.append("\(a) corner\(a == 1 ? "" : "s") placed by assumption (estimated ground or perspective). Verify the footprint.")
         }
         if detail.squaredUp { reasons.append("Opposite sides averaged into a square footprint.") }
         if detail.trackingLimitedShare > 0.25 {

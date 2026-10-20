@@ -11,6 +11,7 @@ struct ExteriorSmartScanView: View {
     @State private var controller = ExteriorSmartScanController()
     @State private var showingReview = false
     @State private var confirmCancel = false
+    @State private var gallery: EvidenceGalleryItem?
 
     var body: some View {
         ZStack {
@@ -33,6 +34,7 @@ struct ExteriorSmartScanView: View {
             Button("Discard scan", role: .destructive) { controller.discardUnsavedMedia(); controller.stop(); onCancel() }
             Button("Keep scanning", role: .cancel) {}
         }
+        .fullScreenCover(item: $gallery) { EvidenceGalleryView(item: $0) }
         .onDisappear { controller.stop() }
     }
 
@@ -67,7 +69,7 @@ struct ExteriorSmartScanView: View {
     }
 
     private var reticle: some View {
-        let color: Color = controller.reticleActive ? .green : .white
+        let color: Color = controller.reticleActive ? (controller.reticleEstimated ? .orange : .green) : .white
         return ZStack {
             Circle().stroke(color, lineWidth: 2).frame(width: 34, height: 34)
             Rectangle().fill(color).frame(width: 2, height: 12).offset(y: -23)
@@ -161,7 +163,15 @@ struct ExteriorSmartScanView: View {
                     Text(controller.corners.isEmpty ? "Mark Corner 1" : "Mark Corner \(controller.corners.count + 1)")
                         .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                 }
-                .buttonStyle(.borderedProminent).tint(.green)
+                .buttonStyle(.borderedProminent).tint(controller.reticleEstimated ? .orange : .green)
+                Menu {
+                    Text("Base of the corner hidden? Aim at the vertical corner edge anywhere you can see it.")
+                    Button("Use wall surface at crosshair") { controller.markBlockedCorner(.wallSurface) }
+                    Button("Square to previous wall (perspective)") { controller.markBlockedCorner(.square) }.disabled(controller.corners.count < 2)
+                    Button("Straight along previous wall") { controller.markBlockedCorner(.straight) }.disabled(controller.corners.count < 2)
+                    Button("Complete rectangle (auto 4th corner)") { controller.completeRectangle() }.disabled(controller.corners.count != 3)
+                } label: { Text("Blocked").font(.subheadline.bold()).frame(width: 70, height: 44) }
+                .buttonStyle(.borderedProminent).tint(.black.opacity(0.65))
                 Menu {
                     Button("Close loop (back to Corner 1)") { controller.closeLoopManually() }.disabled(controller.corners.count < 3)
                     Button("Finish with open footprint") { controller.finishOpen() }.disabled(controller.corners.count < 2)
@@ -253,8 +263,14 @@ struct ExteriorSmartScanView: View {
                 Button("Undo last opening", role: .destructive) { controller.undoLastOpening() }
             } label: { toolLabel("Quick add", icon: "plus.rectangle.on.rectangle", active: false) }
             Menu {
-                Button("Elevation photo") { controller.capturePhoto(tag: .paint) }
-                Button("Damage / prep photo") { controller.capturePhoto(tag: .damage) }
+                Button("Photo · PAINT") { controller.capturePhoto(tag: .paint) }
+                Button("Photo · COVER") { controller.capturePhoto(tag: .cover) }
+                Button("Photo · DAMAGE") { controller.capturePhoto(tag: .damage) }
+                Button("Photo · DO NOT DISTURB") { controller.capturePhoto(tag: .doNotDisturb) }
+                Button("Photo · REMOVE") { controller.capturePhoto(tag: .remove) }
+                if !controller.captures.isEmpty {
+                    Button("View photos (\(controller.captures.count))") { gallery = controller.galleryItem }
+                }
                 Divider()
                 Button(controller.pinnedWallIndex == nil ? "Lock current wall" : "Unlock wall") { controller.togglePin() }
                 Button("Remove gable from wall", role: .destructive) { controller.removeGable() }
@@ -327,6 +343,7 @@ private struct ExteriorScanReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = "Exterior"
     @State private var notes = ""
+    @State private var gallery: EvidenceGalleryItem?
 
     private var take: ExteriorTakeoff { controller.takeoff }
     private var report: ExteriorConfidenceReport { ExteriorConfidence.evaluate(detail: controller.buildDetail()) }
@@ -346,6 +363,17 @@ private struct ExteriorScanReviewView: View {
                 }
                 Section("Evidence") {
                     Label("\(controller.captures.count) photo\(controller.captures.count == 1 ? "" : "s") attached", systemImage: "photo.on.rectangle")
+                    if !controller.captures.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(Array(controller.captures.enumerated()), id: \.element.id) { i, capture in
+                                    Button { gallery = EvidenceGalleryItem(captures: controller.captures, startIndex: i) } label: { EvidenceThumbnail(capture: capture) }
+                                        .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                    Text("3D model of the footprint, walls, gables and openings is generated on save.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Notes") {
                     TextField("Scan name", text: $name)
@@ -357,6 +385,7 @@ private struct ExteriorScanReviewView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
+            .fullScreenCover(item: $gallery) { EvidenceGalleryView(item: $0) }
             .navigationTitle("Review Exterior")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Back") { dismiss() } }
@@ -504,6 +533,21 @@ private struct ExteriorOpeningEditorRow: View {
             Toggle("Deduct from wall area", isOn: $opening.deduct)
             Text("\(opening.source) · confidence \(Int(opening.confidence * 100))%" + (opening.assumedSize ? " · standard size, not measured" : ""))
                 .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// Small tappable photo preview with its tag.
+struct EvidenceThumbnail: View {
+    let capture: TaggedCapture
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let data = try? Data(contentsOf: AppMediaStore.url(for: capture.imageFileName)), let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFill().frame(width: 96, height: 72).clipped().clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                RoundedRectangle(cornerRadius: 10).fill(.quaternary).frame(width: 96, height: 72)
+            }
+            Label(capture.tag.rawValue, systemImage: capture.tag.icon).font(.caption2.bold()).lineLimit(1)
         }
     }
 }

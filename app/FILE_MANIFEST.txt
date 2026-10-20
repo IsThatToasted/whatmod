@@ -87,3 +87,5 @@ app/ios/AureliumField/Services/ExteriorGeometry.swift
 app/ios/AureliumField/Services/ExteriorDetailCloudSync.swift
 app/ios/AureliumField/Features/Estimator/ExteriorScanViews.swift
 app/supabase/migrations/015_exterior_scanner_v3.sql
+app/ios/AureliumField/Features/Estimator/EvidenceGalleryView.swift
+app/ios/AureliumField/Services/ScanFeatureFlags.swift

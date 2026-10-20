@@ -49,3 +49,34 @@ Run only `015_exterior_scanner_v3.sql` after 014.
 Not yet compiled or field-tested by the author. Run the CI build and test on a real house before relying on numbers.
 Heights/openings are only as good as ARKit tracking; wall corners hidden by shrubs need aiming at the vertical corner edge.
 Curved or non-planar walls are not modeled. Interior Smart Scanner and Blueprint Estimate unchanged.
+
+---
+# v0.15.1 — Build 35 (scanner feedback pass)
+
+**Ground detection is no longer "tight".** The crosshair now falls back in three steps: ARKit plane hits (existing or
+estimated) -> geometric intersection with the ground height already learned -> an *estimated* ground at typical hand-held
+height, so you can always start a corner where you want. Estimated ground shows an orange crosshair and orange Mark button
+and the corner is flagged in the confidence report. Decks/porches far from the known ground level are ignored as "ground".
+
+**Blocked corners (bushes, steps, cars).** New **Blocked** menu beside Mark Corner:
+- *Use wall surface at crosshair*: aim at the vertical corner edge anywhere you can see it.
+- *Square to previous wall (perspective)*: the crosshair ray is intersected with the vertical plane the next wall must lie
+  in, so the hidden base never has to be seen.
+- *Straight along previous wall*: same idea for a collinear wall.
+- *Complete rectangle (auto 4th corner)*: after 3 corners, the 4th is computed and the loop closes.
+Assumed corners are counted in the scan confidence and saved in the scan detail.
+
+**3D model of the exterior.** On save, a USDZ (ground footprint, walls, gables, color-coded windows/doors/garage doors) is
+generated from the measured geometry and stored in the same slot as the interior model, so "Open saved 3D model", cloud
+upload and deletion all work with no sync changes. If SceneKit cannot write the file the scan still saves without a model.
+This is a simple massing model, not a photoreal or LiDAR-mesh capture.
+
+**Video hidden.** `ScanFeatureFlags.walkthroughVideo = false` stops interior recording, hides the status text, the player
+and the "Video unavailable" box. Flip the flag to bring it back later. Existing recordings are untouched.
+
+**Photo gallery.** Tagged photos (PAINT, COVER, DAMAGE, DO NOT DISTURB, REMOVE) are tappable in the walkthrough review,
+the exterior review (thumbnail strip) and the scanner (More > View photos). Full-screen viewer: pinch or double-tap to zoom,
+swipe through every photo, "n of N" counter, tag/wall/time caption, Close button. The exterior More menu now has all five tags.
+
+New files: `EvidenceGalleryView.swift`, `ScanFeatureFlags.swift`. Edited: `EstimatorView.swift` (video flag, gallery, label).
+Frozen auth/Supabase files remain byte-identical. Still not compiled by the author; send CI errors if any appear.

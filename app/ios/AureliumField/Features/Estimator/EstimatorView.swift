@@ -151,7 +151,7 @@ struct EstimatorView: View {
                 ForEach(scans) { scan in
                     NavigationLink { WalkthroughReviewView(walkthrough: scan) } label: {
                         HStack(spacing: 12) {
-                            ZStack { RoundedRectangle(cornerRadius: 12).fill(.primary.opacity(0.08)); Image(systemName: scan.videoFileName == nil ? "cube.transparent" : "play.rectangle.fill").font(.title3) }.frame(width: 52, height: 52)
+                            ZStack { RoundedRectangle(cornerRadius: 12).fill(.primary.opacity(0.08)); Image(systemName: (scan.videoFileName == nil || !ScanFeatureFlags.walkthroughVideo) ? "cube.transparent" : "play.rectangle.fill").font(.title3) }.frame(width: 52, height: 52)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(scan.room.name).font(.headline)
                                 Text(scan.createdAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
@@ -468,7 +468,7 @@ private struct SmartScanExperience: View {
             .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 10)
         }
         .task {
-            await recorder.start(controller: controller)
+            if ScanFeatureFlags.walkthroughVideo { await recorder.start(controller: controller) }
             if await speech.requestPermission() { try? speech.start() }
         }
         .sheet(isPresented: $showingEstimateConfirm) {
@@ -498,7 +498,9 @@ private struct SmartScanExperience: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(project.name).font(.subheadline.bold()).lineLimit(1)
                 Text("SMART WALKTHROUGH · \(captures.count) TAGS").font(.caption2.bold()).opacity(0.76)
-                if let warning = recorder.errorMessage {
+                if !ScanFeatureFlags.walkthroughVideo {
+                    EmptyView()
+                } else if let warning = recorder.errorMessage {
                     Text("VIDEO OPTIONAL · UNAVAILABLE").font(.caption2.bold()).foregroundStyle(.yellow)
                         .accessibilityLabel(warning)
                 } else {
@@ -560,7 +562,8 @@ private struct SmartScanExperience: View {
     }
 
     private func finalize(room: CapturedRoom) async {
-        let recording = await recorder.stop()
+        var recording: (fileName: String?, duration: Double?) = (nil, nil)
+        if ScanFeatureFlags.walkthroughVideo { recording = await recorder.stop() }
         let scanID = UUID()
         let summary = CapturedRoomSummary(id: UUID(), name: suggestedRoomName, wallCount: room.walls.count, doorCount: room.doors.count, windowCount: room.windows.count, source: .roomPlan, verificationRequired: true)
 
@@ -624,21 +627,24 @@ private struct WalkthroughReviewView: View {
     @Environment(\.dismiss) private var dismiss
     let walkthrough: WalkthroughScan
     @State private var deleting = false
+    @State private var gallery: EvidenceGalleryItem?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                if let fileName = walkthrough.videoFileName {
-                    let url = AppMediaStore.url(for: fileName)
-                    VideoPlayer(player: AVPlayer(url: url)).frame(height: 260).clipShape(RoundedRectangle(cornerRadius: 18))
-                } else {
-                    ContentUnavailableView("Video unavailable", systemImage: "video.slash", description: Text("The spatial scan data is still available below."))
-                        .frame(height: 220).background(.quaternary, in: RoundedRectangle(cornerRadius: 18))
+                if ScanFeatureFlags.walkthroughVideo {
+                    if let fileName = walkthrough.videoFileName {
+                        let url = AppMediaStore.url(for: fileName)
+                        VideoPlayer(player: AVPlayer(url: url)).frame(height: 260).clipShape(RoundedRectangle(cornerRadius: 18))
+                    } else {
+                        ContentUnavailableView("Video unavailable", systemImage: "video.slash", description: Text("The spatial scan data is still available below."))
+                            .frame(height: 220).background(.quaternary, in: RoundedRectangle(cornerRadius: 18))
+                    }
                 }
 
                 if let modelFile = walkthrough.usdzFileName {
                     NavigationLink { RoomModelPreview(url: AppMediaStore.url(for: modelFile)) } label: {
-                        Label("Open saved 3D room model", systemImage: "cube.transparent.fill")
+                        Label("Open saved 3D model", systemImage: "cube.transparent.fill")
                             .font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(14)
                             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                     }.buttonStyle(.plain)
@@ -695,13 +701,16 @@ private struct WalkthroughReviewView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Tagged evidence").font(.headline)
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 10)], spacing: 10) {
-                            ForEach(walkthrough.captures) { capture in
-                                VStack(alignment: .leading, spacing: 7) {
-                                    if let data = try? Data(contentsOf: AppMediaStore.url(for: capture.imageFileName)), let uiImage = UIImage(data: data) {
-                                        Image(uiImage: uiImage).resizable().scaledToFill().frame(height: 120).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
-                                    }
-                                    Label(capture.tag.rawValue, systemImage: capture.tag.icon).font(.caption.bold())
-                                }.padding(8).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                            ForEach(Array(walkthrough.captures.enumerated()), id: \.element.id) { index, capture in
+                                Button { gallery = EvidenceGalleryItem(captures: walkthrough.captures, startIndex: index) } label: {
+                                    VStack(alignment: .leading, spacing: 7) {
+                                        if let data = try? Data(contentsOf: AppMediaStore.url(for: capture.imageFileName)), let uiImage = UIImage(data: data) {
+                                            Image(uiImage: uiImage).resizable().scaledToFill().frame(height: 120).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
+                                        }
+                                        Label(capture.tag.rawValue, systemImage: capture.tag.icon).font(.caption.bold())
+                                        if let note = capture.note, !note.isEmpty { Text(note).font(.caption2).foregroundStyle(.secondary) }
+                                    }.padding(8).frame(maxWidth: .infinity, alignment: .leading).background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                                }.buttonStyle(.plain)
                             }
                         }
                     }
@@ -712,6 +721,7 @@ private struct WalkthroughReviewView: View {
         }
         .navigationTitle("Scan Review")
         .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(item: $gallery) { EvidenceGalleryView(item: $0) }
         .confirmationDialog("Delete this walkthrough?", isPresented: $deleting, titleVisibility: .visible) {
             Button("Delete Walkthrough", role: .destructive) { model.deleteWalkthrough(walkthrough); dismiss() }
         } message: { Text("Its local scan video and tagged photos will also be removed.") }
