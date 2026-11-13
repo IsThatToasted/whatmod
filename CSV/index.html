@@ -6,6 +6,9 @@
 <title>Whatnot Purchase Dashboard</title>
 
 <link rel="stylesheet" href="styles.css">
+<style>
+:root{color-scheme:dark;--text:#e8eefc;--muted:#9fb0d0;--panel:#101827;--line:#253247;--accent:#35d6ff}*{box-sizing:border-box}body{margin:0;background:#0b0f16;color:var(--text);font:14px system-ui,-apple-system,Segoe UI,Arial} .wrap{max-width:1600px;margin:auto;padding:24px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}h1{font-size:27px;margin:0 0 5px}h2{font-size:17px;margin:0 0 12px}.subtitle,.muted,.sub{color:var(--muted)}.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:14px;margin-bottom:18px}.control,.panel,.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}.control label{display:block;color:var(--muted);font-weight:600;margin-bottom:8px}.control input,.control select{background:#0b1220;color:var(--text);border:1px solid #34445e;border-radius:9px;padding:10px;width:100%;min-width:0}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.btn{background:#1d2a3d;color:var(--text);border:1px solid #34445e;border-radius:9px;padding:9px 12px;cursor:pointer;font-weight:600}.btn:hover{background:#293e5b}.btn.primary{background:#126b8c}.btn.bad{background:#48202c}.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin:20px 0}.kpi .label{color:var(--muted);font-size:12px}.kpi .value{font-size:25px;font-weight:800;margin:9px 0}.kpi .sub{font-size:12px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.tab{border:1px solid var(--line);border-radius:9px;padding:10px 15px;cursor:pointer;background:#142033}.tab.active{background:#165d79;border-color:#168db7}.panel{margin-bottom:12px}.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,450px),1fr));gap:14px}.grid2 canvas{max-width:100%;height:auto}.tableWrap{width:100%;overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:10px}table{border-collapse:separate;border-spacing:0;table-layout:fixed;min-width:max-content;width:100%;font-size:13px}th,td{padding:11px 12px;border-bottom:1px solid #253247;max-width:350px;text-align:left;vertical-align:top;overflow:hidden}th{background:#19263a;position:sticky;top:0;z-index:2;white-space:nowrap}td{background:#101827}tr:hover td{background:#17243a}.stickyCol,.stickyCol2{position:sticky;left:0;z-index:1;box-shadow:1px 0 #263247}th.stickyCol,th.stickyCol2{z-index:4}.cell-ellipsis{white-space:nowrap;text-overflow:ellipsis}.cell-clamp,.cell-clamp-2{overflow-wrap:anywhere}.cell-clamp-2{display:table-cell}.cellEditing{overflow:visible}.cellInput,.cellTextarea{width:100%;padding:7px;border:1px solid #35d6ff;border-radius:6px;background:#071421;color:white}.pill{display:flex;align-items:center;gap:9px;padding:10px 14px;border:1px solid var(--line);border-radius:25px;background:#142033}.dot,.miniDot{width:9px;height:9px;border-radius:50%;display:inline-block;background:#8194b5}.dot.good,.miniDot.good{background:#45d59a}.dot.warn{background:#f2c56e}.dot.bad{background:#e87272}.chip{background:#1d2a3d;border-radius:20px;padding:6px 11px;display:inline-flex;align-items:center;gap:8px}.badRow td{background:#301b26}@media(max-width:650px){.wrap{padding:10px}h1{font-size:22px}.kpi .value{font-size:21px}}
+</style>
 </head>
 
 <body>
@@ -87,6 +90,21 @@
         <div class="label">Average order</div>
         <div class="value" id="kpiAvg">$0.00</div>
         <div class="sub" id="kpiAvgSub">—</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Products subtotal</div>
+        <div class="value" id="kpiItems">$0.00</div>
+        <div class="sub">Item prices before shipping and tax</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Shipping paid</div>
+        <div class="value" id="kpiShipping">$0.00</div>
+        <div class="sub">Shipping on filtered purchases</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Tax paid</div>
+        <div class="value" id="kpiTax">$0.00</div>
+        <div class="sub">Sales tax on filtered purchases</div>
       </div>
       <div class="kpi">
         <div class="label">Bad rows</div>
@@ -221,7 +239,7 @@ function escapeHtml(str){
 /* ---------------------------
    Column detection (more robust across different CSV formats)
 ---------------------------- */
-let COL = { total: null, seller: null, date: null, category: null, buyer: null, product: null };
+let COL = { total: null, seller: null, date: null, category: null, buyer: null, product: null, itemPrice: null, shipping: null, tax: null, subtotal: null };
 
 function norm(s){ return String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g,""); }
 
@@ -252,6 +270,12 @@ function detectColumns(){
     findIncludes(["total"]) ||
     findIncludes(["amount"]) ||
     null;
+
+  // Whatnot export: keep each component separate from the final order total.
+  COL.itemPrice = findAny(["sold price", "item price", "unit price", "product price", "sale price"]);
+  COL.shipping = findAny(["shipping price", "shipping cost", "shipping paid", "shipping amount", "shipping"]);
+  COL.tax = findAny(["taxes", "sales tax", "tax amount", "tax"]);
+  COL.subtotal = findAny(["subtotal", "items subtotal", "item subtotal"]);
 
   // Seller
   COL.seller =
@@ -352,6 +376,26 @@ function parseDateFlexible(v){
   return null;
 }
 
+function updateAmounts(row){
+  row._itemPrice = COL.itemPrice ? cleanMoney(row[COL.itemPrice]) : null;
+  row._subtotal = COL.subtotal ? cleanMoney(row[COL.subtotal]) : null;
+  row._shipping = COL.shipping ? cleanMoney(row[COL.shipping]) : null;
+  row._tax = COL.tax ? cleanMoney(row[COL.tax]) : null;
+  // Prefer the actual item subtotal to avoid confusing unit prices with order totals.
+  row._itemsTotal = row._subtotal ?? ((row._itemPrice ?? 0) * (Number(row.quantity) || 1));
+}
+
+function purchaseColumns(){
+  const front = [COL.date, COL.seller, COL.product, COL.itemPrice, COL.shipping,
+                 COL.tax, COL.total, COL.subtotal, "quantity"];
+  const picked = [];
+  for(const col of front){
+    const exact = headers.find(h => h === col);
+    if(exact && !picked.includes(exact)) picked.push(exact);
+  }
+  return picked.concat(headers.filter(h => !picked.includes(h)));
+}
+
 /* ---------------------------
    Row key (Option A)
 ---------------------------- */
@@ -400,7 +444,7 @@ cmmHiKjpNVXfbcLX64hGPWk,788044305,isthattoasted,aromafragrance,"Crazy night show
 $("clearBtn").addEventListener("click", ()=>{
   headers = []; goodRows = []; badRows = [];
   ROW_KEY = null;
-  COL = { total: null, seller: null, date: null, category: null, buyer: null, product: null };
+  COL = { total: null, seller: null, date: null, category: null, buyer: null, product: null, itemPrice: null, shipping: null, tax: null, subtotal: null };
   $("csvFile").value = "";
   $("searchInput").value = "";
   $("sellerFilter").innerHTML = `<option value="">All sellers</option>`;
@@ -409,6 +453,7 @@ $("clearBtn").addEventListener("click", ()=>{
   $("toggleBadBtn").innerText = "Hide bad rows";
   $("toggleGroupedBtn").innerText = "Grouped view: ON";
   localStorage.removeItem("whatnot_dashboard_edits_v1");
+  localStorage.removeItem("whatnot_dashboard_edits_v2");
   renderAll();
   setStatus("", "No CSV loaded");
 });
@@ -454,6 +499,7 @@ function processCSV(text){
       badRows.push(obj);
     } else {
       obj._price = price;
+      updateAmounts(obj);
       obj._seller = seller;
       obj._searchBlob = headers.map(h=> String(obj[h] ?? "").toLowerCase()).join(" | ");
       goodRows.push(obj);
@@ -565,7 +611,9 @@ function renderSmartTable(containerId, rows, columns, opts={}){
     return `<tr>` + specs.map((s, idxCol)=>{
       const idx = idxCol; // for sticky logic
       const raw = r[s.c] ?? "";
-      const txt = String(raw);
+      const txt = String(raw).trim() !== "" && [COL.itemPrice, COL.shipping, COL.tax, COL.total, COL.subtotal].includes(s.c)
+         ? (cleanMoney(raw) === null ? String(raw) : money(cleanMoney(raw)))
+         : String(raw);
       const title = escapeHtml(txt);
       const stickyClass = (idx < stickyCols) ? (idx===0 ? "stickyCol" : "stickyCol2") : "";
       const leftStyle = (idx===1 && stickyCols>1) ? `left:${left2}px;` : "";
@@ -907,6 +955,9 @@ function updateDashboardCharts(filtered){
 
   let insights = `<div style="display:flex;flex-direction:column;gap:8px;">`;
   insights += `<div>• <strong>Total:</strong> ${money(total)} • <strong>Avg order:</strong> ${money(avg)}</div>`;
+  if(COL.itemPrice || COL.subtotal) insights += `<div>• <strong>Products:</strong> ${money(filtered.reduce((a,r)=>a+(r._itemsTotal??0),0))}</div>`;
+  if(COL.shipping) insights += `<div>• <strong>Shipping:</strong> ${money(filtered.reduce((a,r)=>a+(r._shipping??0),0))}</div>`;
+  if(COL.tax) insights += `<div>• <strong>Tax:</strong> ${money(filtered.reduce((a,r)=>a+(r._tax??0),0))}</div>`;
   insights += topSeller ? `<div>• <strong>Top seller:</strong> ${escapeHtml(topSeller.label)} (${money(topSeller.value)})</div>` : "";
   insights += topCat ? `<div>• <strong>Top category:</strong> ${escapeHtml(topCat.label)} (${money(topCat.value)})</div>` : "";
   insights += maxOrder ? `<div>• <strong>Largest order:</strong> ${money(maxOrder._price)}${COL.seller ? ` from ${escapeHtml(maxOrder._seller)}` : ""}</div>` : "";
@@ -999,6 +1050,12 @@ function renderAll(){
   $("kpiSellers").innerText = sellerCount.toLocaleString();
   $("kpiAvg").innerText = money(avg);
   $("kpiBad").innerText = badRows.length.toLocaleString();
+  $("kpiItems").innerText = COL.itemPrice || COL.subtotal
+    ? money(filtered.reduce((s,r) => s + (r._itemsTotal ?? 0), 0)) : "—";
+  $("kpiShipping").innerText = COL.shipping
+    ? money(filtered.reduce((s,r) => s + (r._shipping ?? 0), 0)) : "—";
+  $("kpiTax").innerText = COL.tax
+    ? money(filtered.reduce((s,r) => s + (r._tax ?? 0), 0)) : "—";
 
   $("kpiTotalSub").innerText = headers.length ? `Across ${filtered.length} filtered orders` : "Load a CSV to begin";
   $("kpiOrdersSub").innerText = headers.length ? `From ${sellerCount} sellers` : "—";
@@ -1006,7 +1063,7 @@ function renderAll(){
   $("kpiAvgSub").innerText = headers.length ? `Based on filtered orders` : "—";
 
   $("purchasesMeta").innerText = headers.length
-    ? `Showing ${filtered.length} of ${goodRows.length} valid rows. ${badRows.length} problem rows.`
+    ? `Showing ${filtered.length} of ${goodRows.length} valid rows. ${badRows.length} problem rows. Product price and shipping are displayed near the start of each row.`
     : "Load a CSV to see your orders.";
 
   $("badMeta").innerText = headers.length
@@ -1025,7 +1082,7 @@ function renderAll(){
   } else if(!filtered.length){
     $("mainTable").innerHTML = `<div class="muted">No rows match your filters.</div>`;
   } else {
-    renderSmartTable("mainTable", filtered, headers, { stickyCols: 2 });
+    renderSmartTable("mainTable", filtered, purchaseColumns(), { stickyCols: 2 });
   }
 
   renderBadTable();
@@ -1141,7 +1198,7 @@ function renderGrouped(rows){
 
   sellers.forEach(s=>{
     const safeId = "grp_" + s.replace(/[^a-zA-Z0-9]/g,'_');
-    renderSmartTable(safeId, groups[s], headers, { stickyCols: 2 });
+    renderSmartTable(safeId, groups[s], purchaseColumns(), { stickyCols: 2 });
   });
 }
 
@@ -1192,7 +1249,7 @@ function enableInlineEditing(){
     const colIdx = Number(td.getAttribute("data-col-idx"));
     if(!rowkey || !Number.isFinite(colIdx)) return;
 
-    const col = headers[colIdx];
+    const col = purchaseColumns()[colIdx];
     if(!col) return;
 
     const baseRow = findGoodRowByKey(rowkey);
@@ -1239,6 +1296,7 @@ function startEdit(td, baseRow, col){
       baseRow._category = String(newVal).trim() || "Uncategorized";
     }
 
+    updateAmounts(baseRow);
     baseRow._searchBlob = headers.map(h=> String(baseRow[h] ?? "").toLowerCase()).join(" | ");
 
     persistEditsToLocalStorage();
@@ -1269,16 +1327,17 @@ function persistEditsToLocalStorage(){
     map[key] = {};
     headers.forEach(h => map[key][h] = (r[h] ?? ""));
   });
-  localStorage.setItem("whatnot_dashboard_edits_v1", JSON.stringify({ rowKey: ROW_KEY, data: map }));
+  localStorage.setItem("whatnot_dashboard_edits_v2", JSON.stringify({ rowKey: ROW_KEY, columns: headers, data: map }));
 }
 
 function restoreEditsFromLocalStorage(){
-  const raw = localStorage.getItem("whatnot_dashboard_edits_v1");
+  const raw = localStorage.getItem("whatnot_dashboard_edits_v2");
   if(!raw) return;
 
   try{
     const parsed = JSON.parse(raw);
     const storedKey = parsed.rowKey;
+    if(JSON.stringify(parsed.columns) !== JSON.stringify(headers)) return;
     const map = parsed.data || {};
 
     if(storedKey && headers.includes(storedKey)){
@@ -1307,6 +1366,7 @@ function restoreEditsFromLocalStorage(){
           r._category = r._category || "Uncategorized";
         }
 
+        updateAmounts(r);
         r._searchBlob = headers.map(h=> String(r[h] ?? "").toLowerCase()).join(" | ");
       }
     });
