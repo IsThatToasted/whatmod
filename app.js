@@ -1,129 +1,14 @@
-(() => {
-  const projects = Array.isArray(window.WHATMOD_PROJECTS) ? window.WHATMOD_PROJECTS : [];
-  const grid = document.getElementById('projectGrid');
-  const filters = document.getElementById('filterRow');
-  const empty = document.getElementById('emptyState');
-  const count = document.getElementById('projectCount');
-  const year = document.getElementById('year');
-  let activeFilter = 'All';
-
-  if (count) count.textContent = projects.length;
-  if (year) year.textContent = new Date().getFullYear();
-
-  const safe = (value = '') => String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-
-  const projectHref = (path) => {
-    if (!path) return '#';
-    if (/^https?:\/\//i.test(path)) return path;
-    return path.startsWith('/') ? path : `/${path}`;
-  };
-
-  function cardMarkup(project, index) {
-    const tags = (project.tags || []).map(tag => `<span>${safe(tag)}</span>`).join('');
-    const statusClass = String(project.status || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    return `
-      <article class="project-card reveal" style="--accent:${safe(project.accent || '#9c8cff')};--accent2:${safe(project.accent2 || project.accent || '#6ecbff')};--delay:${index * 55}ms">
-        <a class="card-hit" href="${safe(projectHref(project.path))}" aria-label="Open ${safe(project.title)}"></a>
-        <div class="card-topline">
-          <span class="project-status ${safe(statusClass)}"><i></i>${safe(project.status || 'Live')}</span>
-          <span class="project-path">whatmod.com${safe(project.path || '/')}</span>
-        </div>
-        <div class="card-visual" aria-hidden="true">
-          <span class="visual-blob one"></span>
-          <span class="visual-blob two"></span>
-          <div class="project-icon">${safe(project.icon || '✦')}</div>
-          <span class="mini-star">✦</span>
-        </div>
-        <div class="card-copy">
-          <span class="project-category">${safe(project.category || 'Project')}</span>
-          <h3>${safe(project.title || 'Untitled')}</h3>
-          <p>${safe(project.description || '')}</p>
-        </div>
-        <div class="card-footer">
-          <div class="tag-row">${tags}</div>
-          <span class="open-arrow" aria-hidden="true">↗</span>
-        </div>
-      </article>`;
-  }
-
-  function renderProjects() {
-    const filtered = activeFilter === 'All'
-      ? projects
-      : projects.filter(project => project.category === activeFilter);
-
-    grid.innerHTML = filtered.map(cardMarkup).join('');
-    empty.hidden = filtered.length !== 0;
-    requestAnimationFrame(observeReveals);
-  }
-
-  function renderFilters() {
-    const categories = ['All', ...new Set(projects.map(project => project.category).filter(Boolean))];
-    filters.innerHTML = categories.map(category => `
-      <button type="button" class="filter-pill${category === activeFilter ? ' active' : ''}" data-filter="${safe(category)}">
-        ${safe(category)}
-      </button>`).join('');
-
-    filters.querySelectorAll('.filter-pill').forEach(button => {
-      button.addEventListener('click', () => {
-        activeFilter = button.dataset.filter;
-        renderFilters();
-        renderProjects();
-      });
-    });
-  }
-
-  function openRandomProject() {
-    if (!projects.length) return;
-    const pool = projects.filter(project => project.path);
-    if (!pool.length) return;
-    const project = pool[Math.floor(Math.random() * pool.length)];
-    window.location.href = projectHref(project.path);
-  }
-
-  document.getElementById('surpriseButton')?.addEventListener('click', openRandomProject);
-  document.getElementById('heroSurpriseButton')?.addEventListener('click', openRandomProject);
-
-  let revealObserver;
-  function observeReveals() {
-    if (!('IntersectionObserver' in window)) {
-      document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
-      return;
-    }
-    if (!revealObserver) {
-      revealObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            revealObserver.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.12, rootMargin: '0px 0px -30px' });
-    }
-    document.querySelectorAll('.reveal:not(.visible)').forEach(el => revealObserver.observe(el));
-  }
-
-  // A tiny bit of pointer parallax on the hero playground.
-  const playground = document.querySelector('.hero-playground');
-  if (playground && window.matchMedia('(pointer:fine)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    playground.addEventListener('pointermove', (event) => {
-      const rect = playground.getBoundingClientRect();
-      const x = (event.clientX - rect.left) / rect.width - 0.5;
-      const y = (event.clientY - rect.top) / rect.height - 0.5;
-      playground.style.setProperty('--mx', `${x * 14}px`);
-      playground.style.setProperty('--my', `${y * 14}px`);
-    });
-    playground.addEventListener('pointerleave', () => {
-      playground.style.setProperty('--mx', '0px');
-      playground.style.setProperty('--my', '0px');
-    });
-  }
-
-  renderFilters();
-  renderProjects();
-  observeReveals();
+(()=>{'use strict';
+const tools=window.WHATMOD_TOOLS||[],cfg=window.WHATMOD_CONFIG||{};
+const $=id=>document.getElementById(id); const categories=['All tools',...new Set(tools.map(x=>x.category))]; let category='All tools',query='',selected=15;
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const count=tools.length;$('totalCount').textContent=count;$('toolCount').textContent=count;$('year').textContent=new Date().getFullYear();
+function render(){const filtered=tools.filter(t=>(category==='All tools'||t.category===category)&&(`${t.name} ${t.category} ${t.description}`.toLowerCase().includes(query)));$('filters').innerHTML=categories.map(c=>`<button type="button" class="filter ${c===category?'active':''}" data-category="${escape(c)}">${escape(c)}</button>`).join('');$('cards').innerHTML=filtered.map(t=>`<article class="tool-card ${t.featured?'featured':''}"><div class="tool-head"><span class="tool-icon ${escape(t.color)}">${escape(t.icon)}</span><span class="type-label">${escape(t.badge)}</span></div><div class="card-status"><span class="${t.availability==='available'?'ready':'soon'}">${t.availability==='available'?'● EXISTING TOOL':'○ IN DEVELOPMENT'}</span>${t.premium?'<span>SUPPORTER ELIGIBLE</span>':'<span>FREE</span>'}</div><h3>${escape(t.name)}</h3><p>${escape(t.description)}</p><div class="card-bottom"><span>${escape(t.category)}</span><button type="button" data-open="${escape(t.id)}" aria-label="Explore ${escape(t.name)}">Explore tool <b>↗</b></button></div></article>`).join('');$('empty').hidden=!!filtered.length;}
+$('filters').addEventListener('click',e=>{const b=e.target.closest('[data-category]');if(b){category=b.dataset.category;render();}});$('search').addEventListener('input',e=>{query=e.target.value.toLowerCase().trim();render();});render();
+const dialog=$('toolDialog'); $('cards').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(!b)return;const t=tools.find(x=>x.id===b.dataset.open);if(!t)return; $('toolDetail').innerHTML=`<div class="detail-icon ${escape(t.color)}">${escape(t.icon)}</div><div class="overline">${escape(t.badge)} / ${escape(t.category)}</div><h2>${escape(t.name)}</h2><p class="detail-summary">${escape(t.description)}</p><h3>What's inside</h3><ul>${t.features.map(f=>`<li>✓ ${escape(f)}</li>`).join('')}</ul><div class="detail-status">${t.availability==='development'?'In development — public release not available yet.':'Existing tool — public download link not yet configured.'}</div>${t.url?`<a class="btn primary wide" href="${escape(t.url)}" target="_blank" rel="noopener noreferrer">Open ${escape(t.name)} ↗</a>`:''}${t.premium?'<a class="btn secondary wide" href="#support" id="detailSupport">Supporter unlock ↗</a>':'<p class="fine">This tool is free.</p>'}`;dialog.showModal();});
+$('toolDetail').addEventListener('click',e=>{if(e.target.closest('#detailSupport'))dialog.close();});$('closeTool').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});
+$('openLicense').addEventListener('click',()=>location.assign('./license.html'));
+$('amounts').addEventListener('click',e=>{const b=e.target.closest('[data-amount]');if(!b)return;selected=Number(b.dataset.amount);$('amount').value=selected;updateAmounts();});$('amount').addEventListener('input',e=>{selected=Number(e.target.value);updateAmounts();});
+function updateAmounts(){document.querySelectorAll('[data-amount]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.amount)===selected));}const status=$('payStatus');
+$('checkout').addEventListener('click',async()=>{if(!cfg.apiBase){status.textContent='Checkout is not configured yet. Add your deployed Worker URL to config.js.';return;}const min=cfg.minSupportDollars??10,max=cfg.maxSupportDollars??500;if(!Number.isInteger(selected)||selected<min||selected>max){status.textContent=`Choose a whole-dollar amount from $${min} to $${max}.`;return;}const btn=$('checkout');btn.disabled=true;status.textContent='Opening secure checkout…';try{const r=await fetch(`${cfg.apiBase.replace(/\/$/,'')}/api/checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount: selected})});const d=await r.json();if(!r.ok||!d.url)throw Error(d.error||'Checkout unavailable');location.assign(d.url);}catch(e){status.textContent=`Could not start checkout: ${e.message}`;btn.disabled=false;}});
 })();

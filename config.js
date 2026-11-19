@@ -1,5 +1,6 @@
-window.SCOOTERCAST_CONFIG = {
-  supabaseUrl: "https://pcsrsfghbmvgfqwmldfi.supabase.co",
-  supabaseAnonKey: "sb_publishable_r84DmbGHhx3pAgxYPCGFNA_omivKjuA",
-  rideApiUrl: "https://pcsrsfghbmvgfqwmldfi.supabase.co/functions/v1/ride-api"
+// Configure after deploying the Cloudflare Worker. Leave empty for preview-only mode.
+window.WHATMOD_CONFIG = {
+  apiBase: '', // e.g. 'https://whatmod-license.your-account.workers.dev'
+  minSupportDollars: 10,
+  maxSupportDollars: 500
 };

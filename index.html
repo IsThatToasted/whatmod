@@ -1,128 +1,21 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#f7f3ff" />
-  <meta name="description" content="WhatMod — a growing collection of apps, experiments, games, and useful little things." />
-  <title>WhatMod — Projects, apps & experiments</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <script>document.documentElement.classList.add('js');</script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0e16"><meta name="description" content="WhatMod: practical tools for Whatnot sellers. Monitor live auctions, organize orders, analyze sales, and save time.">
+<title>WhatMod — Seller tools, without the busywork.</title>
+<link rel="stylesheet" href="./styles.css"><script defer src="./config.js"></script><script defer src="./projects.js"></script><script defer src="./app.js"></script>
 </head>
 <body>
-  <div class="page-noise" aria-hidden="true"></div>
-  <div class="ambient" aria-hidden="true">
-    <span class="blob blob-a"></span>
-    <span class="blob blob-b"></span>
-    <span class="blob blob-c"></span>
-    <span class="blob blob-d"></span>
-    <span class="floaty floaty-a">✦</span>
-    <span class="floaty floaty-b">●</span>
-    <span class="floaty floaty-c">✿</span>
-  </div>
-
-  <header class="site-header shell">
-    <a class="brand" href="#top" aria-label="WhatMod home">
-      <span class="brand-mark" aria-hidden="true">
-        <span></span><span></span><span></span>
-      </span>
-      <span class="brand-copy">
-        <strong>whatmod</strong><em>.com</em>
-      </span>
-    </a>
-
-    <nav class="header-actions" aria-label="Primary navigation">
-      <a href="#projects" class="nav-link">Projects</a>
-      <button class="icon-button" id="surpriseButton" type="button" aria-label="Open a random project" title="Surprise me">
-        <span aria-hidden="true">✦</span>
-      </button>
-    </nav>
-  </header>
-
-  <main id="top">
-    <section class="hero shell">
-      <div class="hero-copy reveal">
-        <div class="eyebrow"><span class="pulse-dot"></span> The WhatMod playground</div>
-        <h1>Useful things.<br><span>Fun things.</span><br>Whatever’s next.</h1>
-        <p class="hero-lede">A growing little universe of apps, experiments, tools, games, and ideas built because they sounded useful — or just too fun not to try.</p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="#projects">Explore the projects <span>↓</span></a>
-          <button class="button button-secondary" id="heroSurpriseButton" type="button">Surprise me <span>✦</span></button>
-        </div>
-        <div class="mini-proof" aria-label="Site highlights">
-          <span><b id="projectCount">4</b> live projects</span>
-          <i></i>
-          <span>Built for web + beyond</span>
-          <i></i>
-          <span>Always tinkering</span>
-        </div>
-      </div>
-
-      <div class="hero-playground reveal" aria-hidden="true">
-        <div class="orbit orbit-one"></div>
-        <div class="orbit orbit-two"></div>
-        <div class="hero-bubble bubble-main">
-          <div class="bubble-face">
-            <span class="eye"></span><span class="eye"></span>
-            <span class="smile"></span>
-          </div>
-        </div>
-        <div class="hero-bubble bubble-small bubble-trivia">?</div>
-        <div class="hero-bubble bubble-small bubble-track">✈</div>
-        <div class="hero-bubble bubble-small bubble-ride">↗</div>
-        <div class="hero-bubble bubble-small bubble-code">&lt;/&gt;</div>
-        <div class="spark spark-1">✦</div>
-        <div class="spark spark-2">✦</div>
-        <div class="spark spark-3">•</div>
-      </div>
-    </section>
-
-    <section class="ticker" aria-label="WhatMod categories">
-      <div class="ticker-track">
-        <span>APPS</span><b>✦</b><span>TOOLS</span><b>●</b><span>GAMES</span><b>✿</b><span>EXPERIMENTS</span><b>✦</b><span>TRAVEL</span><b>●</b><span>LIVE</span><b>✿</b><span>APPS</span><b>✦</b><span>TOOLS</span><b>●</b><span>GAMES</span><b>✿</b><span>EXPERIMENTS</span><b>✦</b><span>TRAVEL</span><b>●</b><span>LIVE</span><b>✿</b>
-      </div>
-    </section>
-
-    <section class="projects-section shell" id="projects">
-      <div class="section-heading reveal">
-        <div>
-          <div class="eyebrow">Pick a rabbit hole</div>
-          <h2>Things living on WhatMod</h2>
-        </div>
-        <p>Every card is its own little world. Open one, poke around, and see what it does.</p>
-      </div>
-
-      <div class="filter-row reveal" id="filterRow" aria-label="Filter projects"></div>
-      <div class="project-grid" id="projectGrid" aria-live="polite"></div>
-      <div class="empty-state" id="emptyState" hidden>
-        <span>☁</span>
-        <h3>Nothing in that bubble yet.</h3>
-        <p>Try another filter.</p>
-      </div>
-    </section>
-
-    <section class="add-project shell reveal">
-      <div class="add-card">
-        <div class="add-icon" aria-hidden="true">＋</div>
-        <div>
-          <span class="eyebrow">Built to keep growing</span>
-          <h2>New project? One tiny edit.</h2>
-          <p>The whole showcase is powered by <code>projects.js</code>. Add one object and the card, tags, filters, colors, count, and random-project button all update automatically.</p>
-        </div>
-        <a class="button button-dark" href="./projects.js">View project data <span>↗</span></a>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer shell">
-    <div class="footer-brand">
-      <span class="brand-mark small" aria-hidden="true"><span></span><span></span><span></span></span>
-      <div><strong>whatmod.com</strong><p>A place for whatever gets built next.</p></div>
-    </div>
-    <p class="footer-note">Made with curiosity, caffeine, and an unreasonable number of tabs. <span id="year"></span></p>
-  </footer>
-
-  <script src="./projects.js"></script>
-  <script src="./app.js"></script>
-</body>
-</html>
+<div class="grid-bg" aria-hidden="true"></div>
+<header class="header wrap"><a class="logo" href="#top" aria-label="WhatMod home"><span class="logo-shape">w<span>✳</span></span><span>whatmod<span class="dot">.</span></span></a><nav aria-label="Primary"><a href="#tools">Tools</a><a href="#how">How it works</a><a href="#support">Supporter unlock</a></nav><button class="header-cta" id="openLicense">My license <span>↗</span></button></header>
+<main id="top">
+<section class="hero wrap"><div class="hero-content"><div class="eyebrow"><span class="status-dot"></span> THE SELLER TOOLBOX <span class="eyebrow-side">/ BUILT FOR THE LIVE GRIND</span></div><h1>Sell live.<br><em>Work smarter.</em></h1><p class="lead">A growing lineup of independent utilities built for Whatnot sellers. Less tab chaos, less repetitive work, and more time focused on your show.</p><div class="hero-ctas"><a class="btn primary" href="#tools">Explore the toolbox <span>↗</span></a><a class="btn secondary" href="#support">Unlock full versions <span>✳</span></a></div><div class="hero-meta"><span><b id="totalCount">0</b> seller tools</span><span class="sep"></span><span>Free to explore</span><span class="sep"></span><span>One supporter unlock</span></div></div><div class="hero-art" aria-hidden="true"><div class="preview-window"><div class="window-top"><div><i></i><i></i><i></i></div><span>WHATMOD / LIVE WORKSPACE</span><span>● LIVE</span></div><div class="preview-head"><div><small>ACTIVE SESSION</small><strong>YOUR SELLER COMMAND CENTER</strong></div><span class="pill-success">● Monitoring</span></div><div class="stat-row"><div><span>Sales tracked</span><b>128</b><small>↗ Live capture</small></div><div><span>Clips saved</span><b>42</b><small>↗ Auto archive</small></div><div><span>Time reclaimed</span><b>6.4h</b><small>↗ This week</small></div></div><div class="preview-list"><div><span class="live-icon">◉</span><span><b>Deal Alert</b><small>Auction monitoring active</small></span><span class="list-pill">RUNNING</span></div><div><span class="live-icon purple">▣</span><span><b>WhatClip</b><small>Recent clips organized</small></span><span class="list-pill dim">READY</span></div><div><span class="live-icon orange">◇</span><span><b>Size Tracker</b><small>Buyer sizes matched</small></span><span class="list-pill dim">READY</span></div></div></div><div class="floating-note">✦ MADE FOR SELLERS<br><small>BY A SELLER</small></div></div></section>
+<section class="strip" aria-label="Benefits"><div class="wrap strip-inner"><span>⚡ SAVE TIME</span><i>✳</i><span>◉ STAY ON TOP OF LIVE SALES</span><i>✳</i><span>▣ ORGANIZE EVERYTHING</span><i>✳</i><span>↗ SELL WITH CONFIDENCE</span></div></section>
+<section class="tools-section wrap" id="tools"><div class="section-top"><div><div class="overline">01 / THE LIBRARY</div><h2>Your show. <span>Your toolkit.</span></h2><p>Discover utilities for every part of the seller workflow. Pick a tool to see what it does and how to get started.</p></div><div class="library-count"><b id="toolCount">0</b><span>TOOLS IN THE LIBRARY</span></div></div><div class="toolbar"><div class="filters" id="filters" aria-label="Filter tools"></div><label class="search"><span>⌕</span><input id="search" type="search" placeholder="Search tools..." aria-label="Search tools"></label></div><div id="cards" class="cards" aria-live="polite"></div><div class="empty" id="empty" hidden>No matching tools. Try another search or category.</div></section>
+<section class="how wrap" id="how"><div class="section-top"><div><div class="overline">02 / SIMPLE BY DESIGN</div><h2>Get going in <span>minutes.</span></h2></div></div><div class="steps"><div><span>01</span><b>Find your tool</b><p>Browse the library and open the utility that fits your workflow.</p></div><div><span>02</span><b>Try what's free</b><p>Explore the tools with their available free functionality before upgrading.</p></div><div><span>03</span><b>Support & unlock</b><p>Make a one-time payment, claim a license key, and use it in supported apps.</p></div></div></section>
+<section class="support wrap" id="support"><div class="support-card"><div class="support-left"><div class="overline">03 / FUEL WHAT'S NEXT</div><h2>Built independently.<br><span>Powered by sellers.</span></h2><p>Your support helps improve existing tools and fund new ones. A one-time supporter payment unlocks premium features in participating apps — no monthly subscription.</p><div class="support-tags"><span>✓ One-time payment</span><span>✓ License key</span><span>✓ Participating premium apps</span></div></div><div class="unlock-box"><div class="unlock-top"><span>WHATMOD SUPPORTER</span><b>✳</b></div><label for="amount">Choose your support amount</label><div class="amounts" id="amounts"><button type="button" data-amount="10">$10</button><button type="button" data-amount="15" class="selected">$15</button><button type="button" data-amount="25">$25</button><button type="button" data-amount="50">$50</button></div><div class="custom-amount"><span>$</span><input id="amount" type="number" min="10" max="500" step="1" value="15" aria-label="Support amount in dollars"></div><button class="btn primary wide" id="checkout" type="button">Support & unlock <span>↗</span></button><p class="fine">Secure checkout via Stripe. Payments are purchases for digital access, not tax-deductible charitable donations. Minimum $10. Higher amounts are optional and provide the same access.</p><div role="status" id="payStatus" class="pay-status"></div></div></div></section>
+<section class="faq wrap"><div class="section-top"><div><div class="overline">04 / GOOD TO KNOW</div><h2>Questions? <span>Covered.</span></h2></div></div><details><summary>Do I have to pay to try a tool?</summary><p>No. Each tool can offer a free tier or preview. Premium feature availability is shown on its detail page.</p></details><details><summary>How does the unlock work?</summary><p>After successful checkout, your unique license key appears on the confirmation page. Copy and keep it. Supported applications can validate that key against the WhatMod license service.</p></details><details><summary>Does one purchase unlock everything?</summary><p>Your supporter key unlocks premium features in the participating WhatMod seller tools listed as eligible. Third-party services, future standalone paid products, and tools marked otherwise are not included.</p></details><details><summary>Is WhatMod affiliated with Whatnot?</summary><p>No. WhatMod is an independent project and is not affiliated with, sponsored by, or endorsed by Whatnot. Use tools responsibly and follow platform policies.</p></details></section>
+</main><footer class="footer wrap"><div><a class="logo" href="#top"><span class="logo-shape">w<span>✳</span></span><span>whatmod<span class="dot">.</span></span></a><p>Independent seller tools, built to make the live grind lighter.</p></div><div><a href="#tools">Tool library</a><a href="#support">Supporter unlock</a><a href="./license.html">Redeem / verify license</a></div><small>© <span id="year"></span> WhatMod. Not affiliated with Whatnot. Payment processing by Stripe.</small></footer>
+<dialog id="toolDialog"><button type="button" class="dialog-close" id="closeTool" aria-label="Close">×</button><div id="toolDetail"></div></dialog>
+</body></html>

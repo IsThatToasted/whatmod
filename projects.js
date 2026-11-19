@@ -1,76 +1,11 @@
-/*
-  ADDING A PROJECT
-  ----------------
-  Copy one object below, change the values, and refresh.
-  No HTML editing is needed.
-
-  accent accepts any CSS color.
-  icon can be an emoji, a single letter, or a short symbol.
-  category becomes a filter automatically.
-  tags are optional.
-*/
-
-window.WHATMOD_PROJECTS = [
-  {
-    title: "WhatMod Trivia",
-    path: "/trivia/",
-    category: "Games",
-    icon: "?",
-    accent: "#ffb86b",
-    accent2: "#ff7f91",
-    description: "Fast, visual trivia built for quick rounds, clever questions, and media-rich fun.",
-    tags: ["Trivia", "Game", "Interactive"],
-    status: "Live",
-    featured: true
-  },
-  {
-    title: "WeTrack",
-    path: "/track/",
-    category: "Travel",
-    icon: "✈",
-    accent: "#9c8cff",
-    accent2: "#6ecbff",
-    description: "A collaborative trip planner for itineraries, packing, budgets, memories, routes, and the people coming along.",
-    tags: ["Travel", "Planner", "Collaboration"],
-    status: "Live",
-    featured: true
-  },
-  {
-    title: "ScooterCast",
-    path: "/ride/",
-    category: "Live",
-    icon: "↗",
-    accent: "#5ed7b7",
-    accent2: "#6ea8ff",
-    description: "Live local rides with route telemetry, ride replays, reactions, saved moments, and an explorer for public broadcasts.",
-    tags: ["Live", "Maps", "Telemetry"],
-    status: "Live",
-    featured: true
-  },
-  {
-    title: "Portfolio",
-    path: "/portfolio/",
-    category: "About",
-    icon: "B",
-    accent: "#ffd86e",
-    accent2: "#ad8bff",
-    description: "A cleaner look at the person behind the projects — selected work, skills, background, and ways to get in touch.",
-    tags: ["Work", "About", "Contact"],
-    status: "Live",
-    featured: true
-  }
-
-  // Example:
-  // {
-  //   title: "New Thing",
-  //   path: "/new-thing/",
-  //   category: "Tools",
-  //   icon: "✦",
-  //   accent: "#ff8db7",
-  //   accent2: "#8ed7ff",
-  //   description: "A one-line description of the project.",
-  //   tags: ["Tool", "Web"],
-  //   status: "New",
-  //   featured: false
-  // }
+// Replace demo URLs with your real tool pages or download URLs as they go live.
+// 'url: null' intentionally marks a product as not yet publicly available.
+window.WHATMOD_TOOLS = [
+ {id:'deal-alert',name:'Deal Alert',category:'Live selling',icon:'⚡',color:'lime',badge:'BROWSER EXTENSION',availability:'available',featured:true,description:'Watch auction timers, bid amounts, and giveaways without losing track of the action.',features:['Auction and timer monitoring','Custom alerts and safeguards','Per-tab controls'],url:null,premium:true},
+ {id:'whatclip',name:'WhatClip',category:'Content & clips',icon:'▣',color:'violet',badge:'BROWSER EXTENSION',availability:'available',featured:true,description:'Capture moments from your live show and organize clips without interrupting the sale.',features:['Custom before/after clip windows','Consecutive auction capture','Organized clip history'],url:null,premium:true},
+ {id:'size-tracker',name:'Size Tracker',category:'Order management',icon:'⌗',color:'orange',badge:'BROWSER EXTENSION',availability:'development',featured:true,description:'Match buyer size messages to completed sales for a cleaner packing workflow.',features:['Buyer-size matching','Recently sold queue','Size history dashboard'],url:null,premium:true},
+ {id:'seller-analytics',name:'Sales Breakdown',category:'Analytics',icon:'◫',color:'blue',badge:'WEB DASHBOARD',availability:'available',featured:false,description:'Turn exported Whatnot order reports into a clearer view of pricing, shipping, and sales.',features:['CSV report import','Product-level order review','Sales and shipping overview'],url:null,premium:true},
+ {id:'giveaway-watch',name:'Giveaway Watch',category:'Live selling',icon:'◉',color:'pink',badge:'BROWSER EXTENSION',availability:'development',featured:false,description:'Keep tabs on giveaway activity and get convenient timing notifications.',features:['Giveaway monitoring','Countdown notifications','Live session overview'],url:null,premium:true},
+ {id:'seller-timers',name:'Giveaway Timers',category:'Productivity',icon:'◷',color:'teal',badge:'WEB APP',availability:'development',featured:false,description:'Track seller giveaway timers in one clean, glanceable place.',features:['Multiple timer cards','Visual urgency cues','Easy timer resets'],url:null,premium:false},
+ {id:'listing-assistant',name:'Listing Assistant',category:'Productivity',icon:'↗',color:'yellow',badge:'WINDOWS APP',availability:'development',featured:false,description:'Prepare e-commerce listing drafts for review with less repetitive data entry.',features:['Draft generation','Product information review','Manual publish approval'],url:null,premium:true}
 ];
